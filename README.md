@@ -126,9 +126,14 @@ swiftlint lint --strict Sources Tests
 
 ## Contributing
 
-All changes must land on `main` through a pull request. The `macOS CI`
-workflow (`.github/workflows/macos-ci.yml`) is a required check and runs
-`swift build`, `swift test`, `swiftformat --lint`, and `swiftlint --strict`
-on every PR. Use the PR template (`.github/pull_request_template.md`) to
-describe the change, the manual test matrix, and any protocol-affecting
-bits.
+Changes should land on `main` through a pull request. The `macOS CI`
+workflow (`.github/workflows/macos-ci.yml`) runs `swift build`, `swift test`,
+`swiftformat --lint`, and `swiftlint --strict` on every PR and on `main`
+pushes. Use the PR template (`.github/pull_request_template.md`) to describe
+the change, the manual test matrix, and any protocol-affecting bits.
+
+> **Note on branch protection.** GitHub's branch-protection and repository-
+> ruleset features are not available for private repositories on the free
+> org plan this repo lives under, so direct pushes to `main` are not
+> blocked at the platform level. Treat the PR-based flow as a convention
+> and rely on the CI workflow as the quality gate.
