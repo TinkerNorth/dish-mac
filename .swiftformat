@@ -1,0 +1,44 @@
+# Dish Mac — SwiftFormat configuration
+# Paired with .swiftlint.yml — SwiftFormat handles whitespace / mechanical
+# reformatting, SwiftLint handles lint rules and smells.
+
+# Target Swift version
+--swiftversion 5.9
+
+# Scope
+--exclude .build,.swiftpm,Dish.app
+
+# Indentation & layout
+--indent 4
+--tabwidth 4
+--maxwidth 140
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections before-first
+--closingparen balanced
+
+# Whitespace / punctuation
+--trimwhitespace always
+--commas inline
+--semicolons never
+--self remove
+--redundanttype infer
+--emptybraces no-space
+--operatorfunc spaced
+--ranges spaced
+
+# Imports
+--importgrouping testable-last
+
+# Braces
+--allman false
+--elseposition same-line
+--guardelse same-line
+
+# Comments
+--ifdef no-indent
+--stripunusedargs closure-only
+
+# Disabled rules (SwiftLint owns them, or they conflict with code style we
+# want to preserve — e.g. explicit `self.` in closures that capture state).
+--disable redundantSelf,unusedArguments,blankLinesAtStartOfScope

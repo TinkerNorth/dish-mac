@@ -1,0 +1,50 @@
+#!/bin/bash
+# Dish Mac pre-commit hook: runs SwiftFormat (autofix) and SwiftLint (check)
+# on staged Swift files only. Gracefully skips if either tool is missing so
+# devs who haven't run setup-hooks.sh yet aren't blocked — CI enforces the
+# same checks in strict mode.
+set -euo pipefail
+
+# Collect staged .swift files (added / copied / modified), NUL-separated to
+# handle paths with spaces.
+staged=$(git diff --cached --name-only --diff-filter=ACM -z -- '*.swift' | tr '\0' '\n' | sed '/^$/d')
+if [ -z "$staged" ]; then
+    exit 0
+fi
+
+format_ok=1
+lint_ok=1
+
+# ── SwiftFormat ──────────────────────────────────────────────────────────
+if command -v swiftformat >/dev/null 2>&1; then
+    echo "▶ swiftformat (staged files)"
+    echo "$staged" | while IFS= read -r file; do
+        swiftformat "$file"
+        git add "$file"
+    done
+else
+    echo "⚠  swiftformat not installed — skipping (brew install swiftformat)"
+fi
+
+# ── SwiftLint ────────────────────────────────────────────────────────────
+if command -v swiftlint >/dev/null 2>&1; then
+    echo "▶ swiftlint (staged files)"
+    # --use-script-input-files lets SwiftLint lint only the staged subset.
+    export SCRIPT_INPUT_FILE_COUNT=0
+    while IFS= read -r file; do
+        eval "export SCRIPT_INPUT_FILE_${SCRIPT_INPUT_FILE_COUNT}=\"$PWD/$file\""
+        SCRIPT_INPUT_FILE_COUNT=$((SCRIPT_INPUT_FILE_COUNT + 1))
+    done <<<"$staged"
+    export SCRIPT_INPUT_FILE_COUNT
+    if ! swiftlint lint --use-script-input-files --quiet --strict; then
+        lint_ok=0
+    fi
+else
+    echo "⚠  swiftlint not installed — skipping (brew install swiftlint)"
+fi
+
+if [ "$format_ok" -eq 0 ] || [ "$lint_ok" -eq 0 ]; then
+    echo
+    echo "✗ pre-commit failed — fix the issues above and re-stage."
+    exit 1
+fi

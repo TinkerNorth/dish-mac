@@ -1,0 +1,51 @@
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# Xcode
+*.xcodeproj/
+*.xcworkspace/
+!*.xcodeproj/project.pbxproj
+!*.xcodeproj/project.xcworkspace/
+!*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+xcuserdata/
+DerivedData/
+*.xcuserstate
+
+# Build artifacts
+*.o
+*.a
+*.dylib
+*.dSYM/
+*.app
+*.ipa
+
+# CLI build output from bundle.sh
+/Dish.app/
+
+# Swift
+*.swiftpm/
+
+# Tooling caches
+.swiftlint-cache/
+.swiftformat-cache/
+
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+.AppleDouble
+
+# IDE / Editor
+.vscode/
+.idea/
+*.iml
+*.swp
+
+# Secrets
+*.p12
+*.pem
+*.cer
+*.mobileprovision
