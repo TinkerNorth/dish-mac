@@ -22,7 +22,7 @@
 --commas inline
 --semicolons never
 --self remove
---redundanttype infer
+--redundanttype inferred
 --emptybraces no-space
 --operatorfunc spaced
 --ranges spaced
