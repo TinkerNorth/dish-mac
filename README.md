@@ -137,3 +137,9 @@ the change, the manual test matrix, and any protocol-affecting bits.
 > org plan this repo lives under, so direct pushes to `main` are not
 > blocked at the platform level. Treat the PR-based flow as a convention
 > and rely on the CI workflow as the quality gate.
+
+## License
+
+Distributed under the terms of the **GNU Lesser General Public License v3.0
+or later**. See [`LICENSE`](LICENSE) (LGPL) and [`COPYING.GPL3`](COPYING.GPL3)
+(the GPL v3 the LGPL incorporates by reference).
