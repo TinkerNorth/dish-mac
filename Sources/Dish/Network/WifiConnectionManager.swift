@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import Foundation
 import Combine
+import Foundation
 
 enum ConnectionEvent {
     case pairingRequired(DiscoveredServer)
@@ -24,9 +24,13 @@ final class WifiConnectionManager: ObservableObject {
     private lazy var deviceId = store.getOrCreateDeviceId()
     private let deviceName = Host.current().localizedName ?? "Mac"
 
-    init(store: ConnectionStore) { self.store = store }
+    init(store: ConnectionStore) {
+        self.store = store
+    }
 
-    func get(_ id: String) -> WifiConnection? { connections[id] }
+    func get(_ id: String) -> WifiConnection? {
+        connections[id]
+    }
 
     // MARK: - Discovery
 
@@ -54,7 +58,8 @@ final class WifiConnectionManager: ObservableObject {
         let id = WifiConnection.idFor(server)
         if let existing = connections[id] {
             if existing.state == .connected || existing.state == .connecting {
-                existing.updateServer(server); return
+                existing.updateServer(server)
+                return
             }
         }
         let conn = connections[id] ?? {
@@ -72,8 +77,13 @@ final class WifiConnectionManager: ObservableObject {
         let did = deviceId, dname = deviceName
         // Empty PIN is the "already-paired, re-use saved shared key" path.
         let pair = await Task.detached(priority: .userInitiated) {
-            PairingClient.pair(ip: server.ip, port: server.pairPort,
-                               deviceId: did, deviceName: dname, pin: "")
+            PairingClient.pair(
+                ip: server.ip,
+                port: server.pairPort,
+                deviceId: did,
+                deviceName: dname,
+                pin: ""
+            )
         }.value
         guard pair.ok, let sharedKey = pair.sharedKey else {
             conn.markDisconnected()
@@ -96,8 +106,13 @@ final class WifiConnectionManager: ObservableObject {
         let did = deviceId, dname = deviceName
         Task {
             let pair = await Task.detached(priority: .userInitiated) {
-                PairingClient.pair(ip: server.ip, port: server.pairPort,
-                                   deviceId: did, deviceName: dname, pin: pin)
+                PairingClient.pair(
+                    ip: server.ip,
+                    port: server.pairPort,
+                    deviceId: did,
+                    deviceName: dname,
+                    pin: pin
+                )
             }.value
             guard pair.ok, let sharedKey = pair.sharedKey else {
                 conn.markDisconnected()
@@ -113,23 +128,29 @@ final class WifiConnectionManager: ObservableObject {
         let id = WifiConnection.idFor(server)
         guard let keyHex = store.sharedKey(for: id),
               keyHex.count == 64,
-              let keyData = hexToBytes(keyHex), keyData.count == 32 else {
+              let keyData = hexToBytes(keyHex), keyData.count == 32 else
+        {
             conn.markDisconnected()
             events.send(.error("No shared key — re-pair needed"))
             return
         }
-        let resp = await HTTPClient.connect(ip: server.ip, port: server.httpPort,
-                                            deviceId: deviceId)
+        let resp = await HTTPClient.connect(
+            ip: server.ip,
+            port: server.httpPort,
+            deviceId: deviceId
+        )
         guard let connId = resp.connectionId,
               let tokenHex = resp.token,
-              let tokenData = hexToBytes(tokenHex), tokenData.count == 4 else {
+              let tokenData = hexToBytes(tokenHex), tokenData.count == 4 else
+        {
             conn.markDisconnected()
             events.send(.error("Error: \(resp.error ?? "connection failed")"))
             return
         }
         let client = SatelliteClient()
         guard client.openSocket(ip: server.ip, port: server.udpPort) else {
-            conn.markDisconnected(); return
+            conn.markDisconnected()
+            return
         }
         client.setConnectionParams(token: tokenData, key: keyData)
         store.remember(server)
@@ -146,8 +167,12 @@ final class WifiConnectionManager: ObservableObject {
         conn.markDisconnected()
         if let cid {
             Task.detached(priority: .utility) {
-                _ = await HTTPClient.disconnect(ip: server.ip, port: server.httpPort,
-                                                connectionId: cid, deviceId: did)
+                _ = await HTTPClient.disconnect(
+                    ip: server.ip,
+                    port: server.httpPort,
+                    connectionId: cid,
+                    deviceId: did
+                )
             }
         }
     }
@@ -169,5 +194,7 @@ final class WifiConnectionManager: ObservableObject {
         }
     }
 
-    func remembered() -> [RememberedWifi] { store.remembered() }
+    func remembered() -> [RememberedWifi] {
+        store.remembered()
+    }
 }

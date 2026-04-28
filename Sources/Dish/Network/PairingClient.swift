@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import Foundation
 import Darwin
+import Foundation
 
 /// Blocking TCP pair handshake with a Satellite server. Mirrors
 /// `satellite_jni.cpp :: pair`. Sends a single JSON line and reads the
@@ -16,8 +16,13 @@ enum PairingClient {
     }
 
     /// Call from a background queue. Returns the parsed `PairResponse`.
-    static func pair(ip: String, port: Int,
-                     deviceId: String, deviceName: String, pin: String) -> PairResponse {
+    static func pair(
+        ip: String,
+        port: Int,
+        deviceId: String,
+        deviceName: String,
+        pin: String
+    ) -> PairResponse {
         let sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
         guard sock >= 0 else { return PairResponse(ok: false, error: "socket failed") }
         defer { close(sock) }
@@ -39,7 +44,7 @@ enum PairingClient {
                 Darwin.connect(sock, sa, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
         }
-        if connectRet != 0 && errno != EINPROGRESS {
+        if connectRet != 0, errno != EINPROGRESS {
             return PairResponse(ok: false, error: "connect failed")
         }
         if connectRet != 0 {
@@ -57,8 +62,8 @@ enum PairingClient {
         _ = fcntl(sock, F_SETFL, flags & ~O_NONBLOCK)
 
         guard let body = try? JSONEncoder().encode(
-            Request(deviceId: deviceId, deviceName: deviceName, pin: pin))
-        else { return PairResponse(ok: false, error: "encode failed") }
+            Request(deviceId: deviceId, deviceName: deviceName, pin: pin)
+        ) else { return PairResponse(ok: false, error: "encode failed") }
 
         _ = body.withUnsafeBytes { ptr in
             Darwin.send(sock, ptr.baseAddress, ptr.count, 0)
@@ -73,7 +78,7 @@ enum PairingClient {
         }
         if n <= 0 { return PairResponse(ok: false, error: "no response") }
 
-        let data = Data(buf[0..<n])
+        let data = Data(buf[0 ..< n])
         if let parsed = try? JSONDecoder().decode(PairResponse.self, from: data) {
             return parsed
         }
@@ -82,10 +87,12 @@ enum PairingClient {
 }
 
 // MARK: - fd_set helpers (Darwin's fd_set is opaque in Swift)
+
 @inline(__always)
 private func fdZero(_ set: inout fd_set) {
     set = fd_set()
 }
+
 @inline(__always)
 private func fdSet(_ fd: Int32, _ set: inout fd_set) {
     let intOffset = Int(fd / 32)

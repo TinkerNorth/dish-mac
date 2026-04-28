@@ -30,8 +30,12 @@ enum HTTPClient {
     /// `DELETE /api/connections/:id` — server drops the connection and all its
     /// attached controllers.
     @discardableResult
-    static func disconnect(ip: String, port: Int,
-                           connectionId: String, deviceId: String) async -> ConnectResponse {
+    static func disconnect(
+        ip: String,
+        port: Int,
+        connectionId: String,
+        deviceId: String
+    ) async -> ConnectResponse {
         let url = URL(string: "http://\(ip):\(port)/api/connections/\(connectionId)")!
         var req = URLRequest(url: url)
         req.httpMethod = "DELETE"

@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import Combine
 import Foundation
 import GameController
-import Combine
 
 /// Bridges Apple's `GameController.framework` into the `GamepadInputProcessor`.
 /// Hooks `valueChangedHandler` on every extended gamepad so we push a report
@@ -15,8 +15,8 @@ final class GameControllerInput: ObservableObject {
     /// Published list of currently-connected controllers. One `Slot` per
     /// physical controller; the UI renders these alongside the virtual slot.
     struct Slot: Identifiable, Hashable {
-        let id: String              // stable controller id
-        let name: String            // vendorName or product category
+        let id: String // stable controller id
+        let name: String // vendorName or product category
     }
 
     @Published private(set) var slots: [Slot] = []
@@ -29,22 +29,32 @@ final class GameControllerInput: ObservableObject {
 
     init() {
         let nc = NotificationCenter.default
-        observers.append(nc.addObserver(forName: .GCControllerDidConnect,
-                                        object: nil, queue: .main) { [weak self] note in
+        observers.append(nc.addObserver(
+            forName: .GCControllerDidConnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
             guard let self, let controller = note.object as? GCController else { return }
             self.attach(controller)
         })
-        observers.append(nc.addObserver(forName: .GCControllerDidDisconnect,
-                                        object: nil, queue: .main) { [weak self] note in
+        observers.append(nc.addObserver(
+            forName: .GCControllerDidDisconnect,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
             guard let self, let controller = note.object as? GCController else { return }
             self.detach(controller)
         })
         // Pick up any already-connected controllers on launch.
-        for c in GCController.controllers() { attach(c) }
+        for c in GCController.controllers() {
+            attach(c)
+        }
     }
 
     deinit {
-        for o in observers { NotificationCenter.default.removeObserver(o) }
+        for o in observers {
+            NotificationCenter.default.removeObserver(o)
+        }
     }
 
     // MARK: - Attach / detach
@@ -82,7 +92,7 @@ final class GameControllerInput: ObservableObject {
     /// Called from GC's internal dispatch queue. Builds a full `DeviceState`
     /// from the current GCExtendedGamepad snapshot and hands it to the
     /// processor for immediate send.
-    nonisolated private func pushReport(id: String, pad: GCExtendedGamepad) {
+    private nonisolated func pushReport(id: String, pad: GCExtendedGamepad) {
         var s = GamepadInputProcessor.DeviceState()
 
         // Face buttons — GameController normalises Xbox/PS/MFi to A/B/X/Y.
@@ -98,15 +108,15 @@ final class GameControllerInput: ObservableObject {
         if pad.rightThumbstickButton?.isPressed == true { s.wButtons |= GamepadInputProcessor.Buttons.rightThumb }
 
         // D-pad (digital).
-        if pad.dpad.up.isPressed    { s.wButtons |= GamepadInputProcessor.Buttons.dpadUp }
-        if pad.dpad.down.isPressed  { s.wButtons |= GamepadInputProcessor.Buttons.dpadDown }
-        if pad.dpad.left.isPressed  { s.wButtons |= GamepadInputProcessor.Buttons.dpadLeft }
+        if pad.dpad.up.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadUp }
+        if pad.dpad.down.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadDown }
+        if pad.dpad.left.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadLeft }
         if pad.dpad.right.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadRight }
 
         // Thumbsticks: GC gives -1..1, XUSB wants signed 16-bit. Y is inverted
         // on Android (scaleAxis uses -AXIS_MAX); GameController already flips
         // so "up = +1" — we negate to match the Android wire output.
-        s.lx = scaleAxis(pad.leftThumbstick.xAxis.value,  max: 32767)
+        s.lx = scaleAxis(pad.leftThumbstick.xAxis.value, max: 32767)
         s.ly = scaleAxis(-pad.leftThumbstick.yAxis.value, max: 32767)
         s.rx = scaleAxis(pad.rightThumbstick.xAxis.value, max: 32767)
         s.ry = scaleAxis(-pad.rightThumbstick.yAxis.value, max: 32767)

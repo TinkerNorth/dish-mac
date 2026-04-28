@@ -65,14 +65,14 @@ struct ConnectionsView: View {
 
         var key: String {
             switch self {
-            case .known(let c):       return c.id
-            case .discovered(let s):  return s.id
+            case let .known(c): c.id
+            case let .discovered(s): s.id
             }
         }
     }
 
     private var combinedRows: [Row] {
-        let knownIds = Set(model.connections.map { $0.id })
+        let knownIds = Set(model.connections.map(\.id))
         var rows: [Row] = model.connections.map { .known($0) }
         for s in wifi.discoveredServers where !knownIds.contains(s.id) {
             rows.append(.discovered(s))
@@ -83,8 +83,8 @@ struct ConnectionsView: View {
     @ViewBuilder
     private func rowView(_ row: Row) -> some View {
         switch row {
-        case .known(let c):      knownRow(c)
-        case .discovered(let s): discoveredRow(s)
+        case let .known(c): knownRow(c)
+        case let .discovered(s): discoveredRow(s)
         }
     }
 
@@ -155,17 +155,17 @@ struct ConnectionsView: View {
 
     private func statusText(for c: ConnectionSummary) -> String {
         switch c.live {
-        case .connected:  return "Connected"
-        case .connecting: return "Connecting"
-        case .idle:       return "Idle"
+        case .connected: "Connected"
+        case .connecting: "Connecting"
+        case .idle: "Idle"
         }
     }
 
     private func dotColor(for c: ConnectionSummary) -> Color {
         switch c.live {
-        case .connected:  return DishTheme.success
-        case .connecting: return DishTheme.primary
-        case .idle:       return DishTheme.muted
+        case .connected: DishTheme.success
+        case .connecting: DishTheme.primary
+        case .idle: DishTheme.muted
         }
     }
 }

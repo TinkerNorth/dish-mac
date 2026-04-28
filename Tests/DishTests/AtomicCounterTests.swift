@@ -23,12 +23,14 @@ final class AtomicCounterTests: XCTestCase {
 
     func testConcurrentIncrementsAreAtomic() {
         let c = AtomicCounter()
-        let iters = 10_000
+        let iters = 10000
         let threads = 8
         let group = DispatchGroup()
-        for _ in 0..<threads {
+        for _ in 0 ..< threads {
             DispatchQueue.global().async(group: group) {
-                for _ in 0..<iters { _ = c.incrementAndGet() }
+                for _ in 0 ..< iters {
+                    _ = c.incrementAndGet()
+                }
             }
         }
         group.wait()

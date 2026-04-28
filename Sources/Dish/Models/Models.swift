@@ -6,16 +6,23 @@ import Foundation
 // MARK: - Server / protocol DTOs (names match Android Models.kt)
 
 struct DiscoveredServer: Codable, Hashable, Identifiable {
-    var name: String = ""
-    var ip: String = ""
-    var udpPort: Int = 9876
-    var pairPort: Int = 9878
-    var httpPort: Int = 9877
+    var name = ""
+    var ip = ""
+    var udpPort = 9876
+    var pairPort = 9878
+    var httpPort = 9877
 
-    var id: String { "wifi:\(ip):\(udpPort)" }
+    var id: String {
+        "wifi:\(ip):\(udpPort)"
+    }
 
-    init(name: String = "", ip: String = "",
-         udpPort: Int = 9876, pairPort: Int = 9878, httpPort: Int = 9877) {
+    init(
+        name: String = "",
+        ip: String = "",
+        udpPort: Int = 9876,
+        pairPort: Int = 9878,
+        httpPort: Int = 9877
+    ) {
         self.name = name
         self.ip = ip
         self.udpPort = udpPort
@@ -23,27 +30,27 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         self.httpPort = httpPort
     }
 
-    // The satellite server's discovery beacon omits `ip` (the recipient observes
-    // it from the packet source), so the auto-synthesized Decodable — which
-    // fails on any missing key regardless of default values — is replaced with
-    // one that falls back to each field's default when absent. See
-    // `satellite/src/net/discovery.cpp` for the wire format.
+    /// The satellite server's discovery beacon omits `ip` (the recipient observes
+    /// it from the packet source), so the auto-synthesized Decodable — which
+    /// fails on any missing key regardless of default values — is replaced with
+    /// one that falls back to each field's default when absent. See
+    /// `satellite/src/net/discovery.cpp` for the wire format.
     private enum CodingKeys: String, CodingKey {
         case name, ip, udpPort, pairPort, httpPort
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.name     = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        self.ip       = try c.decodeIfPresent(String.self, forKey: .ip) ?? ""
-        self.udpPort  = try c.decodeIfPresent(Int.self, forKey: .udpPort)  ?? 9876
+        self.name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
+        self.ip = try c.decodeIfPresent(String.self, forKey: .ip) ?? ""
+        self.udpPort = try c.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
         self.pairPort = try c.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9878
         self.httpPort = try c.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9877
     }
 }
 
 struct PairResponse: Codable {
-    var ok: Bool = false
+    var ok = false
     var error: String? = nil
     var sharedKey: String? = nil
 }
@@ -75,9 +82,9 @@ struct ControllerSlot: Identifiable, Hashable {
     let inputType: SlotInputType
     let name: String
     /// Opaque GCController identifier for physical slots; empty for virtual.
-    var physicalDeviceId: String = ""
-    var boundConnectionId: String? = nil
-    var boundStatus: ConnectionSummary? = nil
+    var physicalDeviceId = ""
+    var boundConnectionId: String?
+    var boundStatus: ConnectionSummary?
 }
 
 let VIRTUAL_SLOT_ID = "virtual"

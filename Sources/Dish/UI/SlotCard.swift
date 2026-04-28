@@ -35,7 +35,7 @@ struct SlotCard: View {
                 }
             }
 
-            if expanded && slot.boundConnectionId == nil {
+            if expanded, slot.boundConnectionId == nil {
                 VStack(spacing: 4) {
                     ForEach(availableConnections) { conn in
                         Button {
@@ -87,17 +87,17 @@ struct SlotCard: View {
 
     private var subtitle: String {
         switch slot.inputType {
-        case .virtual:  return "Virtual • \(bindLabel)"
-        case .physical: return "Gamepad • \(bindLabel)"
+        case .virtual: "Virtual • \(bindLabel)"
+        case .physical: "Gamepad • \(bindLabel)"
         }
     }
 
     private var bindLabel: String {
         guard let s = slot.boundStatus else { return "unbound" }
         switch s.live {
-        case .connected:  return "→ \(s.label)"
+        case .connected: return "→ \(s.label)"
         case .connecting: return "→ \(s.label) (connecting…)"
-        case .idle:       return "→ \(s.label) (offline)"
+        case .idle: return "→ \(s.label) (offline)"
         }
     }
 
@@ -108,9 +108,9 @@ struct SlotCard: View {
 
     private func dotColorFor(_ s: ConnectionSummary) -> Color {
         switch s.live {
-        case .connected:  return DishTheme.success
-        case .connecting: return DishTheme.primary
-        case .idle:       return DishTheme.muted
+        case .connected: DishTheme.success
+        case .connecting: DishTheme.primary
+        case .idle: DishTheme.muted
         }
     }
 }

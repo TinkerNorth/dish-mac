@@ -7,18 +7,25 @@ import XCTest
 final class ModelsTests: XCTestCase {
 
     func testDiscoveredServerIdEncodesIpAndUdpPort() {
-        let s = DiscoveredServer(name: "foo", ip: "10.0.0.1",
-                                 udpPort: 9876, pairPort: 9878, httpPort: 9877)
+        let s = DiscoveredServer(
+            name: "foo",
+            ip: "10.0.0.1",
+            udpPort: 9876,
+            pairPort: 9878,
+            httpPort: 9877
+        )
         XCTAssertEqual(s.id, "wifi:10.0.0.1:9876")
     }
 
     func testRememberedWifiRoundTripsToDiscovered() {
-        let r = RememberedWifi(id: "wifi:1.2.3.4:9000",
-                               name: "HomePC",
-                               ip: "1.2.3.4",
-                               udpPort: 9000,
-                               pairPort: 9001,
-                               httpPort: 9002)
+        let r = RememberedWifi(
+            id: "wifi:1.2.3.4:9000",
+            name: "HomePC",
+            ip: "1.2.3.4",
+            udpPort: 9000,
+            pairPort: 9001,
+            httpPort: 9002
+        )
         let d = r.toDiscovered()
         XCTAssertEqual(d.name, "HomePC")
         XCTAssertEqual(d.ip, "1.2.3.4")
@@ -28,12 +35,14 @@ final class ModelsTests: XCTestCase {
     }
 
     func testRememberedWifiCodableRoundTrip() throws {
-        let original = RememberedWifi(id: "wifi:192.168.1.5:9876",
-                                      name: "Den",
-                                      ip: "192.168.1.5",
-                                      udpPort: 9876,
-                                      pairPort: 9878,
-                                      httpPort: 9877)
+        let original = RememberedWifi(
+            id: "wifi:192.168.1.5:9876",
+            name: "Den",
+            ip: "192.168.1.5",
+            udpPort: 9876,
+            pairPort: 9878,
+            httpPort: 9877
+        )
         let encoded = try JSONEncoder().encode(original)
         let decoded = try JSONDecoder().decode(RememberedWifi.self, from: encoded)
         XCTAssertEqual(decoded, original)

@@ -47,28 +47,36 @@ final class GamepadInputProcessorTests: XCTestCase {
 
     func testButtonBitsMatchXusb() {
         typealias B = GamepadInputProcessor.Buttons
-        XCTAssertEqual(B.dpadUp,        0x0001)
-        XCTAssertEqual(B.dpadDown,      0x0002)
-        XCTAssertEqual(B.dpadLeft,      0x0004)
-        XCTAssertEqual(B.dpadRight,     0x0008)
-        XCTAssertEqual(B.start,         0x0010)
-        XCTAssertEqual(B.back,          0x0020)
-        XCTAssertEqual(B.leftThumb,     0x0040)
-        XCTAssertEqual(B.rightThumb,    0x0080)
-        XCTAssertEqual(B.leftShoulder,  0x0100)
+        XCTAssertEqual(B.dpadUp, 0x0001)
+        XCTAssertEqual(B.dpadDown, 0x0002)
+        XCTAssertEqual(B.dpadLeft, 0x0004)
+        XCTAssertEqual(B.dpadRight, 0x0008)
+        XCTAssertEqual(B.start, 0x0010)
+        XCTAssertEqual(B.back, 0x0020)
+        XCTAssertEqual(B.leftThumb, 0x0040)
+        XCTAssertEqual(B.rightThumb, 0x0080)
+        XCTAssertEqual(B.leftShoulder, 0x0100)
         XCTAssertEqual(B.rightShoulder, 0x0200)
-        XCTAssertEqual(B.a,             0x1000)
-        XCTAssertEqual(B.b,             0x2000)
-        XCTAssertEqual(B.x,             0x4000)
-        XCTAssertEqual(B.y,             0x8000)
+        XCTAssertEqual(B.a, 0x1000)
+        XCTAssertEqual(B.b, 0x2000)
+        XCTAssertEqual(B.x, 0x4000)
+        XCTAssertEqual(B.y, 0x8000)
     }
 
     // MARK: - Publish routes to ReportSender
 
     func testPublishForwardsStateToReportSender() {
         let proc = GamepadInputProcessor()
-        var captured: (id: String, w: UInt16, lt: UInt8, rt: UInt8,
-                       lx: Int16, ly: Int16, rx: Int16, ry: Int16)?
+        var captured: (
+            id: String,
+            w: UInt16,
+            lt: UInt8,
+            rt: UInt8,
+            lx: Int16,
+            ly: Int16,
+            rx: Int16,
+            ry: Int16
+        )?
         proc.reportSender = { id, w, lt, rt, lx, ly, rx, ry in
             captured = (id, w, lt, rt, lx, ly, rx, ry)
         }
@@ -79,7 +87,7 @@ final class GamepadInputProcessorTests: XCTestCase {
         proc.publish(deviceId: "pad-1", state: state)
 
         XCTAssertEqual(captured?.id, "pad-1")
-        XCTAssertEqual(captured?.w,  0x1234)
+        XCTAssertEqual(captured?.w, 0x1234)
         XCTAssertEqual(captured?.lt, 10)
         XCTAssertEqual(captured?.rt, 20)
         XCTAssertEqual(captured?.lx, 100)
@@ -97,7 +105,7 @@ final class GamepadInputProcessorTests: XCTestCase {
 
         let snap = proc.drainTelemetry()
         XCTAssertEqual(snap.events, 3)
-        XCTAssertEqual(snap.sends,  3)
+        XCTAssertEqual(snap.sends, 3)
         XCTAssertEqual(snap.totalSent, 3)
 
         // drainTelemetry resets counters but keeps totalSent.
@@ -115,10 +123,24 @@ final class GamepadInputProcessorTests: XCTestCase {
         proc.reportSender = { id, w, lt, rt, lx, ly, rx, ry in
             emitted.append((id, w, lt, rt, lx, ly, rx, ry))
         }
-        proc.publish(deviceId: "a", state: .init(wButtons: 1, lt: 5, rt: 6,
-                                                 lx: 7, ly: 8, rx: 9, ry: 10))
-        proc.publish(deviceId: "b", state: .init(wButtons: 2, lt: 11, rt: 12,
-                                                 lx: 13, ly: 14, rx: 15, ry: 16))
+        proc.publish(deviceId: "a", state: .init(
+            wButtons: 1,
+            lt: 5,
+            rt: 6,
+            lx: 7,
+            ly: 8,
+            rx: 9,
+            ry: 10
+        ))
+        proc.publish(deviceId: "b", state: .init(
+            wButtons: 2,
+            lt: 11,
+            rt: 12,
+            lx: 13,
+            ly: 14,
+            rx: 15,
+            ry: 16
+        ))
         emitted.removeAll()
 
         proc.zeroAndSendAll()
