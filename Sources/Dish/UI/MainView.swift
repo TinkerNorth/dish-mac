@@ -29,12 +29,14 @@ struct MainView: View {
         .sheet(item: $model.pairingTarget) { server in
             PairingSheet(server: server).environmentObject(model)
         }
-        .alert("Error",
-               isPresented: Binding(
+        .alert(
+            "Error",
+            isPresented: Binding(
                 get: { model.errorMessage != nil },
                 set: { if !$0 { model.errorMessage = nil } }
-               ),
-               presenting: model.errorMessage) { _ in
+            ),
+            presenting: model.errorMessage
+        ) { _ in
             Button("OK") { model.errorMessage = nil }
         } message: { msg in
             Text(msg)
@@ -54,14 +56,14 @@ struct MainView: View {
         case (0, 0): return "No connections yet"
         case (0, _): return "\(total) remembered"
         case (1, _): return model.connections.first { $0.live == .connected }?.label ?? ""
-        default:     return "\(live) active connections"
+        default: return "\(live) active connections"
         }
     }
 
     private var summaryText: String {
         let live = liveCount
         let total = model.connections.count
-        if live == 0 && total == 0 { return "Tap Manage to add one" }
+        if live == 0, total == 0 { return "Tap Manage to add one" }
         if live == 0 { return "\(total) remembered" }
         return "\(live) of \(total) connected"
     }

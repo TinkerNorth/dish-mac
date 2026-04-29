@@ -43,13 +43,13 @@ final class HexTests: XCTestCase {
 
     func testPutBE32EncodesBigEndian() {
         var buf = [UInt8](repeating: 0, count: 4)
-        putBE32(0xDEADBEEF, into: &buf, at: 0)
+        putBE32(0xDEAD_BEEF, into: &buf, at: 0)
         XCTAssertEqual(buf, [0xDE, 0xAD, 0xBE, 0xEF])
     }
 
     func testPutBE32EncodesAtOffset() {
         var buf = [UInt8](repeating: 0xAA, count: 8)
-        putBE32(0x12345678, into: &buf, at: 4)
+        putBE32(0x1234_5678, into: &buf, at: 4)
         XCTAssertEqual(buf, [0xAA, 0xAA, 0xAA, 0xAA, 0x12, 0x34, 0x56, 0x78])
     }
 

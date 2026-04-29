@@ -35,7 +35,7 @@ struct SlotCard: View {
                 }
             }
 
-            if expanded && slot.boundConnectionId == nil {
+            if expanded, slot.boundConnectionId == nil {
                 VStack(spacing: 4) {
                     ForEach(availableConnections) { conn in
                         Button {
@@ -87,30 +87,30 @@ struct SlotCard: View {
 
     private var subtitle: String {
         switch slot.inputType {
-        case .virtual:  return "Virtual • \(bindLabel)"
-        case .physical: return "Gamepad • \(bindLabel)"
+        case .virtual: "Virtual • \(bindLabel)"
+        case .physical: "Gamepad • \(bindLabel)"
         }
     }
 
     private var bindLabel: String {
-        guard let s = slot.boundStatus else { return "unbound" }
-        switch s.live {
-        case .connected:  return "→ \(s.label)"
-        case .connecting: return "→ \(s.label) (connecting…)"
-        case .idle:       return "→ \(s.label) (offline)"
+        guard let status = slot.boundStatus else { return "unbound" }
+        switch status.live {
+        case .connected: return "→ \(status.label)"
+        case .connecting: return "→ \(status.label) (connecting…)"
+        case .idle: return "→ \(status.label) (offline)"
         }
     }
 
     private var dotColor: Color {
-        guard let s = slot.boundStatus else { return DishTheme.muted }
-        return dotColorFor(s)
+        guard let status = slot.boundStatus else { return DishTheme.muted }
+        return dotColorFor(status)
     }
 
-    private func dotColorFor(_ s: ConnectionSummary) -> Color {
-        switch s.live {
-        case .connected:  return DishTheme.success
-        case .connecting: return DishTheme.primary
-        case .idle:       return DishTheme.muted
+    private func dotColorFor(_ status: ConnectionSummary) -> Color {
+        switch status.live {
+        case .connected: DishTheme.success
+        case .connecting: DishTheme.primary
+        case .idle: DishTheme.muted
         }
     }
 }

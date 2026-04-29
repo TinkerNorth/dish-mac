@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import Foundation
 import CryptoKit
 import Darwin
+import Foundation
 
 /// Encrypted UDP session to a single Satellite server — the Swift analogue of
 /// `satellite_jni.cpp` on Android. Owns one raw POSIX socket, the ChaCha20
@@ -19,24 +19,29 @@ import Darwin
 final class SatelliteClient {
 
     // MARK: - Message types (on-wire)
-    private static let MSG_GAMEPAD_DATA: UInt16      = 0x0001
-    private static let MSG_HEARTBEAT_PING: UInt16    = 0x0002
-    private static let MSG_HEARTBEAT_ACK: UInt16     = 0x0003
-    private static let MSG_CONTROLLER_ADD: UInt16    = 0x0004
-    private static let MSG_CONTROLLER_REMOVE: UInt16 = 0x0005
-    private static let MSG_CONTROLLER_ACK: UInt16    = 0x0006
-    private static let MSG_SERVER_STATUS: UInt16     = 0x0007
-    private static let MSG_CONTROLLER_TYPE: UInt16   = 0x0008
+
+    private static let msgGamepadData: UInt16 = 0x0001
+    private static let msgHeartbeatPing: UInt16 = 0x0002
+    private static let msgHeartbeatAck: UInt16 = 0x0003
+    private static let msgControllerAdd: UInt16 = 0x0004
+    private static let msgControllerRemove: UInt16 = 0x0005
+    private static let msgControllerAck: UInt16 = 0x0006
+    private static let msgServerStatus: UInt16 = 0x0007
+    private static let msgControllerType: UInt16 = 0x0008
 
     static let heartbeatIntervalMs: UInt32 = 2000
     static let heartbeatMissMax = 5
 
     // MARK: - Session state
+
     var sock: Int32 = -1
     var dest = sockaddr_in()
     var token = [UInt8](repeating: 0, count: 4)
     private var key = SymmetricKey(data: Data(count: 32))
-    var currentKey: SymmetricKey { key }
+    var currentKey: SymmetricKey {
+        key
+    }
+
     let counter = AtomicCounter()
     let sendLock = NSLock()
 
@@ -58,31 +63,32 @@ final class SatelliteClient {
     /// failure the client is left in a closed state and further calls no-op.
     @discardableResult
     func openSocket(ip: String, port: Int) -> Bool {
-        let s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        if s < 0 { return false }
+        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+        if fd < 0 { return false }
 
         // DSCP EF (Expedited Forwarding). macOS allows this without root on
         // loopback/LAN; on some Wi-Fi drivers it's silently dropped but never
         // errors — so treat failure as non-fatal, matching the Android JNI.
         var tos: Int32 = 0xB8
-        _ = setsockopt(s, IPPROTO_IP, IP_TOS, &tos, socklen_t(MemoryLayout<Int32>.size))
+        _ = setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, socklen_t(MemoryLayout<Int32>.size))
 
         // Prevent SIGPIPE from killing the process if the server vanishes mid-send.
         var one: Int32 = 1
-        _ = setsockopt(s, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
+        _ = setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
 
         // 500ms recv timeout — same as Android (so receiveAck loop can check cancel).
         var rtv = timeval(tv_sec: 0, tv_usec: 500_000)
-        _ = setsockopt(s, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
+        _ = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
 
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
         addr.sin_port = in_port_t(UInt16(port)).bigEndian
         if inet_pton(AF_INET, ip, &addr.sin_addr) != 1 {
-            close(s); return false
+            close(fd)
+            return false
         }
 
-        self.sock = s
+        self.sock = fd
         self.dest = addr
         return true
     }
@@ -90,7 +96,9 @@ final class SatelliteClient {
     func closeSocket() {
         stopHeartbeat()
         ackRunning = false
-        if sock >= 0 { close(sock); sock = -1 }
+        if sock >= 0 { close(sock)
+            sock = -1
+        }
     }
 
     /// Install the post-pair token + shared key. Resets the counter/ACK state.
@@ -108,8 +116,16 @@ final class SatelliteClient {
 
     /// Called directly from the GCController callback thread for minimum
     /// latency. One `sendto` per report, no buffering.
-    func sendReport(controllerIndex: Int, buttons: UInt16, lt: UInt8, rt: UInt8,
-                    lx: Int16, ly: Int16, rx: Int16, ry: Int16) {
+    func sendReport(
+        controllerIndex: Int,
+        buttons: UInt16,
+        lt: UInt8,
+        rt: UInt8,
+        lx: Int16,
+        ly: Int16,
+        rx: Int16,
+        ry: Int16
+    ) {
         // Payload: controllerIndex(1) + XUSB_REPORT(12) = 13 bytes.
         var payload = [UInt8](repeating: 0, count: 13)
         payload[0] = UInt8(truncatingIfNeeded: controllerIndex)
@@ -124,32 +140,40 @@ final class SatelliteClient {
             storeLE16(rx, into: buf, at: 9)
             storeLE16(ry, into: buf, at: 11)
         }
-        sendEncrypted(msgType: Self.MSG_GAMEPAD_DATA, payload: payload)
+        sendEncrypted(msgType: Self.msgGamepadData, payload: payload)
     }
 
-    private func storeLE16(_ v: Int16, into buf: UnsafeMutableBufferPointer<UInt8>, at offset: Int) {
-        let u = UInt16(bitPattern: v)
-        buf[offset]     = UInt8(truncatingIfNeeded: u)
-        buf[offset + 1] = UInt8(truncatingIfNeeded: u >> 8)
+    private func storeLE16(_ value: Int16, into buf: UnsafeMutableBufferPointer<UInt8>, at offset: Int) {
+        let unsigned = UInt16(bitPattern: value)
+        buf[offset] = UInt8(truncatingIfNeeded: unsigned)
+        buf[offset + 1] = UInt8(truncatingIfNeeded: unsigned >> 8)
     }
 
     func controllerAdd(index: Int, capabilities: UInt16) {
         var payload = [UInt8](repeating: 0, count: 3)
         payload[0] = UInt8(truncatingIfNeeded: index)
         putBE16(capabilities, into: &payload, at: 1)
-        sendEncrypted(msgType: Self.MSG_CONTROLLER_ADD, payload: payload)
+        sendEncrypted(msgType: Self.msgControllerAdd, payload: payload)
     }
 
     func controllerRemove(index: Int) {
-        sendEncrypted(msgType: Self.MSG_CONTROLLER_REMOVE,
-                      payload: [UInt8(truncatingIfNeeded: index)])
+        sendEncrypted(
+            msgType: Self.msgControllerRemove,
+            payload: [UInt8(truncatingIfNeeded: index)]
+        )
     }
 
     func sendControllerType(index: Int, type: Int) {
-        sendEncrypted(msgType: Self.MSG_CONTROLLER_TYPE,
-                      payload: [UInt8(truncatingIfNeeded: index),
-                                UInt8(truncatingIfNeeded: type)])
+        sendEncrypted(
+            msgType: Self.msgControllerType,
+            payload: [
+                UInt8(truncatingIfNeeded: index),
+                UInt8(truncatingIfNeeded: type)
+            ]
+        )
     }
 
-    func resetControllerAck() { lastControllerAck = -1 }
+    func resetControllerAck() {
+        lastControllerAck = -1
+    }
 }

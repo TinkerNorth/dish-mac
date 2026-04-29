@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import Foundation
 import Darwin
+import Foundation
 
 /// Listens on UDP `:9879` for Satellite beacon broadcasts and returns every
 /// unique `DiscoveredServer` heard within a timeout. Mirrors
@@ -15,8 +15,10 @@ enum LANDiscovery {
     /// Blocking — call from a background queue. The loop exits when the
     /// deadline is reached; each recv has a 300ms timeout so a quiet network
     /// doesn't hang us past `timeoutMs`.
-    static func discover(port: Int = defaultPort,
-                         timeoutMs: Int = defaultTimeoutMs) -> [DiscoveredServer] {
+    static func discover(
+        port: Int = defaultPort,
+        timeoutMs: Int = defaultTimeoutMs
+    ) -> [DiscoveredServer] {
         let sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
         guard sock >= 0 else { return [] }
         defer { close(sock) }
@@ -29,7 +31,7 @@ enum LANDiscovery {
 
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port   = in_port_t(UInt16(port)).bigEndian
+        addr.sin_port = in_port_t(UInt16(port)).bigEndian
         addr.sin_addr.s_addr = INADDR_ANY.bigEndian
         let bindRet = withUnsafePointer(to: &addr) { ptr -> Int32 in
             ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
@@ -49,15 +51,15 @@ enum LANDiscovery {
         while Date() < deadline {
             var from = sockaddr_in()
             var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
-            let n = buf.withUnsafeMutableBufferPointer { bp -> Int in
+            let bytesRead = buf.withUnsafeMutableBufferPointer { bp -> Int in
                 withUnsafeMutablePointer(to: &from) { fp in
                     fp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
                         Darwin.recvfrom(sock, bp.baseAddress, bp.count, 0, sa, &fl)
                     }
                 }
             }
-            if n <= 0 { continue }
-            let str = String(decoding: buf[0..<n], as: UTF8.self)
+            if bytesRead <= 0 { continue }
+            guard let str = String(bytes: buf[0 ..< bytesRead], encoding: .utf8) else { continue }
             guard str.contains("\"service\":\"satellite\"") else { continue }
 
             var ipBytes = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))

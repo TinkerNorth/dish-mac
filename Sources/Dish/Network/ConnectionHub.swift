@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import Foundation
 import Combine
+import Foundation
 
 /// Aggregates the wifi connection pool into the flat `[ConnectionSummary]`
 /// the UI consumes, and owns the slot→connection binding table. Mirrors the
@@ -39,11 +39,11 @@ final class ConnectionHub: ObservableObject {
         }
         // Add subscriptions for new entries.
         for (id, conn) in pool where perConnCancellables[id] == nil {
-            let c = conn.objectWillChange.sink { [weak self] _ in
+            let cancellable = conn.objectWillChange.sink { [weak self] _ in
                 // objectWillChange fires *before* the mutation; defer one tick.
                 DispatchQueue.main.async { self?.rebuild() }
             }
-            perConnCancellables[id] = c
+            perConnCancellables[id] = cancellable
         }
         rebuild()
     }
@@ -58,9 +58,9 @@ final class ConnectionHub: ObservableObject {
             let server = conn?.server ?? remembered[id]?.toDiscovered()
             guard let server else { continue }
             let live: ConnectionLive = switch conn?.state {
-            case .connected:  .connected
+            case .connected: .connected
             case .connecting: .connecting
-            default:          .idle
+            default: .idle
             }
             let bound = bindings.first { $0.value == id }?.key
             let label = server.name.isEmpty ? server.ip : server.name
@@ -83,7 +83,8 @@ final class ConnectionHub: ObservableObject {
     func bind(slotId: String, connectionId: String) {
         var current = bindings
         if let priorSlot = current.first(where: { $0.value == connectionId })?.key,
-           priorSlot != slotId {
+           priorSlot != slotId
+        {
             current.removeValue(forKey: priorSlot)
             wifi.get(connectionId)?.detachSlot()
         }
