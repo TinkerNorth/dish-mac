@@ -47,10 +47,4 @@ final class ModelsTests: XCTestCase {
         let decoded = try JSONDecoder().decode(RememberedWifi.self, from: encoded)
         XCTAssertEqual(decoded, original)
     }
-
-    func testVirtualSlotIdConstantIsStable() {
-        // The server keys slot bindings on this id — any rename is a wire-
-        // breaking change vs. the Android client.
-        XCTAssertEqual(virtualSlotID, "virtual")
-    }
 }

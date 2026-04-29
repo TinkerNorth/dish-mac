@@ -75,19 +75,12 @@ struct ConnectionSummary: Identifiable, Hashable {
 
 // MARK: - Controller slots (matches MainUiState.kt)
 
-enum SlotInputType { case virtual, physical }
-
 struct ControllerSlot: Identifiable, Hashable {
     let id: String
-    let inputType: SlotInputType
     let name: String
-    /// Opaque GCController identifier for physical slots; empty for virtual.
-    var physicalDeviceId = ""
     var boundConnectionId: String?
     var boundStatus: ConnectionSummary?
 }
-
-let virtualSlotID = "virtual"
 
 // MARK: - Persisted remembered connection (matches RememberedWifi)
 
