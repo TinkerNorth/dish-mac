@@ -86,10 +86,7 @@ struct SlotCard: View {
     }
 
     private var subtitle: String {
-        switch slot.inputType {
-        case .virtual: "Virtual • \(bindLabel)"
-        case .physical: "Gamepad • \(bindLabel)"
-        }
+        "Gamepad • \(bindLabel)"
     }
 
     private var bindLabel: String {

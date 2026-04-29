@@ -7,8 +7,7 @@ import Foundation
 /// Top-level application state. Owns the network + input layers and stitches
 /// them together the same way Android's `MainViewModel` + `MainActivity` do:
 ///
-///   * mirrors `GameControllerInput.slots` into `ControllerSlot`s (plus one
-///     always-present virtual slot),
+///   * mirrors `GameControllerInput.slots` into `ControllerSlot`s,
 ///   * cross-references `ConnectionHub.bindings` to populate each slot's
 ///     `boundConnectionId` / `boundStatus`,
 ///   * installs a `reportSender` on the input processor that routes each
@@ -22,9 +21,7 @@ final class AppModel: ObservableObject {
     let input: GameControllerInput
     let telemetry: TelemetryTracker
 
-    @Published private(set) var slots: [ControllerSlot] = [
-        ControllerSlot(id: virtualSlotID, inputType: .virtual, name: "Virtual Controller")
-    ]
+    @Published private(set) var slots: [ControllerSlot] = []
     @Published private(set) var connections: [ConnectionSummary] = []
 
     /// Set when the server asks us to re-pair with a PIN. Bound to a sheet.
@@ -97,16 +94,9 @@ final class AppModel: ObservableObject {
         conns: [ConnectionSummary],
         bindings: [String: String]
     ) {
-        var next: [ControllerSlot] = [
-            ControllerSlot(id: virtualSlotID, inputType: .virtual, name: "Virtual Controller")
-        ]
+        var next: [ControllerSlot] = []
         for gc in gcSlots {
-            next.append(ControllerSlot(
-                id: gc.id,
-                inputType: .physical,
-                name: gc.name,
-                physicalDeviceId: gc.id
-            ))
+            next.append(ControllerSlot(id: gc.id, name: gc.name))
         }
         // Evict bindings whose slot disappeared (e.g., controller unplugged).
         let known = Set(next.map(\.id))
