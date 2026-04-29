@@ -57,16 +57,80 @@ license — the project is LGPL-3.0-or-later end-to-end (`LICENSE`,
 
 ## What CI runs
 
-`.github/workflows/macos-ci.yml` runs on every PR:
+Build + style:
 
-1. `swiftformat --lint` over the source tree.
-2. `swiftlint lint --strict --reporter github-actions-logging`.
-3. `swift build --configuration debug`.
-4. `swift test --parallel --enable-code-coverage` (XCTest).
-5. `swift build --configuration release` + `./bundle.sh release`.
-6. Uploads `Dish.app` as a CI artifact.
+- `macos-ci.yml`: `swiftformat --lint`, `swiftlint --strict`, debug
+  build, `swift test`, release build + `./bundle.sh release`. Uploads
+  `Dish.app` as a CI artifact.
+
+Security gates (also blocking):
+
+- `security.yml`: action-pin lint, vulnerability allowlist expiry,
+  OSV-Scanner, gitleaks secret scan, GitHub `dependency-review-action`
+  (consumes `Package.resolved` for SwiftPM).
+- `codeql.yml`: CodeQL `swift` analysis (security-extended +
+  security-and-quality query packs).
 
 If any step fails, the PR is blocked.
+
+## Security
+
+### Adding a vulnerability allowlist entry
+
+Open a PR that adds an entry to [`.security/allowlist.yaml`](.security/allowlist.yaml)
+(see the schema in the file). Required fields: `cve`, `reason`, `owner`,
+`expires`. CI rejects the PR if any field is missing or `expires` is in
+the past. Renew or remove on or before `expires`.
+
+### Running security checks locally
+
+```bash
+# Action-pin lint (40-char SHA enforcement on every uses: line)
+grep -REn '^\s*uses:' .github/workflows/ \
+  | grep -vE '@[0-9a-f]{40}\b' \
+  || echo "all pinned"
+
+# Allowlist expiry
+python3 - <<'PY'
+import datetime, yaml, sys
+data = yaml.safe_load(open('.security/allowlist.yaml').read()) or {}
+for e in data.get('exceptions', []) or []:
+    if datetime.date.fromisoformat(str(e['expires'])) < datetime.date.today():
+        print('EXPIRED:', e); sys.exit(1)
+PY
+
+# OSV-Scanner against the worktree (picks up Package.resolved)
+osv-scanner --recursive --skip-git .
+
+# Gitleaks
+gitleaks detect --no-banner --redact --source .
+```
+
+### Verifying a release artifact
+
+Each GitHub Release ships the signed + notarized `dish-vX.Y.Z.zip`,
+`*.sig`/`*.crt` (cosign keyless), `SHA256SUMS` + `SHA256SUMS.sig`/`*.crt`,
+the SPDX + CycloneDX SBOMs, and `dish-mac.intoto.jsonl` (SLSA L3).
+
+```bash
+shasum -a 256 -c SHA256SUMS
+
+cosign verify-blob \
+  --certificate SHA256SUMS.crt \
+  --signature   SHA256SUMS.sig \
+  --certificate-identity-regexp '^https://github\.com/TinkerNorth/dish-mac/\.github/workflows/release\.yml@refs/tags/v.*$' \
+  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  SHA256SUMS
+
+slsa-verifier verify-artifact \
+  --provenance-path dish-mac.intoto.jsonl \
+  --source-uri      github.com/TinkerNorth/dish-mac \
+  --source-tag      vX.Y.Z \
+  dish-vX.Y.Z.zip
+```
+
+The full cross-repo verification recipe lives in
+[`SECURITY.md`](SECURITY.md).
 
 ## Touching the hot path
 

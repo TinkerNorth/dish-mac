@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import SwiftUI
 import AppKit
+import SwiftUI
 
 @main
 struct DishApp: App {

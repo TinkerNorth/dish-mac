@@ -65,17 +65,17 @@ struct ConnectionsView: View {
 
         var key: String {
             switch self {
-            case .known(let c):       return c.id
-            case .discovered(let s):  return s.id
+            case let .known(summary): summary.id
+            case let .discovered(server): server.id
             }
         }
     }
 
     private var combinedRows: [Row] {
-        let knownIds = Set(model.connections.map { $0.id })
+        let knownIds = Set(model.connections.map(\.id))
         var rows: [Row] = model.connections.map { .known($0) }
-        for s in wifi.discoveredServers where !knownIds.contains(s.id) {
-            rows.append(.discovered(s))
+        for server in wifi.discoveredServers where !knownIds.contains(server.id) {
+            rows.append(.discovered(server))
         }
         return rows
     }
@@ -83,43 +83,43 @@ struct ConnectionsView: View {
     @ViewBuilder
     private func rowView(_ row: Row) -> some View {
         switch row {
-        case .known(let c):      knownRow(c)
-        case .discovered(let s): discoveredRow(s)
+        case let .known(summary): knownRow(summary)
+        case let .discovered(server): discoveredRow(server)
         }
     }
 
     // MARK: - Row views
 
-    private func knownRow(_ c: ConnectionSummary) -> some View {
+    private func knownRow(_ summary: ConnectionSummary) -> some View {
         HStack(spacing: 10) {
-            StatusDot(color: dotColor(for: c))
+            StatusDot(color: dotColor(for: summary))
             VStack(alignment: .leading, spacing: 2) {
-                Text(c.label)
+                Text(summary.label)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(DishTheme.onSurface)
-                Text(c.detail)
+                Text(summary.detail)
                     .font(.system(size: 11))
                     .foregroundColor(DishTheme.muted)
-                Text(statusText(for: c))
+                Text(statusText(for: summary))
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(DishTheme.muted)
             }
             Spacer()
-            primaryButton(for: c)
-            Button("Forget") { model.forget(c.id) }
+            primaryButton(for: summary)
+            Button("Forget") { model.forget(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())
         }
         .rowBackground()
     }
 
-    private func discoveredRow(_ s: DiscoveredServer) -> some View {
+    private func discoveredRow(_ server: DiscoveredServer) -> some View {
         HStack(spacing: 10) {
             StatusDot(color: DishTheme.muted)
             VStack(alignment: .leading, spacing: 2) {
-                Text(s.name.isEmpty ? s.ip : s.name)
+                Text(server.name.isEmpty ? server.ip : server.name)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(DishTheme.onSurface)
-                Text("\(s.ip) • UDP \(s.udpPort)")
+                Text("\(server.ip) • UDP \(server.udpPort)")
                     .font(.system(size: 11))
                     .foregroundColor(DishTheme.muted)
                 Text("Discovered")
@@ -127,17 +127,17 @@ struct ConnectionsView: View {
                     .foregroundColor(DishTheme.muted)
             }
             Spacer()
-            Button("Connect") { model.connect(s) }
+            Button("Connect") { model.connect(server) }
                 .buttonStyle(DishOutlinedButtonStyle())
         }
         .rowBackground()
     }
 
     @ViewBuilder
-    private func primaryButton(for c: ConnectionSummary) -> some View {
-        switch c.live {
+    private func primaryButton(for summary: ConnectionSummary) -> some View {
+        switch summary.live {
         case .connected:
-            Button("Disconnect") { model.disconnect(c.id) }
+            Button("Disconnect") { model.disconnect(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())
         case .connecting:
             Button("Connecting…") {}
@@ -145,27 +145,27 @@ struct ConnectionsView: View {
                 .disabled(true)
         case .idle:
             Button("Connect") {
-                if let r = wifi.remembered().first(where: { $0.id == c.id }) {
-                    model.connect(r.toDiscovered())
+                if let remembered = wifi.remembered().first(where: { $0.id == summary.id }) {
+                    model.connect(remembered.toDiscovered())
                 }
             }
             .buttonStyle(DishOutlinedButtonStyle())
         }
     }
 
-    private func statusText(for c: ConnectionSummary) -> String {
-        switch c.live {
-        case .connected:  return "Connected"
-        case .connecting: return "Connecting"
-        case .idle:       return "Idle"
+    private func statusText(for summary: ConnectionSummary) -> String {
+        switch summary.live {
+        case .connected: "Connected"
+        case .connecting: "Connecting"
+        case .idle: "Idle"
         }
     }
 
-    private func dotColor(for c: ConnectionSummary) -> Color {
-        switch c.live {
-        case .connected:  return DishTheme.success
-        case .connecting: return DishTheme.primary
-        case .idle:       return DishTheme.muted
+    private func dotColor(for summary: ConnectionSummary) -> Color {
+        switch summary.live {
+        case .connected: DishTheme.success
+        case .connecting: DishTheme.primary
+        case .idle: DishTheme.muted
         }
     }
 }

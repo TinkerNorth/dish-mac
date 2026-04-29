@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import Foundation
 import Combine
+import Foundation
 
 /// Top-level application state. Owns the network + input layers and stitches
 /// them together the same way Android's `MainViewModel` + `MainActivity` do:
@@ -23,14 +23,14 @@ final class AppModel: ObservableObject {
     let telemetry: TelemetryTracker
 
     @Published private(set) var slots: [ControllerSlot] = [
-        ControllerSlot(id: VIRTUAL_SLOT_ID, inputType: .virtual, name: "Virtual Controller")
+        ControllerSlot(id: virtualSlotID, inputType: .virtual, name: "Virtual Controller")
     ]
     @Published private(set) var connections: [ConnectionSummary] = []
 
     /// Set when the server asks us to re-pair with a PIN. Bound to a sheet.
-    @Published var pairingTarget: DiscoveredServer? = nil
+    @Published var pairingTarget: DiscoveredServer?
     /// Transient error banner.
-    @Published var errorMessage: String? = nil
+    @Published var errorMessage: String?
 
     /// Thread-safe slotId → live `WifiConnection` table, read by the input
     /// processor's `reportSender` from the GC callback thread and written
@@ -85,33 +85,39 @@ final class AppModel: ObservableObject {
             .sink { [weak self] ev in
                 guard let self else { return }
                 switch ev {
-                case .pairingRequired(let server): self.pairingTarget = server
-                case .error(let msg):              self.errorMessage = msg
+                case let .pairingRequired(server): self.pairingTarget = server
+                case let .error(msg): self.errorMessage = msg
                 }
             }
             .store(in: &cancellables)
     }
 
-    private func rebuildSlots(gcSlots: [GameControllerInput.Slot],
-                              conns: [ConnectionSummary],
-                              bindings: [String: String]) {
+    private func rebuildSlots(
+        gcSlots: [GameControllerInput.Slot],
+        conns: [ConnectionSummary],
+        bindings: [String: String]
+    ) {
         var next: [ControllerSlot] = [
-            ControllerSlot(id: VIRTUAL_SLOT_ID, inputType: .virtual, name: "Virtual Controller")
+            ControllerSlot(id: virtualSlotID, inputType: .virtual, name: "Virtual Controller")
         ]
         for gc in gcSlots {
-            next.append(ControllerSlot(id: gc.id, inputType: .physical,
-                                        name: gc.name, physicalDeviceId: gc.id))
+            next.append(ControllerSlot(
+                id: gc.id,
+                inputType: .physical,
+                name: gc.name,
+                physicalDeviceId: gc.id
+            ))
         }
         // Evict bindings whose slot disappeared (e.g., controller unplugged).
-        let known = Set(next.map { $0.id })
+        let known = Set(next.map(\.id))
         for (slotId, _) in bindings where !known.contains(slotId) {
             hub.unbind(slotId: slotId)
         }
         // Fill boundConnectionId / boundStatus.
-        for i in next.indices {
-            if let cid = bindings[next[i].id] {
-                next[i].boundConnectionId = cid
-                next[i].boundStatus = conns.first { $0.id == cid }
+        for idx in next.indices {
+            if let cid = bindings[next[idx].id] {
+                next[idx].boundConnectionId = cid
+                next[idx].boundStatus = conns.first { $0.id == cid }
             }
         }
         self.slots = next
@@ -126,24 +132,47 @@ final class AppModel: ObservableObject {
         let table = routingTable
         input.processor.reportSender = { deviceId, wButtons, lt, rt, lx, ly, rx, ry in
             guard let conn = table.get(deviceId) else { return }
-            conn.sendReport(buttons: wButtons, lt: lt, rt: rt,
-                            lx: lx, ly: ly, rx: rx, ry: ry)
+            conn.sendReport(
+                buttons: wButtons,
+                lt: lt,
+                rt: rt,
+                lx: lx,
+                ly: ly,
+                rx: rx,
+                ry: ry
+            )
         }
     }
 
     // MARK: - UI actions
 
-    func disconnect(_ id: String) { wifi.disconnect(id: id) }
-    func connect(_ server: DiscoveredServer) { wifi.connect(to: server) }
-    func forget(_ id: String) { wifi.forget(id: id) }
-    func startScan() { wifi.startDiscovery() }
+    func disconnect(_ id: String) {
+        wifi.disconnect(id: id)
+    }
+
+    func connect(_ server: DiscoveredServer) {
+        wifi.connect(to: server)
+    }
+
+    func forget(_ id: String) {
+        wifi.forget(id: id)
+    }
+
+    func startScan() {
+        wifi.startDiscovery()
+    }
+
     func pairWithPin(_ server: DiscoveredServer, pin: String) {
         wifi.pairWithPin(server, pin: pin)
     }
+
     func bind(slotId: String, connectionId: String) {
         hub.bind(slotId: slotId, connectionId: connectionId)
     }
-    func unbind(slotId: String) { hub.unbind(slotId: slotId) }
+
+    func unbind(slotId: String) {
+        hub.unbind(slotId: slotId)
+    }
 }
 
 /// Thread-safe slotId → live-connection dispatch table used by the input
@@ -152,11 +181,14 @@ final class RoutingTable: @unchecked Sendable {
     private var map: [String: WifiConnection] = [:]
     private var lock = os_unfair_lock_s()
     func get(_ slotId: String) -> WifiConnection? {
-        os_unfair_lock_lock(&lock); defer { os_unfair_lock_unlock(&lock) }
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
         return map[slotId]
     }
+
     func set(_ snapshot: [String: WifiConnection]) {
-        os_unfair_lock_lock(&lock); defer { os_unfair_lock_unlock(&lock) }
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
         map = snapshot
     }
 }

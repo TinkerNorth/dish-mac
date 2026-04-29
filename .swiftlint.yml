@@ -97,9 +97,11 @@ opt_in_rules:
   - prohibited_super_call
   - redundant_nil_coalescing
   - toggle_bool
-  - unused_import
   - vertical_whitespace_closing_braces
   - yoda_condition
+
+analyzer_rules:
+  - unused_import
 
 force_unwrapping:
   severity: warning

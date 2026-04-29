@@ -13,7 +13,7 @@ struct PairingSheet: View {
     @Environment(\.dismiss) private var dismiss
     let server: DiscoveredServer
 
-    @State private var pin: String = ""
+    @State private var pin = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {

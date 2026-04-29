@@ -129,14 +129,26 @@ swiftlint lint --strict Sources Tests
 Changes should land on `main` through a pull request. The `macOS CI`
 workflow (`.github/workflows/macos-ci.yml`) runs `swift build`, `swift test`,
 `swiftformat --lint`, and `swiftlint --strict` on every PR and on `main`
-pushes. Use the PR template (`.github/pull_request_template.md`) to describe
-the change, the manual test matrix, and any protocol-affecting bits.
+pushes. The `Security` workflow (`.github/workflows/security.yml`) and
+`CodeQL` workflow (`.github/workflows/codeql.yml`) run alongside it —
+action-pin lint, OSV-Scanner, gitleaks, dependency review, allowlist-
+expiry check, and CodeQL `swift` analysis. Use the PR template
+(`.github/pull_request_template.md`) to describe the change, the manual
+test matrix, and any protocol-affecting bits.
 
 > **Note on branch protection.** GitHub's branch-protection and repository-
 > ruleset features are not available for private repositories on the free
 > org plan this repo lives under, so direct pushes to `main` are not
 > blocked at the platform level. Treat the PR-based flow as a convention
-> and rely on the CI workflow as the quality gate.
+> and rely on the CI workflows as the quality gate.
+
+## Security
+
+Vulnerability disclosure: [`SECURITY.md`](SECURITY.md). Every
+release ships cosign keyless signatures, SHA256SUMS, SBOMs (SPDX +
+CycloneDX), and SLSA L3 provenance — see
+[`CONTRIBUTING.md#security`](CONTRIBUTING.md#security) for the
+verification recipe.
 
 ## License
 

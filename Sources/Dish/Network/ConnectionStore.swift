@@ -12,7 +12,9 @@ final class ConnectionStore {
     private let wifiListKey = "wifi_list"
     private let sharedKeyPrefix = "wifi_shared_key:"
 
-    init(defaults: UserDefaults = .standard) { self.defaults = defaults }
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+    }
 
     // MARK: - Device id
 
@@ -28,8 +30,7 @@ final class ConnectionStore {
 
     func remembered() -> [RememberedWifi] {
         guard let data = defaults.data(forKey: wifiListKey),
-              let list = try? JSONDecoder().decode([RememberedWifi].self, from: data)
-        else { return [] }
+              let list = try? JSONDecoder().decode([RememberedWifi].self, from: data) else { return [] }
         return list
     }
 

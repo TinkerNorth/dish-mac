@@ -1,0 +1,19 @@
+# gitleaks configuration for dish-mac.
+
+title = "dish-mac gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Allowlist for known non-secret strings in dish-mac."
+paths = [
+    '''COPYING\.GPL3''',
+    '''LICENSE''',
+    # Package.resolved checksums are dependency content hashes, not secrets.
+    '''Package\.resolved''',
+]
+
+regexes = [
+    '''9876|9877|9878|9879''',
+]

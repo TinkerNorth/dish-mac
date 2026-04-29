@@ -18,7 +18,9 @@ enum HTTPClient {
 
     /// `POST /api/connections` — server returns `{connectionId, token, ...}`.
     static func connect(ip: String, port: Int, deviceId: String) async -> ConnectResponse {
-        let url = URL(string: "http://\(ip):\(port)/api/connections")!
+        guard let url = URL(string: "http://\(ip):\(port)/api/connections") else {
+            return ConnectResponse(error: "bad url")
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -30,9 +32,15 @@ enum HTTPClient {
     /// `DELETE /api/connections/:id` — server drops the connection and all its
     /// attached controllers.
     @discardableResult
-    static func disconnect(ip: String, port: Int,
-                           connectionId: String, deviceId: String) async -> ConnectResponse {
-        let url = URL(string: "http://\(ip):\(port)/api/connections/\(connectionId)")!
+    static func disconnect(
+        ip: String,
+        port: Int,
+        connectionId: String,
+        deviceId: String
+    ) async -> ConnectResponse {
+        guard let url = URL(string: "http://\(ip):\(port)/api/connections/\(connectionId)") else {
+            return ConnectResponse(error: "bad url")
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "DELETE"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
