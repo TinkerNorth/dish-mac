@@ -13,7 +13,7 @@ import GameController
 final class GameControllerInput: ObservableObject {
 
     /// Published list of currently-connected controllers. One `Slot` per
-    /// physical controller; the UI renders these alongside the virtual slot.
+    /// physical controller.
     struct Slot: Identifiable, Hashable {
         let id: String // stable controller id
         let name: String // vendorName or product category
