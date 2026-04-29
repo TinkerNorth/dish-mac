@@ -46,48 +46,64 @@ final class GamepadInputProcessorTests: XCTestCase {
     // MARK: - Button bitfield (wire contract parity with Android)
 
     func testButtonBitsMatchXusb() {
-        typealias B = GamepadInputProcessor.Buttons
-        XCTAssertEqual(B.dpadUp, 0x0001)
-        XCTAssertEqual(B.dpadDown, 0x0002)
-        XCTAssertEqual(B.dpadLeft, 0x0004)
-        XCTAssertEqual(B.dpadRight, 0x0008)
-        XCTAssertEqual(B.start, 0x0010)
-        XCTAssertEqual(B.back, 0x0020)
-        XCTAssertEqual(B.leftThumb, 0x0040)
-        XCTAssertEqual(B.rightThumb, 0x0080)
-        XCTAssertEqual(B.leftShoulder, 0x0100)
-        XCTAssertEqual(B.rightShoulder, 0x0200)
-        XCTAssertEqual(B.a, 0x1000)
-        XCTAssertEqual(B.b, 0x2000)
-        XCTAssertEqual(B.x, 0x4000)
-        XCTAssertEqual(B.y, 0x8000)
+        typealias Btn = GamepadInputProcessor.Buttons
+        XCTAssertEqual(Btn.dpadUp, 0x0001)
+        XCTAssertEqual(Btn.dpadDown, 0x0002)
+        XCTAssertEqual(Btn.dpadLeft, 0x0004)
+        XCTAssertEqual(Btn.dpadRight, 0x0008)
+        XCTAssertEqual(Btn.start, 0x0010)
+        XCTAssertEqual(Btn.back, 0x0020)
+        XCTAssertEqual(Btn.leftThumb, 0x0040)
+        XCTAssertEqual(Btn.rightThumb, 0x0080)
+        XCTAssertEqual(Btn.leftShoulder, 0x0100)
+        XCTAssertEqual(Btn.rightShoulder, 0x0200)
+        XCTAssertEqual(Btn.faceA, 0x1000)
+        XCTAssertEqual(Btn.faceB, 0x2000)
+        XCTAssertEqual(Btn.faceX, 0x4000)
+        XCTAssertEqual(Btn.faceY, 0x8000)
     }
 
     // MARK: - Publish routes to ReportSender
 
+    private struct CapturedReport {
+        let id: String
+        let buttons: UInt16
+        let lt: UInt8
+        let rt: UInt8
+        let lx: Int16
+        let ly: Int16
+        let rx: Int16
+        let ry: Int16
+    }
+
     func testPublishForwardsStateToReportSender() {
         let proc = GamepadInputProcessor()
-        var captured: (
-            id: String,
-            w: UInt16,
-            lt: UInt8,
-            rt: UInt8,
-            lx: Int16,
-            ly: Int16,
-            rx: Int16,
-            ry: Int16
-        )?
-        proc.reportSender = { id, w, lt, rt, lx, ly, rx, ry in
-            captured = (id, w, lt, rt, lx, ly, rx, ry)
+        var captured: CapturedReport?
+        proc.reportSender = { id, buttons, lt, rt, lx, ly, rx, ry in
+            captured = CapturedReport(
+                id: id,
+                buttons: buttons,
+                lt: lt,
+                rt: rt,
+                lx: lx,
+                ly: ly,
+                rx: rx,
+                ry: ry
+            )
         }
         let state = GamepadInputProcessor.DeviceState(
-            wButtons: 0x1234, lt: 10, rt: 20,
-            lx: 100, ly: -200, rx: 300, ry: -400
+            wButtons: 0x1234,
+            lt: 10,
+            rt: 20,
+            lx: 100,
+            ly: -200,
+            rx: 300,
+            ry: -400
         )
         proc.publish(deviceId: "pad-1", state: state)
 
         XCTAssertEqual(captured?.id, "pad-1")
-        XCTAssertEqual(captured?.w, 0x1234)
+        XCTAssertEqual(captured?.buttons, 0x1234)
         XCTAssertEqual(captured?.lt, 10)
         XCTAssertEqual(captured?.rt, 20)
         XCTAssertEqual(captured?.lx, 100)
@@ -119,9 +135,18 @@ final class GamepadInputProcessorTests: XCTestCase {
 
     func testZeroAndSendAllEmitsReleasedReportPerDevice() {
         let proc = GamepadInputProcessor()
-        var emitted: [(String, UInt16, UInt8, UInt8, Int16, Int16, Int16, Int16)] = []
-        proc.reportSender = { id, w, lt, rt, lx, ly, rx, ry in
-            emitted.append((id, w, lt, rt, lx, ly, rx, ry))
+        var emitted: [CapturedReport] = []
+        proc.reportSender = { id, buttons, lt, rt, lx, ly, rx, ry in
+            emitted.append(CapturedReport(
+                id: id,
+                buttons: buttons,
+                lt: lt,
+                rt: rt,
+                lx: lx,
+                ly: ly,
+                rx: rx,
+                ry: ry
+            ))
         }
         proc.publish(deviceId: "a", state: .init(
             wButtons: 1,
@@ -145,16 +170,16 @@ final class GamepadInputProcessorTests: XCTestCase {
 
         proc.zeroAndSendAll()
         XCTAssertEqual(emitted.count, 2)
-        for e in emitted {
-            XCTAssertEqual(e.1, 0)
-            XCTAssertEqual(e.2, 0)
-            XCTAssertEqual(e.3, 0)
-            XCTAssertEqual(e.4, 0)
-            XCTAssertEqual(e.5, 0)
-            XCTAssertEqual(e.6, 0)
-            XCTAssertEqual(e.7, 0)
+        for entry in emitted {
+            XCTAssertEqual(entry.buttons, 0)
+            XCTAssertEqual(entry.lt, 0)
+            XCTAssertEqual(entry.rt, 0)
+            XCTAssertEqual(entry.lx, 0)
+            XCTAssertEqual(entry.ly, 0)
+            XCTAssertEqual(entry.rx, 0)
+            XCTAssertEqual(entry.ry, 0)
         }
-        XCTAssertEqual(Set(emitted.map(\.0)), ["a", "b"])
+        XCTAssertEqual(Set(emitted.map(\.id)), ["a", "b"])
     }
 
     func testRemoveDropsDevice() {

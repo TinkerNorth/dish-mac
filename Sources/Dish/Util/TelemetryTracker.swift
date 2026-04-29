@@ -23,11 +23,14 @@ final class TelemetryTracker: ObservableObject {
     func start() {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            guard let self, let p = self.processor else { return }
-            let snap = p.drainTelemetry()
-            self.events = snap.events
-            self.sends = snap.sends
-            self.totalSent = snap.totalSent
+            let weakSelf = self
+            Task { @MainActor in
+                guard let strongSelf = weakSelf, let processor = strongSelf.processor else { return }
+                let snap = processor.drainTelemetry()
+                strongSelf.events = snap.events
+                strongSelf.sends = snap.sends
+                strongSelf.totalSent = snap.totalSent
+            }
         }
     }
 

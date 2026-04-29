@@ -15,9 +15,9 @@ final class AtomicCounter {
     func incrementAndGet() -> UInt64 {
         os_unfair_lock_lock(&lock)
         value &+= 1
-        let v = value
+        let current = value
         os_unfair_lock_unlock(&lock)
-        return v
+        return current
     }
 
     func reset() {

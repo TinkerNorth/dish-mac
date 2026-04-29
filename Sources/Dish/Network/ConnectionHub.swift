@@ -39,11 +39,11 @@ final class ConnectionHub: ObservableObject {
         }
         // Add subscriptions for new entries.
         for (id, conn) in pool where perConnCancellables[id] == nil {
-            let c = conn.objectWillChange.sink { [weak self] _ in
+            let cancellable = conn.objectWillChange.sink { [weak self] _ in
                 // objectWillChange fires *before* the mutation; defer one tick.
                 DispatchQueue.main.async { self?.rebuild() }
             }
-            perConnCancellables[id] = c
+            perConnCancellables[id] = cancellable
         }
         rebuild()
     }

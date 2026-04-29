@@ -15,7 +15,7 @@ final class WifiConnection: ObservableObject, Identifiable {
     let id: String
     @Published private(set) var server: DiscoveredServer
     @Published private(set) var state: WifiState = .idle
-    @Published private(set) var boundSlotId: String? = nil
+    @Published private(set) var boundSlotId: String?
 
     /// Server-issued connection id, valid while CONNECTED.
     private(set) var connectionId: String?
@@ -32,10 +32,10 @@ final class WifiConnection: ObservableObject, Identifiable {
     private var controllerAdded = false
     private var pendingControllerType = 0
 
-    private static let defaultCtrlIndex = 0
-    private static let defaultCaps: UInt16 = 0x0003
-    private static let ackWaitAttempts = 20
-    private static let ackWaitIntervalMs: UInt64 = 100
+    private nonisolated static let defaultCtrlIndex = 0
+    private nonisolated static let defaultCaps: UInt16 = 0x0003
+    private nonisolated static let ackWaitAttempts = 20
+    private nonisolated static let ackWaitIntervalMs: UInt64 = 100
 
     init(id: String, server: DiscoveredServer) {
         self.id = id
@@ -111,23 +111,23 @@ final class WifiConnection: ObservableObject, Identifiable {
     func detachSlot() {
         if boundSlotId == nil { return }
         boundSlotId = nil
-        if controllerAdded, let c = client {
-            c.controllerRemove(index: Self.defaultCtrlIndex)
+        if controllerAdded, let live = client {
+            live.controllerRemove(index: Self.defaultCtrlIndex)
         }
         controllerAdded = false
     }
 
     private func registerController(type: Int) async {
-        guard let c = clientRef.get() else { return }
-        c.resetControllerAck()
-        c.controllerAdd(index: Self.defaultCtrlIndex, capabilities: Self.defaultCaps)
+        guard let live = clientRef.get() else { return }
+        live.resetControllerAck()
+        live.controllerAdd(index: Self.defaultCtrlIndex, capabilities: Self.defaultCaps)
         var attempts = 0
-        while attempts < Self.ackWaitAttempts, c.lastControllerAck == -1 {
+        while attempts < Self.ackWaitAttempts, live.lastControllerAck == -1 {
             try? await Task.sleep(nanoseconds: Self.ackWaitIntervalMs * 1_000_000)
             attempts += 1
         }
-        if c.lastControllerAck != -1 {
-            c.sendControllerType(index: Self.defaultCtrlIndex, type: type)
+        if live.lastControllerAck != -1 {
+            live.sendControllerType(index: Self.defaultCtrlIndex, type: type)
             controllerAdded = true
         }
     }
@@ -147,8 +147,8 @@ final class WifiConnection: ObservableObject, Identifiable {
         rx: Int16,
         ry: Int16
     ) {
-        guard let c = clientRef.get() else { return }
-        c.sendReport(
+        guard let live = clientRef.get() else { return }
+        live.sendReport(
             controllerIndex: Self.defaultCtrlIndex,
             buttons: buttons,
             lt: lt,
@@ -172,9 +172,9 @@ final class ClientRef: @unchecked Sendable {
         return value
     }
 
-    func set(_ v: SatelliteClient?) {
+    func set(_ newValue: SatelliteClient?) {
         os_unfair_lock_lock(&lock)
         defer { os_unfair_lock_unlock(&lock) }
-        value = v
+        value = newValue
     }
 }

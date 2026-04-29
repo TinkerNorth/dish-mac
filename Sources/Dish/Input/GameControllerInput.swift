@@ -34,26 +34,28 @@ final class GameControllerInput: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] note in
-            guard let self, let controller = note.object as? GCController else { return }
-            self.attach(controller)
+            guard let controller = note.object as? GCController else { return }
+            let strongSelf = self
+            Task { @MainActor in strongSelf?.attach(controller) }
         })
         observers.append(nc.addObserver(
             forName: .GCControllerDidDisconnect,
             object: nil,
             queue: .main
         ) { [weak self] note in
-            guard let self, let controller = note.object as? GCController else { return }
-            self.detach(controller)
+            guard let controller = note.object as? GCController else { return }
+            let strongSelf = self
+            Task { @MainActor in strongSelf?.detach(controller) }
         })
         // Pick up any already-connected controllers on launch.
-        for c in GCController.controllers() {
-            attach(c)
+        for ctrl in GCController.controllers() {
+            attach(ctrl)
         }
     }
 
     deinit {
-        for o in observers {
-            NotificationCenter.default.removeObserver(o)
+        for obs in observers {
+            NotificationCenter.default.removeObserver(obs)
         }
     }
 
@@ -93,39 +95,39 @@ final class GameControllerInput: ObservableObject {
     /// from the current GCExtendedGamepad snapshot and hands it to the
     /// processor for immediate send.
     private nonisolated func pushReport(id: String, pad: GCExtendedGamepad) {
-        var s = GamepadInputProcessor.DeviceState()
+        var state = GamepadInputProcessor.DeviceState()
 
         // Face buttons — GameController normalises Xbox/PS/MFi to A/B/X/Y.
-        if pad.buttonA.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.a }
-        if pad.buttonB.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.b }
-        if pad.buttonX.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.x }
-        if pad.buttonY.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.y }
-        if pad.leftShoulder.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.leftShoulder }
-        if pad.rightShoulder.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.rightShoulder }
-        if pad.buttonMenu.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.start }
-        if pad.buttonOptions?.isPressed == true { s.wButtons |= GamepadInputProcessor.Buttons.back }
-        if pad.leftThumbstickButton?.isPressed == true { s.wButtons |= GamepadInputProcessor.Buttons.leftThumb }
-        if pad.rightThumbstickButton?.isPressed == true { s.wButtons |= GamepadInputProcessor.Buttons.rightThumb }
+        if pad.buttonA.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.faceA }
+        if pad.buttonB.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.faceB }
+        if pad.buttonX.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.faceX }
+        if pad.buttonY.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.faceY }
+        if pad.leftShoulder.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.leftShoulder }
+        if pad.rightShoulder.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.rightShoulder }
+        if pad.buttonMenu.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.start }
+        if pad.buttonOptions?.isPressed == true { state.wButtons |= GamepadInputProcessor.Buttons.back }
+        if pad.leftThumbstickButton?.isPressed == true { state.wButtons |= GamepadInputProcessor.Buttons.leftThumb }
+        if pad.rightThumbstickButton?.isPressed == true { state.wButtons |= GamepadInputProcessor.Buttons.rightThumb }
 
         // D-pad (digital).
-        if pad.dpad.up.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadUp }
-        if pad.dpad.down.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadDown }
-        if pad.dpad.left.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadLeft }
-        if pad.dpad.right.isPressed { s.wButtons |= GamepadInputProcessor.Buttons.dpadRight }
+        if pad.dpad.up.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.dpadUp }
+        if pad.dpad.down.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.dpadDown }
+        if pad.dpad.left.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.dpadLeft }
+        if pad.dpad.right.isPressed { state.wButtons |= GamepadInputProcessor.Buttons.dpadRight }
 
         // Thumbsticks: GC gives -1..1, XUSB wants signed 16-bit. Y is inverted
         // on Android (scaleAxis uses -AXIS_MAX); GameController already flips
         // so "up = +1" — we negate to match the Android wire output.
-        s.lx = scaleAxis(pad.leftThumbstick.xAxis.value, max: 32767)
-        s.ly = scaleAxis(-pad.leftThumbstick.yAxis.value, max: 32767)
-        s.rx = scaleAxis(pad.rightThumbstick.xAxis.value, max: 32767)
-        s.ry = scaleAxis(-pad.rightThumbstick.yAxis.value, max: 32767)
+        state.lx = scaleAxis(pad.leftThumbstick.xAxis.value, max: 32767)
+        state.ly = scaleAxis(-pad.leftThumbstick.yAxis.value, max: 32767)
+        state.rx = scaleAxis(pad.rightThumbstick.xAxis.value, max: 32767)
+        state.ry = scaleAxis(-pad.rightThumbstick.yAxis.value, max: 32767)
 
         // Triggers.
-        s.lt = scaleTrigger(pad.leftTrigger.value)
-        s.rt = scaleTrigger(pad.rightTrigger.value)
+        state.lt = scaleTrigger(pad.leftTrigger.value)
+        state.rt = scaleTrigger(pad.rightTrigger.value)
 
-        processor.publish(deviceId: id, state: s)
+        processor.publish(deviceId: id, state: state)
     }
 
     // MARK: - Helpers
@@ -133,12 +135,12 @@ final class GameControllerInput: ObservableObject {
     /// Build a stable per-launch id for a controller. GameController doesn't
     /// expose a persistent UUID pre-macOS 14, so we fall back to the vendor
     /// name + object address.
-    private func stableId(for c: GCController) -> String {
+    private func stableId(for ctrl: GCController) -> String {
         if #available(macOS 14.0, *) {
-            return c.physicalInputProfile.description.isEmpty
-                ? "\(ObjectIdentifier(c).hashValue)"
-                : "gc:\(c.vendorName ?? "unknown"):\(ObjectIdentifier(c).hashValue)"
+            return ctrl.physicalInputProfile.description.isEmpty
+                ? "\(ObjectIdentifier(ctrl).hashValue)"
+                : "gc:\(ctrl.vendorName ?? "unknown"):\(ObjectIdentifier(ctrl).hashValue)"
         }
-        return "gc:\(c.vendorName ?? "unknown"):\(ObjectIdentifier(c).hashValue)"
+        return "gc:\(ctrl.vendorName ?? "unknown"):\(ObjectIdentifier(ctrl).hashValue)"
     }
 }

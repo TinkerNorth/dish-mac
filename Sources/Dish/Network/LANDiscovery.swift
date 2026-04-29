@@ -51,15 +51,15 @@ enum LANDiscovery {
         while Date() < deadline {
             var from = sockaddr_in()
             var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
-            let n = buf.withUnsafeMutableBufferPointer { bp -> Int in
+            let bytesRead = buf.withUnsafeMutableBufferPointer { bp -> Int in
                 withUnsafeMutablePointer(to: &from) { fp in
                     fp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
                         Darwin.recvfrom(sock, bp.baseAddress, bp.count, 0, sa, &fl)
                     }
                 }
             }
-            if n <= 0 { continue }
-            let str = String(decoding: buf[0 ..< n], as: UTF8.self)
+            if bytesRead <= 0 { continue }
+            guard let str = String(bytes: buf[0 ..< bytesRead], encoding: .utf8) else { continue }
             guard str.contains("\"service\":\"satellite\"") else { continue }
 
             var ipBytes = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))

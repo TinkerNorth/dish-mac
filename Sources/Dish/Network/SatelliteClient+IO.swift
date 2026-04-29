@@ -21,8 +21,8 @@ extension SatelliteClient {
         putBE16(msgType, into: &inner, at: 0)
         putBE16(payloadLen, into: &inner, at: 2)
         if payloadLen > 0 {
-            for i in 0 ..< Int(payloadLen) {
-                inner[4 + i] = payload[i]
+            for idx in 0 ..< Int(payloadLen) {
+                inner[4 + idx] = payload[idx]
             }
         }
 
@@ -120,16 +120,16 @@ extension SatelliteClient {
         var buf = [UInt8](repeating: 0, count: 128)
         var from = sockaddr_in()
         var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
-        let n = buf.withUnsafeMutableBufferPointer { bp -> Int in
+        let bytesRead = buf.withUnsafeMutableBufferPointer { bp -> Int in
             withUnsafeMutablePointer(to: &from) { fp in
                 fp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
                     Darwin.recvfrom(sock, bp.baseAddress, bp.count, 0, sa, &fl)
                 }
             }
         }
-        if n < 8 { return }
+        if bytesRead < 8 { return }
         // Token check.
-        for i in 0 ..< 4 where buf[i] != token[i] {
+        for idx in 0 ..< 4 where buf[idx] != token[idx] {
             return
         }
 
@@ -139,7 +139,7 @@ extension SatelliteClient {
         putBE32(ctr, into: &nonceBytes, at: 8)
         guard let nonce = try? ChaChaPoly.Nonce(data: Data(nonceBytes)) else { return }
 
-        let cipherAndTag = Data(buf[8 ..< n])
+        let cipherAndTag = Data(buf[8 ..< bytesRead])
         guard cipherAndTag.count >= 16 else { return }
         let tag = cipherAndTag.suffix(16)
         let cipher = cipherAndTag.prefix(cipherAndTag.count - 16)

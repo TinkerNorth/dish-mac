@@ -40,25 +40,25 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
     }
 
     init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.name = try c.decodeIfPresent(String.self, forKey: .name) ?? ""
-        self.ip = try c.decodeIfPresent(String.self, forKey: .ip) ?? ""
-        self.udpPort = try c.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
-        self.pairPort = try c.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9878
-        self.httpPort = try c.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9877
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        self.ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
+        self.udpPort = try container.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
+        self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9878
+        self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9877
     }
 }
 
 struct PairResponse: Codable {
     var ok = false
-    var error: String? = nil
-    var sharedKey: String? = nil
+    var error: String?
+    var sharedKey: String?
 }
 
 struct ConnectResponse: Codable {
-    var connectionId: String? = nil
-    var token: String? = nil
-    var error: String? = nil
+    var connectionId: String?
+    var token: String?
+    var error: String?
 }
 
 // MARK: - UI-level aggregation (matches ConnectionHub.kt shapes)
@@ -87,7 +87,7 @@ struct ControllerSlot: Identifiable, Hashable {
     var boundStatus: ConnectionSummary?
 }
 
-let VIRTUAL_SLOT_ID = "virtual"
+let virtualSlotID = "virtual"
 
 // MARK: - Persisted remembered connection (matches RememberedWifi)
 

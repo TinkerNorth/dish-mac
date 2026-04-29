@@ -23,14 +23,14 @@ final class AppModel: ObservableObject {
     let telemetry: TelemetryTracker
 
     @Published private(set) var slots: [ControllerSlot] = [
-        ControllerSlot(id: VIRTUAL_SLOT_ID, inputType: .virtual, name: "Virtual Controller")
+        ControllerSlot(id: virtualSlotID, inputType: .virtual, name: "Virtual Controller")
     ]
     @Published private(set) var connections: [ConnectionSummary] = []
 
     /// Set when the server asks us to re-pair with a PIN. Bound to a sheet.
-    @Published var pairingTarget: DiscoveredServer? = nil
+    @Published var pairingTarget: DiscoveredServer?
     /// Transient error banner.
-    @Published var errorMessage: String? = nil
+    @Published var errorMessage: String?
 
     /// Thread-safe slotId → live `WifiConnection` table, read by the input
     /// processor's `reportSender` from the GC callback thread and written
@@ -98,7 +98,7 @@ final class AppModel: ObservableObject {
         bindings: [String: String]
     ) {
         var next: [ControllerSlot] = [
-            ControllerSlot(id: VIRTUAL_SLOT_ID, inputType: .virtual, name: "Virtual Controller")
+            ControllerSlot(id: virtualSlotID, inputType: .virtual, name: "Virtual Controller")
         ]
         for gc in gcSlots {
             next.append(ControllerSlot(
@@ -114,10 +114,10 @@ final class AppModel: ObservableObject {
             hub.unbind(slotId: slotId)
         }
         // Fill boundConnectionId / boundStatus.
-        for i in next.indices {
-            if let cid = bindings[next[i].id] {
-                next[i].boundConnectionId = cid
-                next[i].boundStatus = conns.first { $0.id == cid }
+        for idx in next.indices {
+            if let cid = bindings[next[idx].id] {
+                next[idx].boundConnectionId = cid
+                next[idx].boundStatus = conns.first { $0.id == cid }
             }
         }
         self.slots = next

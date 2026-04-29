@@ -93,21 +93,21 @@ struct SlotCard: View {
     }
 
     private var bindLabel: String {
-        guard let s = slot.boundStatus else { return "unbound" }
-        switch s.live {
-        case .connected: return "→ \(s.label)"
-        case .connecting: return "→ \(s.label) (connecting…)"
-        case .idle: return "→ \(s.label) (offline)"
+        guard let status = slot.boundStatus else { return "unbound" }
+        switch status.live {
+        case .connected: return "→ \(status.label)"
+        case .connecting: return "→ \(status.label) (connecting…)"
+        case .idle: return "→ \(status.label) (offline)"
         }
     }
 
     private var dotColor: Color {
-        guard let s = slot.boundStatus else { return DishTheme.muted }
-        return dotColorFor(s)
+        guard let status = slot.boundStatus else { return DishTheme.muted }
+        return dotColorFor(status)
     }
 
-    private func dotColorFor(_ s: ConnectionSummary) -> Color {
-        switch s.live {
+    private func dotColorFor(_ status: ConnectionSummary) -> Color {
+        switch status.live {
         case .connected: DishTheme.success
         case .connecting: DishTheme.primary
         case .idle: DishTheme.muted

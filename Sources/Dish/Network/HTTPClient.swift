@@ -18,7 +18,9 @@ enum HTTPClient {
 
     /// `POST /api/connections` — server returns `{connectionId, token, ...}`.
     static func connect(ip: String, port: Int, deviceId: String) async -> ConnectResponse {
-        let url = URL(string: "http://\(ip):\(port)/api/connections")!
+        guard let url = URL(string: "http://\(ip):\(port)/api/connections") else {
+            return ConnectResponse(error: "bad url")
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "POST"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -36,7 +38,9 @@ enum HTTPClient {
         connectionId: String,
         deviceId: String
     ) async -> ConnectResponse {
-        let url = URL(string: "http://\(ip):\(port)/api/connections/\(connectionId)")!
+        guard let url = URL(string: "http://\(ip):\(port)/api/connections/\(connectionId)") else {
+            return ConnectResponse(error: "bad url")
+        }
         var req = URLRequest(url: url)
         req.httpMethod = "DELETE"
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")

@@ -73,12 +73,12 @@ enum PairingClient {
         _ = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
 
         var buf = [UInt8](repeating: 0, count: 512)
-        let n = buf.withUnsafeMutableBufferPointer { bp in
+        let bytesRead = buf.withUnsafeMutableBufferPointer { bp in
             Darwin.recv(sock, bp.baseAddress, bp.count, 0)
         }
-        if n <= 0 { return PairResponse(ok: false, error: "no response") }
+        if bytesRead <= 0 { return PairResponse(ok: false, error: "no response") }
 
-        let data = Data(buf[0 ..< n])
+        let data = Data(buf[0 ..< bytesRead])
         if let parsed = try? JSONDecoder().decode(PairResponse.self, from: data) {
             return parsed
         }
@@ -99,8 +99,8 @@ private func fdSet(_ fd: Int32, _ set: inout fd_set) {
     let bitOffset = fd % 32
     let mask: Int32 = 1 << bitOffset
     withUnsafeMutablePointer(to: &set.fds_bits) { ptr in
-        ptr.withMemoryRebound(to: Int32.self, capacity: 32) { p in
-            p[intOffset] |= mask
+        ptr.withMemoryRebound(to: Int32.self, capacity: 32) { bound in
+            bound[intOffset] |= mask
         }
     }
 }

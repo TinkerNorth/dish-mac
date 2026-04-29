@@ -63,9 +63,9 @@ final class WifiConnectionManager: ObservableObject {
             }
         }
         let conn = connections[id] ?? {
-            let c = WifiConnection(id: id, server: server)
-            connections[id] = c
-            return c
+            let newConn = WifiConnection(id: id, server: server)
+            connections[id] = newConn
+            return newConn
         }()
         conn.updateServer(server)
         conn.markConnecting()
@@ -98,9 +98,9 @@ final class WifiConnectionManager: ObservableObject {
     func pairWithPin(_ server: DiscoveredServer, pin: String) {
         let id = WifiConnection.idFor(server)
         let conn = connections[id] ?? {
-            let c = WifiConnection(id: id, server: server)
-            connections[id] = c
-            return c
+            let newConn = WifiConnection(id: id, server: server)
+            connections[id] = newConn
+            return newConn
         }()
         conn.markConnecting()
         let did = deviceId, dname = deviceName

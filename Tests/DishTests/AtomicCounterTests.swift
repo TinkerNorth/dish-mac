@@ -7,34 +7,34 @@ import XCTest
 final class AtomicCounterTests: XCTestCase {
 
     func testIncrementAndGetReturnsPostIncrementValue() {
-        let c = AtomicCounter()
-        XCTAssertEqual(c.incrementAndGet(), 1)
-        XCTAssertEqual(c.incrementAndGet(), 2)
-        XCTAssertEqual(c.incrementAndGet(), 3)
+        let counter = AtomicCounter()
+        XCTAssertEqual(counter.incrementAndGet(), 1)
+        XCTAssertEqual(counter.incrementAndGet(), 2)
+        XCTAssertEqual(counter.incrementAndGet(), 3)
     }
 
     func testResetReturnsToZero() {
-        let c = AtomicCounter()
-        _ = c.incrementAndGet()
-        _ = c.incrementAndGet()
-        c.reset()
-        XCTAssertEqual(c.incrementAndGet(), 1)
+        let counter = AtomicCounter()
+        _ = counter.incrementAndGet()
+        _ = counter.incrementAndGet()
+        counter.reset()
+        XCTAssertEqual(counter.incrementAndGet(), 1)
     }
 
     func testConcurrentIncrementsAreAtomic() {
-        let c = AtomicCounter()
+        let counter = AtomicCounter()
         let iters = 10000
         let threads = 8
         let group = DispatchGroup()
         for _ in 0 ..< threads {
             DispatchQueue.global().async(group: group) {
                 for _ in 0 ..< iters {
-                    _ = c.incrementAndGet()
+                    _ = counter.incrementAndGet()
                 }
             }
         }
         group.wait()
         // Post-increment of final call equals total number of increments.
-        XCTAssertEqual(c.incrementAndGet(), UInt64(threads * iters + 1))
+        XCTAssertEqual(counter.incrementAndGet(), UInt64(threads * iters + 1))
     }
 }

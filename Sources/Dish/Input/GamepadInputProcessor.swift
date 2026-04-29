@@ -25,10 +25,10 @@ final class GamepadInputProcessor {
         static let rightThumb: UInt16 = 0x0080
         static let leftShoulder: UInt16 = 0x0100
         static let rightShoulder: UInt16 = 0x0200
-        static let a: UInt16 = 0x1000
-        static let b: UInt16 = 0x2000
-        static let x: UInt16 = 0x4000
-        static let y: UInt16 = 0x8000
+        static let faceA: UInt16 = 0x1000
+        static let faceB: UInt16 = 0x2000
+        static let faceX: UInt16 = 0x4000
+        static let faceY: UInt16 = 0x8000
     }
 
     typealias DeviceId = String
@@ -138,13 +138,13 @@ final class GamepadInputProcessor {
 
 /// Scale a -1..1 axis float into a clamped 16-bit signed integer.
 @inline(__always)
-func scaleAxis(_ v: Float, max: Float) -> Int16 {
-    let scaled = Int(v * max)
+func scaleAxis(_ value: Float, max: Float) -> Int16 {
+    let scaled = Int(value * max)
     return Int16(clamping: max > 0 ? scaled : scaled)
 }
 
 /// Scale a 0..1 trigger float into a clamped 8-bit unsigned integer.
 @inline(__always)
-func scaleTrigger(_ v: Float) -> UInt8 {
-    UInt8(clamping: Int((v * 255.0).rounded()))
+func scaleTrigger(_ value: Float) -> UInt8 {
+    UInt8(clamping: Int((value * 255.0).rounded()))
 }
