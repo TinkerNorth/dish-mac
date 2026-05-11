@@ -4,22 +4,24 @@
 import SwiftUI
 
 /// Color palette lifted verbatim from `dish-android/res/values/colors.xml` so
-/// both clients look identical side-by-side.
+/// every Dish client renders identically. Same names as the cross-repo
+/// schema (see /BRAND.md and DESIGN.md across all Dish repos).
 enum DishTheme {
-    static let background = Color(hex: 0x0D0F12)
-    static let surface = Color(hex: 0x161A1F)
-    static let surfaceDim = Color(hex: 0x111417)
-    static let primary = Color(hex: 0xFFC107) // amber
-    static let primaryDark = Color(hex: 0xA65F1E)
-    static let onPrimary = Color(hex: 0x0D0F12)
-    static let onSurface = Color(hex: 0xEAEAEA)
-    static let muted = Color(hex: 0x6B7280)
-    static let outline = Color(hex: 0x222831)
+    static let background = Color(hex: 0x060818)  // --tn-ink
+    static let surface = Color(hex: 0x0C1027)     // --tn-night
+    static let surfaceDim = Color(hex: 0x131A3A)  // --tn-deep
+    static let primary = Color(hex: 0x4FE3FF)     // --tn-signal (cyan)
+    static let primaryDark = Color(hex: 0x2C93AD) // --tn-signal-dim
+    static let onPrimary = Color(hex: 0x060818)
+    static let onSurface = Color(hex: 0xE6ECFF)   // --body-color
+    static let muted = Color(hex: 0x93A0C8)       // --muted
+    /// Web uses rgba(79,227,255,0.18) for outline; Swift equivalent below.
+    static let outline = Color(hex: 0x4FE3FF, alpha: 0.18)
     static let success = Color(hex: 0x22C55E)
     static let error = Color(hex: 0xE74C3C)
     static let warning = Color(hex: 0xF59E0B)
-    /// primary at ~12% alpha — matches colorCardStroke (#1FFFC107).
-    static let cardStroke = Color(hex: 0xFFC107, alpha: 0.12)
+    /// Primary at ~12% alpha — matches colorCardStroke (#1F4FE3FF).
+    static let cardStroke = Color(hex: 0x4FE3FF, alpha: 0.12)
 }
 
 extension Color {
