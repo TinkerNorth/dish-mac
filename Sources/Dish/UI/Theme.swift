@@ -7,14 +7,14 @@ import SwiftUI
 /// every Dish client renders identically. Same names as the cross-repo
 /// schema (see /BRAND.md and DESIGN.md across all Dish repos).
 enum DishTheme {
-    static let background = Color(hex: 0x060818)  // --tn-ink
-    static let surface = Color(hex: 0x0C1027)     // --tn-night
-    static let surfaceDim = Color(hex: 0x131A3A)  // --tn-deep
-    static let primary = Color(hex: 0x4FE3FF)     // --tn-signal (cyan)
-    static let primaryDark = Color(hex: 0x2C93AD) // --tn-signal-dim
+    static let background = Color(hex: 0x060818) // tn-ink
+    static let surface = Color(hex: 0x0C1027) // tn-night
+    static let surfaceDim = Color(hex: 0x131A3A) // tn-deep
+    static let primary = Color(hex: 0x4FE3FF) // tn-signal (cyan)
+    static let primaryDark = Color(hex: 0x2C93AD) // tn-signal-dim
     static let onPrimary = Color(hex: 0x060818)
-    static let onSurface = Color(hex: 0xE6ECFF)   // --body-color
-    static let muted = Color(hex: 0x93A0C8)       // --muted
+    static let onSurface = Color(hex: 0xE6ECFF) // body-color
+    static let muted = Color(hex: 0x93A0C8) // muted
     /// Web uses rgba(79,227,255,0.18) for outline; Swift equivalent below.
     static let outline = Color(hex: 0x4FE3FF, alpha: 0.18)
     static let success = Color(hex: 0x22C55E)
