@@ -14,7 +14,9 @@ fi
 APP="$PWD/Dish.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
+mkdir -p "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Dish"
+cp "$PWD/Resources/Dish.icns" "$APP/Contents/Resources/Dish.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -27,6 +29,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleVersion</key>         <string>1</string>
     <key>CFBundleShortVersionString</key><string>0.1</string>
     <key>CFBundleExecutable</key>      <string>Dish</string>
+    <key>CFBundleIconFile</key>        <string>Dish</string>
     <key>CFBundlePackageType</key>     <string>APPL</string>
     <key>LSMinimumSystemVersion</key>  <string>13.0</string>
     <key>NSHighResolutionCapable</key> <true/>
