@@ -53,6 +53,12 @@ struct PairResponse: Codable {
     var ok = false
     var error: String?
     var sharedKey: String?
+    /// True iff we received any JSON body from the server. False for synthesized
+    /// failure responses (socket / connect / send errors). Not on the wire — the
+    /// server never sends this field; it's set client-side by `PairingClient`.
+    var reachable = false
+
+    private enum CodingKeys: String, CodingKey { case ok, error, sharedKey }
 }
 
 struct ConnectResponse: Codable {

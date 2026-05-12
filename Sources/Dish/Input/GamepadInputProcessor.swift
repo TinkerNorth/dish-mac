@@ -60,7 +60,20 @@ final class GamepadInputProcessor {
         var ry: Int16 = 0
     }
 
+    /// Per-axis deadzone thresholds. Values whose absolute magnitude is at or
+    /// below the flat are zeroed before the report leaves the processor —
+    /// mirrors the per-device flat values Android pulls out of
+    /// `InputDevice.getMotionRange(axis).getFlat()`. macOS and Linux don't
+    /// surface an OS-level equivalent, so the bridge installs a sensible
+    /// default per controller and can override per-device when GC exposes
+    /// `GCAxisInput.deadband` (macOS 14+).
+    struct Deadzones: Equatable {
+        var stickFlat: Int16 = 0
+        var triggerFlat: UInt8 = 0
+    }
+
     private var states: [DeviceId: DeviceState] = [:]
+    private var deadzones: [DeviceId: Deadzones] = [:]
     private let lock = NSLock()
 
     // MARK: - Telemetry
@@ -89,26 +102,36 @@ final class GamepadInputProcessor {
 
     // MARK: - Mutators (called from GC callback thread)
 
+    /// Push the per-axis deadzone thresholds for a device. Safe to call at any
+    /// time; future `publish` calls for that device will apply the new values.
+    func setDeadzones(deviceId: DeviceId, _ dz: Deadzones) {
+        lock.lock()
+        deadzones[deviceId] = dz
+        lock.unlock()
+    }
+
     /// Apply a fully-computed state + send. The caller (GameController bridge)
     /// reads every axis/button every time GCController fires and builds the
     /// complete `DeviceState` — that mirrors how Android's MotionEvent batch
     /// recomputes from scratch on every report.
     func publish(deviceId: DeviceId, state: DeviceState) {
         lock.lock()
-        states[deviceId] = state
+        let dz = deadzones[deviceId] ?? Deadzones()
+        let filtered = applyDeadzones(state, dz)
+        states[deviceId] = filtered
         telEventCount += 1
         telSendCount += 1
         telTotalSent &+= 1
         lock.unlock()
         reportSender?(
             deviceId,
-            state.wButtons,
-            state.lt,
-            state.rt,
-            state.lx,
-            state.ly,
-            state.rx,
-            state.ry
+            filtered.wButtons,
+            filtered.lt,
+            filtered.rt,
+            filtered.lx,
+            filtered.ly,
+            filtered.rx,
+            filtered.ry
         )
     }
 
@@ -131,6 +154,7 @@ final class GamepadInputProcessor {
         lock.lock()
         defer { lock.unlock() }
         states.removeValue(forKey: deviceId)
+        deadzones.removeValue(forKey: deviceId)
     }
 }
 
@@ -147,4 +171,23 @@ func scaleAxis(_ value: Float, max: Float) -> Int16 {
 @inline(__always)
 func scaleTrigger(_ value: Float) -> UInt8 {
     UInt8(clamping: Int((value * 255.0).rounded()))
+}
+
+/// Apply the per-axis deadzone thresholds in-place. Sticks: `|v| <= flat → 0`.
+/// Triggers: `v <= flat → 0`. Buttons are passed through. Pure — extracted so
+/// tests can pin the exact arithmetic without spinning up the processor.
+@inline(__always)
+func applyDeadzones(
+    _ state: GamepadInputProcessor.DeviceState,
+    _ dz: GamepadInputProcessor.Deadzones
+) -> GamepadInputProcessor.DeviceState {
+    var out = state
+    let stickFlat = Int32(dz.stickFlat)
+    if abs(Int32(out.lx)) <= stickFlat { out.lx = 0 }
+    if abs(Int32(out.ly)) <= stickFlat { out.ly = 0 }
+    if abs(Int32(out.rx)) <= stickFlat { out.rx = 0 }
+    if abs(Int32(out.ry)) <= stickFlat { out.ry = 0 }
+    if out.lt <= dz.triggerFlat { out.lt = 0 }
+    if out.rt <= dz.triggerFlat { out.rt = 0 }
+    return out
 }
