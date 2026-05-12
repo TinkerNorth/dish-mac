@@ -47,6 +47,16 @@ struct ConnectionsView: View {
         }
         .frame(minWidth: 480, minHeight: 540)
         .background(DishTheme.background)
+        // Pairing is presented from here (in addition to MainView) because
+        // SwiftUI cannot activate a second sibling `.sheet` on MainView while
+        // this sheet is already presented. Nesting the pairing sheet inside
+        // the currently-presented view is the only way to make it appear
+        // when the user clicks Connect from this page.
+        .sheet(item: $model.pairingTarget) { server in
+            PairingSheet(server: server)
+                .environmentObject(model)
+                .environmentObject(wifi)
+        }
     }
 
     // MARK: - Header
