@@ -76,30 +76,6 @@ final class GamepadInputProcessor {
     private var deadzones: [DeviceId: Deadzones] = [:]
     private let lock = NSLock()
 
-    // MARK: - Telemetry
-
-    private(set) var telEventCount = 0
-    private(set) var telSendCount = 0
-    private(set) var telTotalSent: UInt64 = 0
-
-    struct TelemetrySnapshot { let events: Int
-        let sends: Int
-        let totalSent: UInt64
-    }
-
-    func drainTelemetry() -> TelemetrySnapshot {
-        lock.lock()
-        defer { lock.unlock() }
-        let snap = TelemetrySnapshot(
-            events: telEventCount,
-            sends: telSendCount,
-            totalSent: telTotalSent
-        )
-        telEventCount = 0
-        telSendCount = 0
-        return snap
-    }
-
     // MARK: - Mutators (called from GC callback thread)
 
     /// Push the per-axis deadzone thresholds for a device. Safe to call at any
@@ -119,9 +95,6 @@ final class GamepadInputProcessor {
         let dz = deadzones[deviceId] ?? Deadzones()
         let filtered = applyDeadzones(state, dz)
         states[deviceId] = filtered
-        telEventCount += 1
-        telSendCount += 1
-        telTotalSent &+= 1
         lock.unlock()
         reportSender?(
             deviceId,

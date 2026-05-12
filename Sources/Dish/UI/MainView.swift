@@ -4,12 +4,12 @@
 import SwiftUI
 
 /// Dashboard window — mirrors `activity_main.xml`. Top status row, controller
-/// slot list, telemetry footer, and a "Manage connections" button that
-/// presents `ConnectionsView` in a sheet.
+/// slot list, and a "Manage connections" button that presents
+/// `ConnectionsView` in a sheet.
 struct MainView: View {
 
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var telemetry: TelemetryTracker
+    @EnvironmentObject var wifi: WifiConnectionManager
     @State private var showConnections = false
 
     var body: some View {
@@ -18,7 +18,9 @@ struct MainView: View {
             Divider().background(DishTheme.outline)
             slotSection
             Spacer(minLength: 0)
-            telemetryFooter
+            if let msg = model.errorMessage {
+                ErrorBanner(message: msg) { model.errorMessage = nil }
+            }
         }
         .padding(20)
         .sheet(isPresented: $showConnections) {
@@ -27,19 +29,9 @@ struct MainView: View {
                 .environmentObject(model.wifi)
         }
         .sheet(item: $model.pairingTarget) { server in
-            PairingSheet(server: server).environmentObject(model)
-        }
-        .alert(
-            "Error",
-            isPresented: Binding(
-                get: { model.errorMessage != nil },
-                set: { if !$0 { model.errorMessage = nil } }
-            ),
-            presenting: model.errorMessage
-        ) { _ in
-            Button("OK") { model.errorMessage = nil }
-        } message: { msg in
-            Text(msg)
+            PairingSheet(server: server)
+                .environmentObject(model)
+                .environmentObject(model.wifi)
         }
     }
 
@@ -89,7 +81,15 @@ struct MainView: View {
 
     private var slotSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "CONTROLLERS")
+            HStack(spacing: 8) {
+                SectionHeader(title: "CONTROLLERS")
+                if wifi.anyControllerRegistering {
+                    ProgressView()
+                        .controlSize(.small)
+                        .progressViewStyle(.circular)
+                }
+                Spacer()
+            }
             if model.slots.isEmpty {
                 Text("No controllers connected")
                     .font(.system(size: 12))
@@ -104,18 +104,5 @@ struct MainView: View {
                 }
             }
         }
-    }
-
-    // MARK: - Telemetry footer
-
-    private var telemetryFooter: some View {
-        HStack {
-            Text("events/s \(telemetry.events)")
-            Text("sends/s \(telemetry.sends)")
-            Spacer()
-            Text("total \(telemetry.totalSent)")
-        }
-        .font(.system(size: 10, weight: .regular, design: .monospaced))
-        .foregroundColor(DishTheme.muted)
     }
 }
