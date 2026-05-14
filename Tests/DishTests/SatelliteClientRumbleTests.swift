@@ -21,12 +21,12 @@ final class SatelliteClientRumbleTests: XCTestCase {
         weak: UInt16,
         dur: UInt16
     ) -> [UInt8] {
-        return [
+        [
             ctrlIdx,
             UInt8(strong >> 8), UInt8(strong & 0xFF),
             UInt8(weak >> 8), UInt8(weak & 0xFF),
             UInt8(dur >> 8), UInt8(dur & 0xFF),
-            0x00, // flags
+            0x00 // flags
         ]
     }
 
@@ -76,8 +76,13 @@ final class SatelliteClientRumbleTests: XCTestCase {
 
     func testDecodesLightbarTail() throws {
         let p = lightbarPayload(
-            ctrlIdx: 1, strong: 0x0100, weak: 0x0080, dur: 250,
-            r: 0xDE, g: 0xAD, b: 0xBE
+            ctrlIdx: 1,
+            strong: 0x0100,
+            weak: 0x0080,
+            dur: 250,
+            r: 0xDE,
+            g: 0xAD,
+            b: 0xBE
         )
         let rm = try XCTUnwrap(SatelliteClient.parseRumblePayload(p))
         XCTAssertTrue(rm.hasLightbar)

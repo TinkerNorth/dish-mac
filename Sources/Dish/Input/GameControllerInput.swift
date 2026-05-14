@@ -98,12 +98,12 @@ final class GameControllerInput: ObservableObject {
         // doesn't work": ProductCategory tells us whether GameController
         // negotiated as Xbox / DualShock / DualSense / MFi / generic HID.
         Self.log.info("""
-            DEVCAPS id=\(id, privacy: .public) name=\(name, privacy: .public) \
-            category=\(controller.productCategory, privacy: .public) \
-            extendedGamepad=yes hasButtonOptions=\(pad.buttonOptions != nil) \
-            hasLeftThumbstickButton=\(pad.leftThumbstickButton != nil) \
-            hasRightThumbstickButton=\(pad.rightThumbstickButton != nil)
-            """)
+        DEVCAPS id=\(id, privacy: .public) name=\(name, privacy: .public) \
+        category=\(controller.productCategory, privacy: .public) \
+        extendedGamepad=yes hasButtonOptions=\(pad.buttonOptions != nil) \
+        hasLeftThumbstickButton=\(pad.leftThumbstickButton != nil) \
+        hasRightThumbstickButton=\(pad.rightThumbstickButton != nil)
+        """)
 
         // Push the default deadzone profile straight away. The processor
         // applies these to every report from this device until/unless the

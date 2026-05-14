@@ -30,7 +30,9 @@ final class IOKitDisplaySleepInhibitor: DisplaySleepInhibitor {
 
     private var assertionID: IOPMAssertionID = 0
 
-    var isHeld: Bool { assertionID != 0 }
+    var isHeld: Bool {
+        assertionID != 0
+    }
 
     func acquire(reason: String) {
         guard assertionID == 0 else { return }
