@@ -30,6 +30,11 @@ final class ConnectionHub: ObservableObject {
         wifi.$connections
             .sink { [weak self] pool in self?.subscribeToPool(pool) }
             .store(in: &cancellables)
+
+        // Roll back local bindings when the server rejects a controller add.
+        wifi.slotRegistrationFailed
+            .sink { [weak self] slotId in self?.unbind(slotId: slotId) }
+            .store(in: &cancellables)
     }
 
     private func subscribeToPool(_ pool: [String: WifiConnection]) {

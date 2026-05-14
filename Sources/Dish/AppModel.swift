@@ -19,7 +19,6 @@ final class AppModel: ObservableObject {
     let wifi: WifiConnectionManager
     let hub: ConnectionHub
     let input: GameControllerInput
-    let telemetry: TelemetryTracker
     let wake: ScreenWakeController
 
     @Published private(set) var slots: [ControllerSlot] = []
@@ -48,12 +47,10 @@ final class AppModel: ObservableObject {
         self.wifi = wifi
         self.hub = hub
         self.input = input
-        self.telemetry = TelemetryTracker(processor: input.processor)
         self.wake = ScreenWakeController(inhibitor: inhibitor ?? IOKitDisplaySleepInhibitor())
 
         observe()
         installReportSender()
-        telemetry.start()
         // Auto-reconnect every remembered server on launch.
         wifi.autoReconnectAll()
     }

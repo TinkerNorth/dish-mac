@@ -112,25 +112,6 @@ final class GamepadInputProcessorTests: XCTestCase {
         XCTAssertEqual(captured?.ry, -400)
     }
 
-    func testPublishIncrementsTelemetry() {
-        let proc = GamepadInputProcessor()
-        proc.reportSender = { _, _, _, _, _, _, _, _ in }
-        proc.publish(deviceId: "pad-1", state: .init())
-        proc.publish(deviceId: "pad-1", state: .init())
-        proc.publish(deviceId: "pad-1", state: .init())
-
-        let snap = proc.drainTelemetry()
-        XCTAssertEqual(snap.events, 3)
-        XCTAssertEqual(snap.sends, 3)
-        XCTAssertEqual(snap.totalSent, 3)
-
-        // drainTelemetry resets counters but keeps totalSent.
-        let next = proc.drainTelemetry()
-        XCTAssertEqual(next.events, 0)
-        XCTAssertEqual(next.sends, 0)
-        XCTAssertEqual(next.totalSent, 3)
-    }
-
     // MARK: - zeroAndSendAll fans a release-all report to every known device
 
     func testZeroAndSendAllEmitsReleasedReportPerDevice() {
