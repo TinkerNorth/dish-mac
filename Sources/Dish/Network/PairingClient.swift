@@ -15,7 +15,34 @@ enum PairingClient {
         let pin: String
     }
 
+    /// Classifies a `PairResponse` so callers can distinguish "server moved /
+    /// went offline" (network failure) from "server refused our PIN / shared
+    /// key" (auth failure). Mirrors the same distinction Android's
+    /// `SatelliteConnectionManager` makes after dish-android PR #43.
+    enum Outcome: Equatable {
+        case success(sharedKeyHex: String)
+        case authRequired
+        case unreachable(String)
+    }
+
+    /// Pure classifier. Driven only by fields on the response so it's
+    /// trivially unit-testable.
+    static func classify(_ response: PairResponse) -> Outcome {
+        if response.ok, let key = response.sharedKey, !key.isEmpty {
+            return .success(sharedKeyHex: key)
+        }
+        if response.reachable {
+            return .authRequired
+        }
+        return .unreachable(response.error ?? "Server unreachable")
+    }
+
     /// Call from a background queue. Returns the parsed `PairResponse`.
+    /// `reachable` is set to `true` iff we received and parsed a JSON body
+    /// from the server; every network-level failure path returns `reachable
+    /// = false` so the caller can surface a clean "Server unreachable —
+    /// has it moved networks?" message instead of trapping the user behind
+    /// a PIN prompt they can't satisfy.
     static func pair(
         ip: String,
         port: Int,
@@ -79,7 +106,10 @@ enum PairingClient {
         if bytesRead <= 0 { return PairResponse(ok: false, error: "no response") }
 
         let data = Data(buf[0 ..< bytesRead])
-        if let parsed = try? JSONDecoder().decode(PairResponse.self, from: data) {
+        if var parsed = try? JSONDecoder().decode(PairResponse.self, from: data) {
+            // Successful round-trip with the server — even ok=false counts as
+            // reachable for the purposes of distinguishing offline-vs-auth.
+            parsed.reachable = true
             return parsed
         }
         return PairResponse(ok: false, error: "malformed response")

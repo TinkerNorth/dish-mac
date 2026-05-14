@@ -20,6 +20,7 @@ final class AppModel: ObservableObject {
     let hub: ConnectionHub
     let input: GameControllerInput
     let telemetry: TelemetryTracker
+    let wake: ScreenWakeController
 
     @Published private(set) var slots: [ControllerSlot] = []
     @Published private(set) var connections: [ConnectionSummary] = []
@@ -36,7 +37,9 @@ final class AppModel: ObservableObject {
 
     private var cancellables = Set<AnyCancellable>()
 
-    init() {
+    init(
+        inhibitor: DisplaySleepInhibitor? = nil
+    ) {
         let store = ConnectionStore()
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
@@ -46,6 +49,7 @@ final class AppModel: ObservableObject {
         self.hub = hub
         self.input = input
         self.telemetry = TelemetryTracker(processor: input.processor)
+        self.wake = ScreenWakeController(inhibitor: inhibitor ?? IOKitDisplaySleepInhibitor())
 
         observe()
         installReportSender()
@@ -74,6 +78,22 @@ final class AppModel: ObservableObject {
                     if let conn = pool[cid] { snapshot[slotId] = conn }
                 }
                 self.routingTable.set(snapshot)
+            }
+            .store(in: &cancellables)
+
+        // Drive the display-sleep assertion off `bindings × hub.connections`.
+        // The 0↔positive transitions inside ScreenWakeController acquire /
+        // release the IOPMAssertion; intermediate same-count emissions are
+        // no-ops so a noisy hub feed doesn't thrash IOKit.
+        Publishers.CombineLatest(hub.$bindings, hub.$connections)
+            .sink { [weak self] bindings, conns in
+                guard let self else { return }
+                let states = Dictionary(uniqueKeysWithValues: conns.map { ($0.id, $0.live) })
+                let count = ScreenWakeController.streamingCount(
+                    bindings: bindings,
+                    connectionStates: states
+                )
+                self.wake.update(streamingSlotCount: count)
             }
             .store(in: &cancellables)
 

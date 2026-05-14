@@ -194,4 +194,133 @@ final class GamepadInputProcessorTests: XCTestCase {
         proc.zeroAndSendAll()
         XCTAssertEqual(emitted, ["b"])
     }
+
+    // MARK: - Per-device deadzones
+
+    func testApplyDeadzonesZerosSticksBelowThreshold() {
+        let dz = GamepadInputProcessor.Deadzones(stickFlat: 3277, triggerFlat: 13)
+        let state = GamepadInputProcessor.DeviceState(
+            wButtons: 0,
+            lt: 0,
+            rt: 0,
+            lx: 1500,
+            ly: -2000,
+            rx: 3277,
+            ry: -3277
+        )
+        let out = applyDeadzones(state, dz)
+        XCTAssertEqual(out.lx, 0)
+        XCTAssertEqual(out.ly, 0)
+        XCTAssertEqual(out.rx, 0)
+        XCTAssertEqual(out.ry, 0)
+    }
+
+    func testApplyDeadzonesPassesSticksAboveThreshold() {
+        let dz = GamepadInputProcessor.Deadzones(stickFlat: 3277, triggerFlat: 13)
+        let state = GamepadInputProcessor.DeviceState(
+            wButtons: 0,
+            lt: 0,
+            rt: 0,
+            lx: 3278,
+            ly: -3278,
+            rx: 32767,
+            ry: -32767
+        )
+        let out = applyDeadzones(state, dz)
+        XCTAssertEqual(out.lx, 3278)
+        XCTAssertEqual(out.ly, -3278)
+        XCTAssertEqual(out.rx, 32767)
+        XCTAssertEqual(out.ry, -32767)
+    }
+
+    func testApplyDeadzonesZerosTriggersAtOrBelowThreshold() {
+        let dz = GamepadInputProcessor.Deadzones(stickFlat: 0, triggerFlat: 13)
+        let state = GamepadInputProcessor.DeviceState(
+            wButtons: 0,
+            lt: 5,
+            rt: 13,
+            lx: 0,
+            ly: 0,
+            rx: 0,
+            ry: 0
+        )
+        let out = applyDeadzones(state, dz)
+        XCTAssertEqual(out.lt, 0)
+        XCTAssertEqual(out.rt, 0)
+    }
+
+    func testApplyDeadzonesPassesTriggersAboveThreshold() {
+        let dz = GamepadInputProcessor.Deadzones(stickFlat: 0, triggerFlat: 13)
+        let state = GamepadInputProcessor.DeviceState(
+            wButtons: 0,
+            lt: 14,
+            rt: 255,
+            lx: 0,
+            ly: 0,
+            rx: 0,
+            ry: 0
+        )
+        let out = applyDeadzones(state, dz)
+        XCTAssertEqual(out.lt, 14)
+        XCTAssertEqual(out.rt, 255)
+    }
+
+    func testApplyDeadzonesNeverTouchesButtons() {
+        let dz = GamepadInputProcessor.Deadzones(stickFlat: 32767, triggerFlat: 255)
+        let state = GamepadInputProcessor.DeviceState(
+            wButtons: 0xABCD,
+            lt: 0,
+            rt: 0,
+            lx: 0,
+            ly: 0,
+            rx: 0,
+            ry: 0
+        )
+        let out = applyDeadzones(state, dz)
+        XCTAssertEqual(out.wButtons, 0xABCD)
+    }
+
+    func testPublishUsesPerDeviceDeadzones() {
+        let proc = GamepadInputProcessor()
+        var captured: (Int16, Int16, UInt8, UInt8)?
+        proc.reportSender = { _, _, lt, rt, lx, ly, _, _ in
+            captured = (lx, ly, lt, rt)
+        }
+        proc.setDeadzones(
+            deviceId: "pad-1",
+            .init(stickFlat: 5000, triggerFlat: 20)
+        )
+        proc.publish(
+            deviceId: "pad-1",
+            state: .init(wButtons: 0, lt: 18, rt: 21, lx: 4999, ly: 5001, rx: 0, ry: 0)
+        )
+        XCTAssertEqual(captured?.0, 0)      // lx below flat → zeroed
+        XCTAssertEqual(captured?.1, 5001)   // ly above flat → passed
+        XCTAssertEqual(captured?.2, 0)      // lt at/below flat → zeroed
+        XCTAssertEqual(captured?.3, 21)     // rt above flat → passed
+    }
+
+    func testPublishAppliesDifferentDeadzonesPerDevice() {
+        let proc = GamepadInputProcessor()
+        var byId: [String: Int16] = [:]
+        proc.reportSender = { id, _, _, _, lx, _, _, _ in byId[id] = lx }
+        proc.setDeadzones(deviceId: "lax", .init(stickFlat: 0, triggerFlat: 0))
+        proc.setDeadzones(deviceId: "strict", .init(stickFlat: 10000, triggerFlat: 0))
+        proc.publish(deviceId: "lax", state: .init(lx: 500))
+        proc.publish(deviceId: "strict", state: .init(lx: 500))
+        XCTAssertEqual(byId["lax"], 500)
+        XCTAssertEqual(byId["strict"], 0)
+    }
+
+    func testRemoveClearsDeadzonesToo() {
+        let proc = GamepadInputProcessor()
+        var lastLx: Int16 = -1
+        proc.reportSender = { _, _, _, _, lx, _, _, _ in lastLx = lx }
+        proc.setDeadzones(deviceId: "pad", .init(stickFlat: 5000, triggerFlat: 0))
+        proc.remove(deviceId: "pad")
+        // Fresh publish without re-setting deadzones should now pass through
+        // the small value rather than zeroing it.
+        proc.publish(deviceId: "pad", state: .init(lx: 100))
+        XCTAssertEqual(lastLx, 100)
+    }
 }

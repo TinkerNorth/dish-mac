@@ -38,6 +38,39 @@ SwiftUI (MainView, ConnectionsView)
 - **`SO_NOSIGPIPE`** on every socket so a server disconnect can't kill the
   process.
 
+## Cross-platform behaviour parity
+
+The following behaviours mirror dish-android and dish-linux, so user-visible
+behaviour stays predictable across platforms:
+
+- **Display-sleep inhibitor while streaming.** A `ScreenWakeController` reads
+  `hub.bindings × hub.connections`, derives a streaming-slot count, and flips
+  an `IOPMAssertion` of type `kIOPMAssertionTypePreventUserIdleDisplaySleep`
+  on every 0↔positive transition. The assertion is released automatically on
+  the last unbind / disconnect, so a forgotten session doesn't pin the
+  display awake forever.
+- **Connection state recovery.** `PairingClient` carries a `reachable` flag
+  on every response (true iff we got a JSON body back). The manager classifies
+  the outcome into `success | authRequired | unreachable` and routes
+  accordingly — a moved/offline server now surfaces a clean
+  *"Server unreachable — has it moved networks?"* error instead of trapping
+  the user behind an unanswerable PIN prompt. Mirrors dish-android PR #43.
+- **Auto-reconnect fast path.** `WifiConnectionManager.pairAndConnect` skips
+  the TCP pair handshake entirely when a 64-char shared key is already on
+  disk, going straight to `openSession`. A moved server then fails fast in
+  the HTTP layer rather than bouncing through pair → `PairingRequired`.
+- **Per-device deadzones.** `GamepadInputProcessor` carries a per-device
+  `Deadzones { stickFlat, triggerFlat }` table; reports are filtered
+  (`|v| <= flat → 0`) before they leave the processor. The default profile
+  (~10 % stick / ~5 % trigger) is installed by `GameControllerInput` when each
+  controller attaches; macOS 14+ can later override per-device by reading
+  `GCAxisInput.deadband`. Mirrors Android's per-device `flat` pipeline.
+- **Device-capability log on attach.** Every newly-connected controller logs
+  a one-shot `DEVCAPS` line via `os_log` carrying the stable id, vendor
+  name, product category, and which optional inputs are present. Aimed at
+  users reporting *"my pad doesn't work"* — same idea as Android's
+  SatelliteJNI `DEVCAPS` log.
+
 ## Requirements
 
 - macOS 13 (Ventura) or newer
@@ -101,10 +134,13 @@ swift test
 ```
 
 Unit tests cover the hex/byte-packing utilities, the XUSB input mapping (axis
-and trigger scaling, button bitfield, zero-on-disconnect fan-out), the
-lock-free atomic counter under contention, the lenient beacon JSON decoder,
-and the persisted-model codable round-trips. They run in ~0.1 s and do not
-open sockets.
+and trigger scaling, button bitfield, per-device deadzone application,
+zero-on-disconnect fan-out), the lock-free atomic counter under contention,
+the lenient beacon JSON decoder, the persisted-model codable round-trips, the
+`PairingClient.classify` outcome arms (success / authRequired / unreachable),
+and the `ScreenWakeController` acquire/release lifecycle via a fake
+`DisplaySleepInhibitor` (so the suite never has to touch IOKit). They run in
+~0.1 s and do not open sockets.
 
 ## Development
 
