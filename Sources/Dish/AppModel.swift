@@ -51,9 +51,16 @@ final class AppModel: ObservableObject {
 
         observe()
         installReportSender()
+        installRumbleHandlers()
         // Auto-reconnect every remembered server on launch.
         wifi.autoReconnectAll()
     }
+
+    /// Tracks which `WifiConnection` ids we've already attached the rumble
+    /// handler to. WifiConnections live until they're forgotten, so this set
+    /// only ever grows during a session — perfect for an "install once,
+    /// re-install on reconnect via the WifiConnection" pattern.
+    private var rumbleWiredConnections = Set<String>()
 
     // MARK: - Wiring
 
@@ -94,6 +101,13 @@ final class AppModel: ObservableObject {
             }
             .store(in: &cancellables)
 
+        // Make sure every newly-pooled WifiConnection has its rumble handler
+        // installed. The pool only grows during a session — `register` adds
+        // entries, `forget` removes — so we re-walk it on each pool change.
+        wifi.$connections
+            .sink { [weak self] _ in self?.installRumbleHandlers() }
+            .store(in: &cancellables)
+
         // Surface pairing + error events to the UI.
         wifi.events
             .sink { [weak self] ev in
@@ -129,6 +143,40 @@ final class AppModel: ObservableObject {
         }
         self.slots = next
         self.connections = conns
+    }
+
+    /// Install the rumble handler on every WifiConnection in the pool that
+    /// doesn't already have one. The handler walks the current bindings
+    /// (slotId → connectionId), finds the slot bound to *this* connection,
+    /// and forwards the rumble payload to `GameControllerInput.applyRumble`
+    /// for that slot id (== device id, by construction in `rebuildSlots`).
+    private func installRumbleHandlers() {
+        let input = self.input
+        let hub = self.hub
+        for (id, conn) in wifi.connections {
+            if rumbleWiredConnections.contains(id) { continue }
+            rumbleWiredConnections.insert(id)
+            conn.setRumbleHandler { rm in
+                Task { @MainActor in
+                    var deviceId: String?
+                    for (slotId, cid) in hub.bindings where cid == id {
+                        deviceId = slotId
+                        break
+                    }
+                    guard let deviceId else { return }
+                    input.applyRumble(
+                        deviceId: deviceId,
+                        strongMagnitude: rm.strongMagnitude,
+                        weakMagnitude: rm.weakMagnitude,
+                        durationMs: rm.durationMs,
+                        hasLightbar: rm.hasLightbar,
+                        lightbarR: rm.lightbarR,
+                        lightbarG: rm.lightbarG,
+                        lightbarB: rm.lightbarB
+                    )
+                }
+            }
+        }
     }
 
     /// Wire the input processor so every gamepad report from device `id`

@@ -165,6 +165,58 @@ extension SatelliteClient {
         } else if msgType == 0x0007, msgLen >= 2, plain.count >= 6 {
             vigemAvailable = Int8(plain[4] == 0 ? 0 : 1)
             activeControllerCount = Int8(bitPattern: plain[5])
+        } else if msgType == Self.msgRumble {
+            // The full inner buffer holds the 4-byte header at [0..3]; the
+            // payload (matching the producer side in
+            // satellite/src/adapters/client_adapter.cpp::sendRumble) starts at
+            // offset 4. parseRumblePayload works on the payload slice for
+            // parity with the unit-test seam.
+            guard plain.count >= 4 else { return }
+            let payload = Array(plain[4 ..< plain.count])
+            guard let rm = SatelliteClient.parseRumblePayload(payload) else { return }
+            if let handler = rumbleHandler {
+                handler(rm)
+            }
         }
+    }
+
+    /// Pure decoder for the `MSG_RUMBLE` inner payload (the 4-byte header
+    /// `{type, length}` has already been stripped). Returns `nil` on
+    /// truncation. Public + static so it can be exercised by unit tests
+    /// without driving a live socket.
+    ///
+    /// Wire layout:
+    ///
+    ///     ctrlIdx(1)  strong(2 BE)  weak(2 BE)  durMs(2 BE)  flags(1)
+    ///     [R(1)  G(1)  B(1)]    // present iff flags bit 0 set
+    static func parseRumblePayload(_ payload: [UInt8]) -> RumbleMessage? {
+        // Mandatory section is 8 bytes.
+        guard payload.count >= 8 else { return nil }
+        let ctrlIdx = Int(payload[0])
+        let strong = (UInt16(payload[1]) << 8) | UInt16(payload[2])
+        let weak = (UInt16(payload[3]) << 8) | UInt16(payload[4])
+        let dur = (UInt16(payload[5]) << 8) | UInt16(payload[6])
+        let flags = payload[7]
+        let hasLightbar = (flags & 0x01) != 0
+        var r: UInt8 = 0
+        var g: UInt8 = 0
+        var b: UInt8 = 0
+        if hasLightbar {
+            // Declared lightbar but truncated tail → malformed.
+            guard payload.count >= 11 else { return nil }
+            r = payload[8]
+            g = payload[9]
+            b = payload[10]
+        }
+        return RumbleMessage(
+            controllerIndex: ctrlIdx,
+            strongMagnitude: strong,
+            weakMagnitude: weak,
+            durationMs: dur,
+            hasLightbar: hasLightbar,
+            lightbarR: r,
+            lightbarG: g,
+            lightbarB: b
+        )
     }
 }
