@@ -17,7 +17,15 @@ struct ConnectionsView: View {
             Divider().background(DishTheme.outline)
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
-                    SectionHeader(title: "WI-FI SERVERS")
+                    HStack(spacing: 8) {
+                        SectionHeader(title: "WI-FI SERVERS")
+                        if wifi.isScanning {
+                            ProgressView()
+                                .controlSize(.small)
+                                .progressViewStyle(.circular)
+                        }
+                        Spacer()
+                    }
                     if combinedRows.isEmpty {
                         Text("Press Scan to look for servers on your LAN")
                             .font(.system(size: 12))
@@ -31,9 +39,24 @@ struct ConnectionsView: View {
                 }
                 .padding(20)
             }
+            if let msg = model.errorMessage {
+                ErrorBanner(message: msg) { model.errorMessage = nil }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+            }
         }
         .frame(minWidth: 480, minHeight: 540)
         .background(DishTheme.background)
+        // Pairing is presented from here (in addition to MainView) because
+        // SwiftUI cannot activate a second sibling `.sheet` on MainView while
+        // this sheet is already presented. Nesting the pairing sheet inside
+        // the currently-presented view is the only way to make it appear
+        // when the user clicks Connect from this page.
+        .sheet(item: $model.pairingTarget) { server in
+            PairingSheet(server: server)
+                .environmentObject(model)
+                .environmentObject(wifi)
+        }
     }
 
     // MARK: - Header
@@ -105,6 +128,11 @@ struct ConnectionsView: View {
                     .foregroundColor(DishTheme.muted)
             }
             Spacer()
+            if wifi.pairingInFlight.contains(summary.id) {
+                ProgressView()
+                    .controlSize(.small)
+                    .progressViewStyle(.circular)
+            }
             primaryButton(for: summary)
             Button("Forget") { model.forget(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())

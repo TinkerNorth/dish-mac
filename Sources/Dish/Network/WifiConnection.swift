@@ -16,6 +16,9 @@ final class WifiConnection: ObservableObject, Identifiable {
     @Published private(set) var server: DiscoveredServer
     @Published private(set) var state: WifiState = .idle
     @Published private(set) var boundSlotId: String?
+    /// True while a `MSG_CONTROLLER_ADD` is awaiting `MSG_CONTROLLER_ACK`.
+    /// The dashboard observes this to show a spinner.
+    @Published private(set) var isRegisteringController = false
 
     /// Server-issued connection id, valid while CONNECTED.
     private(set) var connectionId: String?
@@ -28,7 +31,16 @@ final class WifiConnection: ObservableObject, Identifiable {
         clientRef.get()
     }
 
+    /// Human-readable controller-registration errors (timeout or server
+    /// rejection codes). Listened to by `WifiConnectionManager` and forwarded
+    /// into the global event stream so the UI can surface them inline.
+    let errorMessages = PassthroughSubject<String, Never>()
+    /// Emitted with the slot id when registration is rejected/times out so
+    /// `ConnectionHub` can roll back the local binding.
+    let slotRegistrationFailed = PassthroughSubject<String, Never>()
+
     private var aliveTask: Task<Void, Never>?
+    private var registrationTask: Task<Void, Never>?
     private var controllerAdded = false
     private var pendingControllerType = 0
 
@@ -81,7 +93,10 @@ final class WifiConnection: ObservableObject, Identifiable {
             }
         }
         if boundSlotId != nil, !controllerAdded {
-            Task { await self.registerController(type: pendingControllerType) }
+            registrationTask = Task { [weak self] in
+                guard let self else { return }
+                await self.registerController(type: self.pendingControllerType)
+            }
         }
     }
 
@@ -90,6 +105,9 @@ final class WifiConnection: ObservableObject, Identifiable {
         if state == .idle, existing == nil { return }
         aliveTask?.cancel()
         aliveTask = nil
+        registrationTask?.cancel()
+        registrationTask = nil
+        isRegisteringController = false
         existing?.stopHeartbeat()
         existing?.closeSocket()
         clientRef.set(nil)
@@ -111,6 +129,9 @@ final class WifiConnection: ObservableObject, Identifiable {
     func detachSlot() {
         if boundSlotId == nil { return }
         boundSlotId = nil
+        registrationTask?.cancel()
+        registrationTask = nil
+        isRegisteringController = false
         if controllerAdded, let live = client {
             live.controllerRemove(index: Self.defaultCtrlIndex)
         }
@@ -119,16 +140,50 @@ final class WifiConnection: ObservableObject, Identifiable {
 
     private func registerController(type: Int) async {
         guard let live = clientRef.get() else { return }
+        let slotId = boundSlotId
         live.resetControllerAck()
         live.controllerAdd(index: Self.defaultCtrlIndex, capabilities: Self.defaultCaps)
+        isRegisteringController = true
+        defer { isRegisteringController = false }
+
         var attempts = 0
         while attempts < Self.ackWaitAttempts, live.lastControllerAck == -1 {
             try? await Task.sleep(nanoseconds: Self.ackWaitIntervalMs * 1_000_000)
             attempts += 1
         }
-        if live.lastControllerAck != -1 {
+        let ack = live.lastControllerAck
+        if ack == -1 {
+            errorMessages.send("Server did not acknowledge controller add (timeout)")
+            if let slotId { slotRegistrationFailed.send(slotId) }
+            return
+        }
+        let result = UInt8(ack & 0xFF)
+        if result == 0x00 /* ACK_OK */ {
             live.sendControllerType(index: Self.defaultCtrlIndex, type: type)
             controllerAdded = true
+        } else {
+            errorMessages.send(Self.controllerAckErrorMessage(result))
+            if let slotId { slotRegistrationFailed.send(slotId) }
+        }
+    }
+
+    /// Maps the `MSG_CONTROLLER_ACK` result byte to a human-readable string.
+    /// Codes match `satellite/src/core/types.h` and are kept identical to
+    /// `dish-linux` and `dish-android` so users see the same text on any client.
+    private nonisolated static func controllerAckErrorMessage(_ result: UInt8) -> String {
+        switch result {
+        case 0x01:
+            "Server has no virtual gamepad backend — controller cannot be created"
+        case 0x02:
+            "Server has no free controller slots"
+        case 0x03:
+            "Controller already added on the server"
+        case 0x04:
+            "Controller not found on the server"
+        case 0x05:
+            "Server failed to plug in the virtual controller"
+        default:
+            "Server rejected controller add (code \(result))"
         }
     }
 

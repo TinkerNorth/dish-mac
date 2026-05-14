@@ -18,11 +18,22 @@ final class WifiConnectionManager: ObservableObject {
     @Published private(set) var connections: [String: WifiConnection] = [:]
     @Published private(set) var discoveredServers: [DiscoveredServer] = []
     @Published private(set) var isScanning = false
+    /// IDs currently in the pair-and-handshake flow. The connections page
+    /// uses this to render a spinner per row.
+    @Published private(set) var pairingInFlight: Set<String> = []
+    /// True while any pooled connection is awaiting `MSG_CONTROLLER_ACK`.
+    /// Aggregated from each `WifiConnection.isRegisteringController`.
+    @Published private(set) var anyControllerRegistering = false
     let events = PassthroughSubject<ConnectionEvent, Never>()
+    /// Forwarded from per-connection `slotRegistrationFailed` so
+    /// `ConnectionHub` can roll back the local binding when the server
+    /// rejects a controller add.
+    let slotRegistrationFailed = PassthroughSubject<String, Never>()
 
     private let store: ConnectionStore
     private lazy var deviceId = store.getOrCreateDeviceId()
     private let deviceName = Host.current().localizedName ?? "Mac"
+    private var perConnCancellables: [String: Set<AnyCancellable>] = [:]
 
     init(store: ConnectionStore) {
         self.store = store
@@ -30,6 +41,28 @@ final class WifiConnectionManager: ObservableObject {
 
     func get(_ id: String) -> WifiConnection? {
         connections[id]
+    }
+
+    /// Insert `conn` into the pool and start forwarding its per-connection
+    /// signals (controller-ack errors + slot-registration-failed) into the
+    /// manager-level event streams.
+    private func register(_ conn: WifiConnection) {
+        connections[conn.id] = conn
+        var bag = Set<AnyCancellable>()
+        conn.errorMessages
+            .sink { [weak self] msg in self?.events.send(.error(msg)) }
+            .store(in: &bag)
+        conn.slotRegistrationFailed
+            .sink { [weak self] slot in self?.slotRegistrationFailed.send(slot) }
+            .store(in: &bag)
+        conn.$isRegisteringController
+            .sink { [weak self] _ in self?.recomputeAnyRegistering() }
+            .store(in: &bag)
+        perConnCancellables[conn.id] = bag
+    }
+
+    private func recomputeAnyRegistering() {
+        anyControllerRegistering = connections.values.contains { $0.isRegisteringController }
     }
 
     // MARK: - Discovery
@@ -64,7 +97,7 @@ final class WifiConnectionManager: ObservableObject {
         }
         let conn = connections[id] ?? {
             let newConn = WifiConnection(id: id, server: server)
-            connections[id] = newConn
+            register(newConn)
             return newConn
         }()
         conn.updateServer(server)
@@ -86,6 +119,8 @@ final class WifiConnectionManager: ObservableObject {
         }
         // Snapshot main-actor state so the detached task doesn't need to hop.
         let did = deviceId, dname = deviceName
+        pairingInFlight.insert(conn.id)
+        defer { pairingInFlight.remove(conn.id) }
         // Empty PIN is the "already-paired, re-use saved shared key" path.
         let pair = await Task.detached(priority: .userInitiated) {
             PairingClient.pair(
@@ -114,12 +149,14 @@ final class WifiConnectionManager: ObservableObject {
         let id = WifiConnection.idFor(server)
         let conn = connections[id] ?? {
             let newConn = WifiConnection(id: id, server: server)
-            connections[id] = newConn
+            register(newConn)
             return newConn
         }()
         conn.markConnecting()
         let did = deviceId, dname = deviceName
         Task {
+            pairingInFlight.insert(conn.id)
+            defer { pairingInFlight.remove(conn.id) }
             let pair = await Task.detached(priority: .userInitiated) {
                 PairingClient.pair(
                     ip: server.ip,
@@ -200,6 +237,8 @@ final class WifiConnectionManager: ObservableObject {
         disconnect(id: id)
         store.forget(id)
         connections.removeValue(forKey: id)
+        perConnCancellables.removeValue(forKey: id)
+        recomputeAnyRegistering()
     }
 
     /// Reconnect every remembered server that isn't already live. Safe to call
