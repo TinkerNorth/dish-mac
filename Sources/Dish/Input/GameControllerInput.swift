@@ -4,6 +4,16 @@
 import Combine
 import Foundation
 import GameController
+import os
+
+/// Default per-axis deadzone applied to every newly-attached controller. The
+/// magic numbers correspond to ~10 % of the int16 axis range and ~5 % of the
+/// 0..255 trigger range — a conservative noise floor that keeps cheap pads
+/// from twitching at rest without clipping deliberate small inputs. Mirrors
+/// the per-device `flat` values Android pulls out of
+/// `InputDevice.getMotionRange(axis).getFlat()`.
+private let kDefaultStickFlat: Int16 = 3277
+private let kDefaultTriggerFlat: UInt8 = 13
 
 /// Bridges Apple's `GameController.framework` into the `GamepadInputProcessor`.
 /// Hooks `valueChangedHandler` on every extended gamepad so we push a report
@@ -11,6 +21,8 @@ import GameController
 /// `onInputDeviceAdded`/`dispatchGenericMotionEvent` flow on Android.
 @MainActor
 final class GameControllerInput: ObservableObject {
+
+    private static let log = Logger(subsystem: "com.tinkernorth.dish", category: "GC")
 
     /// Published list of currently-connected controllers. One `Slot` per
     /// physical controller.
@@ -70,6 +82,26 @@ final class GameControllerInput: ObservableObject {
         if !slots.contains(where: { $0.id == id }) {
             slots.append(Slot(id: id, name: name))
         }
+
+        // One-shot device-capability dump — mirrors the SatelliteJNI DEVCAPS
+        // log on Android (PR #44/#47). Aimed at users reporting "my pad
+        // doesn't work": ProductCategory tells us whether GameController
+        // negotiated as Xbox / DualShock / DualSense / MFi / generic HID.
+        Self.log.info("""
+            DEVCAPS id=\(id, privacy: .public) name=\(name, privacy: .public) \
+            category=\(controller.productCategory, privacy: .public) \
+            extendedGamepad=yes hasButtonOptions=\(pad.buttonOptions != nil) \
+            hasLeftThumbstickButton=\(pad.leftThumbstickButton != nil) \
+            hasRightThumbstickButton=\(pad.rightThumbstickButton != nil)
+            """)
+
+        // Push the default deadzone profile straight away. The processor
+        // applies these to every report from this device until/unless the
+        // user overrides them in a future Settings UI.
+        processor.setDeadzones(
+            deviceId: id,
+            .init(stickFlat: kDefaultStickFlat, triggerFlat: kDefaultTriggerFlat)
+        )
 
         // The single master handler rebuilds the XUSB state from the current
         // snapshot whenever *anything* changes. GameController coalesces

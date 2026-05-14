@@ -73,6 +73,17 @@ final class WifiConnectionManager: ObservableObject {
     }
 
     private func pairAndConnect(conn: WifiConnection, server: DiscoveredServer) async {
+        let id = WifiConnection.idFor(server)
+        // Auto-reconnect fast path: if we already have a shared key saved for
+        // this server, skip the TCP pair handshake entirely and go straight
+        // to `openSession`. A moved/offline server then fails fast in the
+        // HTTP layer instead of bouncing through pair → PairingRequired and
+        // trapping the user behind a PIN prompt that can't be satisfied.
+        // Mirrors dish-android PR #43.
+        if let saved = store.sharedKey(for: id), saved.count == 64 {
+            await openSession(conn: conn, server: server)
+            return
+        }
         // Snapshot main-actor state so the detached task doesn't need to hop.
         let did = deviceId, dname = deviceName
         // Empty PIN is the "already-paired, re-use saved shared key" path.
@@ -85,13 +96,17 @@ final class WifiConnectionManager: ObservableObject {
                 pin: ""
             )
         }.value
-        guard pair.ok, let sharedKey = pair.sharedKey else {
+        switch PairingClient.classify(pair) {
+        case let .success(sharedKey):
+            store.setSharedKey(sharedKey, for: id)
+            await openSession(conn: conn, server: server)
+        case .authRequired:
             conn.markDisconnected()
             events.send(.pairingRequired(server))
-            return
+        case let .unreachable(msg):
+            conn.markDisconnected()
+            events.send(.error("Server unreachable — has it moved networks? (\(msg))"))
         }
-        store.setSharedKey(sharedKey, for: WifiConnection.idFor(server))
-        await openSession(conn: conn, server: server)
     }
 
     /// Finish pairing with a user-supplied PIN.
@@ -114,13 +129,17 @@ final class WifiConnectionManager: ObservableObject {
                     pin: pin
                 )
             }.value
-            guard pair.ok, let sharedKey = pair.sharedKey else {
+            switch PairingClient.classify(pair) {
+            case let .success(sharedKey):
+                store.setSharedKey(sharedKey, for: id)
+                await openSession(conn: conn, server: server)
+            case .authRequired:
                 conn.markDisconnected()
                 events.send(.error(pair.error ?? "Pairing failed"))
-                return
+            case let .unreachable(msg):
+                conn.markDisconnected()
+                events.send(.error("Server unreachable — has it moved networks? (\(msg))"))
             }
-            store.setSharedKey(sharedKey, for: WifiConnection.idFor(server))
-            await openSession(conn: conn, server: server)
         }
     }
 
