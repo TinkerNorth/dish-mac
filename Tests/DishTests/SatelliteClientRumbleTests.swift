@@ -21,12 +21,12 @@ final class SatelliteClientRumbleTests: XCTestCase {
         weak: UInt16,
         dur: UInt16
     ) -> [UInt8] {
-        return [
+        [
             ctrlIdx,
             UInt8(strong >> 8), UInt8(strong & 0xFF),
             UInt8(weak >> 8), UInt8(weak & 0xFF),
             UInt8(dur >> 8), UInt8(dur & 0xFF),
-            0x00, // flags
+            0x00 // flags
         ]
     }
 

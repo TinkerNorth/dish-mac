@@ -275,10 +275,10 @@ final class GamepadInputProcessorTests: XCTestCase {
             deviceId: "pad-1",
             state: .init(wButtons: 0, lt: 18, rt: 21, lx: 4999, ly: 5001, rx: 0, ry: 0)
         )
-        XCTAssertEqual(captured?.0, 0)      // lx below flat → zeroed
-        XCTAssertEqual(captured?.1, 5001)   // ly above flat → passed
-        XCTAssertEqual(captured?.2, 0)      // lt at/below flat → zeroed
-        XCTAssertEqual(captured?.3, 21)     // rt above flat → passed
+        XCTAssertEqual(captured?.0, 0) // lx below flat → zeroed
+        XCTAssertEqual(captured?.1, 5001) // ly above flat → passed
+        XCTAssertEqual(captured?.2, 0) // lt at/below flat → zeroed
+        XCTAssertEqual(captured?.3, 21) // rt above flat → passed
     }
 
     func testPublishAppliesDifferentDeadzonesPerDevice() {

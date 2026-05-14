@@ -79,11 +79,13 @@ final class SatelliteClient {
     private let rumbleHandlerLock = NSLock()
     var rumbleHandler: ((RumbleMessage) -> Void)? {
         get {
-            rumbleHandlerLock.lock(); defer { rumbleHandlerLock.unlock() }
+            rumbleHandlerLock.lock()
+            defer { rumbleHandlerLock.unlock() }
             return _rumbleHandler
         }
         set {
-            rumbleHandlerLock.lock(); defer { rumbleHandlerLock.unlock() }
+            rumbleHandlerLock.lock()
+            defer { rumbleHandlerLock.unlock() }
             _rumbleHandler = newValue
         }
     }
