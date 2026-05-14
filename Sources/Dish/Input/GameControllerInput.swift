@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import CoreHaptics
 import Foundation
 import GameController
 import os
@@ -38,6 +39,14 @@ final class GameControllerInput: ObservableObject {
     private var observers: [NSObjectProtocol] = []
     /// Weak back-reference for each active controller so we can unhook handlers.
     private var controllerIds: [ObjectIdentifier: String] = [:]
+    /// id → live `GCController`, populated on attach and pruned on detach so
+    /// `applyRumble(deviceId:)` can resolve the haptics target without a
+    /// linear scan of every connected controller every packet.
+    private var controllersById: [String: GCController] = [:]
+    /// Per-controller rumble actuator. Created lazily on first `applyRumble`
+    /// call so we don't pay the engine-startup cost for controllers the
+    /// satellite never rumbles. Cleaned up in `detach`.
+    private var actuators: [String: RumbleActuator] = [:]
 
     init() {
         let nc = NotificationCenter.default
@@ -77,6 +86,7 @@ final class GameControllerInput: ObservableObject {
         guard let pad = controller.extendedGamepad else { return }
         let id = stableId(for: controller)
         controllerIds[ObjectIdentifier(controller)] = id
+        controllersById[id] = controller
         let name = controller.vendorName ?? controller.productCategory
 
         if !slots.contains(where: { $0.id == id }) {
@@ -119,6 +129,52 @@ final class GameControllerInput: ObservableObject {
         controller.extendedGamepad?.valueChangedHandler = nil
         slots.removeAll { $0.id == id }
         processor.remove(deviceId: id)
+        controllersById.removeValue(forKey: id)
+        actuators.removeValue(forKey: id)?.shutdown()
+    }
+
+    // MARK: - Rumble actuation (return path)
+
+    /// Drive the physical controller's haptics. Called from the
+    /// `SatelliteClient` receive thread (via the AppModel rumble handler).
+    /// Most of the heavy lifting is in `RumbleActuator`; this method just
+    /// resolves `deviceId → GCController` and gates on whether the pad
+    /// actually exposes haptics (returns `nil` on legacy MFi pads). Hop to
+    /// the main actor for the dictionary lookups since `controllersById` is
+    /// owned by the main actor.
+    nonisolated func applyRumble(
+        deviceId: String,
+        strongMagnitude: UInt16,
+        weakMagnitude: UInt16,
+        durationMs: UInt16,
+        hasLightbar: Bool,
+        lightbarR: UInt8,
+        lightbarG: UInt8,
+        lightbarB: UInt8
+    ) {
+        Task { @MainActor in
+            guard let controller = self.controllersById[deviceId] else { return }
+            // Lazily create the actuator so we don't allocate haptics engines
+            // for controllers a satellite never rumbles.
+            let actuator: RumbleActuator
+            if let existing = self.actuators[deviceId] {
+                actuator = existing
+            } else if let fresh = RumbleActuator(controller: controller) {
+                self.actuators[deviceId] = fresh
+                actuator = fresh
+            } else {
+                return // controller doesn't expose haptics
+            }
+            actuator.apply(
+                strong: strongMagnitude,
+                weak: weakMagnitude,
+                durationMs: durationMs,
+                hasLightbar: hasLightbar,
+                lightbarR: lightbarR,
+                lightbarG: lightbarG,
+                lightbarB: lightbarB
+            )
+        }
     }
 
     // MARK: - Hot path

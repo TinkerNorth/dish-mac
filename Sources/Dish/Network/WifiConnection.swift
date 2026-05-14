@@ -44,6 +44,11 @@ final class WifiConnection: ObservableObject, Identifiable {
     private var controllerAdded = false
     private var pendingControllerType = 0
 
+    /// Set once during composition; re-applied to each fresh `SatelliteClient`
+    /// in `markConnected` so we don't lose rumble across reconnects. The
+    /// closure runs on the SatelliteClient's receive-loop dispatch queue.
+    private var rumbleHandler: ((SatelliteClient.RumbleMessage) -> Void)?
+
     private nonisolated static let defaultCtrlIndex = 0
     private nonisolated static let defaultCaps: UInt16 = 0x0003
     private nonisolated static let ackWaitAttempts = 20
@@ -79,6 +84,7 @@ final class WifiConnection: ObservableObject, Identifiable {
         self.connectionId = connectionId
         state = .connected
         client.resetControllerAck()
+        client.rumbleHandler = rumbleHandler
         client.startReceiveLoop()
         client.startHeartbeat()
 
@@ -213,6 +219,15 @@ final class WifiConnection: ObservableObject, Identifiable {
             rx: rx,
             ry: ry
         )
+    }
+
+    /// Install (or replace) the rumble handler. Called from the AppModel
+    /// during composition; we cache it on the WifiConnection so that
+    /// `markConnected` can re-install it on each fresh `SatelliteClient`
+    /// instance after a reconnect.
+    func setRumbleHandler(_ handler: @escaping (SatelliteClient.RumbleMessage) -> Void) {
+        rumbleHandler = handler
+        clientRef.get()?.rumbleHandler = handler
     }
 }
 

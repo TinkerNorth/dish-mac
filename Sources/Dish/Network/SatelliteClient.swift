@@ -28,6 +28,21 @@ final class SatelliteClient {
     private static let msgControllerAck: UInt16 = 0x0006
     private static let msgServerStatus: UInt16 = 0x0007
     private static let msgControllerType: UInt16 = 0x0008
+    static let msgRumble: UInt16 = 0x0009
+
+    /// Decoded `MSG_RUMBLE` payload. `lightbar*` are valid only when
+    /// `hasLightbar` is true (the optional trailing 3-byte tail of the
+    /// wire format).
+    struct RumbleMessage {
+        let controllerIndex: Int
+        let strongMagnitude: UInt16
+        let weakMagnitude: UInt16
+        let durationMs: UInt16
+        let hasLightbar: Bool
+        let lightbarR: UInt8
+        let lightbarG: UInt8
+        let lightbarB: UInt8
+    }
 
     static let heartbeatIntervalMs: UInt32 = 2000
     static let heartbeatMissMax = 5
@@ -56,6 +71,22 @@ final class SatelliteClient {
     var lastControllerAck: Int32 = -1
     var vigemAvailable: Int8 = -1
     var activeControllerCount: Int8 = -1
+
+    /// Per-packet rumble dispatcher. Set from the main actor; invoked from
+    /// the receive-loop dispatch queue. Guarded by `rumbleHandlerLock` so we
+    /// can swap handlers without racing the receive loop.
+    private var _rumbleHandler: ((RumbleMessage) -> Void)?
+    private let rumbleHandlerLock = NSLock()
+    var rumbleHandler: ((RumbleMessage) -> Void)? {
+        get {
+            rumbleHandlerLock.lock(); defer { rumbleHandlerLock.unlock() }
+            return _rumbleHandler
+        }
+        set {
+            rumbleHandlerLock.lock(); defer { rumbleHandlerLock.unlock() }
+            _rumbleHandler = newValue
+        }
+    }
 
     // MARK: - Lifecycle
 
