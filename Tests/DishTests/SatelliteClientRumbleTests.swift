@@ -76,8 +76,13 @@ final class SatelliteClientRumbleTests: XCTestCase {
 
     func testDecodesLightbarTail() throws {
         let p = lightbarPayload(
-            ctrlIdx: 1, strong: 0x0100, weak: 0x0080, dur: 250,
-            r: 0xDE, g: 0xAD, b: 0xBE
+            ctrlIdx: 1,
+            strong: 0x0100,
+            weak: 0x0080,
+            dur: 250,
+            r: 0xDE,
+            g: 0xAD,
+            b: 0xBE
         )
         let rm = try XCTUnwrap(SatelliteClient.parseRumblePayload(p))
         XCTAssertTrue(rm.hasLightbar)

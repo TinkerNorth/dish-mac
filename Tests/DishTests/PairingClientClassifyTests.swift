@@ -74,7 +74,7 @@ final class PairingClientClassifyTests: XCTestCase {
         // decodes to reachable=false. PairingClient.pair flips it to true
         // after a successful decode; if we ever drop that flip, every pair
         // response would silently classify as unreachable.
-        let json = #"{"ok":true,"sharedKey":"deadbeef"}"#.data(using: .utf8)!
+        let json = Data(#"{"ok":true,"sharedKey":"deadbeef"}"#.utf8)
         let r = try JSONDecoder().decode(PairResponse.self, from: json)
         XCTAssertTrue(r.ok)
         XCTAssertEqual(r.sharedKey, "deadbeef")
