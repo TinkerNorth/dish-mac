@@ -52,6 +52,8 @@ identifier_name:
     error: 60
   # Single-letter names are idiomatic in bit-packing / HID report code and
   # in short-lived loop indices; wire layout constants use compact naming.
+  # r/g/b: lightbar RGB color components. c: short-lived loop var in tests.
+  # p: protocol payload byte buffer in parser tests.
   excluded:
     - id
     - ip
@@ -59,6 +61,11 @@ identifier_name:
     - y
     - X
     - Y
+    - r
+    - g
+    - b
+    - c
+    - p
     - lx
     - ly
     - rx
