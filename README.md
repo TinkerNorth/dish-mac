@@ -71,6 +71,50 @@ behaviour stays predictable across platforms:
   users reporting *"my pad doesn't work"* — same idea as Android's
   SatelliteJNI `DEVCAPS` log.
 
+## Rumble (return path)
+
+Rumble flows the opposite direction to the input hot path. A game on the
+satellite host writes to the virtual controller's vibration channel, the
+satellite forwards a `MSG_RUMBLE = 0x0009` packet back over the encrypted
+UDP socket, and the dish actuates the matching `GCController` via
+GameController.framework's haptics surface.
+
+```
+  ┌──────────────────────┐      ┌──────────────────────┐      ┌──────────────────────┐
+  │ SatelliteClient      │ ───► │ WifiConnection       │ ───► │ GameControllerInput  │
+  │  • ack receive queue │      │  • per-conn handler  │      │    .applyRumble(...) │
+  │  • parseRumblePayload│      │    (installed by     │      │      └─► RumbleActua-│
+  │  • dispatch to       │      │     AppModel from    │      │           tor.apply  │
+  │    rumbleHandler     │      │     wifi.$connections│      │           (per ctrl) │
+  └──────────────────────┘      └──────────────────────┘      └──────────┬───────────┘
+                                                                         │
+                                                                         ▼
+                                                          GCController.haptics +
+                                                          CHHapticEngine per locator
+                                                          (.leftHandle / .rightHandle)
+```
+
+The wire format is documented in
+[`satellite/README.md`](https://github.com/TinkerNorth/satellite#rumble-return-path).
+On the dish-mac side:
+
+* **Parser** — `SatelliteClient.parseRumblePayload` is a pure static
+  decoder so unit tests can exercise byte layouts without a live socket
+  (see `Tests/DishTests/SatelliteClientRumbleTests.swift`).
+* **Routing** — `AppModel.installRumbleHandlers` runs on every
+  `wifi.$connections` change and attaches a handler that resolves
+  `connId → slotId → deviceId` via the `ConnectionHub` bindings, then
+  calls `GameControllerInput.applyRumble`.
+* **Actuation** — `RumbleActuator` keeps two `CHHapticEngine` instances
+  per controller (one for `.leftHandle`, one for `.rightHandle`). Each
+  rumble packet builds a tiny `CHHapticPattern` with intensity scaled
+  from 0..65535 to CoreHaptics's 0..1, and a fresh per-call player so we
+  don't pay engine start-up latency per packet. `controller.light?.color`
+  is set when the satellite published a DS4 lightbar colour.
+* **No haptics → silent no-op.** Legacy MFi pads that don't expose
+  `controller.haptics` skip actuation entirely; the player just doesn't
+  feel rumble — same outcome as if the satellite never sent the packet.
+
 ## Requirements
 
 - macOS 13 (Ventura) or newer
