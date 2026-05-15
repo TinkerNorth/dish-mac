@@ -46,7 +46,27 @@ final class GamepadInputProcessor {
         _ ry: Int16
     ) -> Void
 
+    /// Invoked on every motion (IMU) sample. Same threading discipline as
+    /// `ReportSender` — typically called from the `GCMotion` callback thread.
+    /// Values are pre-scaled; see `scaleGyro` / `scaleAccel`.
+    typealias MotionSender = (
+        _ deviceId: DeviceId,
+        _ gyroX: Int16, _ gyroY: Int16, _ gyroZ: Int16,
+        _ accelX: Int16, _ accelY: Int16, _ accelZ: Int16,
+        _ timestampDeltaUs: UInt32
+    ) -> Void
+
+    /// Invoked on every battery snapshot — connect, periodic 30 s tick,
+    /// and on charging-state transitions. Called on the main actor.
+    typealias BatterySender = (
+        _ deviceId: DeviceId,
+        _ level: UInt8,
+        _ statusRaw: UInt8
+    ) -> Void
+
     var reportSender: ReportSender?
+    var motionSender: MotionSender?
+    var batterySender: BatterySender?
 
     /// Per-device state. Small struct, map lookups on every event — same
     /// design as the Android processor.
@@ -74,6 +94,7 @@ final class GamepadInputProcessor {
 
     private var states: [DeviceId: DeviceState] = [:]
     private var deadzones: [DeviceId: Deadzones] = [:]
+    private var lastMotionTimestampNs: [DeviceId: UInt64] = [:]
     private let lock = NSLock()
 
     // MARK: - Mutators (called from GC callback thread)
@@ -128,6 +149,42 @@ final class GamepadInputProcessor {
         defer { lock.unlock() }
         states.removeValue(forKey: deviceId)
         deadzones.removeValue(forKey: deviceId)
+        lastMotionTimestampNs.removeValue(forKey: deviceId)
+    }
+
+    /// Forward a pre-scaled IMU sample. The caller (`GameControllerInput`)
+    /// reads `GCMotion.gravity / userAcceleration / rotationRate` and converts
+    /// to the wire-scale ints via `scaleGyro` / `scaleAccel`. We compute the
+    /// inter-sample timestamp delta here so the GC bridge stays free of the
+    /// per-device state.
+    func publishMotion(
+        deviceId: DeviceId,
+        gyroX: Int16, gyroY: Int16, gyroZ: Int16,
+        accelX: Int16, accelY: Int16, accelZ: Int16,
+        nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
+    ) {
+        lock.lock()
+        let prev = lastMotionTimestampNs[deviceId]
+        lastMotionTimestampNs[deviceId] = nowNs
+        lock.unlock()
+
+        let deltaUs: UInt32
+        if let prev, nowNs > prev {
+            // Saturating cast — a delta over UInt32.max µs (~71 minutes) is
+            // not physically meaningful and the receiver tolerates 0 anyway.
+            deltaUs = UInt32(clamping: (nowNs - prev) / 1_000)
+        } else {
+            deltaUs = 0
+        }
+
+        motionSender?(deviceId, gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaUs)
+    }
+
+    /// Forward a battery snapshot. `level` is 0..100 inclusive or `0xFF`
+    /// (unknown). `statusRaw` is one of the `SatelliteClient.BatteryStatus`
+    /// raw values; the bridge resolves the enum before calling.
+    func publishBattery(deviceId: DeviceId, level: UInt8, statusRaw: UInt8) {
+        batterySender?(deviceId, level, statusRaw)
     }
 }
 
@@ -144,6 +201,24 @@ func scaleAxis(_ value: Float, max: Float) -> Int16 {
 @inline(__always)
 func scaleTrigger(_ value: Float) -> UInt8 {
     UInt8(clamping: Int((value * 255.0).rounded()))
+}
+
+/// Scale a deg/s gyro reading into the wire int16. Full scale ±2000 deg/s →
+/// ±32767, matching the `MOTION_GYRO_SCALE_DEG_S` constant on the receiver.
+/// Values beyond ±2000 deg/s clamp to the int16 limits.
+@inline(__always)
+func scaleGyro(_ degPerSec: Double) -> Int16 {
+    let scaled = (degPerSec / 2000.0) * 32767.0
+    return Int16(clamping: Int(scaled.rounded()))
+}
+
+/// Scale a g-units acceleration reading into the wire int16. Full scale ±4 g
+/// → ±32767, matching `MOTION_ACCEL_SCALE_G` on the receiver. Values beyond
+/// ±4 g clamp.
+@inline(__always)
+func scaleAccel(_ gValue: Double) -> Int16 {
+    let scaled = (gValue / 4.0) * 32767.0
+    return Int16(clamping: Int(scaled.rounded()))
 }
 
 /// Apply the per-axis deadzone thresholds in-place. Sticks: `|v| <= flat → 0`.

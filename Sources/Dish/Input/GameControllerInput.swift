@@ -15,6 +15,10 @@ import os
 /// `InputDevice.getMotionRange(axis).getFlat()`.
 private let kDefaultStickFlat: Int16 = 3277
 private let kDefaultTriggerFlat: UInt8 = 13
+/// Battery poll cadence — matches `BATTERY_REPORT_INTERVAL_SEC` (30 s) on
+/// the satellite. The first sample is sent ~1 s after attach.
+private let kBatteryPollIntervalSec: Int = 30
+private let kBatteryFirstReportDelaySec: Int = 1
 
 /// Bridges Apple's `GameController.framework` into the `GamepadInputProcessor`.
 /// Hooks `valueChangedHandler` on every extended gamepad so we push a report
@@ -47,6 +51,16 @@ final class GameControllerInput: ObservableObject {
     /// call so we don't pay the engine-startup cost for controllers the
     /// satellite never rumbles. Cleaned up in `detach`.
     private var actuators: [String: RumbleActuator] = [:]
+    /// Per-device polling timer that emits a battery snapshot every
+    /// `kBatteryPollIntervalSec` seconds and on charging-state changes.
+    /// macOS GCDevice doesn't surface a "battery state changed" notification,
+    /// so we poll. Polling is light (one Float read + an enum compare) and
+    /// only runs while the controller is attached.
+    private var batteryTimers: [String: DispatchSourceTimer] = [:]
+    /// Last battery snapshot we forwarded per device — used to suppress
+    /// duplicate emits between transition events. Stored as the wire-encoded
+    /// `(level, status)` tuple so we don't repeatedly normalise.
+    private var lastBatterySent: [String: (level: UInt8, status: UInt8)] = [:]
 
     init() {
         let nc = NotificationCenter.default
@@ -121,16 +135,125 @@ final class GameControllerInput: ObservableObject {
             guard let self else { return }
             self.pushReport(id: id, pad: pad)
         }
+
+        // Motion (IMU). Optional — only DualSense, DualShock 4, MFi pads
+        // with an IMU surface this. We hook the motion's own
+        // `valueChangedHandler`; rate is bounded by GCMotion (typically
+        // 200–500 Hz on DualSense), well under the 1 kHz cap senders are
+        // permitted.
+        if let motion = controller.motion {
+            motion.valueChangedHandler = { [weak self] motion in
+                guard let self else { return }
+                self.pushMotion(id: id, motion: motion)
+            }
+        }
+
+        // Battery. Optional — wired Xbox pads return nil. The first sample
+        // is delayed by `kBatteryFirstReportDelaySec` so the satellite has
+        // ACK'd the controller-add by the time it arrives; subsequent
+        // samples follow `kBatteryPollIntervalSec`.
+        if controller.battery != nil {
+            startBatteryTimer(deviceId: id, controller: controller)
+        }
     }
 
     private func detach(_ controller: GCController) {
         let oid = ObjectIdentifier(controller)
         guard let id = controllerIds.removeValue(forKey: oid) else { return }
         controller.extendedGamepad?.valueChangedHandler = nil
+        controller.motion?.valueChangedHandler = nil
         slots.removeAll { $0.id == id }
         processor.remove(deviceId: id)
         controllersById.removeValue(forKey: id)
         actuators.removeValue(forKey: id)?.shutdown()
+        if let timer = batteryTimers.removeValue(forKey: id) {
+            timer.cancel()
+        }
+        lastBatterySent.removeValue(forKey: id)
+    }
+
+    // MARK: - Motion (IMU)
+
+    /// Called from GCMotion's callback queue. Reads the gyroscope and the
+    /// gravity-corrected linear acceleration, scales to wire ints, and hands
+    /// off to the processor (which timestamps and dispatches via
+    /// `motionSender`).
+    ///
+    /// Coordinate convention: GCMotion already normalises to a right-handed
+    /// frame (`+X` = right, `+Y` = up, `+Z` = out of the screen toward the
+    /// player) for landscape-held DualSense/DualShock pads — that's exactly
+    /// the DSU convention the protocol asks senders to encode in. So no
+    /// per-axis rotation is needed here.
+    private nonisolated func pushMotion(id: String, motion: GCMotion) {
+        // Rotation rate is rad/s on GCMotion; scale to deg/s for the wire.
+        let radToDeg = 180.0 / Double.pi
+        let rate = motion.rotationRate
+        let gyroX = scaleGyro(rate.x * radToDeg)
+        let gyroY = scaleGyro(rate.y * radToDeg)
+        let gyroZ = scaleGyro(rate.z * radToDeg)
+
+        // GCMotion exposes both `gravity` and `userAcceleration` (each in g).
+        // The wire format wants the *total* acceleration the IMU sees — same
+        // as raw accelerometer output — so we sum.
+        let g = motion.gravity
+        let u = motion.userAcceleration
+        let accelX = scaleAccel(g.x + u.x)
+        let accelY = scaleAccel(g.y + u.y)
+        let accelZ = scaleAccel(g.z + u.z)
+
+        processor.publishMotion(
+            deviceId: id,
+            gyroX: gyroX, gyroY: gyroY, gyroZ: gyroZ,
+            accelX: accelX, accelY: accelY, accelZ: accelZ
+        )
+    }
+
+    // MARK: - Battery
+
+    /// Spin up the per-device polling timer. Fires once after
+    /// `kBatteryFirstReportDelaySec`, then every `kBatteryPollIntervalSec`.
+    /// The closure walks `controllersById` so we tolerate the controller
+    /// going away between ticks (the timer will then no-op until detach
+    /// cancels it).
+    private func startBatteryTimer(deviceId: String, controller: GCController) {
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        let delay: DispatchTime = .now() + .seconds(kBatteryFirstReportDelaySec)
+        timer.schedule(deadline: delay, repeating: .seconds(kBatteryPollIntervalSec))
+        timer.setEventHandler { [weak self, weak controller] in
+            guard let self, let controller, let battery = controller.battery else { return }
+            self.emitBattery(deviceId: deviceId, battery: battery)
+        }
+        timer.resume()
+        batteryTimers[deviceId] = timer
+    }
+
+    /// Read the GCDeviceBattery, encode for the wire, and forward to the
+    /// processor. Suppresses duplicate emits when nothing changed since the
+    /// last send (state-transition events would be the only reason to send
+    /// in less than 30 s).
+    private func emitBattery(deviceId: String, battery: GCDeviceBattery) {
+        let level: UInt8
+        // GCDeviceBattery.batteryLevel is Float in 0..1; -1 means "unknown".
+        let raw = battery.batteryLevel
+        if raw < 0 || raw > 1 {
+            level = 0xFF
+        } else {
+            level = UInt8(clamping: Int((raw * 100.0).rounded()))
+        }
+        let statusRaw: UInt8
+        switch battery.batteryState {
+        case .unknown: statusRaw = 0
+        case .discharging: statusRaw = 1
+        case .charging: statusRaw = 2
+        case .full: statusRaw = 3
+        @unknown default: statusRaw = 0
+        }
+
+        let snapshot = (level: level, status: statusRaw)
+        if lastBatterySent[deviceId] != nil, lastBatterySent[deviceId]! == snapshot { return }
+        lastBatterySent[deviceId] = snapshot
+
+        processor.publishBattery(deviceId: deviceId, level: level, statusRaw: statusRaw)
     }
 
     // MARK: - Rumble actuation (return path)

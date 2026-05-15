@@ -51,6 +51,8 @@ final class AppModel: ObservableObject {
 
         observe()
         installReportSender()
+        installMotionSender()
+        installBatterySender()
         installRumbleHandlers()
         // Auto-reconnect every remembered server on launch.
         wifi.autoReconnectAll()
@@ -196,6 +198,36 @@ final class AppModel: ObservableObject {
                 rx: rx,
                 ry: ry
             )
+        }
+    }
+
+    /// Wire motion samples through the same routing table the gamepad path
+    /// uses — same threading discipline, single locked dict read, no hop.
+    private func installMotionSender() {
+        let table = routingTable
+        input.processor.motionSender = { deviceId, gx, gy, gz, ax, ay, az, dt in
+            guard let conn = table.get(deviceId) else { return }
+            conn.sendMotion(
+                gyroX: gx, gyroY: gy, gyroZ: gz,
+                accelX: ax, accelY: ay, accelZ: az,
+                timestampDeltaUs: dt
+            )
+        }
+    }
+
+    /// Wire battery snapshots. This callback runs on the main actor (the
+    /// GCDeviceBattery polling timer is scheduled on `.main`), so the lookup
+    /// is safe but the send itself is `nonisolated` so the lock-free hot path
+    /// shape is preserved.
+    private func installBatterySender() {
+        let table = routingTable
+        input.processor.batterySender = { deviceId, level, statusRaw in
+            guard let conn = table.get(deviceId) else { return }
+            // Coerce the raw byte back to the enum at the boundary; default
+            // to .unknown if a future firmware ever surfaces a state we
+            // haven't seen, so we never crash on malformed input.
+            let status = SatelliteClient.BatteryStatus(rawValue: statusRaw) ?? .unknown
+            conn.sendBattery(level: level, status: status)
         }
     }
 

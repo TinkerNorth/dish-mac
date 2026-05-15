@@ -221,6 +221,34 @@ final class WifiConnection: ObservableObject, Identifiable {
         )
     }
 
+    /// Forward an IMU sample. Same threading discipline as `sendReport`:
+    /// called from the GameController callback thread, must be lock-free
+    /// outside of the single `sendto` inside `SatelliteClient`.
+    nonisolated func sendMotion(
+        gyroX: Int16, gyroY: Int16, gyroZ: Int16,
+        accelX: Int16, accelY: Int16, accelZ: Int16,
+        timestampDeltaUs: UInt32
+    ) {
+        guard let live = clientRef.get() else { return }
+        live.sendMotion(
+            controllerIndex: Self.defaultCtrlIndex,
+            gyroX: gyroX, gyroY: gyroY, gyroZ: gyroZ,
+            accelX: accelX, accelY: accelY, accelZ: accelZ,
+            timestampDeltaUs: timestampDeltaUs
+        )
+    }
+
+    /// Forward a battery snapshot. Sent on connect and every 30 s by the
+    /// `BatteryReporter` background timer plus on charging-state transitions.
+    nonisolated func sendBattery(level: UInt8, status: SatelliteClient.BatteryStatus) {
+        guard let live = clientRef.get() else { return }
+        live.sendBattery(
+            controllerIndex: Self.defaultCtrlIndex,
+            level: level,
+            status: status
+        )
+    }
+
     /// Install (or replace) the rumble handler. Called from the AppModel
     /// during composition; we cache it on the WifiConnection so that
     /// `markConnected` can re-install it on each fresh `SatelliteClient`
