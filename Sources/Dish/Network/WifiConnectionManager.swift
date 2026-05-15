@@ -71,12 +71,22 @@ final class WifiConnectionManager: ObservableObject {
         if isScanning { return }
         isScanning = true
         Task.detached(priority: .userInitiated) { [weak self] in
-            let found = LANDiscovery.discover()
+            // Two discovery paths in parallel: the legacy UDP broadcast beacon
+            // (LANDiscovery) and mDNS / Bonjour (MdnsBrowser). mDNS reaches
+            // servers on subnets that drop broadcast; the beacon stays as the
+            // fallback for satellites that predate the mDNS responder. Results
+            // are merged by stable id so a server heard on both appears once.
+            async let broadcast = Task.detached { LANDiscovery.discover() }.value
+            async let mdns = MdnsBrowser.discover()
+            let found = await (broadcast + mdns)
+            var byId: [String: DiscoveredServer] = [:]
+            for server in found { byId[server.id] = server }
+            let merged = byId.values.sorted { $0.name < $1.name }
             await MainActor.run { [weak self] in
                 guard let self else { return }
-                self.discoveredServers = found
+                self.discoveredServers = merged
                 self.isScanning = false
-                if found.isEmpty {
+                if merged.isEmpty {
                     self.events.send(.error("No servers found — check your network"))
                 }
             }
