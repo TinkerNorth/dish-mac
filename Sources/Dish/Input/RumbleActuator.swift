@@ -94,6 +94,18 @@ final class RumbleActuator {
         }
     }
 
+    /// Standalone lightbar setter for Task 1.4's dedicated MSG_LIGHTBAR
+    /// stream. Decoupled from rumble so a game that only changes colour
+    /// (Returnal, DSX-driven titles) reaches the LED.
+    func applyLightbar(r: UInt8, g: UInt8, b: UInt8) {
+        guard let light = controller.light else { return }
+        light.color = GCColor(
+            red: Float(r) / 255.0,
+            green: Float(g) / 255.0,
+            blue: Float(b) / 255.0
+        )
+    }
+
     // MARK: - Internals
 
     private func makeEngine(locality: GCHapticsLocality) -> CHHapticEngine? {

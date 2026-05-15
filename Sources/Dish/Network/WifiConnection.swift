@@ -49,6 +49,10 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// closure runs on the SatelliteClient's receive-loop dispatch queue.
     private var rumbleHandler: ((SatelliteClient.RumbleMessage) -> Void)?
 
+    /// Same lifecycle as `rumbleHandler`, for the Task 1.4 dedicated
+    /// lightbar stream (MSG_LIGHTBAR / 0x000D).
+    private var lightbarHandler: ((SatelliteClient.LightbarMessage) -> Void)?
+
     private nonisolated static let defaultCtrlIndex = 0
     private nonisolated static let defaultCaps: UInt16 = 0x0003
     private nonisolated static let ackWaitAttempts = 20
@@ -85,6 +89,7 @@ final class WifiConnection: ObservableObject, Identifiable {
         state = .connected
         client.resetControllerAck()
         client.rumbleHandler = rumbleHandler
+        client.lightbarHandler = lightbarHandler
         client.startReceiveLoop()
         client.startHeartbeat()
 
@@ -228,6 +233,13 @@ final class WifiConnection: ObservableObject, Identifiable {
     func setRumbleHandler(_ handler: @escaping (SatelliteClient.RumbleMessage) -> Void) {
         rumbleHandler = handler
         clientRef.get()?.rumbleHandler = handler
+    }
+
+    /// Install (or replace) the lightbar handler. Task 1.4 dedicated stream.
+    /// Same composition-time lifecycle as `setRumbleHandler`.
+    func setLightbarHandler(_ handler: @escaping (SatelliteClient.LightbarMessage) -> Void) {
+        lightbarHandler = handler
+        clientRef.get()?.lightbarHandler = handler
     }
 }
 

@@ -177,6 +177,13 @@ extension SatelliteClient {
             if let handler = rumbleHandler {
                 handler(rm)
             }
+        } else if msgType == Self.msgLightbar {
+            guard plain.count >= 4 else { return }
+            let payload = Array(plain[4 ..< plain.count])
+            guard let lm = SatelliteClient.parseLightbarPayload(payload) else { return }
+            if let handler = lightbarHandler {
+                handler(lm)
+            }
         }
     }
 
@@ -217,6 +224,19 @@ extension SatelliteClient {
             lightbarR: r,
             lightbarG: g,
             lightbarB: b
+        )
+    }
+
+    /// Pure decoder for the `MSG_LIGHTBAR` inner payload (Task 1.4). Wire
+    /// layout is `ctrlIdx + r + g + b` = 4 bytes exactly. Returns `nil` on
+    /// truncation. Forward-compat trailing bytes are tolerated and ignored.
+    static func parseLightbarPayload(_ payload: [UInt8]) -> LightbarMessage? {
+        guard payload.count >= 4 else { return nil }
+        return LightbarMessage(
+            controllerIndex: Int(payload[0]),
+            r: payload[1],
+            g: payload[2],
+            b: payload[3]
         )
     }
 }

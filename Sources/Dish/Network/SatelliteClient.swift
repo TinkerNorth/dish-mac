@@ -29,6 +29,7 @@ final class SatelliteClient {
     private static let msgServerStatus: UInt16 = 0x0007
     private static let msgControllerType: UInt16 = 0x0008
     static let msgRumble: UInt16 = 0x0009
+    static let msgLightbar: UInt16 = 0x000D
 
     /// Decoded `MSG_RUMBLE` payload. `lightbar*` are valid only when
     /// `hasLightbar` is true (the optional trailing 3-byte tail of the
@@ -42,6 +43,16 @@ final class SatelliteClient {
         let lightbarR: UInt8
         let lightbarG: UInt8
         let lightbarB: UInt8
+    }
+
+    /// Decoded `MSG_LIGHTBAR` payload — Task 1.4 dedicated stream. Independent
+    /// of `MSG_RUMBLE` so games that only change colour drive the LED on the
+    /// dish.
+    struct LightbarMessage {
+        let controllerIndex: Int
+        let r: UInt8
+        let g: UInt8
+        let b: UInt8
     }
 
     static let heartbeatIntervalMs: UInt32 = 2000
@@ -87,6 +98,23 @@ final class SatelliteClient {
             rumbleHandlerLock.lock()
             defer { rumbleHandlerLock.unlock() }
             _rumbleHandler = newValue
+        }
+    }
+
+    /// Per-packet lightbar dispatcher (Task 1.4). Same lock + race-free
+    /// swap semantics as `rumbleHandler`.
+    private var _lightbarHandler: ((LightbarMessage) -> Void)?
+    private let lightbarHandlerLock = NSLock()
+    var lightbarHandler: ((LightbarMessage) -> Void)? {
+        get {
+            lightbarHandlerLock.lock()
+            defer { lightbarHandlerLock.unlock() }
+            return _lightbarHandler
+        }
+        set {
+            lightbarHandlerLock.lock()
+            defer { lightbarHandlerLock.unlock() }
+            _lightbarHandler = newValue
         }
     }
 

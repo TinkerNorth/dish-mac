@@ -177,6 +177,36 @@ final class GameControllerInput: ObservableObject {
         }
     }
 
+    /// Standalone lightbar application for Task 1.4's dedicated MSG_LIGHTBAR
+    /// stream. Resolves `deviceId → GCController`, reuses the existing
+    /// `RumbleActuator` (so we don't allocate a redundant haptics engine for
+    /// pads that already have one), and writes `controller.light.color`
+    /// independent of any rumble event.
+    nonisolated func applyLightbar(deviceId: String, r: UInt8, g: UInt8, b: UInt8) {
+        Task { @MainActor in
+            guard let controller = self.controllersById[deviceId] else { return }
+            let actuator: RumbleActuator
+            if let existing = self.actuators[deviceId] {
+                actuator = existing
+            } else if let fresh = RumbleActuator(controller: controller) {
+                self.actuators[deviceId] = fresh
+                actuator = fresh
+            } else {
+                // No haptics object, but we may still be able to write the
+                // light directly — fall back to GCController.light if so.
+                if let light = controller.light {
+                    light.color = GCColor(
+                        red: Float(r) / 255.0,
+                        green: Float(g) / 255.0,
+                        blue: Float(b) / 255.0
+                    )
+                }
+                return
+            }
+            actuator.applyLightbar(r: r, g: g, b: b)
+        }
+    }
+
     // MARK: - Hot path
 
     /// Called from GC's internal dispatch queue. Builds a full `DeviceState`

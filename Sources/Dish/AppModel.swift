@@ -176,6 +176,20 @@ final class AppModel: ObservableObject {
                     )
                 }
             }
+            // Parallel handler for the Task 1.4 dedicated MSG_LIGHTBAR stream.
+            // Same slot-binding resolution; forwards to a standalone
+            // `applyLightbar` that doesn't go through the haptics engine.
+            conn.setLightbarHandler { lm in
+                Task { @MainActor in
+                    var deviceId: String?
+                    for (slotId, cid) in hub.bindings where cid == id {
+                        deviceId = slotId
+                        break
+                    }
+                    guard let deviceId else { return }
+                    input.applyLightbar(deviceId: deviceId, r: lm.r, g: lm.g, b: lm.b)
+                }
+            }
         }
     }
 
