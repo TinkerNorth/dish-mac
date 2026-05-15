@@ -298,6 +298,11 @@ final class SatelliteClient {
 
     // MARK: - Touchpad
 
+    // The two touchpad encoders take one argument per wire field (10 each).
+    // Bundling them into a struct purely to satisfy the parameter-count rule
+    // would add an indirection the flat wire-mapping doesn't benefit from.
+    // swiftlint:disable function_parameter_count
+
     /// Encoded MSG_TOUCHPAD inner payload (after the 4-byte type+length
     /// header). Layout per satellite/docs/protocol.md §0x000C:
     ///
@@ -325,13 +330,13 @@ final class SatelliteClient {
         if buttonPressed { flags |= 0x04 }
         payload[1] = flags
         payload[2] = finger0Id
-        // Inline LE16 store — the storeLE16 helper on SatelliteClient is a
-        // private instance method, and this encoder is static so tests can
-        // pin the byte layout without an instance.
-        func putLE16(_ v: Int16, at offset: Int) {
-            let u = UInt16(bitPattern: v)
-            payload[offset] = UInt8(truncatingIfNeeded: u)
-            payload[offset + 1] = UInt8(truncatingIfNeeded: u >> 8)
+        /// Inline LE16 store — the storeLE16 helper on SatelliteClient is a
+        /// private instance method, and this encoder is static so tests can
+        /// pin the byte layout without an instance.
+        func putLE16(_ value: Int16, at offset: Int) {
+            let unsigned = UInt16(bitPattern: value)
+            payload[offset] = UInt8(truncatingIfNeeded: unsigned)
+            payload[offset + 1] = UInt8(truncatingIfNeeded: unsigned >> 8)
         }
         putLE16(finger0X, at: 3)
         putLE16(finger0Y, at: 5)
@@ -351,14 +356,20 @@ final class SatelliteClient {
     ) {
         let payload = Self.encodeTouchpadPayload(
             controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-            finger0Active: finger0Active, finger0Id: finger0Id,
-            finger0X: finger0X, finger0Y: finger0Y,
-            finger1Active: finger1Active, finger1Id: finger1Id,
-            finger1X: finger1X, finger1Y: finger1Y,
+            finger0Active: finger0Active,
+            finger0Id: finger0Id,
+            finger0X: finger0X,
+            finger0Y: finger0Y,
+            finger1Active: finger1Active,
+            finger1Id: finger1Id,
+            finger1X: finger1X,
+            finger1Y: finger1Y,
             buttonPressed: buttonPressed
         )
         sendEncrypted(msgType: Self.msgTouchpad, payload: payload)
     }
+
+    // swiftlint:enable function_parameter_count
 
     // MARK: - Lightbar (receive-side decoder)
 
@@ -367,10 +378,10 @@ final class SatelliteClient {
     /// colour via the appropriate platform API (`GCColor.setColor` on
     /// macOS, `SDL_GameControllerSetLED` on desktop SDL backends).
     struct LightbarMessage {
-        public var controllerIndex: Int
-        public var r: UInt8
-        public var g: UInt8
-        public var b: UInt8
+        var controllerIndex: Int
+        var r: UInt8
+        var g: UInt8
+        var b: UInt8
     }
 
     /// Pure decoder for the MSG_LIGHTBAR inner payload (after the 4-byte

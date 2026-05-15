@@ -80,7 +80,9 @@ final class WifiConnectionManager: ObservableObject {
             async let mdns = MdnsBrowser.discover()
             let found = await (broadcast + mdns)
             var byId: [String: DiscoveredServer] = [:]
-            for server in found { byId[server.id] = server }
+            for server in found {
+                byId[server.id] = server
+            }
             let merged = byId.values.sorted { $0.name < $1.name }
             await MainActor.run { [weak self] in
                 guard let self else { return }

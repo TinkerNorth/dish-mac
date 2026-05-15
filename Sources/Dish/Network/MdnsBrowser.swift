@@ -89,7 +89,9 @@ enum MdnsBrowser {
             }
 
             lock.lock()
-            if browseWindowClosed || resumed { lock.unlock(); return }
+            if browseWindowClosed || resumed { lock.unlock()
+                return
+            }
             pending += 1
             lock.unlock()
 
@@ -144,13 +146,17 @@ enum MdnsBrowser {
         func finish() {
             lock.lock()
             browseWindowClosed = true
-            if resumed || pending > 0 { lock.unlock(); return }
+            if resumed || pending > 0 { lock.unlock()
+                return
+            }
             resumed = true
             let out = Array(servers.values)
             let conns = connections
             lock.unlock()
             browser?.cancel()
-            for conn in conns { conn.cancel() }
+            for conn in conns {
+                conn.cancel()
+            }
             continuation.resume(returning: out)
         }
 

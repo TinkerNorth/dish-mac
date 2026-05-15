@@ -17,8 +17,8 @@ private let kDefaultStickFlat: Int16 = 3277
 private let kDefaultTriggerFlat: UInt8 = 13
 /// Battery poll cadence — matches `BATTERY_REPORT_INTERVAL_SEC` (30 s) on
 /// the satellite. The first sample is sent ~1 s after attach.
-private let kBatteryPollIntervalSec: Int = 30
-private let kBatteryFirstReportDelaySec: Int = 1
+private let kBatteryPollIntervalSec = 30
+private let kBatteryFirstReportDelaySec = 1
 
 /// Bridges Apple's `GameController.framework` into the `GamepadInputProcessor`.
 /// Hooks `valueChangedHandler` on every extended gamepad so we push a report
@@ -174,8 +174,12 @@ final class GameControllerInput: ObservableObject {
         if let touchpad {
             let rebuild: (Any) -> Void = { [weak self] _ in
                 guard let self else { return }
-                self.pushTouchpad(id: id, primary: touchpad.primary,
-                                  secondary: touchpad.secondary, button: touchpad.button)
+                self.pushTouchpad(
+                    id: id,
+                    primary: touchpad.primary,
+                    secondary: touchpad.secondary,
+                    button: touchpad.button
+                )
             }
             touchpad.primary.valueChangedHandler = { dpad, _, _ in rebuild(dpad) }
             touchpad.secondary.valueChangedHandler = { dpad, _, _ in rebuild(dpad) }
@@ -215,9 +219,11 @@ final class GameControllerInput: ObservableObject {
     /// Only the DualSense and DualShock 4 subclasses expose a touchpad.
     private static func touchpadInputs(
         _ pad: GCExtendedGamepad
-    ) -> (primary: GCControllerDirectionPad,
-          secondary: GCControllerDirectionPad,
-          button: GCControllerButtonInput)? {
+    ) -> (
+        primary: GCControllerDirectionPad,
+        secondary: GCControllerDirectionPad,
+        button: GCControllerButtonInput
+    )? {
         if let ds = pad as? GCDualSenseGamepad {
             return (ds.touchpadPrimary, ds.touchpadSecondary, ds.touchpadButton)
         }
@@ -301,16 +307,20 @@ final class GameControllerInput: ObservableObject {
         // GCMotion exposes both `gravity` and `userAcceleration` (each in g).
         // The wire format wants the *total* acceleration the IMU sees — same
         // as raw accelerometer output — so we sum.
-        let g = motion.gravity
-        let u = motion.userAcceleration
-        let accelX = scaleAccel(g.x + u.x)
-        let accelY = scaleAccel(g.y + u.y)
-        let accelZ = scaleAccel(g.z + u.z)
+        let gravity = motion.gravity
+        let userAccel = motion.userAcceleration
+        let accelX = scaleAccel(gravity.x + userAccel.x)
+        let accelY = scaleAccel(gravity.y + userAccel.y)
+        let accelZ = scaleAccel(gravity.z + userAccel.z)
 
         processor.publishMotion(
             deviceId: id,
-            gyroX: gyroX, gyroY: gyroY, gyroZ: gyroZ,
-            accelX: accelX, accelY: accelY, accelZ: accelZ
+            gyroX: gyroX,
+            gyroY: gyroY,
+            gyroZ: gyroZ,
+            accelX: accelX,
+            accelY: accelY,
+            accelZ: accelZ
         )
     }
 
@@ -346,13 +356,12 @@ final class GameControllerInput: ObservableObject {
         } else {
             level = UInt8(clamping: Int((raw * 100.0).rounded()))
         }
-        let statusRaw: UInt8
-        switch battery.batteryState {
-        case .unknown: statusRaw = 0
-        case .discharging: statusRaw = 1
-        case .charging: statusRaw = 2
-        case .full: statusRaw = 3
-        @unknown default: statusRaw = 0
+        let statusRaw: UInt8 = switch battery.batteryState {
+        case .unknown: 0
+        case .discharging: 1
+        case .charging: 2
+        case .full: 3
+        @unknown default: 0
         }
 
         // Update the slot card's battery pill regardless of dedup — the UI
@@ -375,7 +384,7 @@ final class GameControllerInput: ObservableObject {
         // wasted bandwidth; the satellite only needs transitions + the
         // periodic refresh.
         let snapshot = (level: level, status: statusRaw)
-        if lastBatterySent[deviceId] != nil, lastBatterySent[deviceId]! == snapshot { return }
+        if let prevSent = lastBatterySent[deviceId], prevSent == snapshot { return }
         lastBatterySent[deviceId] = snapshot
 
         processor.publishBattery(deviceId: deviceId, level: level, statusRaw: statusRaw)

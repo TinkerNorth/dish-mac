@@ -19,7 +19,9 @@ final class FeatureSettingsTests: XCTestCase {
     /// A throwaway `UserDefaults` suite, wiped on teardown.
     private func makeSuite() -> (UserDefaults, String) {
         let name = "dish.test.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: name)!
+        guard let defaults = UserDefaults(suiteName: name) else {
+            preconditionFailure("could not create isolated UserDefaults test suite")
+        }
         return (defaults, name)
     }
 
@@ -161,7 +163,7 @@ final class ForwardingGateTests: XCTestCase {
     /// passes if it completes without a sanitizer trip or crash.
     func testConcurrentAccessIsSafe() {
         let gate = ForwardingGate()
-        let iterations = 2_000
+        let iterations = 2000
         let group = DispatchGroup()
         for idx in 0 ..< iterations {
             group.enter()
@@ -184,8 +186,12 @@ final class TouchpadProcessorTests: XCTestCase {
 
     private struct Captured: Equatable {
         let id: String
-        let f0a: Bool; let f0x: Int16; let f0y: Int16
-        let f1a: Bool; let f1x: Int16; let f1y: Int16
+        let f0a: Bool
+        let f0x: Int16
+        let f0y: Int16
+        let f1a: Bool
+        let f1x: Int16
+        let f1y: Int16
         let button: Bool
     }
 
@@ -193,19 +199,40 @@ final class TouchpadProcessorTests: XCTestCase {
         var captured: Captured?
         let proc = GamepadInputProcessor()
         proc.touchpadSender = { id, f0a, f0x, f0y, f1a, f1x, f1y, btn in
-            captured = Captured(id: id, f0a: f0a, f0x: f0x, f0y: f0y,
-                                f1a: f1a, f1x: f1x, f1y: f1y, button: btn)
+            captured = Captured(
+                id: id,
+                f0a: f0a,
+                f0x: f0x,
+                f0y: f0y,
+                f1a: f1a,
+                f1x: f1x,
+                f1y: f1y,
+                button: btn
+            )
         }
         proc.publishTouchpad(
             deviceId: "pad",
-            finger0Active: true, finger0X: 1234, finger0Y: -567,
-            finger1Active: false, finger1X: 0, finger1Y: 0,
+            finger0Active: true,
+            finger0X: 1234,
+            finger0Y: -567,
+            finger1Active: false,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: true
         )
-        XCTAssertEqual(captured, Captured(
-            id: "pad", f0a: true, f0x: 1234, f0y: -567,
-            f1a: false, f1x: 0, f1y: 0, button: true
-        ))
+        XCTAssertEqual(
+            captured,
+            Captured(
+                id: "pad",
+                f0a: true,
+                f0x: 1234,
+                f0y: -567,
+                f1a: false,
+                f1x: 0,
+                f1y: 0,
+                button: true
+            )
+        )
     }
 
     func testPublishTouchpadNoSenderIsNoOp() {
@@ -213,8 +240,12 @@ final class TouchpadProcessorTests: XCTestCase {
         let proc = GamepadInputProcessor()
         proc.publishTouchpad(
             deviceId: "pad",
-            finger0Active: false, finger0X: 0, finger0Y: 0,
-            finger1Active: false, finger1X: 0, finger1Y: 0,
+            finger0Active: false,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: false,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: false
         )
     }
@@ -223,13 +254,25 @@ final class TouchpadProcessorTests: XCTestCase {
         var captured: Captured?
         let proc = GamepadInputProcessor()
         proc.touchpadSender = { id, f0a, f0x, f0y, f1a, f1x, f1y, btn in
-            captured = Captured(id: id, f0a: f0a, f0x: f0x, f0y: f0y,
-                                f1a: f1a, f1x: f1x, f1y: f1y, button: btn)
+            captured = Captured(
+                id: id,
+                f0a: f0a,
+                f0x: f0x,
+                f0y: f0y,
+                f1a: f1a,
+                f1x: f1x,
+                f1y: f1y,
+                button: btn
+            )
         }
         proc.publishTouchpad(
             deviceId: "pad",
-            finger0Active: true, finger0X: Int16.max, finger0Y: Int16.min,
-            finger1Active: true, finger1X: -1, finger1Y: 1,
+            finger0Active: true,
+            finger0X: Int16.max,
+            finger0Y: Int16.min,
+            finger1Active: true,
+            finger1X: -1,
+            finger1Y: 1,
             buttonPressed: false
         )
         XCTAssertEqual(captured?.f0x, Int16.max)

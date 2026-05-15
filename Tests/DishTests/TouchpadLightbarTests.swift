@@ -16,8 +16,14 @@ final class TouchpadLightbarTests: XCTestCase {
     func testTouchpadPayloadIs12Bytes() {
         let p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 0,
-            finger0Active: false, finger0Id: 0, finger0X: 0, finger0Y: 0,
-            finger1Active: false, finger1Id: 0, finger1X: 0, finger1Y: 0,
+            finger0Active: false,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: false,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: false
         )
         XCTAssertEqual(p.count, 12)
@@ -27,8 +33,14 @@ final class TouchpadLightbarTests: XCTestCase {
         // No finger / no button → flags = 0
         var p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 0,
-            finger0Active: false, finger0Id: 0, finger0X: 0, finger0Y: 0,
-            finger1Active: false, finger1Id: 0, finger1X: 0, finger1Y: 0,
+            finger0Active: false,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: false,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: false
         )
         XCTAssertEqual(p[1], 0x00)
@@ -36,8 +48,14 @@ final class TouchpadLightbarTests: XCTestCase {
         // finger0 active only → bit 0
         p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 0,
-            finger0Active: true, finger0Id: 0, finger0X: 0, finger0Y: 0,
-            finger1Active: false, finger1Id: 0, finger1X: 0, finger1Y: 0,
+            finger0Active: true,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: false,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: false
         )
         XCTAssertEqual(p[1], 0x01)
@@ -45,8 +63,14 @@ final class TouchpadLightbarTests: XCTestCase {
         // finger1 active only → bit 1
         p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 0,
-            finger0Active: false, finger0Id: 0, finger0X: 0, finger0Y: 0,
-            finger1Active: true, finger1Id: 0, finger1X: 0, finger1Y: 0,
+            finger0Active: false,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: true,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: false
         )
         XCTAssertEqual(p[1], 0x02)
@@ -54,8 +78,14 @@ final class TouchpadLightbarTests: XCTestCase {
         // button only → bit 2
         p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 0,
-            finger0Active: false, finger0Id: 0, finger0X: 0, finger0Y: 0,
-            finger1Active: false, finger1Id: 0, finger1X: 0, finger1Y: 0,
+            finger0Active: false,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: false,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: true
         )
         XCTAssertEqual(p[1], 0x04)
@@ -63,8 +93,14 @@ final class TouchpadLightbarTests: XCTestCase {
         // All three set → 0x07
         p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 0,
-            finger0Active: true, finger0Id: 0, finger0X: 0, finger0Y: 0,
-            finger1Active: true, finger1Id: 0, finger1X: 0, finger1Y: 0,
+            finger0Active: true,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: true,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: true
         )
         XCTAssertEqual(p[1], 0x07)
@@ -73,10 +109,14 @@ final class TouchpadLightbarTests: XCTestCase {
     func testTouchpadFingerCoordsAreLittleEndianInt16() {
         let p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 9,
-            finger0Active: true, finger0Id: 0x11,
-            finger0X: 0x0102, finger0Y: 0x0304,
-            finger1Active: true, finger1Id: 0x22,
-            finger1X: 0x0506, finger1Y: 0x0708,
+            finger0Active: true,
+            finger0Id: 0x11,
+            finger0X: 0x0102,
+            finger0Y: 0x0304,
+            finger1Active: true,
+            finger1Id: 0x22,
+            finger1X: 0x0506,
+            finger1Y: 0x0708,
             buttonPressed: false
         )
         XCTAssertEqual(p[0], 9)
@@ -100,8 +140,14 @@ final class TouchpadLightbarTests: XCTestCase {
     func testTouchpadCoordsCoverFullInt16Range() {
         let p = SatelliteClient.encodeTouchpadPayload(
             controllerIndex: 0,
-            finger0Active: true, finger0Id: 0, finger0X: Int16.min, finger0Y: Int16.max,
-            finger1Active: true, finger1Id: 0, finger1X: -1, finger1Y: 0,
+            finger0Active: true,
+            finger0Id: 0,
+            finger0X: Int16.min,
+            finger0Y: Int16.max,
+            finger1Active: true,
+            finger1Id: 0,
+            finger1X: -1,
+            finger1Y: 0,
             buttonPressed: false
         )
         // Int16.min = -32768 = 0x8000 (two's complement) → LE: 0x00, 0x80

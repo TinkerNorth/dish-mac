@@ -151,6 +151,13 @@ extension SatelliteClient {
               ) else { return }
 
         guard plain.count >= 4 else { return }
+        dispatchMessage(plain)
+    }
+
+    /// Decode the inner message type from a decrypted packet and route it.
+    /// Split out of `receiveOne` so the socket-recv path stays inside the
+    /// cyclomatic-complexity budget — this is the per-message-type branch.
+    private func dispatchMessage(_ plain: Data) {
         let msgType = (UInt16(plain[0]) << 8) | UInt16(plain[1])
         let msgLen = (UInt16(plain[2]) << 8) | UInt16(plain[3])
 

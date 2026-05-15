@@ -255,8 +255,12 @@ final class AppModel: ObservableObject {
             guard gate.snapshot().motion else { return }
             guard let conn = table.get(deviceId) else { return }
             conn.sendMotion(
-                gyroX: gx, gyroY: gy, gyroZ: gz,
-                accelX: ax, accelY: ay, accelZ: az,
+                gyroX: gx,
+                gyroY: gy,
+                gyroZ: gz,
+                accelX: ax,
+                accelY: ay,
+                accelZ: az,
                 timestampDeltaUs: dt
             )
         }
@@ -271,8 +275,12 @@ final class AppModel: ObservableObject {
             guard gate.snapshot().touchpad else { return }
             guard let conn = table.get(deviceId) else { return }
             conn.sendTouchpad(
-                finger0Active: f0a, finger0X: f0x, finger0Y: f0y,
-                finger1Active: f1a, finger1X: f1x, finger1Y: f1y,
+                finger0Active: f0a,
+                finger0X: f0x,
+                finger0Y: f0y,
+                finger1Active: f1a,
+                finger1X: f1x,
+                finger1Y: f1y,
                 buttonPressed: btn
             )
         }

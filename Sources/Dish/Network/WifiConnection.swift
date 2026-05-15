@@ -235,8 +235,12 @@ final class WifiConnection: ObservableObject, Identifiable {
         guard let live = clientRef.get() else { return }
         live.sendMotion(
             controllerIndex: Self.defaultCtrlIndex,
-            gyroX: gyroX, gyroY: gyroY, gyroZ: gyroZ,
-            accelX: accelX, accelY: accelY, accelZ: accelZ,
+            gyroX: gyroX,
+            gyroY: gyroY,
+            gyroZ: gyroZ,
+            accelX: accelX,
+            accelY: accelY,
+            accelZ: accelZ,
             timestampDeltaUs: timestampDeltaUs
         )
     }
@@ -264,10 +268,14 @@ final class WifiConnection: ObservableObject, Identifiable {
         // indices 0 / 1 the way `GamepadInputProcessor.TouchpadSender` documents.
         live.sendTouchpad(
             controllerIndex: Self.defaultCtrlIndex,
-            finger0Active: finger0Active, finger0Id: 0,
-            finger0X: finger0X, finger0Y: finger0Y,
-            finger1Active: finger1Active, finger1Id: 1,
-            finger1X: finger1X, finger1Y: finger1Y,
+            finger0Active: finger0Active,
+            finger0Id: 0,
+            finger0X: finger0X,
+            finger0Y: finger0Y,
+            finger1Active: finger1Active,
+            finger1Id: 1,
+            finger1X: finger1X,
+            finger1Y: finger1Y,
             buttonPressed: buttonPressed
         )
     }

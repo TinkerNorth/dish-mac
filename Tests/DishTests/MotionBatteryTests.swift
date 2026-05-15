@@ -28,15 +28,15 @@ final class MotionBatteryProcessorTests: XCTestCase {
     func testScaleGyroFullScalePositive() {
         // ±2000 deg/s = full scale per the protocol. We allow ±1 LSB tolerance
         // because of integer rounding in the scaler.
-        let v = scaleGyro(2000)
-        XCTAssertGreaterThanOrEqual(v, 32766)
-        XCTAssertLessThanOrEqual(v, 32767)
+        let value = scaleGyro(2000)
+        XCTAssertGreaterThanOrEqual(value, 32766)
+        XCTAssertLessThanOrEqual(value, 32767)
     }
 
     func testScaleGyroFullScaleNegative() {
-        let v = scaleGyro(-2000)
-        XCTAssertGreaterThanOrEqual(v, -32767)
-        XCTAssertLessThanOrEqual(v, -32766)
+        let value = scaleGyro(-2000)
+        XCTAssertGreaterThanOrEqual(value, -32767)
+        XCTAssertLessThanOrEqual(value, -32766)
     }
 
     func testScaleGyroClampsOverflowPositive() {
@@ -51,9 +51,9 @@ final class MotionBatteryProcessorTests: XCTestCase {
     func testScaleGyroQuarterScale() {
         // 500 deg/s → ~25% of full scale → ~8192 LSBs. We accept ±1 for
         // rounding; a wider drift would mean the scale constant changed.
-        let v = scaleGyro(500)
-        XCTAssertGreaterThanOrEqual(v, 8191)
-        XCTAssertLessThanOrEqual(v, 8193)
+        let value = scaleGyro(500)
+        XCTAssertGreaterThanOrEqual(value, 8191)
+        XCTAssertLessThanOrEqual(value, 8193)
     }
 
     // MARK: - scaleAccel
@@ -64,21 +64,21 @@ final class MotionBatteryProcessorTests: XCTestCase {
 
     func testScaleAccelOneG() {
         // 1 g out of ±4 g full-scale → 32767 / 4 ≈ 8192 LSBs, within ±1.
-        let v = scaleAccel(1)
-        XCTAssertGreaterThanOrEqual(v, 8191)
-        XCTAssertLessThanOrEqual(v, 8193)
+        let value = scaleAccel(1)
+        XCTAssertGreaterThanOrEqual(value, 8191)
+        XCTAssertLessThanOrEqual(value, 8193)
     }
 
     func testScaleAccelFullScalePositive() {
-        let v = scaleAccel(4)
-        XCTAssertGreaterThanOrEqual(v, 32766)
-        XCTAssertLessThanOrEqual(v, 32767)
+        let value = scaleAccel(4)
+        XCTAssertGreaterThanOrEqual(value, 32766)
+        XCTAssertLessThanOrEqual(value, 32767)
     }
 
     func testScaleAccelFullScaleNegative() {
-        let v = scaleAccel(-4)
-        XCTAssertGreaterThanOrEqual(v, -32767)
-        XCTAssertLessThanOrEqual(v, -32766)
+        let value = scaleAccel(-4)
+        XCTAssertGreaterThanOrEqual(value, -32767)
+        XCTAssertLessThanOrEqual(value, -32766)
     }
 
     func testScaleAccelClampsOverflow() {
@@ -90,8 +90,12 @@ final class MotionBatteryProcessorTests: XCTestCase {
 
     private struct CapturedMotion: Equatable {
         let id: String
-        let gx: Int16; let gy: Int16; let gz: Int16
-        let ax: Int16; let ay: Int16; let az: Int16
+        let gx: Int16
+        let gy: Int16
+        let gz: Int16
+        let ax: Int16
+        let ay: Int16
+        let az: Int16
         let dtUs: UInt32
     }
 
@@ -110,8 +114,12 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { captured = $0 }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 100, gyroY: 200, gyroZ: 300,
-            accelX: 400, accelY: 500, accelZ: 600,
+            gyroX: 100,
+            gyroY: 200,
+            gyroZ: 300,
+            accelX: 400,
+            accelY: 500,
+            accelZ: 600,
             nowNs: 1_000_000_000
         )
         XCTAssertNotNil(captured)
@@ -123,18 +131,28 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { samples.append($0) }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0,
+            gyroX: 0,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
             nowNs: 1_000_000_000
         )
         // 5 ms later — 5_000_000 ns = 5_000 µs.
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0,
+            gyroX: 0,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
             nowNs: 1_005_000_000
         )
         XCTAssertEqual(samples.count, 2)
         XCTAssertEqual(samples[0].dtUs, 0)
-        XCTAssertEqual(samples[1].dtUs, 5_000)
+        XCTAssertEqual(samples[1].dtUs, 5000)
     }
 
     func testPublishMotionDeltaIsPerDevice() {
@@ -142,24 +160,39 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { samples.append($0) }
         proc.publishMotion(
             deviceId: "padA",
-            gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0,
+            gyroX: 0,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
             nowNs: 1_000_000_000
         )
         proc.publishMotion(
             deviceId: "padB",
-            gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0,
+            gyroX: 0,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
             nowNs: 1_010_000_000
         )
         // padA's second sample should compute delta off padA's t0, not padB's.
         proc.publishMotion(
             deviceId: "padA",
-            gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0,
+            gyroX: 0,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
             nowNs: 1_020_000_000
         )
         XCTAssertEqual(samples.count, 3)
         XCTAssertEqual(samples[0].dtUs, 0)
         XCTAssertEqual(samples[1].dtUs, 0) // first padB sample
-        XCTAssertEqual(samples[2].dtUs, 20_000) // 20 ms after padA's first
+        XCTAssertEqual(samples[2].dtUs, 20000) // 20 ms after padA's first
     }
 
     func testPublishMotionRemoveClearsTimestampHistory() {
@@ -167,7 +200,12 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { samples.append($0) }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0,
+            gyroX: 0,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
             nowNs: 1_000_000_000
         )
         proc.remove(deviceId: "pad")
@@ -175,7 +213,12 @@ final class MotionBatteryProcessorTests: XCTestCase {
         // (delta 0), not a 5-second-stale delta.
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0,
+            gyroX: 0,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
             nowNs: 6_000_000_000
         )
         XCTAssertEqual(samples.count, 2)
@@ -187,8 +230,12 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { captured = $0 }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 1234, gyroY: -567, gyroZ: 89,
-            accelX: 100, accelY: -200, accelZ: 16384,
+            gyroX: 1234,
+            gyroY: -567,
+            gyroZ: 89,
+            accelX: 100,
+            accelY: -200,
+            accelZ: 16384,
             nowNs: 1_000_000_000
         )
         XCTAssertEqual(captured?.gx, 1234)

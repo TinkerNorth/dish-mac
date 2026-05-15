@@ -179,13 +179,12 @@ final class GamepadInputProcessor {
         lastMotionTimestampNs[deviceId] = nowNs
         lock.unlock()
 
-        let deltaUs: UInt32
-        if let prev, nowNs > prev {
+        let deltaUs: UInt32 = if let prev, nowNs > prev {
             // Saturating cast — a delta over UInt32.max µs (~71 minutes) is
             // not physically meaningful and the receiver tolerates 0 anyway.
-            deltaUs = UInt32(clamping: (nowNs - prev) / 1_000)
+            UInt32(clamping: (nowNs - prev) / 1000)
         } else {
-            deltaUs = 0
+            0
         }
 
         motionSender?(deviceId, gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaUs)
@@ -209,8 +208,12 @@ final class GamepadInputProcessor {
     ) {
         touchpadSender?(
             deviceId,
-            finger0Active, finger0X, finger0Y,
-            finger1Active, finger1X, finger1Y,
+            finger0Active,
+            finger0X,
+            finger0Y,
+            finger1Active,
+            finger1X,
+            finger1Y,
             buttonPressed
         )
     }

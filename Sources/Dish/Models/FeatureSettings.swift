@@ -15,7 +15,9 @@ enum LightbarMode: String, CaseIterable, Identifiable, Codable {
     /// Ignore `MSG_LIGHTBAR`; leave the controller's light bar untouched.
     case off
 
-    var id: String { rawValue }
+    var id: String {
+        rawValue
+    }
 
     var label: String {
         switch self {
@@ -81,7 +83,8 @@ final class FeatureSettings: ObservableObject {
         self.rumbleEnabled = (defaults.object(forKey: Keys.rumble) as? Bool) ?? true
         self.touchpadEnabled = (defaults.object(forKey: Keys.touchpad) as? Bool) ?? true
         if let raw = defaults.string(forKey: Keys.lightbar),
-           let mode = LightbarMode(rawValue: raw) {
+           let mode = LightbarMode(rawValue: raw)
+        {
             self.lightbarMode = mode
         } else {
             self.lightbarMode = .followGame
@@ -103,7 +106,7 @@ final class FeatureSettings: ObservableObject {
 
 /// Plain-value snapshot of the forwarding toggles. `Sendable` so it can cross
 /// from the main actor into `ForwardingGate` and be read on the hot path.
-struct ForwardingFlags: Equatable, Sendable {
+struct ForwardingFlags: Equatable {
     var motion = true
     var touchpad = true
     var rumble = true
