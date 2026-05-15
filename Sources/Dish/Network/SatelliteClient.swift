@@ -31,6 +31,8 @@ final class SatelliteClient {
     static let msgRumble: UInt16 = 0x0009
     private static let msgMotion: UInt16 = 0x000A
     private static let msgBattery: UInt16 = 0x000B
+    private static let msgTouchpad: UInt16 = 0x000C
+    static let msgLightbar: UInt16 = 0x000D
 
     /// Battery status enum on the wire — must match satellite/src/core/types.h
     /// (`BATTERY_STATUS_*`). Values are stable across platforms.
@@ -274,5 +276,95 @@ final class SatelliteClient {
             status.rawValue
         ]
         sendEncrypted(msgType: Self.msgBattery, payload: payload)
+    }
+
+    // MARK: - Touchpad
+
+    /// Encoded MSG_TOUCHPAD inner payload (after the 4-byte type+length
+    /// header). Layout per satellite/docs/protocol.md §0x000C:
+    ///
+    ///     ctrlIdx(1) + flags(1) + finger0(1+2+2) + finger1(1+2+2) = 12 bytes
+    ///
+    /// `flags` bits: 0 = finger0 active, 1 = finger1 active, 2 = clicky
+    /// button pressed. Coordinates are normalised int16 (-32768..32767) on
+    /// both axes so the wire is resolution-independent.
+    ///
+    /// Exposed `static` so the byte layout can be pinned by unit tests
+    /// without bringing up a live socket — same pattern as
+    /// `parseRumbleMessage` on the return path and `encodeMotionPayload`
+    /// on the desktop senders.
+    static func encodeTouchpadPayload(
+        controllerIndex: UInt8,
+        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
+        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
+        buttonPressed: Bool
+    ) -> [UInt8] {
+        var payload = [UInt8](repeating: 0, count: 12)
+        payload[0] = controllerIndex
+        var flags: UInt8 = 0
+        if finger0Active { flags |= 0x01 }
+        if finger1Active { flags |= 0x02 }
+        if buttonPressed { flags |= 0x04 }
+        payload[1] = flags
+        payload[2] = finger0Id
+        // Inline LE16 store — the storeLE16 helper on SatelliteClient is a
+        // private instance method, and this encoder is static so tests can
+        // pin the byte layout without an instance.
+        func putLE16(_ v: Int16, at offset: Int) {
+            let u = UInt16(bitPattern: v)
+            payload[offset] = UInt8(truncatingIfNeeded: u)
+            payload[offset + 1] = UInt8(truncatingIfNeeded: u >> 8)
+        }
+        putLE16(finger0X, at: 3)
+        putLE16(finger0Y, at: 5)
+        payload[7] = finger1Id
+        putLE16(finger1X, at: 8)
+        putLE16(finger1Y, at: 10)
+        return payload
+    }
+
+    /// Forward a touchpad sample to the satellite. The caller is responsible
+    /// for normalising coordinates to int16 [-32768, 32767] before calling.
+    func sendTouchpad(
+        controllerIndex: Int,
+        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
+        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
+        buttonPressed: Bool
+    ) {
+        let payload = Self.encodeTouchpadPayload(
+            controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
+            finger0Active: finger0Active, finger0Id: finger0Id,
+            finger0X: finger0X, finger0Y: finger0Y,
+            finger1Active: finger1Active, finger1Id: finger1Id,
+            finger1X: finger1X, finger1Y: finger1Y,
+            buttonPressed: buttonPressed
+        )
+        sendEncrypted(msgType: Self.msgTouchpad, payload: payload)
+    }
+
+    // MARK: - Lightbar (receive-side decoder)
+
+    /// Decoded MSG_LIGHTBAR (0x000D) message. The satellite-emitted payload
+    /// is `ctrlIdx(1) + r(1) + g(1) + b(1)` = 4 bytes. Senders apply the
+    /// colour via the appropriate platform API (`GCColor.setColor` on
+    /// macOS, `SDL_GameControllerSetLED` on desktop SDL backends).
+    struct LightbarMessage {
+        public var controllerIndex: Int
+        public var r: UInt8
+        public var g: UInt8
+        public var b: UInt8
+    }
+
+    /// Pure decoder for the MSG_LIGHTBAR inner payload (after the 4-byte
+    /// header). Returns nil on truncation. Kept `static` for unit tests.
+    static func parseLightbarMessage(_ payload: ArraySlice<UInt8>) -> LightbarMessage? {
+        guard payload.count >= 4 else { return nil }
+        let base = payload.startIndex
+        return LightbarMessage(
+            controllerIndex: Int(payload[base]),
+            r: payload[base + 1],
+            g: payload[base + 2],
+            b: payload[base + 3]
+        )
     }
 }
