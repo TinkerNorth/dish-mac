@@ -177,6 +177,16 @@ extension SatelliteClient {
             if let handler = rumbleHandler {
                 handler(rm)
             }
+        } else if msgType == Self.msgLightbar {
+            // MSG_LIGHTBAR (0x000D) — decoupled light-bar return path. The
+            // 4-byte header is stripped; parseLightbarMessage decodes the
+            // ctrlIdx + RGB payload slice.
+            guard plain.count >= 4 else { return }
+            let payload = Array(plain[4 ..< plain.count])
+            guard let lm = SatelliteClient.parseLightbarMessage(payload[...]) else { return }
+            if let handler = lightbarHandler {
+                handler(lm)
+            }
         }
     }
 

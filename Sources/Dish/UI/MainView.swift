@@ -11,6 +11,7 @@ struct MainView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var wifi: WifiConnectionManager
     @State private var showConnections = false
+    @State private var showSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,6 +28,10 @@ struct MainView: View {
             ConnectionsView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(model.settings)
         }
         .sheet(item: $model.pairingTarget) { server in
             PairingSheet(server: server)
@@ -68,6 +73,15 @@ struct MainView: View {
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(liveCount > 0 ? DishTheme.success : DishTheme.muted)
                 Spacer()
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14))
+                        .foregroundColor(DishTheme.primary)
+                }
+                .buttonStyle(.plain)
+                .help("Settings")
                 Button("Manage") { showConnections = true }
                     .buttonStyle(DishOutlinedButtonStyle())
             }

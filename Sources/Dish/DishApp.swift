@@ -23,6 +23,7 @@ struct DishApp: App {
             MainView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)
+                .environmentObject(model.settings)
                 .frame(minWidth: 520, minHeight: 640)
                 .background(DishTheme.background.ignoresSafeArea())
                 .preferredColorScheme(.dark)

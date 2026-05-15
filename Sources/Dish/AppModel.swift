@@ -20,9 +20,18 @@ final class AppModel: ObservableObject {
     let hub: ConnectionHub
     let input: GameControllerInput
     let wake: ScreenWakeController
+    /// User-facing feature toggles (motion / rumble / touchpad / light bar).
+    /// `SettingsView` binds to this directly; the off-main hot paths read the
+    /// thread-safe `gate` mirror instead.
+    let settings: FeatureSettings
 
     @Published private(set) var slots: [ControllerSlot] = []
     @Published private(set) var connections: [ConnectionSummary] = []
+
+    /// Thread-safe snapshot of `settings` for the GameController callback
+    /// thread + `SatelliteClient` receive queue, which can't touch the
+    /// `@MainActor` `FeatureSettings`. Kept in sync by `syncGate()`.
+    private let gate = ForwardingGate()
 
     /// Set when the server asks us to re-pair with a PIN. Bound to a sheet.
     @Published var pairingTarget: DiscoveredServer?
@@ -43,17 +52,25 @@ final class AppModel: ObservableObject {
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
         let input = GameControllerInput()
+        let settings = FeatureSettings()
         self.store = store
         self.wifi = wifi
         self.hub = hub
         self.input = input
+        self.settings = settings
         self.wake = ScreenWakeController(inhibitor: inhibitor ?? IOKitDisplaySleepInhibitor())
+
+        // Seed the gate before any sender fires so the first packet already
+        // respects the persisted toggles.
+        gate.update(settings.flags)
 
         observe()
         installReportSender()
         installMotionSender()
         installBatterySender()
+        installTouchpadSender()
         installRumbleHandlers()
+        installLightbarHandlers()
         // Auto-reconnect every remembered server on launch.
         wifi.autoReconnectAll()
     }
@@ -63,6 +80,8 @@ final class AppModel: ObservableObject {
     /// only ever grows during a session — perfect for an "install once,
     /// re-install on reconnect via the WifiConnection" pattern.
     private var rumbleWiredConnections = Set<String>()
+    /// Same idempotent-install bookkeeping for the light-bar return path.
+    private var lightbarWiredConnections = Set<String>()
 
     // MARK: - Wiring
 
@@ -103,11 +122,28 @@ final class AppModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Make sure every newly-pooled WifiConnection has its rumble handler
-        // installed. The pool only grows during a session — `register` adds
-        // entries, `forget` removes — so we re-walk it on each pool change.
+        // Make sure every newly-pooled WifiConnection has its rumble + light
+        // bar handlers installed. The pool only grows during a session —
+        // `register` adds entries, `forget` removes — so we re-walk it on
+        // each pool change.
         wifi.$connections
-            .sink { [weak self] _ in self?.installRumbleHandlers() }
+            .sink { [weak self] _ in
+                self?.installRumbleHandlers()
+                self?.installLightbarHandlers()
+            }
+            .store(in: &cancellables)
+
+        // Mirror every `FeatureSettings` change into the thread-safe gate.
+        // `objectWillChange` fires *before* the property mutates, so we hop
+        // one runloop tick — same deferral `ConnectionHub` uses for its
+        // per-connection `objectWillChange` subscriptions.
+        settings.objectWillChange
+            .sink { [weak self] _ in
+                DispatchQueue.main.async {
+                    guard let self else { return }
+                    self.gate.update(self.settings.flags)
+                }
+            }
             .store(in: &cancellables)
 
         // Surface pairing + error events to the UI.
@@ -129,7 +165,12 @@ final class AppModel: ObservableObject {
     ) {
         var next: [ControllerSlot] = []
         for gc in gcSlots {
-            next.append(ControllerSlot(id: gc.id, name: gc.name))
+            next.append(ControllerSlot(
+                id: gc.id,
+                name: gc.name,
+                capabilities: gc.capabilities,
+                battery: gc.battery
+            ))
         }
         // Evict bindings whose slot disappeared (e.g., controller unplugged).
         let known = Set(next.map(\.id))
@@ -155,10 +196,13 @@ final class AppModel: ObservableObject {
     private func installRumbleHandlers() {
         let input = self.input
         let hub = self.hub
+        let gate = self.gate
         for (id, conn) in wifi.connections {
             if rumbleWiredConnections.contains(id) { continue }
             rumbleWiredConnections.insert(id)
             conn.setRumbleHandler { rm in
+                // Rumble disabled by the user → drop without touching haptics.
+                guard gate.snapshot().rumble else { return }
                 Task { @MainActor in
                     var deviceId: String?
                     for (slotId, cid) in hub.bindings where cid == id {
@@ -203,15 +247,60 @@ final class AppModel: ObservableObject {
 
     /// Wire motion samples through the same routing table the gamepad path
     /// uses — same threading discipline, single locked dict read, no hop.
+    /// Gated on the user's motion toggle (`gate.snapshot().motion`).
     private func installMotionSender() {
         let table = routingTable
+        let gate = self.gate
         input.processor.motionSender = { deviceId, gx, gy, gz, ax, ay, az, dt in
+            guard gate.snapshot().motion else { return }
             guard let conn = table.get(deviceId) else { return }
             conn.sendMotion(
                 gyroX: gx, gyroY: gy, gyroZ: gz,
                 accelX: ax, accelY: ay, accelZ: az,
                 timestampDeltaUs: dt
             )
+        }
+    }
+
+    /// Wire touchpad samples through the routing table, gated on the user's
+    /// touchpad toggle. Same callback shape + threading as `motionSender`.
+    private func installTouchpadSender() {
+        let table = routingTable
+        let gate = self.gate
+        input.processor.touchpadSender = { deviceId, f0a, f0x, f0y, f1a, f1x, f1y, btn in
+            guard gate.snapshot().touchpad else { return }
+            guard let conn = table.get(deviceId) else { return }
+            conn.sendTouchpad(
+                finger0Active: f0a, finger0X: f0x, finger0Y: f0y,
+                finger1Active: f1a, finger1X: f1x, finger1Y: f1y,
+                buttonPressed: btn
+            )
+        }
+    }
+
+    /// Install the light-bar handler on every pooled WifiConnection — same
+    /// install-once / re-walk-on-pool-change pattern as `installRumbleHandlers`.
+    /// The handler resolves the bound slot and applies the host-game colour to
+    /// that controller, unless the user set the light bar to "Off".
+    private func installLightbarHandlers() {
+        let input = self.input
+        let hub = self.hub
+        let gate = self.gate
+        for (id, conn) in wifi.connections {
+            if lightbarWiredConnections.contains(id) { continue }
+            lightbarWiredConnections.insert(id)
+            conn.setLightbarHandler { lm in
+                guard gate.snapshot().lightbar else { return }
+                Task { @MainActor in
+                    var deviceId: String?
+                    for (slotId, cid) in hub.bindings where cid == id {
+                        deviceId = slotId
+                        break
+                    }
+                    guard let deviceId else { return }
+                    input.applyLightbar(deviceId: deviceId, r: lm.r, g: lm.g, b: lm.b)
+                }
+            }
         }
     }
 

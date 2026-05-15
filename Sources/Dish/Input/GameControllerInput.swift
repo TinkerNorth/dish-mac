@@ -34,6 +34,11 @@ final class GameControllerInput: ObservableObject {
     struct Slot: Identifiable, Hashable {
         let id: String // stable controller id
         let name: String // vendorName or product category
+        /// Hardware features detected at attach (gyro / touchpad / rumble /
+        /// battery). Drives the capability chips in the slot card.
+        var capabilities: ControllerCapabilities = .none
+        /// Live battery reading, nil until the first poll completes.
+        var battery: BatteryReading?
     }
 
     @Published private(set) var slots: [Slot] = []
@@ -103,8 +108,21 @@ final class GameControllerInput: ObservableObject {
         controllersById[id] = controller
         let name = controller.vendorName ?? controller.productCategory
 
-        if !slots.contains(where: { $0.id == id }) {
-            slots.append(Slot(id: id, name: name))
+        // Detect what the hardware exposes. `motion`, `haptics`, `battery`,
+        // and `light` are all optional on GCController; the touchpad lives on
+        // the DualSense / DualShock subclasses of GCExtendedGamepad.
+        let touchpad = Self.touchpadInputs(pad)
+        let caps = ControllerCapabilities(
+            hasMotion: controller.motion != nil,
+            hasTouchpad: touchpad != nil,
+            hasRumble: controller.haptics != nil,
+            hasBattery: controller.battery != nil
+        )
+
+        if let idx = slots.firstIndex(where: { $0.id == id }) {
+            slots[idx].capabilities = caps
+        } else {
+            slots.append(Slot(id: id, name: name, capabilities: caps))
         }
 
         // One-shot device-capability dump — mirrors the SatelliteJNI DEVCAPS
@@ -114,9 +132,8 @@ final class GameControllerInput: ObservableObject {
         Self.log.info("""
         DEVCAPS id=\(id, privacy: .public) name=\(name, privacy: .public) \
         category=\(controller.productCategory, privacy: .public) \
-        extendedGamepad=yes hasButtonOptions=\(pad.buttonOptions != nil) \
-        hasLeftThumbstickButton=\(pad.leftThumbstickButton != nil) \
-        hasRightThumbstickButton=\(pad.rightThumbstickButton != nil)
+        extendedGamepad=yes motion=\(caps.hasMotion) touchpad=\(caps.hasTouchpad) \
+        rumble=\(caps.hasRumble) battery=\(caps.hasBattery)
         """)
 
         // Push the default deadzone profile straight away. The processor
@@ -148,6 +165,23 @@ final class GameControllerInput: ObservableObject {
             }
         }
 
+        // Touchpad (DualSense / DualShock 4 only). GameController models the
+        // pad as two `GCControllerDirectionPad`s plus a clicky button. There
+        // is no per-finger touch-down event, so each of the three inputs'
+        // `valueChangedHandler`s funnels into a single `pushTouchpad` that
+        // re-reads the whole touchpad state — same "rebuild from snapshot"
+        // shape as `pushReport`.
+        if let touchpad {
+            let rebuild: (Any) -> Void = { [weak self] _ in
+                guard let self else { return }
+                self.pushTouchpad(id: id, primary: touchpad.primary,
+                                  secondary: touchpad.secondary, button: touchpad.button)
+            }
+            touchpad.primary.valueChangedHandler = { dpad, _, _ in rebuild(dpad) }
+            touchpad.secondary.valueChangedHandler = { dpad, _, _ in rebuild(dpad) }
+            touchpad.button.valueChangedHandler = { btn, _, _ in rebuild(btn) }
+        }
+
         // Battery. Optional — wired Xbox pads return nil. The first sample
         // is delayed by `kBatteryFirstReportDelaySec` so the satellite has
         // ACK'd the controller-add by the time it arrives; subsequent
@@ -162,6 +196,11 @@ final class GameControllerInput: ObservableObject {
         guard let id = controllerIds.removeValue(forKey: oid) else { return }
         controller.extendedGamepad?.valueChangedHandler = nil
         controller.motion?.valueChangedHandler = nil
+        if let pad = controller.extendedGamepad, let touchpad = Self.touchpadInputs(pad) {
+            touchpad.primary.valueChangedHandler = nil
+            touchpad.secondary.valueChangedHandler = nil
+            touchpad.button.valueChangedHandler = nil
+        }
         slots.removeAll { $0.id == id }
         processor.remove(deviceId: id)
         controllersById.removeValue(forKey: id)
@@ -170,6 +209,73 @@ final class GameControllerInput: ObservableObject {
             timer.cancel()
         }
         lastBatterySent.removeValue(forKey: id)
+    }
+
+    /// Resolve a `GCExtendedGamepad` to its touchpad inputs, if it has any.
+    /// Only the DualSense and DualShock 4 subclasses expose a touchpad.
+    private static func touchpadInputs(
+        _ pad: GCExtendedGamepad
+    ) -> (primary: GCControllerDirectionPad,
+          secondary: GCControllerDirectionPad,
+          button: GCControllerButtonInput)? {
+        if let ds = pad as? GCDualSenseGamepad {
+            return (ds.touchpadPrimary, ds.touchpadSecondary, ds.touchpadButton)
+        }
+        if let ds4 = pad as? GCDualShockGamepad {
+            return (ds4.touchpadPrimary, ds4.touchpadSecondary, ds4.touchpadButton)
+        }
+        return nil
+    }
+
+    // MARK: - Touchpad
+
+    /// Rebuild the full touchpad state and hand it to the processor. Called
+    /// from any of the three touchpad inputs' callback queues.
+    ///
+    /// GameController has no per-finger touch-down signal — the framework
+    /// reports each contact as a direction pad that reads (0, 0) when no
+    /// finger is present. We therefore treat a finger as "active" when its
+    /// pad value is non-zero. The edge case (a finger resting exactly at the
+    /// pad centre) reads as inactive; this is the best signal the framework
+    /// exposes and matches how GCDualSense touchpad consumers behave. Finger
+    /// IDs aren't surfaced either, so we use the stable slot indices 0 / 1.
+    private nonisolated func pushTouchpad(
+        id: String,
+        primary: GCControllerDirectionPad,
+        secondary: GCControllerDirectionPad,
+        button: GCControllerButtonInput
+    ) {
+        let p0Active = primary.xAxis.value != 0 || primary.yAxis.value != 0
+        let p1Active = secondary.xAxis.value != 0 || secondary.yAxis.value != 0
+        processor.publishTouchpad(
+            deviceId: id,
+            finger0Active: p0Active,
+            finger0X: scaleAxis(primary.xAxis.value, max: 32767),
+            finger0Y: scaleAxis(primary.yAxis.value, max: 32767),
+            finger1Active: p1Active,
+            finger1X: scaleAxis(secondary.xAxis.value, max: 32767),
+            finger1Y: scaleAxis(secondary.yAxis.value, max: 32767),
+            buttonPressed: button.isPressed
+        )
+    }
+
+    // MARK: - Lightbar (return path)
+
+    /// Apply a host-game-driven light bar colour to the physical controller.
+    /// Called from the `SatelliteClient` receive thread via the AppModel
+    /// lightbar handler. No-op on controllers without a light (Xbox pads);
+    /// the gate on `FeatureSettings.lightbarMode` happens upstream in
+    /// `AppModel` so this method stays a pure "apply" with no policy.
+    nonisolated func applyLightbar(deviceId: String, r: UInt8, g: UInt8, b: UInt8) {
+        Task { @MainActor in
+            guard let controller = self.controllersById[deviceId],
+                  let light = controller.light else { return }
+            light.color = GCColor(
+                red: Float(r) / 255.0,
+                green: Float(g) / 255.0,
+                blue: Float(b) / 255.0
+            )
+        }
     }
 
     // MARK: - Motion (IMU)
@@ -249,6 +355,25 @@ final class GameControllerInput: ObservableObject {
         @unknown default: statusRaw = 0
         }
 
+        // Update the slot card's battery pill regardless of dedup — the UI
+        // should reflect the latest reading even if it equals the last one.
+        let displayState: BatteryChargeState = switch battery.batteryState {
+        case .discharging: .discharging
+        case .charging: .charging
+        case .full: .full
+        default: .unknown
+        }
+        let reading = BatteryReading(
+            level: level == 0xFF ? nil : Int(level),
+            state: displayState
+        )
+        if let idx = slots.firstIndex(where: { $0.id == deviceId }) {
+            slots[idx].battery = reading
+        }
+
+        // Dedup the *wire* emit — a 30 s heartbeat of an unchanged value is
+        // wasted bandwidth; the satellite only needs transitions + the
+        // periodic refresh.
         let snapshot = (level: level, status: statusRaw)
         if lastBatterySent[deviceId] != nil, lastBatterySent[deviceId]! == snapshot { return }
         lastBatterySent[deviceId] = snapshot

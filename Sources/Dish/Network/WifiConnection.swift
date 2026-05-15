@@ -48,6 +48,8 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// in `markConnected` so we don't lose rumble across reconnects. The
     /// closure runs on the SatelliteClient's receive-loop dispatch queue.
     private var rumbleHandler: ((SatelliteClient.RumbleMessage) -> Void)?
+    /// Same pattern for the decoupled `MSG_LIGHTBAR` return path.
+    private var lightbarHandler: ((SatelliteClient.LightbarMessage) -> Void)?
 
     private nonisolated static let defaultCtrlIndex = 0
     private nonisolated static let defaultCaps: UInt16 = 0x0003
@@ -85,6 +87,7 @@ final class WifiConnection: ObservableObject, Identifiable {
         state = .connected
         client.resetControllerAck()
         client.rumbleHandler = rumbleHandler
+        client.lightbarHandler = lightbarHandler
         client.startReceiveLoop()
         client.startHeartbeat()
 
@@ -249,6 +252,26 @@ final class WifiConnection: ObservableObject, Identifiable {
         )
     }
 
+    /// Forward a touchpad sample. Same threading discipline as `sendReport` —
+    /// called from a GameController touchpad callback thread.
+    nonisolated func sendTouchpad(
+        finger0Active: Bool, finger0X: Int16, finger0Y: Int16,
+        finger1Active: Bool, finger1X: Int16, finger1Y: Int16,
+        buttonPressed: Bool
+    ) {
+        guard let live = clientRef.get() else { return }
+        // GameController doesn't surface per-finger ids; use the stable slot
+        // indices 0 / 1 the way `GamepadInputProcessor.TouchpadSender` documents.
+        live.sendTouchpad(
+            controllerIndex: Self.defaultCtrlIndex,
+            finger0Active: finger0Active, finger0Id: 0,
+            finger0X: finger0X, finger0Y: finger0Y,
+            finger1Active: finger1Active, finger1Id: 1,
+            finger1X: finger1X, finger1Y: finger1Y,
+            buttonPressed: buttonPressed
+        )
+    }
+
     /// Install (or replace) the rumble handler. Called from the AppModel
     /// during composition; we cache it on the WifiConnection so that
     /// `markConnected` can re-install it on each fresh `SatelliteClient`
@@ -256,6 +279,13 @@ final class WifiConnection: ObservableObject, Identifiable {
     func setRumbleHandler(_ handler: @escaping (SatelliteClient.RumbleMessage) -> Void) {
         rumbleHandler = handler
         clientRef.get()?.rumbleHandler = handler
+    }
+
+    /// Install (or replace) the light-bar handler — same cache-and-reapply
+    /// pattern as `setRumbleHandler` so it survives a reconnect.
+    func setLightbarHandler(_ handler: @escaping (SatelliteClient.LightbarMessage) -> Void) {
+        lightbarHandler = handler
+        clientRef.get()?.lightbarHandler = handler
     }
 }
 

@@ -104,6 +104,24 @@ final class SatelliteClient {
         }
     }
 
+    /// Per-packet light-bar dispatcher for the decoupled `MSG_LIGHTBAR`
+    /// (0x000D) return path — distinct from the legacy lightbar bytes
+    /// piggy-backed on `MSG_RUMBLE`. Same locking discipline as `rumbleHandler`.
+    private var _lightbarHandler: ((LightbarMessage) -> Void)?
+    private let lightbarHandlerLock = NSLock()
+    var lightbarHandler: ((LightbarMessage) -> Void)? {
+        get {
+            lightbarHandlerLock.lock()
+            defer { lightbarHandlerLock.unlock() }
+            return _lightbarHandler
+        }
+        set {
+            lightbarHandlerLock.lock()
+            defer { lightbarHandlerLock.unlock() }
+            _lightbarHandler = newValue
+        }
+    }
+
     // MARK: - Lifecycle
 
     /// Open a UDP socket aimed at `ip:port`. Returns `true` on success; on

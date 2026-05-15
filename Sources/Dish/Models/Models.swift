@@ -79,6 +79,36 @@ struct ConnectionSummary: Identifiable, Hashable {
     let boundSlotId: String?
 }
 
+// MARK: - Controller capabilities + battery (UX surface)
+
+/// What a physical controller's *hardware* exposes, detected once at attach.
+/// Distinct from `FeatureSettings`, which is whether the *user* wants each
+/// feature forwarded. The slot card shows capabilities as chips so the player
+/// can see at a glance that, e.g., their DualSense's gyro was detected — the
+/// "gyro detected" feedback every comparable tool (DS4Windows, Steam Input)
+/// surfaces.
+struct ControllerCapabilities: Hashable {
+    var hasMotion = false
+    var hasTouchpad = false
+    var hasRumble = false
+    var hasBattery = false
+
+    static let none = ControllerCapabilities()
+}
+
+/// Charging state for the slot-card battery pill. Maps from
+/// `GCDeviceBattery.State`; the raw wire value is in `SatelliteClient`.
+enum BatteryChargeState: Hashable {
+    case unknown, discharging, charging, full
+}
+
+/// Live battery reading shown in the slot card. `level` is 0...100, or nil
+/// when the controller reports state but not a percentage.
+struct BatteryReading: Hashable {
+    var level: Int?
+    var state: BatteryChargeState = .unknown
+}
+
 // MARK: - Controller slots (matches MainUiState.kt)
 
 struct ControllerSlot: Identifiable, Hashable {
@@ -86,6 +116,10 @@ struct ControllerSlot: Identifiable, Hashable {
     let name: String
     var boundConnectionId: String?
     var boundStatus: ConnectionSummary?
+    /// Hardware capabilities detected at attach.
+    var capabilities: ControllerCapabilities = .none
+    /// Most recent battery reading, nil until the first sample arrives.
+    var battery: BatteryReading?
 }
 
 // MARK: - Persisted remembered connection (matches RememberedWifi)

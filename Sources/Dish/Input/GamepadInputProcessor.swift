@@ -64,9 +64,20 @@ final class GamepadInputProcessor {
         _ statusRaw: UInt8
     ) -> Void
 
+    /// Invoked on every touchpad sample. Coordinates are pre-scaled int16.
+    /// Finger IDs are not carried — GameController doesn't expose them, so
+    /// the sender assigns the stable indices 0 / 1.
+    typealias TouchpadSender = (
+        _ deviceId: DeviceId,
+        _ finger0Active: Bool, _ finger0X: Int16, _ finger0Y: Int16,
+        _ finger1Active: Bool, _ finger1X: Int16, _ finger1Y: Int16,
+        _ buttonPressed: Bool
+    ) -> Void
+
     var reportSender: ReportSender?
     var motionSender: MotionSender?
     var batterySender: BatterySender?
+    var touchpadSender: TouchpadSender?
 
     /// Per-device state. Small struct, map lookups on every event — same
     /// design as the Android processor.
@@ -185,6 +196,23 @@ final class GamepadInputProcessor {
     /// raw values; the bridge resolves the enum before calling.
     func publishBattery(deviceId: DeviceId, level: UInt8, statusRaw: UInt8) {
         batterySender?(deviceId, level, statusRaw)
+    }
+
+    /// Forward a touchpad sample. Coordinates are already scaled to int16 by
+    /// the bridge. No deadzone / filtering is applied — a touchpad is an
+    /// absolute pointing surface, not a self-centring stick.
+    func publishTouchpad(
+        deviceId: DeviceId,
+        finger0Active: Bool, finger0X: Int16, finger0Y: Int16,
+        finger1Active: Bool, finger1X: Int16, finger1Y: Int16,
+        buttonPressed: Bool
+    ) {
+        touchpadSender?(
+            deviceId,
+            finger0Active, finger0X, finger0Y,
+            finger1Active, finger1X, finger1Y,
+            buttonPressed
+        )
     }
 }
 
