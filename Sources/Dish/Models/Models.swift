@@ -91,6 +91,10 @@ struct ControllerCapabilities: Hashable {
     var hasMotion = false
     var hasTouchpad = false
     var hasRumble = false
+    /// The controller has an addressable RGB light bar (`GCController.light`).
+    /// Drives the "Lightbar" capability chip and the `CAP_LIGHTBAR` bit in
+    /// `MSG_CONTROLLER_ADD`.
+    var hasLightbar = false
     var hasBattery = false
 
     static let none = ControllerCapabilities()

@@ -92,8 +92,7 @@ final class FeatureSettings: ObservableObject {
     }
 
     /// Plain-value snapshot for the thread-safe `ForwardingGate`. `lightbar`
-    /// collapses both the dedicated `MSG_LIGHTBAR` path and the lightbar tail
-    /// of `MSG_RUMBLE` into one boolean.
+    /// gates whether the host game's `MSG_LIGHTBAR` colour is applied.
     var flags: ForwardingFlags {
         ForwardingFlags(
             motion: motionEnabled,

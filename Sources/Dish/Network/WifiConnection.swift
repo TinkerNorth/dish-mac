@@ -43,6 +43,10 @@ final class WifiConnection: ObservableObject, Identifiable {
     private var registrationTask: Task<Void, Never>?
     private var controllerAdded = false
     private var pendingControllerType = 0
+    /// Whether the bound physical controller exposes an addressable RGB light
+    /// (`GCController.light != nil`). Captured at bind time and folded into the
+    /// `MSG_CONTROLLER_ADD` capability word as `CAP_LIGHTBAR`.
+    private var pendingHasLight = false
 
     /// Set once during composition; re-applied to each fresh `SatelliteClient`
     /// in `markConnected` so we don't lose rumble across reconnects. The
@@ -52,11 +56,29 @@ final class WifiConnection: ObservableObject, Identifiable {
     private var lightbarHandler: ((SatelliteClient.LightbarMessage) -> Void)?
 
     private nonisolated static let defaultCtrlIndex = 0
-    // MSG_CONTROLLER_ADD capability word: analog triggers (0x0001) | rumble
-    // (0x0002) | motion (0x0004 — this client streams MSG_MOTION gyro/accel).
-    private nonisolated static let defaultCaps: UInt16 = 0x0007
+    /// `MSG_CONTROLLER_ADD` capability word, fixed bits: analog triggers
+    /// (`CAP_ANALOG_TRIGGERS` 0x0001) | rumble (`CAP_RUMBLE` 0x0002) | motion
+    /// (`CAP_MOTION` 0x0004 — this client streams `MSG_MOTION` gyro/accel).
+    /// These three are always advertised; `CAP_LIGHTBAR` is per-controller and
+    /// OR'd in by `capabilityWord(hasLight:)`.
+    nonisolated static let defaultCaps: UInt16 = 0x0007
+    /// `CAP_LIGHTBAR` — set per-controller when the bound pad has an
+    /// addressable RGB LED (`GCController.light != nil`). Matches
+    /// `satellite/src/core/types.h` and is decoded identically by every
+    /// dish client.
+    nonisolated static let capLightbar: UInt16 = 0x0008
     private nonisolated static let ackWaitAttempts = 20
     private nonisolated static let ackWaitIntervalMs: UInt64 = 100
+
+    /// The `MSG_CONTROLLER_ADD` capability word for a controller: the fixed
+    /// `defaultCaps` bits with `CAP_LIGHTBAR` OR'd in only when the bound
+    /// physical controller has an addressable RGB light. `internal` (not
+    /// `private`) so the per-controller cap computation can be unit-tested
+    /// without standing up a live session — the same seam pattern as
+    /// `SatelliteClient.parseRumblePayload`.
+    nonisolated static func capabilityWord(hasLight: Bool) -> UInt16 {
+        defaultCaps | (hasLight ? capLightbar : 0)
+    }
 
     init(id: String, server: DiscoveredServer) {
         self.id = id
@@ -129,9 +151,10 @@ final class WifiConnection: ObservableObject, Identifiable {
 
     // MARK: - Slot binding
 
-    func attachSlot(_ slotId: String, controllerType: Int) async {
+    func attachSlot(_ slotId: String, controllerType: Int, hasLight: Bool) async {
         boundSlotId = slotId
         pendingControllerType = controllerType
+        pendingHasLight = hasLight
         if state == .connected, !controllerAdded {
             await registerController(type: controllerType)
         }
@@ -153,7 +176,12 @@ final class WifiConnection: ObservableObject, Identifiable {
         guard let live = clientRef.get() else { return }
         let slotId = boundSlotId
         live.resetControllerAck()
-        live.controllerAdd(index: Self.defaultCtrlIndex, capabilities: Self.defaultCaps)
+        // Capability word is per-controller: the fixed analog/rumble/motion
+        // bits, plus CAP_LIGHTBAR only when the bound pad has an RGB light.
+        live.controllerAdd(
+            index: Self.defaultCtrlIndex,
+            capabilities: Self.capabilityWord(hasLight: pendingHasLight)
+        )
         isRegisteringController = true
         defer { isRegisteringController = false }
 

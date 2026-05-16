@@ -191,8 +191,12 @@ final class AppModel: ObservableObject {
     /// Install the rumble handler on every WifiConnection in the pool that
     /// doesn't already have one. The handler walks the current bindings
     /// (slotId → connectionId), finds the slot bound to *this* connection,
-    /// and forwards the rumble payload to `GameControllerInput.applyRumble`
-    /// for that slot id (== device id, by construction in `rebuildSlots`).
+    /// and forwards the `MSG_RUMBLE` payload to `GameControllerInput` for that
+    /// slot id (== device id, by construction in `rebuildSlots`).
+    ///
+    /// The handler drives vibration only — the light bar is a separate return
+    /// path (`installLightbarHandlers`). Vibration is gated on the Rumble
+    /// toggle.
     private func installRumbleHandlers() {
         let input = self.input
         let hub = self.hub
@@ -201,8 +205,8 @@ final class AppModel: ObservableObject {
             if rumbleWiredConnections.contains(id) { continue }
             rumbleWiredConnections.insert(id)
             conn.setRumbleHandler { rm in
-                // Rumble disabled by the user → drop without touching haptics.
-                guard gate.snapshot().rumble else { return }
+                // Rumble toggle off → drop without the main-actor hop.
+                guard ReturnPathRouting.shouldVibrate(flags: gate.snapshot()) else { return }
                 Task { @MainActor in
                     var deviceId: String?
                     for (slotId, cid) in hub.bindings where cid == id {
@@ -214,11 +218,7 @@ final class AppModel: ObservableObject {
                         deviceId: deviceId,
                         strongMagnitude: rm.strongMagnitude,
                         weakMagnitude: rm.weakMagnitude,
-                        durationMs: rm.durationMs,
-                        hasLightbar: rm.hasLightbar,
-                        lightbarR: rm.lightbarR,
-                        lightbarG: rm.lightbarG,
-                        lightbarB: rm.lightbarB
+                        durationMs: rm.durationMs
                     )
                 }
             }
@@ -298,7 +298,8 @@ final class AppModel: ObservableObject {
             if lightbarWiredConnections.contains(id) { continue }
             lightbarWiredConnections.insert(id)
             conn.setLightbarHandler { lm in
-                guard gate.snapshot().lightbar else { return }
+                // Gated on the Light bar setting.
+                guard ReturnPathRouting.shouldApply(lightbar: lm, flags: gate.snapshot()) else { return }
                 Task { @MainActor in
                     var deviceId: String?
                     for (slotId, cid) in hub.bindings where cid == id {
@@ -351,7 +352,11 @@ final class AppModel: ObservableObject {
     }
 
     func bind(slotId: String, connectionId: String) {
-        hub.bind(slotId: slotId, connectionId: connectionId)
+        // Resolve whether the bound controller has an RGB light bar from its
+        // detected capabilities, so `WifiConnection` can advertise CAP_LIGHTBAR
+        // in MSG_CONTROLLER_ADD. Defaults to false for an unknown slot id.
+        let hasLight = slots.first { $0.id == slotId }?.capabilities.hasLightbar ?? false
+        hub.bind(slotId: slotId, connectionId: connectionId, hasLight: hasLight)
     }
 
     func unbind(slotId: String) {

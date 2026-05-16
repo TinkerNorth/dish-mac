@@ -202,38 +202,16 @@ extension SatelliteClient {
     /// truncation. Public + static so it can be exercised by unit tests
     /// without driving a live socket.
     ///
-    /// Wire layout:
+    /// Wire layout — a fixed 7-byte payload:
     ///
-    ///     ctrlIdx(1)  strong(2 BE)  weak(2 BE)  durMs(2 BE)  flags(1)
-    ///     [R(1)  G(1)  B(1)]    // present iff flags bit 0 set
+    ///     ctrlIdx(1)  strong(2 BE)  weak(2 BE)  durMs(2 BE)
     static func parseRumblePayload(_ payload: [UInt8]) -> RumbleMessage? {
-        // Mandatory section is 8 bytes.
-        guard payload.count >= 8 else { return nil }
-        let ctrlIdx = Int(payload[0])
-        let strong = (UInt16(payload[1]) << 8) | UInt16(payload[2])
-        let weak = (UInt16(payload[3]) << 8) | UInt16(payload[4])
-        let dur = (UInt16(payload[5]) << 8) | UInt16(payload[6])
-        let flags = payload[7]
-        let hasLightbar = (flags & 0x01) != 0
-        var r: UInt8 = 0
-        var g: UInt8 = 0
-        var b: UInt8 = 0
-        if hasLightbar {
-            // Declared lightbar but truncated tail → malformed.
-            guard payload.count >= 11 else { return nil }
-            r = payload[8]
-            g = payload[9]
-            b = payload[10]
-        }
+        guard payload.count >= 7 else { return nil }
         return RumbleMessage(
-            controllerIndex: ctrlIdx,
-            strongMagnitude: strong,
-            weakMagnitude: weak,
-            durationMs: dur,
-            hasLightbar: hasLightbar,
-            lightbarR: r,
-            lightbarG: g,
-            lightbarB: b
+            controllerIndex: Int(payload[0]),
+            strongMagnitude: (UInt16(payload[1]) << 8) | UInt16(payload[2]),
+            weakMagnitude: (UInt16(payload[3]) << 8) | UInt16(payload[4]),
+            durationMs: (UInt16(payload[5]) << 8) | UInt16(payload[6])
         )
     }
 }

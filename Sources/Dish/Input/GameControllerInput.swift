@@ -35,7 +35,7 @@ final class GameControllerInput: ObservableObject {
         let id: String // stable controller id
         let name: String // vendorName or product category
         /// Hardware features detected at attach (gyro / touchpad / rumble /
-        /// battery). Drives the capability chips in the slot card.
+        /// light bar / battery). Drives the capability chips in the slot card.
         var capabilities: ControllerCapabilities = .none
         /// Live battery reading, nil until the first poll completes.
         var battery: BatteryReading?
@@ -116,6 +116,7 @@ final class GameControllerInput: ObservableObject {
             hasMotion: controller.motion != nil,
             hasTouchpad: touchpad != nil,
             hasRumble: controller.haptics != nil,
+            hasLightbar: controller.light != nil,
             hasBattery: true
         )
 
@@ -133,7 +134,7 @@ final class GameControllerInput: ObservableObject {
         DEVCAPS id=\(id, privacy: .public) name=\(name, privacy: .public) \
         category=\(controller.productCategory, privacy: .public) \
         extendedGamepad=yes motion=\(caps.hasMotion) touchpad=\(caps.hasTouchpad) \
-        rumble=\(caps.hasRumble) battery=\(caps.hasBattery)
+        rumble=\(caps.hasRumble) lightbar=\(caps.hasLightbar) battery=\(caps.hasBattery)
         """)
 
         // Push the default deadzone profile straight away. The processor
@@ -444,18 +445,17 @@ final class GameControllerInput: ObservableObject {
     /// `SatelliteClient` receive thread (via the AppModel rumble handler).
     /// Most of the heavy lifting is in `RumbleActuator`; this method just
     /// resolves `deviceId → GCController` and gates on whether the pad
-    /// actually exposes haptics (returns `nil` on legacy MFi pads). Hop to
-    /// the main actor for the dictionary lookups since `controllersById` is
-    /// owned by the main actor.
+    /// actually exposes haptics (returns `nil` on MFi pads without haptics).
+    /// Hop to the main actor for the dictionary lookups since `controllersById`
+    /// is owned by the main actor.
+    ///
+    /// Vibration only — the light bar is a separate return path (see
+    /// `applyLightbar`).
     nonisolated func applyRumble(
         deviceId: String,
         strongMagnitude: UInt16,
         weakMagnitude: UInt16,
-        durationMs: UInt16,
-        hasLightbar: Bool,
-        lightbarR: UInt8,
-        lightbarG: UInt8,
-        lightbarB: UInt8
+        durationMs: UInt16
     ) {
         Task { @MainActor in
             guard let controller = self.controllersById[deviceId] else { return }
@@ -473,11 +473,7 @@ final class GameControllerInput: ObservableObject {
             actuator.apply(
                 strong: strongMagnitude,
                 weak: weakMagnitude,
-                durationMs: durationMs,
-                hasLightbar: hasLightbar,
-                lightbarR: lightbarR,
-                lightbarG: lightbarG,
-                lightbarB: lightbarB
+                durationMs: durationMs
             )
         }
     }

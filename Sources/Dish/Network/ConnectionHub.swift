@@ -85,7 +85,13 @@ final class ConnectionHub: ObservableObject {
     }
 
     /// Bind `slotId` to `connectionId`. Evicts any prior owner on either side.
-    func bind(slotId: String, connectionId: String) {
+    ///
+    /// `hasLight` reports whether the bound physical controller exposes an
+    /// addressable RGB light; it is forwarded into the `MSG_CONTROLLER_ADD`
+    /// capability word as `CAP_LIGHTBAR`. The caller (`AppModel`) resolves it
+    /// from the slot's detected `ControllerCapabilities` — `ConnectionHub`
+    /// has no controller handle of its own.
+    func bind(slotId: String, connectionId: String, hasLight: Bool) {
         var current = bindings
         if let priorSlot = current.first(where: { $0.value == connectionId })?.key,
            priorSlot != slotId
@@ -97,7 +103,7 @@ final class ConnectionHub: ObservableObject {
         bindings = current
         rebuild()
         if let conn = wifi.get(connectionId) {
-            Task { await conn.attachSlot(slotId, controllerType: 0) }
+            Task { await conn.attachSlot(slotId, controllerType: 0, hasLight: hasLight) }
         }
     }
 

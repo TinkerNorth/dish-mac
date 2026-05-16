@@ -44,18 +44,13 @@ final class SatelliteClient {
         case wired = 4
     }
 
-    /// Decoded `MSG_RUMBLE` payload. `lightbar*` are valid only when
-    /// `hasLightbar` is true (the optional trailing 3-byte tail of the
-    /// wire format).
+    /// Decoded `MSG_RUMBLE` payload — motor magnitudes plus duration. The
+    /// light bar is a separate return path (`MSG_LIGHTBAR`).
     struct RumbleMessage {
         let controllerIndex: Int
         let strongMagnitude: UInt16
         let weakMagnitude: UInt16
         let durationMs: UInt16
-        let hasLightbar: Bool
-        let lightbarR: UInt8
-        let lightbarG: UInt8
-        let lightbarB: UInt8
     }
 
     static let heartbeatIntervalMs: UInt32 = 2000
@@ -104,9 +99,8 @@ final class SatelliteClient {
         }
     }
 
-    /// Per-packet light-bar dispatcher for the decoupled `MSG_LIGHTBAR`
-    /// (0x000D) return path — distinct from the legacy lightbar bytes
-    /// piggy-backed on `MSG_RUMBLE`. Same locking discipline as `rumbleHandler`.
+    /// Per-packet light-bar dispatcher for the `MSG_LIGHTBAR` (0x000D)
+    /// return path. Same locking discipline as `rumbleHandler`.
     private var _lightbarHandler: ((LightbarMessage) -> Void)?
     private let lightbarHandlerLock = NSLock()
     var lightbarHandler: ((LightbarMessage) -> Void)? {
