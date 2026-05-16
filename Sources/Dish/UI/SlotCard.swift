@@ -91,8 +91,9 @@ struct SlotCard: View {
     ///
     /// Motion is *always* shown: a controller with an IMU gets a "Gyro" chip
     /// (on/off by Settings), one without gets an explicit dashed "No gyro"
-    /// chip. Touchpad/rumble/battery still only appear when present — but
-    /// motion is the Task 1.1 surface and its absence must never be silent.
+    /// chip. Touchpad/rumble still only appear when present. The battery pill
+    /// shows for *every* controller — a pad without its own battery falls back
+    /// to the host Mac's — so it appears as soon as the first reading lands.
     @ViewBuilder
     private var capabilityRow: some View {
         let caps = slot.capabilities
@@ -109,7 +110,7 @@ struct SlotCard: View {
                 CapabilityChip(label: "Rumble", on: settings.rumbleEnabled, feature: "Rumble")
             }
             Spacer(minLength: 0)
-            if caps.hasBattery, let battery = slot.battery {
+            if let battery = slot.battery {
                 BatteryPill(reading: battery)
             }
         }

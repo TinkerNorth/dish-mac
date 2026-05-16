@@ -112,11 +112,14 @@ final class GameControllerInput: ObservableObject {
         // and `light` are all optional on GCController; the touchpad lives on
         // the DualSense / DualShock subclasses of GCExtendedGamepad.
         let touchpad = Self.touchpadInputs(pad)
+        // `hasBattery` is always true: a pad without its own `GCDeviceBattery`
+        // still gets a reading from the host-Mac fallback, so the slot card's
+        // battery pill always has something to show.
         let caps = ControllerCapabilities(
             hasMotion: controller.motion != nil,
             hasTouchpad: touchpad != nil,
             hasRumble: controller.haptics != nil,
-            hasBattery: controller.battery != nil
+            hasBattery: true
         )
 
         if let idx = slots.firstIndex(where: { $0.id == id }) {
@@ -186,13 +189,14 @@ final class GameControllerInput: ObservableObject {
             touchpad.button.valueChangedHandler = { btn, _, _ in rebuild(btn) }
         }
 
-        // Battery. Optional — wired Xbox pads return nil. The first sample
-        // is delayed by `kBatteryFirstReportDelaySec` so the satellite has
-        // ACK'd the controller-add by the time it arrives; subsequent
-        // samples follow `kBatteryPollIntervalSec`.
-        if controller.battery != nil {
-            startBatteryTimer(deviceId: id, controller: controller)
-        }
+        // Battery. The timer runs for *every* controller: a pad with its own
+        // `GCDeviceBattery` reports that, and one without (wired Xbox pads
+        // return nil, as do pads whose level reads unknown) falls back to the
+        // host Mac's battery via `HostBattery`. The first sample is delayed by
+        // `kBatteryFirstReportDelaySec` so the satellite has ACK'd the
+        // controller-add by the time it arrives; subsequent samples follow
+        // `kBatteryPollIntervalSec`.
+        startBatteryTimer(deviceId: id, controller: controller)
     }
 
     private func detach(_ controller: GCController) {
@@ -340,45 +344,44 @@ final class GameControllerInput: ObservableObject {
         let delay: DispatchTime = .now() + .seconds(kBatteryFirstReportDelaySec)
         timer.schedule(deadline: delay, repeating: .seconds(kBatteryPollIntervalSec))
         timer.setEventHandler { [weak self, weak controller] in
-            guard let self, let controller, let battery = controller.battery else { return }
-            self.emitBattery(deviceId: deviceId, battery: battery)
+            guard let self, let controller else { return }
+            self.emitBattery(deviceId: deviceId, controller: controller)
         }
         timer.resume()
         batteryTimers[deviceId] = timer
     }
 
-    /// Read the GCDeviceBattery, encode for the wire, and forward to the
-    /// processor. Suppresses duplicate emits when nothing changed since the
-    /// last send (state-transition events would be the only reason to send
-    /// in less than 30 s).
-    private func emitBattery(deviceId: String, battery: GCDeviceBattery) {
+    /// Wire-encoded battery reading plus the slot-card display state, the
+    /// common shape `emitBattery` builds from either the controller's own
+    /// `GCDeviceBattery` or the host-Mac fallback.
+    private struct BatteryResolution {
         let level: UInt8
-        // GCDeviceBattery.batteryLevel is Float in 0..1; -1 means "unknown".
-        let raw = battery.batteryLevel
-        if raw < 0 || raw > 1 {
-            level = 0xFF
+        let statusRaw: UInt8
+        let displayState: BatteryChargeState
+    }
+
+    /// Resolve the battery reading for a controller and forward it. A pad has
+    /// a *usable* reading when it exposes a `GCDeviceBattery` AND that battery
+    /// reports a non-negative level (a wireless pad). When it doesn't — a
+    /// wired/USB pad, or one whose level reads unknown — we fall back to the
+    /// host Mac's battery so the satellite still shows something honest.
+    /// Suppresses duplicate emits when nothing changed since the last send
+    /// (state-transition events would be the only reason to send in <30 s).
+    private func emitBattery(deviceId: String, controller: GCController) {
+        let resolved: BatteryResolution = if let battery = controller.battery, battery.batteryLevel >= 0 {
+            Self.resolveControllerBattery(battery)
         } else {
-            level = UInt8(clamping: Int((raw * 100.0).rounded()))
-        }
-        let statusRaw: UInt8 = switch battery.batteryState {
-        case .unknown: 0
-        case .discharging: 1
-        case .charging: 2
-        case .full: 3
-        @unknown default: 0
+            // No usable controller battery — report the host Mac instead. A
+            // laptop forwards its own charge; a desktop Mac reports
+            // level=100, status=wired.
+            Self.resolveHostBattery(HostBattery.reading(from: HostBattery.snapshot()))
         }
 
         // Update the slot card's battery pill regardless of dedup — the UI
         // should reflect the latest reading even if it equals the last one.
-        let displayState: BatteryChargeState = switch battery.batteryState {
-        case .discharging: .discharging
-        case .charging: .charging
-        case .full: .full
-        default: .unknown
-        }
         let reading = BatteryReading(
-            level: level == 0xFF ? nil : Int(level),
-            state: displayState
+            level: resolved.level == 0xFF ? nil : Int(resolved.level),
+            state: resolved.displayState
         )
         if let idx = slots.firstIndex(where: { $0.id == deviceId }) {
             slots[idx].battery = reading
@@ -387,11 +390,57 @@ final class GameControllerInput: ObservableObject {
         // Dedup the *wire* emit — a 30 s heartbeat of an unchanged value is
         // wasted bandwidth; the satellite only needs transitions + the
         // periodic refresh.
-        let snapshot = (level: level, status: statusRaw)
+        let snapshot = (level: resolved.level, status: resolved.statusRaw)
         if let prevSent = lastBatterySent[deviceId], prevSent == snapshot { return }
         lastBatterySent[deviceId] = snapshot
 
-        processor.publishBattery(deviceId: deviceId, level: level, statusRaw: statusRaw)
+        processor.publishBattery(
+            deviceId: deviceId,
+            level: resolved.level,
+            statusRaw: resolved.statusRaw
+        )
+    }
+
+    /// Encode a controller's own `GCDeviceBattery` (a wireless pad reporting a
+    /// usable percentage) for the wire. `batteryLevel` is Float in 0..1.
+    private static func resolveControllerBattery(
+        _ battery: GCDeviceBattery
+    ) -> BatteryResolution {
+        let raw = battery.batteryLevel
+        let level: UInt8 = raw > 1 ? 100 : UInt8(clamping: Int((raw * 100.0).rounded()))
+        let statusRaw: UInt8 = switch battery.batteryState {
+        case .unknown: 0
+        case .discharging: 1
+        case .charging: 2
+        case .full: 3
+        @unknown default: 0
+        }
+        let displayState: BatteryChargeState = switch battery.batteryState {
+        case .discharging: .discharging
+        case .charging: .charging
+        case .full: .full
+        default: .unknown
+        }
+        return BatteryResolution(level: level, statusRaw: statusRaw, displayState: displayState)
+    }
+
+    /// Adapt a host-Mac `HostBattery.WireReading` to the slot-card display
+    /// state. `wired` (a desktop Mac) has no charge-state pill, so it shows as
+    /// `.unknown` in the UI while still going out as `wired` on the wire.
+    private static func resolveHostBattery(
+        _ host: HostBattery.WireReading
+    ) -> BatteryResolution {
+        let displayState: BatteryChargeState = switch host.status {
+        case .discharging: .discharging
+        case .charging: .charging
+        case .full: .full
+        case .wired, .unknown: .unknown
+        }
+        return BatteryResolution(
+            level: host.level,
+            statusRaw: host.status.rawValue,
+            displayState: displayState
+        )
     }
 
     // MARK: - Rumble actuation (return path)
