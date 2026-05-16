@@ -57,15 +57,12 @@ final class GameControllerInput: ObservableObject {
     /// satellite never rumbles. Cleaned up in `detach`.
     private var actuators: [String: RumbleActuator] = [:]
     /// Per-device polling timer that emits a battery snapshot every
-    /// `kBatteryPollIntervalSec` seconds and on charging-state changes.
-    /// macOS GCDevice doesn't surface a "battery state changed" notification,
-    /// so we poll. Polling is light (one Float read + an enum compare) and
-    /// only runs while the controller is attached.
+    /// `kBatteryPollIntervalSec` seconds. macOS GCDevice doesn't surface a
+    /// "battery state changed" notification, so we poll — and the timer is
+    /// also the wire cadence: MSG_BATTERY is a fixed 30 s heartbeat. Polling
+    /// is light (one Float read + an enum compare) and only runs while the
+    /// controller is attached.
     private var batteryTimers: [String: DispatchSourceTimer] = [:]
-    /// Last battery snapshot we forwarded per device — used to suppress
-    /// duplicate emits between transition events. Stored as the wire-encoded
-    /// `(level, status)` tuple so we don't repeatedly normalise.
-    private var lastBatterySent: [String: (level: UInt8, status: UInt8)] = [:]
 
     init() {
         let nc = NotificationCenter.default
@@ -216,7 +213,6 @@ final class GameControllerInput: ObservableObject {
         if let timer = batteryTimers.removeValue(forKey: id) {
             timer.cancel()
         }
-        lastBatterySent.removeValue(forKey: id)
     }
 
     /// Resolve a `GCExtendedGamepad` to its touchpad inputs, if it has any.
@@ -365,8 +361,6 @@ final class GameControllerInput: ObservableObject {
     /// reports a non-negative level (a wireless pad). When it doesn't — a
     /// wired/USB pad, or one whose level reads unknown — we fall back to the
     /// host Mac's battery so the satellite still shows something honest.
-    /// Suppresses duplicate emits when nothing changed since the last send
-    /// (state-transition events would be the only reason to send in <30 s).
     private func emitBattery(deviceId: String, controller: GCController) {
         let resolved: BatteryResolution = if let battery = controller.battery, battery.batteryLevel >= 0 {
             Self.resolveControllerBattery(battery)
@@ -377,8 +371,7 @@ final class GameControllerInput: ObservableObject {
             Self.resolveHostBattery(HostBattery.reading(from: HostBattery.snapshot()))
         }
 
-        // Update the slot card's battery pill regardless of dedup — the UI
-        // should reflect the latest reading even if it equals the last one.
+        // Update the slot card's battery pill.
         let reading = BatteryReading(
             level: resolved.level == 0xFF ? nil : Int(resolved.level),
             state: resolved.displayState
@@ -387,13 +380,10 @@ final class GameControllerInput: ObservableObject {
             slots[idx].battery = reading
         }
 
-        // Dedup the *wire* emit — a 30 s heartbeat of an unchanged value is
-        // wasted bandwidth; the satellite only needs transitions + the
-        // periodic refresh.
-        let snapshot = (level: resolved.level, status: resolved.statusRaw)
-        if let prevSent = lastBatterySent[deviceId], prevSent == snapshot { return }
-        lastBatterySent[deviceId] = snapshot
-
+        // Forward every tick — no dedup. MSG_BATTERY is a fixed 30 s
+        // heartbeat, so an unchanged value still has to reach the wire; a
+        // dropped UDP packet then self-heals on the next tick. The 30 s
+        // timer is the cadence.
         processor.publishBattery(
             deviceId: deviceId,
             level: resolved.level,
