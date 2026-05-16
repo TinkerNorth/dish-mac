@@ -245,6 +245,11 @@ final class GameControllerInput: ObservableObject {
     /// pad centre) reads as inactive; this is the best signal the framework
     /// exposes and matches how GCDualSense touchpad consumers behave. Finger
     /// IDs aren't surfaced either, so we use the stable slot indices 0 / 1.
+    ///
+    /// The MSG_TOUCHPAD wire frame is centre-origin with `+y` pointing *down*
+    /// (see satellite/docs/protocol.md). GameController's direction-pad y-axis
+    /// points up, so the y-axis is negated here — the same flip the thumbstick
+    /// path applies — keeping the macOS sender consistent with the SDL senders.
     private nonisolated func pushTouchpad(
         id: String,
         primary: GCControllerDirectionPad,
@@ -257,10 +262,10 @@ final class GameControllerInput: ObservableObject {
             deviceId: id,
             finger0Active: p0Active,
             finger0X: scaleAxis(primary.xAxis.value, max: 32767),
-            finger0Y: scaleAxis(primary.yAxis.value, max: 32767),
+            finger0Y: scaleAxis(-primary.yAxis.value, max: 32767),
             finger1Active: p1Active,
             finger1X: scaleAxis(secondary.xAxis.value, max: 32767),
-            finger1Y: scaleAxis(secondary.yAxis.value, max: 32767),
+            finger1Y: scaleAxis(-secondary.yAxis.value, max: 32767),
             buttonPressed: button.isPressed
         )
     }
