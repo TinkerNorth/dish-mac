@@ -155,6 +155,50 @@ final class MotionBatteryProcessorTests: XCTestCase {
         XCTAssertEqual(samples[1].dtUs, 5000)
     }
 
+    func testPublishMotionRateLimitsAt250Hz() {
+        var samples: [CapturedMotion] = []
+        let proc = makeProcessorWithMotionCapture { samples.append($0) }
+        // First sample — always forwarded.
+        proc.publishMotion(
+            deviceId: "pad",
+            gyroX: 1,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
+            nowNs: 1_000_000_000
+        )
+        // +2 ms (500 Hz) — inside the 4 ms / 250 Hz gate → dropped.
+        proc.publishMotion(
+            deviceId: "pad",
+            gyroX: 2,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
+            nowNs: 1_002_000_000
+        )
+        // +4 ms after the *first* sample. The dropped one must not have
+        // advanced the gate, so this passes and its delta is measured from
+        // the first emitted packet (4000 µs), not from the dropped attempt.
+        proc.publishMotion(
+            deviceId: "pad",
+            gyroX: 3,
+            gyroY: 0,
+            gyroZ: 0,
+            accelX: 0,
+            accelY: 0,
+            accelZ: 0,
+            nowNs: 1_004_000_000
+        )
+        XCTAssertEqual(samples.count, 2)
+        XCTAssertEqual(samples[0].gx, 1)
+        XCTAssertEqual(samples[1].gx, 3) // the +2 ms sample (gx=2) was dropped
+        XCTAssertEqual(samples[1].dtUs, 4000)
+    }
+
     func testPublishMotionDeltaIsPerDevice() {
         var samples: [CapturedMotion] = []
         let proc = makeProcessorWithMotionCapture { samples.append($0) }

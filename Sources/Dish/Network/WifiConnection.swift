@@ -52,7 +52,9 @@ final class WifiConnection: ObservableObject, Identifiable {
     private var lightbarHandler: ((SatelliteClient.LightbarMessage) -> Void)?
 
     private nonisolated static let defaultCtrlIndex = 0
-    private nonisolated static let defaultCaps: UInt16 = 0x0003
+    // MSG_CONTROLLER_ADD capability word: analog triggers (0x0001) | rumble
+    // (0x0002) | motion (0x0004 — this client streams MSG_MOTION gyro/accel).
+    private nonisolated static let defaultCaps: UInt16 = 0x0007
     private nonisolated static let ackWaitAttempts = 20
     private nonisolated static let ackWaitIntervalMs: UInt64 = 100
 

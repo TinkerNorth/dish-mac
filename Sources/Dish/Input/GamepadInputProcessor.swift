@@ -108,6 +108,12 @@ final class GamepadInputProcessor {
     private var lastMotionTimestampNs: [DeviceId: UInt64] = [:]
     private let lock = NSLock()
 
+    /// Per-controller motion rate-limit cap. The wire protocol requires senders
+    /// to hold MSG_MOTION at ≤ 250 Hz by default; GCMotion can fire at
+    /// 500–1000 Hz on a wired DualSense, so `publishMotion` gates on this.
+    static let motionRateLimitHz: UInt64 = 250
+    private static let motionMinIntervalNs: UInt64 = 1_000_000_000 / motionRateLimitHz
+
     // MARK: - Mutators (called from GC callback thread)
 
     /// Push the per-axis deadzone thresholds for a device. Safe to call at any
@@ -174,17 +180,25 @@ final class GamepadInputProcessor {
         accelX: Int16, accelY: Int16, accelZ: Int16,
         nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
     ) {
-        lock.lock()
-        let prev = lastMotionTimestampNs[deviceId]
-        lastMotionTimestampNs[deviceId] = nowNs
-        lock.unlock()
-
-        let deltaUs: UInt32 = if let prev, nowNs > prev {
-            // Saturating cast — a delta over UInt32.max µs (~71 minutes) is
-            // not physically meaningful and the receiver tolerates 0 anyway.
-            UInt32(clamping: (nowNs - prev) / 1000)
-        } else {
-            0
+        // Per-controller 250 Hz rate-limit gate. A sample inside the gate
+        // window is dropped *without* advancing `lastMotionTimestampNs`, so
+        // the gate always measures from the last *emitted* packet and a hot
+        // 1 kHz stream of drops can't push the deadline forward indefinitely.
+        let deltaUs: UInt32
+        do {
+            lock.lock()
+            defer { lock.unlock() }
+            if let prev = lastMotionTimestampNs[deviceId] {
+                guard nowNs > prev else { return } // same/backward clock — drop
+                let elapsedNs = nowNs - prev
+                if elapsedNs < Self.motionMinIntervalNs { return } // inside the gate
+                // Saturating cast — a delta over UInt32.max µs (~71 minutes)
+                // is not physically meaningful and the receiver tolerates 0.
+                deltaUs = UInt32(clamping: elapsedNs / 1000)
+            } else {
+                deltaUs = 0 // first sample for this controller
+            }
+            lastMotionTimestampNs[deviceId] = nowNs
         }
 
         motionSender?(deviceId, gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaUs)

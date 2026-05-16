@@ -84,29 +84,33 @@ struct SlotCard: View {
 
     // MARK: - Capability row
 
-    /// Chips for each *detected* hardware feature, plus a battery pill. A chip
-    /// being present means "this controller has the hardware"; its colour
+    /// Chips for each hardware feature, plus a battery pill. A chip's colour
     /// means "the feature is on/off in Settings". This is the "gyro detected"
     /// feedback DS4Windows / Steam Input surface — the player can tell apart
     /// "my pad has no gyro" from "gyro is switched off".
+    ///
+    /// Motion is *always* shown: a controller with an IMU gets a "Gyro" chip
+    /// (on/off by Settings), one without gets an explicit dashed "No gyro"
+    /// chip. Touchpad/rumble/battery still only appear when present — but
+    /// motion is the Task 1.1 surface and its absence must never be silent.
     @ViewBuilder
     private var capabilityRow: some View {
         let caps = slot.capabilities
-        if caps.hasMotion || caps.hasTouchpad || caps.hasRumble || caps.hasBattery {
-            HStack(spacing: 6) {
-                if caps.hasMotion {
-                    CapabilityChip(label: "Gyro", on: settings.motionEnabled, feature: "Motion")
-                }
-                if caps.hasTouchpad {
-                    CapabilityChip(label: "Touchpad", on: settings.touchpadEnabled, feature: "Touchpad")
-                }
-                if caps.hasRumble {
-                    CapabilityChip(label: "Rumble", on: settings.rumbleEnabled, feature: "Rumble")
-                }
-                Spacer(minLength: 0)
-                if caps.hasBattery, let battery = slot.battery {
-                    BatteryPill(reading: battery)
-                }
+        HStack(spacing: 6) {
+            if caps.hasMotion {
+                CapabilityChip(label: "Gyro", on: settings.motionEnabled, feature: "Motion")
+            } else {
+                CapabilityChip(label: "No gyro", on: false, feature: "Motion", available: false)
+            }
+            if caps.hasTouchpad {
+                CapabilityChip(label: "Touchpad", on: settings.touchpadEnabled, feature: "Touchpad")
+            }
+            if caps.hasRumble {
+                CapabilityChip(label: "Rumble", on: settings.rumbleEnabled, feature: "Rumble")
+            }
+            Spacer(minLength: 0)
+            if caps.hasBattery, let battery = slot.battery {
+                BatteryPill(reading: battery)
             }
         }
     }
@@ -145,20 +149,27 @@ struct SlotCard: View {
     }
 }
 
-/// A small pill for one detected controller capability. Full-colour when the
-/// feature is enabled in Settings, dimmed outline when the user turned it off.
-/// The `.help` tooltip spells out both facts so the state is never ambiguous.
+/// A small pill for one controller capability. Three visually distinct states,
+/// so the player can never confuse them:
+///   • available + on  — full-colour fill ("detected, forwarding on")
+///   • available + off — muted, solid outline ("detected, off in Settings")
+///   • not available   — muted, *dashed* outline ("controller has no such hw")
+/// The `.help` tooltip spells the state out in words as a second channel.
 private struct CapabilityChip: View {
 
     let label: String
     let on: Bool
-    /// Human name of the matching Settings toggle, for the tooltip.
+    /// Human name of the matching feature, for the tooltip.
     let feature: String
+    /// False when the controller lacks the hardware entirely. Rendered with a
+    /// dashed outline so "not available" never reads the same as "off".
+    var available = true
 
     var body: some View {
         Text(label)
             .font(.system(size: 10, weight: .medium))
             .foregroundColor(on ? DishTheme.primary : DishTheme.muted)
+            .opacity(available ? 1.0 : 0.7)
             .padding(.vertical, 3)
             .padding(.horizontal, 7)
             .background(
@@ -167,11 +178,22 @@ private struct CapabilityChip: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 5)
-                    .stroke(on ? Color.clear : DishTheme.outline, lineWidth: 1)
+                    .stroke(
+                        on ? Color.clear : DishTheme.outline,
+                        style: StrokeStyle(lineWidth: 1, dash: available ? [] : [3])
+                    )
             )
-            .help(on
-                ? "\(feature) detected — forwarding is on"
-                : "\(feature) detected — turned off in Settings")
+            .help(helpText)
+    }
+
+    private var helpText: String {
+        if !available {
+            return "\(feature) not available — this controller has no "
+                + (feature == "Motion" ? "gyroscope or accelerometer." : "hardware for it.")
+        }
+        return on
+            ? "\(feature) detected — forwarding to the host is on"
+            : "\(feature) detected — turned off in Settings"
     }
 }
 

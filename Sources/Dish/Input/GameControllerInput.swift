@@ -304,14 +304,18 @@ final class GameControllerInput: ObservableObject {
         let gyroY = scaleGyro(rate.y * radToDeg)
         let gyroZ = scaleGyro(rate.z * radToDeg)
 
-        // GCMotion exposes both `gravity` and `userAcceleration` (each in g).
-        // The wire format wants the *total* acceleration the IMU sees — same
-        // as raw accelerometer output — so we sum.
+        // GCMotion exposes `gravity` and `userAcceleration` (each in g) in the
+        // controller frame. Their sum is GameController's *raw accelerometer*
+        // reading which — like CoreMotion — points in the gravity-load
+        // direction: a pad at rest reads ≈ −1 g on the up axis. The wire
+        // protocol expects *specific force* (≈ +1 g up at rest, the convention
+        // the SDL and Android senders and the Cemuhook DSU frame all use), so
+        // negate the summed vector to convert load → specific force.
         let gravity = motion.gravity
         let userAccel = motion.userAcceleration
-        let accelX = scaleAccel(gravity.x + userAccel.x)
-        let accelY = scaleAccel(gravity.y + userAccel.y)
-        let accelZ = scaleAccel(gravity.z + userAccel.z)
+        let accelX = scaleAccel(-(gravity.x + userAccel.x))
+        let accelY = scaleAccel(-(gravity.y + userAccel.y))
+        let accelZ = scaleAccel(-(gravity.z + userAccel.z))
 
         processor.publishMotion(
             deviceId: id,
