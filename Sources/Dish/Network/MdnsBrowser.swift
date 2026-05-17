@@ -155,7 +155,12 @@ enum MdnsBrowser {
                 switch state {
                 case .ready:
                     reportOnce(Self.ipv4(from: conn.currentPath?.remoteEndpoint))
-                case .failed, .cancelled:
+                case let .failed(error):
+                    MdnsBrowser.log.warning(
+                        "mDNS resolve failed: \(String(describing: error), privacy: .public)"
+                    )
+                    reportOnce(nil)
+                case .cancelled:
                     reportOnce(nil)
                 default:
                     break
@@ -224,14 +229,29 @@ enum MdnsBrowser {
         }
 
         /// Extract a dotted-quad IPv4 string from a resolved endpoint.
+        ///
+        /// The downstream `SatelliteClient.openSocket` feeds the result to
+        /// `inet_pton(AF_INET, …)`, which only accepts a literal IPv4 address.
+        /// So an IPv6-only result and an unresolved `.name` host are both
+        /// unusable here and are rejected with a log line rather than silently
+        /// returned (a hostname) or silently dropped (IPv6) — the receiver
+        /// is IPv4-only today; IPv6 support is a separate task.
         static func ipv4(from endpoint: NWEndpoint?) -> String? {
             guard case let .hostPort(host, _) = endpoint else { return nil }
             switch host {
             case let .ipv4(addr):
                 return addr.debugDescription.components(separatedBy: "%").first
+            case let .ipv6(addr):
+                MdnsBrowser.log.warning(
+                    "mDNS result dropped — IPv6-only endpoint \(addr.debugDescription, privacy: .public), receiver is IPv4-only"
+                )
+                return nil
             case let .name(name, _):
-                return name
-            default:
+                MdnsBrowser.log.warning(
+                    "mDNS result dropped — endpoint resolved to unresolved hostname \(name, privacy: .public), not an IPv4 literal"
+                )
+                return nil
+            @unknown default:
                 return nil
             }
         }

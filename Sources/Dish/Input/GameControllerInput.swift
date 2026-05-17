@@ -19,6 +19,13 @@ private let kDefaultTriggerFlat: UInt8 = 13
 /// the satellite. The first sample is sent ~1 s after attach.
 private let kBatteryPollIntervalSec = 30
 private let kBatteryFirstReportDelaySec = 1
+/// Charging-state watch cadence. The protocol wants a battery report not only
+/// every 30 s but ALSO "whenever the charging state transitions" — and
+/// `GCDeviceBattery` has no change notification, so a transition can only be
+/// observed by polling. This faster, lightweight tick reads only the state and
+/// emits a report when it differs from the last observed state; it does not
+/// send on an unchanged tick (the 30 s timer owns the steady cadence).
+private let kBatteryStateWatchIntervalSec = 3
 
 /// Bridges Apple's `GameController.framework` into the `GamepadInputProcessor`.
 /// Hooks `valueChangedHandler` on every extended gamepad so we push a report
@@ -45,6 +52,10 @@ final class GameControllerInput: ObservableObject {
 
     let processor = GamepadInputProcessor()
 
+    /// Per-device, per-finger monotonic touchpad tracking ids. `pushTouchpad`
+    /// runs on a GC callback thread, so this is lock-guarded.
+    private let touchpadIds = TouchpadTrackingState()
+
     private var observers: [NSObjectProtocol] = []
     /// Weak back-reference for each active controller so we can unhook handlers.
     private var controllerIds: [ObjectIdentifier: String] = [:]
@@ -63,26 +74,36 @@ final class GameControllerInput: ObservableObject {
     /// is light (one Float read + an enum compare) and only runs while the
     /// controller is attached.
     private var batteryTimers: [String: DispatchSourceTimer] = [:]
+    /// Per-device faster timer that watches for a charging-state transition
+    /// and fires an out-of-cadence battery report when one happens — the
+    /// protocol requires a report on every transition, not just the 30 s tick.
+    private var batteryStateTimers: [String: DispatchSourceTimer] = [:]
+    /// Last battery `statusRaw` forwarded per device. Drives both the 30 s
+    /// tick's record-keeping and the state-watch timer's transition detection.
+    private var lastBatteryStatusRaw: [String: UInt8] = [:]
 
     init() {
         let nc = NotificationCenter.default
+        // The observer closures run on `.main` (NotificationCenter delivers
+        // there), but `attach`/`detach` are `@MainActor` so a hop through a
+        // `Task` is still needed. `self` is rebound into a `let` outside the
+        // `Task` because Swift 5.9 forbids referencing the closure's captured
+        // `var self` from concurrently-executing code.
         observers.append(nc.addObserver(
             forName: .GCControllerDidConnect,
             object: nil,
             queue: .main
         ) { [weak self] note in
-            guard let controller = note.object as? GCController else { return }
-            let strongSelf = self
-            Task { @MainActor in strongSelf?.attach(controller) }
+            guard let self, let controller = note.object as? GCController else { return }
+            Task { @MainActor in self.attach(controller) }
         })
         observers.append(nc.addObserver(
             forName: .GCControllerDidDisconnect,
             object: nil,
             queue: .main
         ) { [weak self] note in
-            guard let controller = note.object as? GCController else { return }
-            let strongSelf = self
-            Task { @MainActor in strongSelf?.detach(controller) }
+            guard let self, let controller = note.object as? GCController else { return }
+            Task { @MainActor in self.detach(controller) }
         })
         // Pick up any already-connected controllers on launch.
         for ctrl in GCController.controllers() {
@@ -100,7 +121,11 @@ final class GameControllerInput: ObservableObject {
 
     private func attach(_ controller: GCController) {
         guard let pad = controller.extendedGamepad else { return }
-        let id = stableId(for: controller)
+        // Reuse the existing id if this exact controller object is already
+        // attached (the launch sweep + `GCControllerDidConnect` can both fire
+        // for one pad); only mint a fresh id for a genuinely new object, so a
+        // re-attach can't be misread as a second identical pad.
+        let id = controllerIds[ObjectIdentifier(controller)] ?? stableId(for: controller)
         controllerIds[ObjectIdentifier(controller)] = id
         controllersById[id] = controller
         let name = controller.vendorName ?? controller.productCategory
@@ -160,9 +185,31 @@ final class GameControllerInput: ObservableObject {
         // 200–500 Hz on DualSense), well under the 1 kHz cap senders are
         // permitted.
         if let motion = controller.motion {
+            // Some controllers (per `GCMotion.sensorsRequireManualActivation`)
+            // emit NO motion callbacks until `sensorsActive` is opted in — the
+            // sensors stay powered down to save controller battery / Bluetooth
+            // bandwidth. Without this, motion silently never fires on those
+            // pads even though the slot card shows a "Gyro" chip. Pads that
+            // self-manage their sensors (Siri Remote, etc.) report
+            // `sensorsRequireManualActivation == false` and need no opt-in.
+            if motion.sensorsRequireManualActivation {
+                motion.sensorsActive = true
+            }
             motion.valueChangedHandler = { [weak self] motion in
                 guard let self else { return }
-                self.pushMotion(id: id, motion: motion)
+                // Gate each surface on its own availability flag: a pad that
+                // exposes only some surfaces must not emit zeros for the rest
+                // as if they were real readings. `pushMotion` reads gyro from
+                // `rotationRate` and accel from `gravity`/`userAcceleration`.
+                let haveGyro = motion.hasRotationRate
+                let haveAccel = motion.hasGravityAndUserAcceleration
+                guard haveGyro || haveAccel else { return }
+                self.pushMotion(
+                    id: id,
+                    motion: motion,
+                    haveGyro: haveGyro,
+                    haveAccel: haveAccel
+                )
             }
         }
 
@@ -214,6 +261,11 @@ final class GameControllerInput: ObservableObject {
         if let timer = batteryTimers.removeValue(forKey: id) {
             timer.cancel()
         }
+        if let timer = batteryStateTimers.removeValue(forKey: id) {
+            timer.cancel()
+        }
+        lastBatteryStatusRaw.removeValue(forKey: id)
+        touchpadIds.remove(deviceId: id)
     }
 
     /// Resolve a `GCExtendedGamepad` to its touchpad inputs, if it has any.
@@ -259,104 +311,181 @@ final class GameControllerInput: ObservableObject {
     ) {
         let p0Active = primary.xAxis.value != 0 || primary.yAxis.value != 0
         let p1Active = secondary.xAxis.value != 0 || secondary.yAxis.value != 0
+        // `gcTouchpadAxisToWire` applies the centre-origin frame + the `+y`
+        // DOWN negation the wire wants; pure so the flip is unit-tested.
+        let f0 = gcTouchpadAxisToWire(x: primary.xAxis.value, y: primary.yAxis.value)
+        let f1 = gcTouchpadAxisToWire(x: secondary.xAxis.value, y: secondary.yAxis.value)
+        // Resolve the monotonic per-finger tracking ids — each bumps on a fresh
+        // contact (false → true edge). GameController surfaces no native id.
+        let ids = touchpadIds.advance(
+            deviceId: id,
+            finger0Active: p0Active,
+            finger1Active: p1Active
+        )
         processor.publishTouchpad(
             deviceId: id,
             finger0Active: p0Active,
-            finger0X: scaleAxis(primary.xAxis.value, max: 32767),
-            finger0Y: scaleAxis(-primary.yAxis.value, max: 32767),
+            finger0Id: ids.finger0,
+            finger0X: f0.x,
+            finger0Y: f0.y,
             finger1Active: p1Active,
-            finger1X: scaleAxis(secondary.xAxis.value, max: 32767),
-            finger1Y: scaleAxis(-secondary.yAxis.value, max: 32767),
+            finger1Id: ids.finger1,
+            finger1X: f1.x,
+            finger1Y: f1.y,
             buttonPressed: button.isPressed
         )
     }
 
     // MARK: - Lightbar (return path)
 
+    /// RGB colour, the `ReturnPathApplier` payload for the light-bar path.
+    private struct LightbarColor {
+        let r: UInt8
+        let g: UInt8
+        let b: UInt8
+    }
+
+    /// Serialises the light-bar return path: FIFO ordering + per-controller
+    /// last-colour-wins coalescing, so a game setting a colour every frame
+    /// can't latch a stale colour or pile up unstructured tasks. See
+    /// `ReturnPathApplier`. `lazy` so the queue is only created on the first
+    /// inbound lightbar packet.
+    private lazy var lightbarApplier = ReturnPathApplier<LightbarColor>(
+        label: "dish.returnpath.lightbar"
+    ) { [weak self] deviceId, color in
+        guard let self,
+              let controller = self.controllersById[deviceId],
+              let light = controller.light else { return }
+        light.color = GCColor(
+            red: Float(color.r) / 255.0,
+            green: Float(color.g) / 255.0,
+            blue: Float(color.b) / 255.0
+        )
+    }
+
     /// Apply a host-game-driven light bar colour to the physical controller.
     /// Called from the `SatelliteClient` receive thread via the AppModel
     /// lightbar handler. No-op on controllers without a light (Xbox pads);
     /// the gate on `FeatureSettings.lightbarMode` happens upstream in
     /// `AppModel` so this method stays a pure "apply" with no policy.
-    nonisolated func applyLightbar(deviceId: String, r: UInt8, g: UInt8, b: UInt8) {
-        Task { @MainActor in
-            guard let controller = self.controllersById[deviceId],
-                  let light = controller.light else { return }
-            light.color = GCColor(
-                red: Float(r) / 255.0,
-                green: Float(g) / 255.0,
-                blue: Float(b) / 255.0
-            )
-        }
+    ///
+    /// The actual `GCColor` write is serialised + coalesced through
+    /// `lightbarApplier` rather than a fresh per-packet `Task`.
+    func applyLightbar(deviceId: String, r: UInt8, g: UInt8, b: UInt8) {
+        lightbarApplier.submit(
+            deviceId: deviceId,
+            value: LightbarColor(r: r, g: g, b: b)
+        )
     }
 
     // MARK: - Motion (IMU)
 
     /// Called from GCMotion's callback queue. Reads the gyroscope and the
-    /// gravity-corrected linear acceleration, scales to wire ints, and hands
-    /// off to the processor (which timestamps and dispatches via
-    /// `motionSender`).
+    /// gravity-decomposed acceleration, converts to the wire frame via the
+    /// pure `gcMotionToWire`, and hands off to the processor (which timestamps
+    /// and dispatches via `motionSender`).
     ///
-    /// Coordinate convention: GCMotion already normalises to a right-handed
-    /// frame (`+X` = right, `+Y` = up, `+Z` = out of the screen toward the
-    /// player) for landscape-held DualSense/DualShock pads — that's exactly
-    /// the DSU convention the protocol asks senders to encode in. So no
-    /// per-axis rotation is needed here.
-    private nonisolated func pushMotion(id: String, motion: GCMotion) {
-        // Rotation rate is rad/s on GCMotion; scale to deg/s for the wire.
-        let radToDeg = 180.0 / Double.pi
+    /// Coordinate convention — evidence-backed against Apple's
+    /// `GameController/GCMotion.h` SDK header:
+    ///
+    ///  * `GCRotationRate` (the type of `motion.rotationRate`): each field is
+    ///    "rotation rate in radians/second. The sign follows the right hand
+    ///    rule" — explicitly documented per-axis. The frame is therefore
+    ///    right-handed.
+    ///  * `GCAcceleration` (the type of `motion.gravity` / `userAcceleration`):
+    ///    "a device held at rest with the z axis aligned with the azimuth
+    ///    [(0,0,1), i.e. up] is assumed to have gravitation applying the vector
+    ///    (0, 0, -1)." So `gravity` is the gravitational *load* vector (points
+    ///    toward the ground) and the axes are right-handed with `+X` = right,
+    ///    `+Y` = up, `+Z` = toward the player — the same right-handed DSU frame
+    ///    `satellite/docs/protocol.md` §0x000A specifies. The axes map 1:1, so
+    ///    no per-axis rotation is applied; `gcMotionToWire` documents the rest
+    ///    (including why accel is `userAcceleration - gravity`, not their sum).
+    ///
+    /// `haveGyro` / `haveAccel` come from the pad's `hasRotationRate` /
+    /// `hasGravityAndUserAcceleration` flags (checked by the caller in
+    /// `attach`). A surface the pad lacks is sent as zeros rather than a stale
+    /// or fabricated reading.
+    private nonisolated func pushMotion(
+        id: String,
+        motion: GCMotion,
+        haveGyro: Bool,
+        haveAccel: Bool
+    ) {
         let rate = motion.rotationRate
-        let gyroX = scaleGyro(rate.x * radToDeg)
-        let gyroY = scaleGyro(rate.y * radToDeg)
-        let gyroZ = scaleGyro(rate.z * radToDeg)
-
-        // GCMotion exposes `gravity` and `userAcceleration` (each in g) in the
-        // controller frame. Their sum is GameController's *raw accelerometer*
-        // reading which — like CoreMotion — points in the gravity-load
-        // direction: a pad at rest reads ≈ −1 g on the up axis. The wire
-        // protocol expects *specific force* (≈ +1 g up at rest, the convention
-        // the SDL and Android senders and the Cemuhook DSU frame all use), so
-        // negate the summed vector to convert load → specific force.
         let gravity = motion.gravity
         let userAccel = motion.userAcceleration
-        let accelX = scaleAccel(-(gravity.x + userAccel.x))
-        let accelY = scaleAccel(-(gravity.y + userAccel.y))
-        let accelZ = scaleAccel(-(gravity.z + userAccel.z))
+        let wire = gcMotionToWire(
+            rotationRateRadX: haveGyro ? rate.x : 0,
+            rotationRateRadY: haveGyro ? rate.y : 0,
+            rotationRateRadZ: haveGyro ? rate.z : 0,
+            gravityX: haveAccel ? gravity.x : 0,
+            gravityY: haveAccel ? gravity.y : 0,
+            gravityZ: haveAccel ? gravity.z : 0,
+            userAccelX: haveAccel ? userAccel.x : 0,
+            userAccelY: haveAccel ? userAccel.y : 0,
+            userAccelZ: haveAccel ? userAccel.z : 0
+        )
 
         processor.publishMotion(
             deviceId: id,
-            gyroX: gyroX,
-            gyroY: gyroY,
-            gyroZ: gyroZ,
-            accelX: accelX,
-            accelY: accelY,
-            accelZ: accelZ
+            gyroX: wire.gyroX,
+            gyroY: wire.gyroY,
+            gyroZ: wire.gyroZ,
+            accelX: wire.accelX,
+            accelY: wire.accelY,
+            accelZ: wire.accelZ
         )
     }
 
     // MARK: - Battery
 
-    /// Spin up the per-device polling timer. Fires once after
-    /// `kBatteryFirstReportDelaySec`, then every `kBatteryPollIntervalSec`.
-    /// The closure walks `controllersById` so we tolerate the controller
-    /// going away between ticks (the timer will then no-op until detach
-    /// cancels it).
+    /// IOKit snapshot of the host Mac's battery runs off the main thread.
+    /// `HostBattery.snapshot()` is a synchronous IOKit call; hopping it here
+    /// keeps the battery poll (every 30 s per wired controller) off the main
+    /// runloop. Only the `slots` update is bounced back to the main actor.
+    private let batteryWorkQueue = DispatchQueue(
+        label: "dish.battery.iokit", qos: .utility
+    )
+
+    /// Spin up the per-device battery timers. The 30 s timer is the steady
+    /// wire cadence (fires once after `kBatteryFirstReportDelaySec`, then
+    /// every `kBatteryPollIntervalSec`). The faster state-watch timer catches
+    /// charging-state transitions between the 30 s ticks. Both closures hold a
+    /// weak `controller` so they tolerate the pad going away between ticks
+    /// (they no-op until `detach` cancels them).
     private func startBatteryTimer(deviceId: String, controller: GCController) {
         let timer = DispatchSource.makeTimerSource(queue: .main)
         let delay: DispatchTime = .now() + .seconds(kBatteryFirstReportDelaySec)
         timer.schedule(deadline: delay, repeating: .seconds(kBatteryPollIntervalSec))
         timer.setEventHandler { [weak self, weak controller] in
             guard let self, let controller else { return }
-            self.emitBattery(deviceId: deviceId, controller: controller)
+            self.emitBattery(deviceId: deviceId, controller: controller, force: true)
         }
         timer.resume()
         batteryTimers[deviceId] = timer
+
+        // Charging-state watch. Offset its first fire past the 30 s timer's
+        // first sample so the steady cadence sets `lastBatteryStatusRaw`
+        // before the watch starts comparing against it.
+        let watch = DispatchSource.makeTimerSource(queue: .main)
+        watch.schedule(
+            deadline: .now() + .seconds(kBatteryFirstReportDelaySec + kBatteryStateWatchIntervalSec),
+            repeating: .seconds(kBatteryStateWatchIntervalSec)
+        )
+        watch.setEventHandler { [weak self, weak controller] in
+            guard let self, let controller else { return }
+            self.emitBattery(deviceId: deviceId, controller: controller, force: false)
+        }
+        watch.resume()
+        batteryStateTimers[deviceId] = watch
     }
 
     /// Wire-encoded battery reading plus the slot-card display state, the
     /// common shape `emitBattery` builds from either the controller's own
-    /// `GCDeviceBattery` or the host-Mac fallback.
-    private struct BatteryResolution {
+    /// `GCDeviceBattery` or the host-Mac fallback. `Sendable` so it can cross
+    /// from `batteryWorkQueue` back to the main actor.
+    private struct BatteryResolution: Sendable {
         let level: UInt8
         let statusRaw: UInt8
         let displayState: BatteryChargeState
@@ -367,15 +496,55 @@ final class GameControllerInput: ObservableObject {
     /// reports a non-negative level (a wireless pad). When it doesn't — a
     /// wired/USB pad, or one whose level reads unknown — we fall back to the
     /// host Mac's battery so the satellite still shows something honest.
-    private func emitBattery(deviceId: String, controller: GCController) {
-        let resolved: BatteryResolution = if let battery = controller.battery, battery.batteryLevel >= 0 {
-            Self.resolveControllerBattery(battery)
+    ///
+    /// `force == true` (the 30 s timer) always forwards — MSG_BATTERY is a
+    /// fixed 30 s heartbeat so an unchanged value still has to reach the wire,
+    /// and a dropped UDP packet self-heals on the next tick. `force == false`
+    /// (the faster state-watch timer) forwards ONLY when the charging state
+    /// changed from the last forwarded value — the protocol's "report on every
+    /// charging-state transition" trigger, without spamming the wire.
+    ///
+    /// The host-fallback path needs a synchronous IOKit call, so the resolve
+    /// runs on `batteryWorkQueue`; the controller's own `GCDeviceBattery`
+    /// reads are cheap and stay on the main actor.
+    private func emitBattery(deviceId: String, controller: GCController, force: Bool) {
+        if let battery = controller.battery, battery.batteryLevel >= 0 {
+            // Controller's own battery — cheap reads, resolve inline.
+            forwardBattery(
+                deviceId: deviceId,
+                resolved: Self.resolveControllerBattery(battery),
+                force: force
+            )
         } else {
-            // No usable controller battery — report the host Mac instead. A
-            // laptop forwards its own charge; a desktop Mac reports
-            // level=100, status=wired.
-            Self.resolveHostBattery(HostBattery.reading(from: HostBattery.snapshot()))
+            // No usable controller battery — report the host Mac instead. The
+            // IOKit snapshot is blocking, so it runs off the main thread; the
+            // forward hops back to the main actor. `self` is rebound to a
+            // `let` so the nested `Task` doesn't reference the closure's
+            // captured `var self` (forbidden in Swift 5.9 concurrent code).
+            batteryWorkQueue.async { [weak self] in
+                guard let self else { return }
+                let resolved = Self.resolveHostBattery(
+                    HostBattery.reading(from: HostBattery.snapshot())
+                )
+                Task { @MainActor in
+                    self.forwardBattery(deviceId: deviceId, resolved: resolved, force: force)
+                }
+            }
         }
+    }
+
+    /// Update the slot-card pill and forward the resolved reading to the wire,
+    /// applying the `force` / charging-state-transition gate. Runs on the main
+    /// actor (it touches `slots` + `lastBatteryStatusRaw`).
+    private func forwardBattery(
+        deviceId: String,
+        resolved: BatteryResolution,
+        force: Bool
+    ) {
+        let stateChanged = lastBatteryStatusRaw[deviceId] != resolved.statusRaw
+        // State-watch tick with no transition → nothing to do. The 30 s timer
+        // (force) still keeps the steady cadence.
+        guard force || stateChanged else { return }
 
         // Update the slot card's battery pill.
         let reading = BatteryReading(
@@ -386,10 +555,7 @@ final class GameControllerInput: ObservableObject {
             slots[idx].battery = reading
         }
 
-        // Forward every tick — no dedup. MSG_BATTERY is a fixed 30 s
-        // heartbeat, so an unchanged value still has to reach the wire; a
-        // dropped UDP packet then self-heals on the next tick. The 30 s
-        // timer is the cadence.
+        lastBatteryStatusRaw[deviceId] = resolved.statusRaw
         processor.publishBattery(
             deviceId: deviceId,
             level: resolved.level,
@@ -423,7 +589,8 @@ final class GameControllerInput: ObservableObject {
     /// Adapt a host-Mac `HostBattery.WireReading` to the slot-card display
     /// state. `wired` (a desktop Mac) has no charge-state pill, so it shows as
     /// `.unknown` in the UI while still going out as `wired` on the wire.
-    private static func resolveHostBattery(
+    /// `nonisolated` — pure value mapping, run on `batteryWorkQueue` off main.
+    private nonisolated static func resolveHostBattery(
         _ host: HostBattery.WireReading
     ) -> BatteryResolution {
         let displayState: BatteryChargeState = switch host.status {
@@ -441,41 +608,63 @@ final class GameControllerInput: ObservableObject {
 
     // MARK: - Rumble actuation (return path)
 
+    /// Motor magnitudes + duration, the `ReturnPathApplier` payload for rumble.
+    private struct RumbleCommand {
+        let strong: UInt16
+        let weak: UInt16
+        let durationMs: UInt16
+    }
+
+    /// Serialises the rumble return path: FIFO ordering + per-controller
+    /// last-command-wins coalescing, so a game holding the motors across
+    /// frames can't pile up unstructured tasks or apply commands out of
+    /// order. See `ReturnPathApplier`. `lazy` — the queue is created on the
+    /// first inbound rumble packet.
+    private lazy var rumbleApplier = ReturnPathApplier<RumbleCommand>(
+        label: "dish.returnpath.rumble"
+    ) { [weak self] deviceId, cmd in
+        guard let self,
+              let controller = self.controllersById[deviceId] else { return }
+        // Lazily create the actuator so we don't allocate haptics engines
+        // for controllers a satellite never rumbles.
+        let actuator: RumbleActuator
+        if let existing = self.actuators[deviceId] {
+            actuator = existing
+        } else if let fresh = RumbleActuator(controller: controller) {
+            self.actuators[deviceId] = fresh
+            actuator = fresh
+        } else {
+            return // controller doesn't expose haptics
+        }
+        actuator.apply(strong: cmd.strong, weak: cmd.weak, durationMs: cmd.durationMs)
+    }
+
     /// Drive the physical controller's haptics. Called from the
     /// `SatelliteClient` receive thread (via the AppModel rumble handler).
-    /// Most of the heavy lifting is in `RumbleActuator`; this method just
+    /// Most of the heavy lifting is in `RumbleActuator`; the apply closure
     /// resolves `deviceId → GCController` and gates on whether the pad
     /// actually exposes haptics (returns `nil` on MFi pads without haptics).
-    /// Hop to the main actor for the dictionary lookups since `controllersById`
-    /// is owned by the main actor.
+    ///
+    /// The actuation is serialised + coalesced through `rumbleApplier` rather
+    /// than a fresh per-packet `Task`, so a 60 Hz rumble stream collapses to
+    /// one apply of the newest command and ordering is preserved.
     ///
     /// Vibration only — the light bar is a separate return path (see
     /// `applyLightbar`).
-    nonisolated func applyRumble(
+    func applyRumble(
         deviceId: String,
         strongMagnitude: UInt16,
         weakMagnitude: UInt16,
         durationMs: UInt16
     ) {
-        Task { @MainActor in
-            guard let controller = self.controllersById[deviceId] else { return }
-            // Lazily create the actuator so we don't allocate haptics engines
-            // for controllers a satellite never rumbles.
-            let actuator: RumbleActuator
-            if let existing = self.actuators[deviceId] {
-                actuator = existing
-            } else if let fresh = RumbleActuator(controller: controller) {
-                self.actuators[deviceId] = fresh
-                actuator = fresh
-            } else {
-                return // controller doesn't expose haptics
-            }
-            actuator.apply(
+        rumbleApplier.submit(
+            deviceId: deviceId,
+            value: RumbleCommand(
                 strong: strongMagnitude,
                 weak: weakMagnitude,
                 durationMs: durationMs
             )
-        }
+        )
     }
 
     // MARK: - Hot path
@@ -521,15 +710,86 @@ final class GameControllerInput: ObservableObject {
 
     // MARK: - Helpers
 
-    /// Build a stable per-launch id for a controller. GameController doesn't
-    /// expose a persistent UUID pre-macOS 14, so we fall back to the vendor
-    /// name + object address.
+    /// Build a controller id that is **stable across an unplug/replug** so the
+    /// slot binding survives a reconnect.
+    ///
+    /// The id must NOT be derived from `ObjectIdentifier(ctrl)` — GameController
+    /// vends a fresh `GCController` object on every reconnect, so an
+    /// address-based id changes on replug and the slot binding is dropped.
+    ///
+    /// GameController on macOS exposes no per-physical-unit identifier — no
+    /// vendor/product ID, no persistent UUID, on any OS version (the previous
+    /// `#available(macOS 14)` branch keyed off `physicalInputProfile.description`,
+    /// which is never empty, so it was dead code and still used the unstable
+    /// address). The most stable property available is `vendorName` +
+    /// `productCategory`, which is identical for a given controller model
+    /// across reconnects. We key on that.
+    ///
+    /// Two physically-identical pads share that key, so when one is already
+    /// attached we append the lowest free ordinal — the disambiguated id is
+    /// still stable while that pad stays connected, and a single pad always
+    /// reuses the ordinal-free id across replug.
     private func stableId(for ctrl: GCController) -> String {
-        if #available(macOS 14.0, *) {
-            return ctrl.physicalInputProfile.description.isEmpty
-                ? "\(ObjectIdentifier(ctrl).hashValue)"
-                : "gc:\(ctrl.vendorName ?? "unknown"):\(ObjectIdentifier(ctrl).hashValue)"
-        }
-        return "gc:\(ctrl.vendorName ?? "unknown"):\(ObjectIdentifier(ctrl).hashValue)"
+        let vendor = ctrl.vendorName ?? "unknown"
+        let base = "gc:\(vendor):\(ctrl.productCategory)"
+        let attached = Set(controllerIds.values)
+        if !attached.contains(base) { return base }
+        var ordinal = 1
+        while attached.contains("\(base)#\(ordinal)") { ordinal += 1 }
+        return "\(base)#\(ordinal)"
+    }
+}
+
+/// Per-device, per-finger touchpad tracking-id state. `pushTouchpad` runs on a
+/// GameController callback thread, so every access is `os_unfair_lock`-guarded
+/// — the same discipline as `ClientRef`. The id-advance arithmetic itself is
+/// the pure, unit-tested `nextTouchpadTrackingId`.
+final class TouchpadTrackingState: @unchecked Sendable {
+    /// Last-seen active flag + current id for one finger slot.
+    private struct FingerState {
+        var wasActive = false
+        var id: UInt8 = 0
+    }
+
+    private struct DeviceState {
+        var finger0 = FingerState()
+        var finger1 = FingerState()
+    }
+
+    private var devices: [String: DeviceState] = [:]
+    private var lock = os_unfair_lock_s()
+
+    /// Advance both fingers' ids for one sample and return the ids to stamp on
+    /// the wire. Each id bumps on its finger's `false → true` (fresh-contact)
+    /// edge; see `nextTouchpadTrackingId`.
+    func advance(
+        deviceId: String,
+        finger0Active: Bool,
+        finger1Active: Bool
+    ) -> (finger0: UInt8, finger1: UInt8) {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        var state = devices[deviceId] ?? DeviceState()
+        state.finger0.id = nextTouchpadTrackingId(
+            wasActive: state.finger0.wasActive,
+            isActive: finger0Active,
+            current: state.finger0.id
+        )
+        state.finger1.id = nextTouchpadTrackingId(
+            wasActive: state.finger1.wasActive,
+            isActive: finger1Active,
+            current: state.finger1.id
+        )
+        state.finger0.wasActive = finger0Active
+        state.finger1.wasActive = finger1Active
+        devices[deviceId] = state
+        return (state.finger0.id, state.finger1.id)
+    }
+
+    /// Drop a device's state when its controller disconnects.
+    func remove(deviceId: String) {
+        os_unfair_lock_lock(&lock)
+        devices.removeValue(forKey: deviceId)
+        os_unfair_lock_unlock(&lock)
     }
 }

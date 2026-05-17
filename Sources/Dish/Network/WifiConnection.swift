@@ -47,6 +47,11 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// (`GCController.light != nil`). Captured at bind time and folded into the
     /// `MSG_CONTROLLER_ADD` capability word as `CAP_LIGHTBAR`.
     private var pendingHasLight = false
+    /// Whether the bound physical controller exposes a `GCMotion` IMU surface.
+    /// Captured at bind time and folded into the `MSG_CONTROLLER_ADD`
+    /// capability word as `CAP_MOTION` — a pad with no IMU must not advertise
+    /// that it streams motion.
+    private var pendingHasMotion = false
 
     /// Set once during composition; re-applied to each fresh `SatelliteClient`
     /// in `markConnected` so we don't lose rumble across reconnects. The
@@ -57,11 +62,15 @@ final class WifiConnection: ObservableObject, Identifiable {
 
     private nonisolated static let defaultCtrlIndex = 0
     /// `MSG_CONTROLLER_ADD` capability word, fixed bits: analog triggers
-    /// (`CAP_ANALOG_TRIGGERS` 0x0001) | rumble (`CAP_RUMBLE` 0x0002) | motion
-    /// (`CAP_MOTION` 0x0004 — this client streams `MSG_MOTION` gyro/accel).
-    /// These three are always advertised; `CAP_LIGHTBAR` is per-controller and
-    /// OR'd in by `capabilityWord(hasLight:)`.
-    nonisolated static let defaultCaps: UInt16 = 0x0007
+    /// (`CAP_ANALOG_TRIGGERS` 0x0001) | rumble (`CAP_RUMBLE` 0x0002). Every
+    /// macOS-bridged extended gamepad has analog triggers and accepts the
+    /// rumble return path, so these two are always advertised. `CAP_MOTION`
+    /// and `CAP_LIGHTBAR` are per-controller — see `capabilityWord`.
+    nonisolated static let defaultCaps: UInt16 = 0x0003
+    /// `CAP_MOTION` — set per-controller when the bound pad exposes a
+    /// `GCMotion` IMU. Matches `CAP_MOTION` in `satellite/src/core/types.h`.
+    /// A pad with no IMU must not advertise it streams `MSG_MOTION`.
+    nonisolated static let capMotion: UInt16 = 0x0004
     /// `CAP_LIGHTBAR` — set per-controller when the bound pad has an
     /// addressable RGB LED (`GCController.light != nil`). Matches
     /// `satellite/src/core/types.h` and is decoded identically by every
@@ -71,13 +80,16 @@ final class WifiConnection: ObservableObject, Identifiable {
     private nonisolated static let ackWaitIntervalMs: UInt64 = 100
 
     /// The `MSG_CONTROLLER_ADD` capability word for a controller: the fixed
-    /// `defaultCaps` bits with `CAP_LIGHTBAR` OR'd in only when the bound
-    /// physical controller has an addressable RGB light. `internal` (not
-    /// `private`) so the per-controller cap computation can be unit-tested
-    /// without standing up a live session — the same seam pattern as
-    /// `SatelliteClient.parseRumblePayload`.
-    nonisolated static func capabilityWord(hasLight: Bool) -> UInt16 {
-        defaultCaps | (hasLight ? capLightbar : 0)
+    /// `defaultCaps` bits with `CAP_MOTION` / `CAP_LIGHTBAR` OR'd in only when
+    /// the bound physical controller actually exposes an IMU / an addressable
+    /// RGB light. `internal` (not `private`) so the per-controller cap
+    /// computation can be unit-tested without standing up a live session —
+    /// the same seam pattern as `SatelliteClient.parseRumblePayload`.
+    nonisolated static func capabilityWord(hasMotion: Bool, hasLight: Bool) -> UInt16 {
+        var word = defaultCaps
+        if hasMotion { word |= capMotion }
+        if hasLight { word |= capLightbar }
+        return word
     }
 
     init(id: String, server: DiscoveredServer) {
@@ -119,7 +131,7 @@ final class WifiConnection: ObservableObject, Identifiable {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self else { return }
-                if self.clientRef.get()?.connectionAlive == false {
+                if self.clientRef.get()?.connectionAlive.get() == false {
                     await MainActor.run { onDead() }
                     return
                 }
@@ -151,9 +163,15 @@ final class WifiConnection: ObservableObject, Identifiable {
 
     // MARK: - Slot binding
 
-    func attachSlot(_ slotId: String, controllerType: Int, hasLight: Bool) async {
+    func attachSlot(
+        _ slotId: String,
+        controllerType: Int,
+        hasMotion: Bool,
+        hasLight: Bool
+    ) async {
         boundSlotId = slotId
         pendingControllerType = controllerType
+        pendingHasMotion = hasMotion
         pendingHasLight = hasLight
         if state == .connected, !controllerAdded {
             await registerController(type: controllerType)
@@ -176,11 +194,15 @@ final class WifiConnection: ObservableObject, Identifiable {
         guard let live = clientRef.get() else { return }
         let slotId = boundSlotId
         live.resetControllerAck()
-        // Capability word is per-controller: the fixed analog/rumble/motion
-        // bits, plus CAP_LIGHTBAR only when the bound pad has an RGB light.
+        // Capability word is per-controller: the fixed analog/rumble bits,
+        // plus CAP_MOTION only when the bound pad has an IMU and CAP_LIGHTBAR
+        // only when it has an addressable RGB light.
         live.controllerAdd(
             index: Self.defaultCtrlIndex,
-            capabilities: Self.capabilityWord(hasLight: pendingHasLight)
+            capabilities: Self.capabilityWord(
+                hasMotion: pendingHasMotion,
+                hasLight: pendingHasLight
+            )
         )
         isRegisteringController = true
         defer { isRegisteringController = false }
@@ -288,22 +310,24 @@ final class WifiConnection: ObservableObject, Identifiable {
 
     /// Forward a touchpad sample. Same threading discipline as `sendReport` —
     /// called from a GameController touchpad callback thread.
+    ///
+    /// `fingerNId` is the monotonic per-finger tracking id resolved upstream by
+    /// `GameControllerInput.pushTouchpad` — bumped on each fresh contact, the
+    /// id the protocol's §0x000C expects (it used to be hardcoded 0 / 1).
     nonisolated func sendTouchpad(
-        finger0Active: Bool, finger0X: Int16, finger0Y: Int16,
-        finger1Active: Bool, finger1X: Int16, finger1Y: Int16,
+        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
+        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
         buttonPressed: Bool
     ) {
         guard let live = clientRef.get() else { return }
-        // GameController doesn't surface per-finger ids; use the stable slot
-        // indices 0 / 1 the way `GamepadInputProcessor.TouchpadSender` documents.
         live.sendTouchpad(
             controllerIndex: Self.defaultCtrlIndex,
             finger0Active: finger0Active,
-            finger0Id: 0,
+            finger0Id: finger0Id,
             finger0X: finger0X,
             finger0Y: finger0Y,
             finger1Active: finger1Active,
-            finger1Id: 1,
+            finger1Id: finger1Id,
             finger1X: finger1X,
             finger1Y: finger1Y,
             buttonPressed: buttonPressed

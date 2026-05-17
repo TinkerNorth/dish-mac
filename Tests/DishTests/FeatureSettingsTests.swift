@@ -187,9 +187,11 @@ final class TouchpadProcessorTests: XCTestCase {
     private struct Captured: Equatable {
         let id: String
         let f0a: Bool
+        let f0id: UInt8
         let f0x: Int16
         let f0y: Int16
         let f1a: Bool
+        let f1id: UInt8
         let f1x: Int16
         let f1y: Int16
         let button: Bool
@@ -198,13 +200,15 @@ final class TouchpadProcessorTests: XCTestCase {
     func testPublishTouchpadForwardsAllFields() {
         var captured: Captured?
         let proc = GamepadInputProcessor()
-        proc.touchpadSender = { id, f0a, f0x, f0y, f1a, f1x, f1y, btn in
+        proc.touchpadSender = { id, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn in
             captured = Captured(
                 id: id,
                 f0a: f0a,
+                f0id: f0id,
                 f0x: f0x,
                 f0y: f0y,
                 f1a: f1a,
+                f1id: f1id,
                 f1x: f1x,
                 f1y: f1y,
                 button: btn
@@ -213,9 +217,11 @@ final class TouchpadProcessorTests: XCTestCase {
         proc.publishTouchpad(
             deviceId: "pad",
             finger0Active: true,
+            finger0Id: 7,
             finger0X: 1234,
             finger0Y: -567,
             finger1Active: false,
+            finger1Id: 3,
             finger1X: 0,
             finger1Y: 0,
             buttonPressed: true
@@ -225,9 +231,11 @@ final class TouchpadProcessorTests: XCTestCase {
             Captured(
                 id: "pad",
                 f0a: true,
+                f0id: 7,
                 f0x: 1234,
                 f0y: -567,
                 f1a: false,
+                f1id: 3,
                 f1x: 0,
                 f1y: 0,
                 button: true
@@ -241,9 +249,11 @@ final class TouchpadProcessorTests: XCTestCase {
         proc.publishTouchpad(
             deviceId: "pad",
             finger0Active: false,
+            finger0Id: 0,
             finger0X: 0,
             finger0Y: 0,
             finger1Active: false,
+            finger1Id: 0,
             finger1X: 0,
             finger1Y: 0,
             buttonPressed: false
@@ -253,13 +263,15 @@ final class TouchpadProcessorTests: XCTestCase {
     func testPublishTouchpadCarriesFullInt16Range() {
         var captured: Captured?
         let proc = GamepadInputProcessor()
-        proc.touchpadSender = { id, f0a, f0x, f0y, f1a, f1x, f1y, btn in
+        proc.touchpadSender = { id, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn in
             captured = Captured(
                 id: id,
                 f0a: f0a,
+                f0id: f0id,
                 f0x: f0x,
                 f0y: f0y,
                 f1a: f1a,
+                f1id: f1id,
                 f1x: f1x,
                 f1y: f1y,
                 button: btn
@@ -268,9 +280,11 @@ final class TouchpadProcessorTests: XCTestCase {
         proc.publishTouchpad(
             deviceId: "pad",
             finger0Active: true,
+            finger0Id: 0,
             finger0X: Int16.max,
             finger0Y: Int16.min,
             finger1Active: true,
+            finger1Id: 1,
             finger1X: -1,
             finger1Y: 1,
             buttonPressed: false

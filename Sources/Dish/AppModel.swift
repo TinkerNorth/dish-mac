@@ -271,14 +271,16 @@ final class AppModel: ObservableObject {
     private func installTouchpadSender() {
         let table = routingTable
         let gate = self.gate
-        input.processor.touchpadSender = { deviceId, f0a, f0x, f0y, f1a, f1x, f1y, btn in
+        input.processor.touchpadSender = { deviceId, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn in
             guard gate.snapshot().touchpad else { return }
             guard let conn = table.get(deviceId) else { return }
             conn.sendTouchpad(
                 finger0Active: f0a,
+                finger0Id: f0id,
                 finger0X: f0x,
                 finger0Y: f0y,
                 finger1Active: f1a,
+                finger1Id: f1id,
                 finger1X: f1x,
                 finger1Y: f1y,
                 buttonPressed: btn
@@ -352,11 +354,17 @@ final class AppModel: ObservableObject {
     }
 
     func bind(slotId: String, connectionId: String) {
-        // Resolve whether the bound controller has an RGB light bar from its
-        // detected capabilities, so `WifiConnection` can advertise CAP_LIGHTBAR
-        // in MSG_CONTROLLER_ADD. Defaults to false for an unknown slot id.
-        let hasLight = slots.first { $0.id == slotId }?.capabilities.hasLightbar ?? false
-        hub.bind(slotId: slotId, connectionId: connectionId, hasLight: hasLight)
+        // Resolve whether the bound controller has an IMU / an RGB light bar
+        // from its detected capabilities, so `WifiConnection` can advertise
+        // CAP_MOTION / CAP_LIGHTBAR in MSG_CONTROLLER_ADD. Both default to
+        // false for an unknown slot id.
+        let caps = slots.first { $0.id == slotId }?.capabilities
+        hub.bind(
+            slotId: slotId,
+            connectionId: connectionId,
+            hasMotion: caps?.hasMotion ?? false,
+            hasLight: caps?.hasLightbar ?? false
+        )
     }
 
     func unbind(slotId: String) {

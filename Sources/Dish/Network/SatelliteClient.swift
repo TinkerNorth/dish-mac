@@ -74,8 +74,12 @@ final class SatelliteClient {
     let ackQueue = DispatchQueue(label: "dish.satellite.ack", qos: .utility)
     var ackRunning = false
 
-    var missedAcks = 0
-    var connectionAlive = true
+    /// Consecutive un-ACKed heartbeats. Bumped on `heartbeatQueue`, zeroed on
+    /// `ackQueue` — two queues, so it must be atomic (see `AtomicInt`).
+    let missedAcks = AtomicInt(0)
+    /// Liveness flag. Written from the heartbeat + ACK queues, read from the
+    /// `WifiConnection` liveness task — atomic for the same reason.
+    let connectionAlive = AtomicBool(true)
     /// Latest controller ACK packed as (requestType<<16)|(idx<<8)|result, or -1.
     var lastControllerAck: Int32 = -1
     var vigemAvailable: Int8 = -1
@@ -166,8 +170,8 @@ final class SatelliteClient {
         self.token = Array(token)
         self.key = SymmetricKey(data: key)
         counter.reset()
-        missedAcks = 0
-        connectionAlive = true
+        missedAcks.set(0)
+        connectionAlive.set(true)
         lastControllerAck = -1
     }
 

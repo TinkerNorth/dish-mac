@@ -78,8 +78,8 @@ extension SatelliteClient {
     func startHeartbeat() {
         if heartbeatRunning { return }
         heartbeatRunning = true
-        missedAcks = 0
-        connectionAlive = true
+        missedAcks.set(0)
+        connectionAlive.set(true)
         heartbeatQueue.async { [weak self] in self?.heartbeatLoop() }
     }
 
@@ -90,9 +90,8 @@ extension SatelliteClient {
     private func heartbeatLoop() {
         while heartbeatRunning {
             sendEncrypted(msgType: 0x0002, payload: [])
-            missedAcks += 1
-            if missedAcks >= Self.heartbeatMissMax {
-                connectionAlive = false
+            if missedAcks.incrementAndGet() >= Self.heartbeatMissMax {
+                connectionAlive.set(false)
             }
             // Sleep in 100ms chunks so stopHeartbeat kicks in quickly.
             var slept: UInt32 = 0
@@ -162,8 +161,8 @@ extension SatelliteClient {
         let msgLen = (UInt16(plain[2]) << 8) | UInt16(plain[3])
 
         if msgType == 0x0003 { // MSG_HEARTBEAT_ACK
-            missedAcks = 0
-            connectionAlive = true
+            missedAcks.set(0)
+            connectionAlive.set(true)
         } else if msgType == 0x0006, msgLen >= 4, plain.count >= 8 {
             let reqType = (UInt16(plain[4]) << 8) | UInt16(plain[5])
             let idx = plain[6]
