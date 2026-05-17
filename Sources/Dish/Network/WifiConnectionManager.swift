@@ -34,7 +34,8 @@ final class WifiConnectionManager: ObservableObject {
     /// Per-path discovery logging so the broadcast vs mDNS hit-rate can be
     /// compared in the field (Task 1.6).
     private static let discoveryLog = Logger(
-        subsystem: "com.tinkernorth.dish", category: "discovery")
+        subsystem: "com.tinkernorth.dish", category: "discovery"
+    )
 
     private let store: ConnectionStore
     private lazy var deviceId = store.getOrCreateDeviceId()
@@ -87,8 +88,9 @@ final class WifiConnectionManager: ObservableObject {
             let broadcastList = await broadcast
             let mdnsList = await mdns
             let merged = Self.mergeDiscovered(broadcast: broadcastList, mdns: mdnsList)
-            Self.discoveryLog.info(
-                "discovery scan: broadcast=\(broadcastList.count, privacy: .public) mdns=\(mdnsList.count, privacy: .public) merged=\(merged.count, privacy: .public)")
+            let summary =
+                "broadcast=\(broadcastList.count) mdns=\(mdnsList.count) merged=\(merged.count)"
+            Self.discoveryLog.info("discovery scan: \(summary, privacy: .public)")
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.discoveredServers = merged

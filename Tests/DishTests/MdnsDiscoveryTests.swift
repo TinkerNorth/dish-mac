@@ -34,7 +34,7 @@ final class MdnsDiscoveryTests: XCTestCase {
         // drop it back to the default, so it never leaks onto the wire.
         let server = DiscoveredServer(name: "sat", ip: "10.0.0.5", source: .mdns)
         let data = try JSONEncoder().encode(server)
-        let json = String(decoding: data, as: UTF8.self)
+        let json = String(bytes: data, encoding: .utf8) ?? ""
         XCTAssertFalse(json.contains("source"))
         let decoded = try JSONDecoder().decode(DiscoveredServer.self, from: data)
         XCTAssertEqual(decoded.source, .broadcast)
@@ -48,14 +48,16 @@ final class MdnsDiscoveryTests: XCTestCase {
 
     func testMergeTagsBroadcastOnlyServer() {
         let merged = WifiConnectionManager.mergeDiscovered(
-            broadcast: [server("A", "10.0.0.1")], mdns: [])
+            broadcast: [server("A", "10.0.0.1")], mdns: []
+        )
         XCTAssertEqual(merged.count, 1)
         XCTAssertEqual(merged.first?.source, .broadcast)
     }
 
     func testMergeTagsMdnsOnlyServer() {
         let merged = WifiConnectionManager.mergeDiscovered(
-            broadcast: [], mdns: [server("B", "10.0.0.2")])
+            broadcast: [], mdns: [server("B", "10.0.0.2")]
+        )
         XCTAssertEqual(merged.count, 1)
         XCTAssertEqual(merged.first?.source, .mdns)
     }
@@ -64,7 +66,8 @@ final class MdnsDiscoveryTests: XCTestCase {
         // Same ip + udpPort → same stable id → one merged entry, tagged .both.
         let merged = WifiConnectionManager.mergeDiscovered(
             broadcast: [server("Sat", "10.0.0.9")],
-            mdns: [server("Sat", "10.0.0.9")])
+            mdns: [server("Sat", "10.0.0.9")]
+        )
         XCTAssertEqual(merged.count, 1)
         XCTAssertEqual(merged.first?.source, .both)
     }
@@ -72,7 +75,8 @@ final class MdnsDiscoveryTests: XCTestCase {
     func testMergeKeepsDistinctServersFromEachPath() {
         let merged = WifiConnectionManager.mergeDiscovered(
             broadcast: [server("Alpha", "10.0.0.1")],
-            mdns: [server("Bravo", "10.0.0.2")])
+            mdns: [server("Bravo", "10.0.0.2")]
+        )
         XCTAssertEqual(merged.count, 2)
         XCTAssertEqual(merged.first { $0.name == "Alpha" }?.source, .broadcast)
         XCTAssertEqual(merged.first { $0.name == "Bravo" }?.source, .mdns)
@@ -82,14 +86,16 @@ final class MdnsDiscoveryTests: XCTestCase {
         // Two satellites on one host (different udpPort) are distinct ids.
         let merged = WifiConnectionManager.mergeDiscovered(
             broadcast: [server("One", "10.0.0.1", udp: 9876)],
-            mdns: [server("Two", "10.0.0.1", udp: 9900)])
+            mdns: [server("Two", "10.0.0.1", udp: 9900)]
+        )
         XCTAssertEqual(merged.count, 2)
     }
 
     func testMergeSortsByName() {
         let merged = WifiConnectionManager.mergeDiscovered(
             broadcast: [server("Zulu", "10.0.0.3"), server("Alpha", "10.0.0.1")],
-            mdns: [server("Mike", "10.0.0.2")])
+            mdns: [server("Mike", "10.0.0.2")]
+        )
         XCTAssertEqual(merged.map(\.name), ["Alpha", "Mike", "Zulu"])
     }
 

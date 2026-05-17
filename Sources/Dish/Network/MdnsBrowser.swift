@@ -189,7 +189,9 @@ enum MdnsBrowser {
                 lock.unlock()
                 if firstClose {
                     activeBrowser?.cancel()
-                    for conn in conns { conn.cancel() }
+                    for conn in conns {
+                        conn.cancel()
+                    }
                 }
                 return
             }
@@ -197,7 +199,9 @@ enum MdnsBrowser {
             let out = Array(servers.values)
             lock.unlock()
             activeBrowser?.cancel()
-            for conn in conns { conn.cancel() }
+            for conn in conns {
+                conn.cancel()
+            }
             MdnsBrowser.log.info("mDNS browse complete — \(out.count, privacy: .public) satellite(s)")
             continuation.resume(returning: out)
         }
