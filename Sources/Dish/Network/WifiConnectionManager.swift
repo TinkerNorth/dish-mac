@@ -3,6 +3,7 @@
 
 import Combine
 import Foundation
+import os
 
 enum ConnectionEvent {
     case pairingRequired(DiscoveredServer)
@@ -29,6 +30,11 @@ final class WifiConnectionManager: ObservableObject {
     /// `ConnectionHub` can roll back the local binding when the server
     /// rejects a controller add.
     let slotRegistrationFailed = PassthroughSubject<String, Never>()
+
+    /// Per-path discovery logging so the broadcast vs mDNS hit-rate can be
+    /// compared in the field (Task 1.6).
+    private static let discoveryLog = Logger(
+        subsystem: "com.tinkernorth.dish", category: "discovery")
 
     private let store: ConnectionStore
     private lazy var deviceId = store.getOrCreateDeviceId()
@@ -78,12 +84,11 @@ final class WifiConnectionManager: ObservableObject {
             // are merged by stable id so a server heard on both appears once.
             async let broadcast = Task.detached { LANDiscovery.discover() }.value
             async let mdns = MdnsBrowser.discover()
-            let found = await (broadcast + mdns)
-            var byId: [String: DiscoveredServer] = [:]
-            for server in found {
-                byId[server.id] = server
-            }
-            let merged = byId.values.sorted { $0.name < $1.name }
+            let broadcastList = await broadcast
+            let mdnsList = await mdns
+            let merged = Self.mergeDiscovered(broadcast: broadcastList, mdns: mdnsList)
+            Self.discoveryLog.info(
+                "discovery scan: broadcast=\(broadcastList.count, privacy: .public) mdns=\(mdnsList.count, privacy: .public) merged=\(merged.count, privacy: .public)")
             await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.discoveredServers = merged
@@ -93,6 +98,26 @@ final class WifiConnectionManager: ObservableObject {
                 }
             }
         }
+    }
+
+    /// Merge the two discovery paths by stable id, tagging each server's
+    /// `source`. A server heard on both paths becomes `.both`; otherwise it
+    /// carries the path that surfaced it. Result is name-sorted. Pure +
+    /// `nonisolated` so it can be unit-tested without sockets or the main actor.
+    nonisolated static func mergeDiscovered(
+        broadcast: [DiscoveredServer],
+        mdns: [DiscoveredServer]
+    ) -> [DiscoveredServer] {
+        var byId: [String: DiscoveredServer] = [:]
+        for var server in broadcast {
+            server.source = .broadcast
+            byId[server.id] = server
+        }
+        for var server in mdns {
+            server.source = byId[server.id] != nil ? .both : .mdns
+            byId[server.id] = server
+        }
+        return byId.values.sorted { $0.name < $1.name }
     }
 
     // MARK: - Connect / Pair / Disconnect

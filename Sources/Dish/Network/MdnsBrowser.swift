@@ -3,6 +3,7 @@
 
 import Foundation
 import Network
+import os
 
 /// Discovers Satellite servers advertised over mDNS / Bonjour as the
 /// `_satellite._udp.` service type — the modern discovery path that works on
@@ -24,6 +25,14 @@ enum MdnsBrowser {
     static let serviceType = "_satellite._udp."
 
     static let defaultTimeoutMs = 4000
+
+    /// Hard per-endpoint resolution deadline. A Bonjour result whose
+    /// `NWConnection` never reaches `.ready`/`.failed` (host vanished
+    /// mid-browse, a wedged connection) is reported as unresolved after this
+    /// so it can't pin the scan open past the browse window.
+    static let resolveTimeoutMs = 3000
+
+    static let log = Logger(subsystem: "com.tinkernorth.dish", category: "discovery")
 
     /// Browse for `timeoutMs`, resolving every advertised satellite to a
     /// `DiscoveredServer`. Async — call from a `Task`. Never throws; a missing
@@ -48,7 +57,10 @@ enum MdnsBrowser {
             browser.stateUpdateHandler = { state in
                 // A failed browser (no mDNS stack, sandbox denial) should not
                 // hang the scan — finish early with whatever we have.
-                if case .failed = state { collector.finish() }
+                if case let .failed(error) = state {
+                    log.warning("mDNS browser failed: \(String(describing: error), privacy: .public)")
+                    collector.finish()
+                }
             }
             browser.start(queue: .global(qos: .userInitiated))
 
@@ -89,7 +101,8 @@ enum MdnsBrowser {
             }
 
             lock.lock()
-            if browseWindowClosed || resumed { lock.unlock()
+            if browseWindowClosed || resumed {
+                lock.unlock()
                 return
             }
             pending += 1
@@ -112,7 +125,9 @@ enum MdnsBrowser {
         }
 
         /// Open a throwaway `NWConnection` purely to resolve the Bonjour
-        /// service endpoint to a concrete IPv4 address.
+        /// service endpoint to a concrete IPv4 address. The endpoint is
+        /// reported (resolved IP, or nil) exactly once — whichever of the
+        /// connection state handler or the hard deadline fires first wins.
         private func resolveEndpoint(
             _ endpoint: NWEndpoint,
             completion: @escaping (String?) -> Void
@@ -121,42 +136,69 @@ enum MdnsBrowser {
             lock.lock()
             connections.append(conn)
             lock.unlock()
+
+            let reportLock = NSLock()
             var reported = false
+            func reportOnce(_ ip: String?) {
+                reportLock.lock()
+                if reported {
+                    reportLock.unlock()
+                    return
+                }
+                reported = true
+                reportLock.unlock()
+                conn.cancel()
+                completion(ip)
+            }
+
             conn.stateUpdateHandler = { state in
                 switch state {
                 case .ready:
-                    if reported { return }
-                    reported = true
-                    let ip = Self.ipv4(from: conn.currentPath?.remoteEndpoint)
-                    conn.cancel()
-                    completion(ip)
+                    reportOnce(Self.ipv4(from: conn.currentPath?.remoteEndpoint))
                 case .failed, .cancelled:
-                    if reported { return }
-                    reported = true
-                    completion(nil)
+                    reportOnce(nil)
                 default:
                     break
                 }
             }
             conn.start(queue: .global(qos: .userInitiated))
+
+            // Hard backstop so a wedged resolution can't strand `pending`.
+            DispatchQueue.global()
+                .asyncAfter(deadline: .now() + .milliseconds(MdnsBrowser.resolveTimeoutMs)) {
+                    reportOnce(nil)
+                }
         }
 
         /// Resume the continuation once — when the browse window closes and
         /// every in-flight resolution has settled (or on browser failure).
+        /// On the first close it also cancels the browser and every still-
+        /// pending connection so a wedged `NWConnection` fails fast instead of
+        /// holding the continuation open past the browse window.
         func finish() {
             lock.lock()
+            let firstClose = !browseWindowClosed
             browseWindowClosed = true
-            if resumed || pending > 0 { lock.unlock()
+            if resumed {
+                lock.unlock()
+                return
+            }
+            let conns = connections
+            let activeBrowser = browser
+            if pending > 0 {
+                lock.unlock()
+                if firstClose {
+                    activeBrowser?.cancel()
+                    for conn in conns { conn.cancel() }
+                }
                 return
             }
             resumed = true
             let out = Array(servers.values)
-            let conns = connections
             lock.unlock()
-            browser?.cancel()
-            for conn in conns {
-                conn.cancel()
-            }
+            activeBrowser?.cancel()
+            for conn in conns { conn.cancel() }
+            MdnsBrowser.log.info("mDNS browse complete — \(out.count, privacy: .public) satellite(s)")
             continuation.resume(returning: out)
         }
 
@@ -172,7 +214,8 @@ enum MdnsBrowser {
                 ip: host,
                 udpPort: Int(txt["udp"] ?? "") ?? 9876,
                 pairPort: Int(txt["pair"] ?? "") ?? 9878,
-                httpPort: Int(txt["http"] ?? "") ?? 9877
+                httpPort: Int(txt["http"] ?? "") ?? 9877,
+                source: .mdns
             )
         }
 

@@ -5,12 +5,33 @@ import Foundation
 
 // MARK: - Server / protocol DTOs (names match Android Models.kt)
 
+/// Which discovery path surfaced a satellite. mDNS / Bonjour is the modern
+/// path; `broadcast` is the legacy UDP beacon; `both` means it answered on
+/// each. Not on the wire — assigned client-side by the discovery merge.
+enum DiscoverySource: String, Codable, Hashable {
+    case broadcast
+    case mdns
+    case both
+
+    /// Short human label for the connections list.
+    var label: String {
+        switch self {
+        case .broadcast: "UDP broadcast"
+        case .mdns: "mDNS"
+        case .both: "mDNS + broadcast"
+        }
+    }
+}
+
 struct DiscoveredServer: Codable, Hashable, Identifiable {
     var name = ""
     var ip = ""
     var udpPort = 9876
     var pairPort = 9878
     var httpPort = 9877
+    /// Discovery path this server was heard on. Excluded from `CodingKeys`
+    /// (not a wire field); stays `.broadcast` when decoded from a beacon.
+    var source: DiscoverySource = .broadcast
 
     var id: String {
         "wifi:\(ip):\(udpPort)"
@@ -21,13 +42,15 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         ip: String = "",
         udpPort: Int = 9876,
         pairPort: Int = 9878,
-        httpPort: Int = 9877
+        httpPort: Int = 9877,
+        source: DiscoverySource = .broadcast
     ) {
         self.name = name
         self.ip = ip
         self.udpPort = udpPort
         self.pairPort = pairPort
         self.httpPort = httpPort
+        self.source = source
     }
 
     /// The satellite server's discovery beacon omits `ip` (the recipient observes

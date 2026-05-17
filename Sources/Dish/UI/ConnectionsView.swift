@@ -150,7 +150,7 @@ struct ConnectionsView: View {
                 Text("\(server.ip) • UDP \(server.udpPort)")
                     .font(.system(size: 11))
                     .foregroundColor(DishTheme.muted)
-                Text("Discovered")
+                Text("Discovered · \(server.source.label)")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(DishTheme.muted)
             }
