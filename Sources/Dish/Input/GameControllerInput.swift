@@ -17,15 +17,17 @@ private let kDefaultStickFlat: Int16 = 3277
 private let kDefaultTriggerFlat: UInt8 = 13
 /// Battery poll cadence — matches `BATTERY_REPORT_INTERVAL_SEC` (30 s) on
 /// the satellite. The first sample is sent ~1 s after attach.
-private let kBatteryPollIntervalSec = 30
-private let kBatteryFirstReportDelaySec = 1
+/// Module-internal (not file-private) so the battery timers in
+/// `GameControllerInput+ReturnPath.swift` can read them.
+let kBatteryPollIntervalSec = 30
+let kBatteryFirstReportDelaySec = 1
 /// Charging-state watch cadence. The protocol wants a battery report not only
 /// every 30 s but ALSO "whenever the charging state transitions" — and
 /// `GCDeviceBattery` has no change notification, so a transition can only be
 /// observed by polling. This faster, lightweight tick reads only the state and
 /// emits a report when it differs from the last observed state; it does not
 /// send on an unchanged tick (the 30 s timer owns the steady cadence).
-private let kBatteryStateWatchIntervalSec = 3
+let kBatteryStateWatchIntervalSec = 3
 
 /// Bridges Apple's `GameController.framework` into the `GamepadInputProcessor`.
 /// Hooks `valueChangedHandler` on every extended gamepad so we push a report
@@ -48,7 +50,9 @@ final class GameControllerInput: ObservableObject {
         var battery: BatteryReading?
     }
 
-    @Published private(set) var slots: [Slot] = []
+    /// Module-internal setter (not `private(set)`) so the battery poll in
+    /// `GameControllerInput+ReturnPath.swift` can refresh a slot's pill.
+    @Published var slots: [Slot] = []
 
     let processor = GamepadInputProcessor()
 
@@ -62,25 +66,28 @@ final class GameControllerInput: ObservableObject {
     /// id → live `GCController`, populated on attach and pruned on detach so
     /// `applyRumble(deviceId:)` can resolve the haptics target without a
     /// linear scan of every connected controller every packet.
-    private var controllersById: [String: GCController] = [:]
+    /// Module-internal so the return-path extension can resolve targets.
+    var controllersById: [String: GCController] = [:]
     /// Per-controller rumble actuator. Created lazily on first `applyRumble`
     /// call so we don't pay the engine-startup cost for controllers the
     /// satellite never rumbles. Cleaned up in `detach`.
-    private var actuators: [String: RumbleActuator] = [:]
+    var actuators: [String: RumbleActuator] = [:]
     /// Per-device polling timer that emits a battery snapshot every
     /// `kBatteryPollIntervalSec` seconds. macOS GCDevice doesn't surface a
     /// "battery state changed" notification, so we poll — and the timer is
     /// also the wire cadence: MSG_BATTERY is a fixed 30 s heartbeat. Polling
     /// is light (one Float read + an enum compare) and only runs while the
     /// controller is attached.
-    private var batteryTimers: [String: DispatchSourceTimer] = [:]
+    /// Module-internal so the battery timers in the return-path extension can
+    /// register and cancel them.
+    var batteryTimers: [String: DispatchSourceTimer] = [:]
     /// Per-device faster timer that watches for a charging-state transition
     /// and fires an out-of-cadence battery report when one happens — the
     /// protocol requires a report on every transition, not just the 30 s tick.
-    private var batteryStateTimers: [String: DispatchSourceTimer] = [:]
+    var batteryStateTimers: [String: DispatchSourceTimer] = [:]
     /// Last battery `statusRaw` forwarded per device. Drives both the 30 s
     /// tick's record-keeping and the state-watch timer's transition detection.
-    private var lastBatteryStatusRaw: [String: UInt8] = [:]
+    var lastBatteryStatusRaw: [String: UInt8] = [:]
 
     init() {
         let nc = NotificationCenter.default
@@ -336,10 +343,13 @@ final class GameControllerInput: ObservableObject {
         )
     }
 
-    // MARK: - Lightbar (return path)
+    // MARK: - Return-path state (used by GameControllerInput+ReturnPath.swift)
 
     /// RGB colour, the `ReturnPathApplier` payload for the light-bar path.
-    private struct LightbarColor {
+    /// A stored-property closure can't live in an extension, so the applier
+    /// and its payload type stay here; the `applyLightbar` entry point that
+    /// feeds it is in `GameControllerInput+ReturnPath.swift`.
+    struct LightbarColor {
         let r: UInt8
         let g: UInt8
         let b: UInt8
@@ -350,7 +360,7 @@ final class GameControllerInput: ObservableObject {
     /// can't latch a stale colour or pile up unstructured tasks. See
     /// `ReturnPathApplier`. `lazy` so the queue is only created on the first
     /// inbound lightbar packet.
-    private lazy var lightbarApplier = ReturnPathApplier<LightbarColor>(
+    lazy var lightbarApplier = ReturnPathApplier<LightbarColor>(
         label: "dish.returnpath.lightbar"
     ) { [weak self] deviceId, color in
         guard let self,
@@ -360,21 +370,6 @@ final class GameControllerInput: ObservableObject {
             red: Float(color.r) / 255.0,
             green: Float(color.g) / 255.0,
             blue: Float(color.b) / 255.0
-        )
-    }
-
-    /// Apply a host-game-driven light bar colour to the physical controller.
-    /// Called from the `SatelliteClient` receive thread via the AppModel
-    /// lightbar handler. No-op on controllers without a light (Xbox pads);
-    /// the gate on `FeatureSettings.lightbarMode` happens upstream in
-    /// `AppModel` so this method stays a pure "apply" with no policy.
-    ///
-    /// The actual `GCColor` write is serialised + coalesced through
-    /// `lightbarApplier` rather than a fresh per-packet `Task`.
-    func applyLightbar(deviceId: String, r: UInt8, g: UInt8, b: UInt8) {
-        lightbarApplier.submit(
-            deviceId: deviceId,
-            value: LightbarColor(r: r, g: g, b: b)
         )
     }
 
@@ -438,178 +433,10 @@ final class GameControllerInput: ObservableObject {
         )
     }
 
-    // MARK: - Battery
-
-    /// IOKit snapshot of the host Mac's battery runs off the main thread.
-    /// `HostBattery.snapshot()` is a synchronous IOKit call; hopping it here
-    /// keeps the battery poll (every 30 s per wired controller) off the main
-    /// runloop. Only the `slots` update is bounced back to the main actor.
-    private let batteryWorkQueue = DispatchQueue(
-        label: "dish.battery.iokit", qos: .utility
-    )
-
-    /// Spin up the per-device battery timers. The 30 s timer is the steady
-    /// wire cadence (fires once after `kBatteryFirstReportDelaySec`, then
-    /// every `kBatteryPollIntervalSec`). The faster state-watch timer catches
-    /// charging-state transitions between the 30 s ticks. Both closures hold a
-    /// weak `controller` so they tolerate the pad going away between ticks
-    /// (they no-op until `detach` cancels them).
-    private func startBatteryTimer(deviceId: String, controller: GCController) {
-        let timer = DispatchSource.makeTimerSource(queue: .main)
-        let delay: DispatchTime = .now() + .seconds(kBatteryFirstReportDelaySec)
-        timer.schedule(deadline: delay, repeating: .seconds(kBatteryPollIntervalSec))
-        timer.setEventHandler { [weak self, weak controller] in
-            guard let self, let controller else { return }
-            self.emitBattery(deviceId: deviceId, controller: controller, force: true)
-        }
-        timer.resume()
-        batteryTimers[deviceId] = timer
-
-        // Charging-state watch. Offset its first fire past the 30 s timer's
-        // first sample so the steady cadence sets `lastBatteryStatusRaw`
-        // before the watch starts comparing against it.
-        let watch = DispatchSource.makeTimerSource(queue: .main)
-        watch.schedule(
-            deadline: .now() + .seconds(kBatteryFirstReportDelaySec + kBatteryStateWatchIntervalSec),
-            repeating: .seconds(kBatteryStateWatchIntervalSec)
-        )
-        watch.setEventHandler { [weak self, weak controller] in
-            guard let self, let controller else { return }
-            self.emitBattery(deviceId: deviceId, controller: controller, force: false)
-        }
-        watch.resume()
-        batteryStateTimers[deviceId] = watch
-    }
-
-    /// Wire-encoded battery reading plus the slot-card display state, the
-    /// common shape `emitBattery` builds from either the controller's own
-    /// `GCDeviceBattery` or the host-Mac fallback. `Sendable` so it can cross
-    /// from `batteryWorkQueue` back to the main actor.
-    private struct BatteryResolution: Sendable {
-        let level: UInt8
-        let statusRaw: UInt8
-        let displayState: BatteryChargeState
-    }
-
-    /// Resolve the battery reading for a controller and forward it. A pad has
-    /// a *usable* reading when it exposes a `GCDeviceBattery` AND that battery
-    /// reports a non-negative level (a wireless pad). When it doesn't — a
-    /// wired/USB pad, or one whose level reads unknown — we fall back to the
-    /// host Mac's battery so the satellite still shows something honest.
-    ///
-    /// `force == true` (the 30 s timer) always forwards — MSG_BATTERY is a
-    /// fixed 30 s heartbeat so an unchanged value still has to reach the wire,
-    /// and a dropped UDP packet self-heals on the next tick. `force == false`
-    /// (the faster state-watch timer) forwards ONLY when the charging state
-    /// changed from the last forwarded value — the protocol's "report on every
-    /// charging-state transition" trigger, without spamming the wire.
-    ///
-    /// The host-fallback path needs a synchronous IOKit call, so the resolve
-    /// runs on `batteryWorkQueue`; the controller's own `GCDeviceBattery`
-    /// reads are cheap and stay on the main actor.
-    private func emitBattery(deviceId: String, controller: GCController, force: Bool) {
-        if let battery = controller.battery, battery.batteryLevel >= 0 {
-            // Controller's own battery — cheap reads, resolve inline.
-            forwardBattery(
-                deviceId: deviceId,
-                resolved: Self.resolveControllerBattery(battery),
-                force: force
-            )
-        } else {
-            // No usable controller battery — report the host Mac instead. The
-            // IOKit snapshot is blocking, so it runs off the main thread; the
-            // forward hops back to the main actor. `self` is rebound to a
-            // `let` so the nested `Task` doesn't reference the closure's
-            // captured `var self` (forbidden in Swift 5.9 concurrent code).
-            batteryWorkQueue.async { [weak self] in
-                guard let self else { return }
-                let resolved = Self.resolveHostBattery(
-                    HostBattery.reading(from: HostBattery.snapshot())
-                )
-                Task { @MainActor in
-                    self.forwardBattery(deviceId: deviceId, resolved: resolved, force: force)
-                }
-            }
-        }
-    }
-
-    /// Update the slot-card pill and forward the resolved reading to the wire,
-    /// applying the `force` / charging-state-transition gate. Runs on the main
-    /// actor (it touches `slots` + `lastBatteryStatusRaw`).
-    private func forwardBattery(
-        deviceId: String,
-        resolved: BatteryResolution,
-        force: Bool
-    ) {
-        let stateChanged = lastBatteryStatusRaw[deviceId] != resolved.statusRaw
-        // State-watch tick with no transition → nothing to do. The 30 s timer
-        // (force) still keeps the steady cadence.
-        guard force || stateChanged else { return }
-
-        // Update the slot card's battery pill.
-        let reading = BatteryReading(
-            level: resolved.level == 0xFF ? nil : Int(resolved.level),
-            state: resolved.displayState
-        )
-        if let idx = slots.firstIndex(where: { $0.id == deviceId }) {
-            slots[idx].battery = reading
-        }
-
-        lastBatteryStatusRaw[deviceId] = resolved.statusRaw
-        processor.publishBattery(
-            deviceId: deviceId,
-            level: resolved.level,
-            statusRaw: resolved.statusRaw
-        )
-    }
-
-    /// Encode a controller's own `GCDeviceBattery` (a wireless pad reporting a
-    /// usable percentage) for the wire. `batteryLevel` is Float in 0..1.
-    private static func resolveControllerBattery(
-        _ battery: GCDeviceBattery
-    ) -> BatteryResolution {
-        let raw = battery.batteryLevel
-        let level: UInt8 = raw > 1 ? 100 : UInt8(clamping: Int((raw * 100.0).rounded()))
-        let statusRaw: UInt8 = switch battery.batteryState {
-        case .unknown: 0
-        case .discharging: 1
-        case .charging: 2
-        case .full: 3
-        @unknown default: 0
-        }
-        let displayState: BatteryChargeState = switch battery.batteryState {
-        case .discharging: .discharging
-        case .charging: .charging
-        case .full: .full
-        default: .unknown
-        }
-        return BatteryResolution(level: level, statusRaw: statusRaw, displayState: displayState)
-    }
-
-    /// Adapt a host-Mac `HostBattery.WireReading` to the slot-card display
-    /// state. `wired` (a desktop Mac) has no charge-state pill, so it shows as
-    /// `.unknown` in the UI while still going out as `wired` on the wire.
-    /// `nonisolated` — pure value mapping, run on `batteryWorkQueue` off main.
-    private nonisolated static func resolveHostBattery(
-        _ host: HostBattery.WireReading
-    ) -> BatteryResolution {
-        let displayState: BatteryChargeState = switch host.status {
-        case .discharging: .discharging
-        case .charging: .charging
-        case .full: .full
-        case .wired, .unknown: .unknown
-        }
-        return BatteryResolution(
-            level: host.level,
-            statusRaw: host.status.rawValue,
-            displayState: displayState
-        )
-    }
-
-    // MARK: - Rumble actuation (return path)
-
     /// Motor magnitudes + duration, the `ReturnPathApplier` payload for rumble.
-    private struct RumbleCommand {
+    /// Kept here alongside `rumbleApplier` — its stored-property closure can't
+    /// live in an extension; `applyRumble` is in the return-path extension.
+    struct RumbleCommand {
         let strong: UInt16
         let weak: UInt16
         let durationMs: UInt16
@@ -620,7 +447,7 @@ final class GameControllerInput: ObservableObject {
     /// frames can't pile up unstructured tasks or apply commands out of
     /// order. See `ReturnPathApplier`. `lazy` — the queue is created on the
     /// first inbound rumble packet.
-    private lazy var rumbleApplier = ReturnPathApplier<RumbleCommand>(
+    lazy var rumbleApplier = ReturnPathApplier<RumbleCommand>(
         label: "dish.returnpath.rumble"
     ) { [weak self] deviceId, cmd in
         guard let self,
@@ -639,32 +466,22 @@ final class GameControllerInput: ObservableObject {
         actuator.apply(strong: cmd.strong, weak: cmd.weak, durationMs: cmd.durationMs)
     }
 
-    /// Drive the physical controller's haptics. Called from the
-    /// `SatelliteClient` receive thread (via the AppModel rumble handler).
-    /// Most of the heavy lifting is in `RumbleActuator`; the apply closure
-    /// resolves `deviceId → GCController` and gates on whether the pad
-    /// actually exposes haptics (returns `nil` on MFi pads without haptics).
-    ///
-    /// The actuation is serialised + coalesced through `rumbleApplier` rather
-    /// than a fresh per-packet `Task`, so a 60 Hz rumble stream collapses to
-    /// one apply of the newest command and ordering is preserved.
-    ///
-    /// Vibration only — the light bar is a separate return path (see
-    /// `applyLightbar`).
-    func applyRumble(
-        deviceId: String,
-        strongMagnitude: UInt16,
-        weakMagnitude: UInt16,
-        durationMs: UInt16
-    ) {
-        rumbleApplier.submit(
-            deviceId: deviceId,
-            value: RumbleCommand(
-                strong: strongMagnitude,
-                weak: weakMagnitude,
-                durationMs: durationMs
-            )
-        )
+    /// IOKit snapshot of the host Mac's battery runs off the main thread.
+    /// `HostBattery.snapshot()` is a synchronous IOKit call; hopping it here
+    /// keeps the battery poll (every 30 s per wired controller) off the main
+    /// runloop. Only the `slots` update is bounced back to the main actor.
+    /// The battery timers that use it are in the return-path extension.
+    let batteryWorkQueue = DispatchQueue(
+        label: "dish.battery.iokit", qos: .utility
+    )
+
+    /// Wire-encoded battery reading plus the slot-card display state, the
+    /// common shape `emitBattery` builds from either the controller's own
+    /// `GCDeviceBattery` or the host-Mac fallback.
+    struct BatteryResolution {
+        let level: UInt8
+        let statusRaw: UInt8
+        let displayState: BatteryChargeState
     }
 
     // MARK: - Hot path
@@ -735,61 +552,9 @@ final class GameControllerInput: ObservableObject {
         let attached = Set(controllerIds.values)
         if !attached.contains(base) { return base }
         var ordinal = 1
-        while attached.contains("\(base)#\(ordinal)") { ordinal += 1 }
+        while attached.contains("\(base)#\(ordinal)") {
+            ordinal += 1
+        }
         return "\(base)#\(ordinal)"
-    }
-}
-
-/// Per-device, per-finger touchpad tracking-id state. `pushTouchpad` runs on a
-/// GameController callback thread, so every access is `os_unfair_lock`-guarded
-/// — the same discipline as `ClientRef`. The id-advance arithmetic itself is
-/// the pure, unit-tested `nextTouchpadTrackingId`.
-final class TouchpadTrackingState: @unchecked Sendable {
-    /// Last-seen active flag + current id for one finger slot.
-    private struct FingerState {
-        var wasActive = false
-        var id: UInt8 = 0
-    }
-
-    private struct DeviceState {
-        var finger0 = FingerState()
-        var finger1 = FingerState()
-    }
-
-    private var devices: [String: DeviceState] = [:]
-    private var lock = os_unfair_lock_s()
-
-    /// Advance both fingers' ids for one sample and return the ids to stamp on
-    /// the wire. Each id bumps on its finger's `false → true` (fresh-contact)
-    /// edge; see `nextTouchpadTrackingId`.
-    func advance(
-        deviceId: String,
-        finger0Active: Bool,
-        finger1Active: Bool
-    ) -> (finger0: UInt8, finger1: UInt8) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
-        var state = devices[deviceId] ?? DeviceState()
-        state.finger0.id = nextTouchpadTrackingId(
-            wasActive: state.finger0.wasActive,
-            isActive: finger0Active,
-            current: state.finger0.id
-        )
-        state.finger1.id = nextTouchpadTrackingId(
-            wasActive: state.finger1.wasActive,
-            isActive: finger1Active,
-            current: state.finger1.id
-        )
-        state.finger0.wasActive = finger0Active
-        state.finger1.wasActive = finger1Active
-        devices[deviceId] = state
-        return (state.finger0.id, state.finger1.id)
-    }
-
-    /// Drop a device's state when its controller disconnects.
-    func remove(deviceId: String) {
-        os_unfair_lock_lock(&lock)
-        devices.removeValue(forKey: deviceId)
-        os_unfair_lock_unlock(&lock)
     }
 }

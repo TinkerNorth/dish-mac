@@ -68,13 +68,17 @@ final class AtomicIntBoolTests: XCTestCase {
         // Bumpers.
         for _ in 0 ..< 4 {
             DispatchQueue.global().async(group: group) {
-                for _ in 0 ..< iters { _ = counter.incrementAndGet() }
+                for _ in 0 ..< iters {
+                    _ = counter.incrementAndGet()
+                }
             }
         }
         // Resetters racing the bumpers — just must not crash / corrupt.
         for _ in 0 ..< 2 {
             DispatchQueue.global().async(group: group) {
-                for _ in 0 ..< iters { counter.set(0) }
+                for _ in 0 ..< iters {
+                    counter.set(0)
+                }
             }
         }
         group.wait()

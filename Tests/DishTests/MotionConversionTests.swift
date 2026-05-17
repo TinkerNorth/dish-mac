@@ -22,7 +22,7 @@ import XCTest
 ///   * touchpad: centre-origin int16, +x right, +y DOWN.
 final class MotionConversionTests: XCTestCase {
 
-    // Tolerance for one int16 LSB of integer-rounding slack in the scalers.
+    /// Tolerance for one int16 LSB of integer-rounding slack in the scalers.
     private let lsb: Int16 = 1
 
     private func assertNear(_ value: Int16, _ expected: Int16, _ msg: String = "") {
@@ -42,9 +42,15 @@ final class MotionConversionTests: XCTestCase {
     /// vector points toward the ground). The wire must read ≈ +1 g on +Y.
     func testAccelAtRestScreenUpReadsPlusOneGUp() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: 0, gravityY: -1, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: 0,
+            gravityY: -1,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         assertNear(wire.accelX, 0, "X must be ~0 at rest")
         assertNear(wire.accelY, Int16(accelLsbPerG.rounded()), "Y must be ~+1 g (specific force up)")
@@ -57,9 +63,15 @@ final class MotionConversionTests: XCTestCase {
     /// this and the at-rest case; `-(gravity + userAccel)` reads 0 here.
     func testAccelAcceleratingUpAtOneGReadsPlusTwoGUp() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: 0, gravityY: -1, gravityZ: 0,
-            userAccelX: 0, userAccelY: 1, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: 0,
+            gravityY: -1,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 1,
+            userAccelZ: 0
         )
         assertNear(
             wire.accelY,
@@ -74,9 +86,15 @@ final class MotionConversionTests: XCTestCase {
     /// the linear-acceleration term, which is exactly the C2 bug.
     func testAccelLinearTermSurvivesGravityDecomposition() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: 0, gravityY: -1, gravityZ: 0,
-            userAccelX: 0.5, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: 0,
+            gravityY: -1,
+            gravityZ: 0,
+            userAccelX: 0.5,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         assertNear(wire.accelX, Int16((0.5 * accelLsbPerG).rounded()), "X must carry the +0.5 g thrust")
         assertNear(wire.accelY, Int16(accelLsbPerG.rounded()), "Y must still read +1 g up")
@@ -88,9 +106,15 @@ final class MotionConversionTests: XCTestCase {
         // Gravity purely on +X (controller on its side) → wire accelX ≈ -1 g
         // (specific force points opposite the gravity load).
         let onX = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: 1, gravityY: 0, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: 1,
+            gravityY: 0,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         assertNear(onX.accelX, Int16((-accelLsbPerG).rounded()))
         assertNear(onX.accelY, 0)
@@ -98,9 +122,15 @@ final class MotionConversionTests: XCTestCase {
 
         // Gravity purely on -Z → wire accelZ ≈ +1 g.
         let onZ = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: 0, gravityY: 0, gravityZ: -1,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: 0,
+            gravityY: 0,
+            gravityZ: -1,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         assertNear(onZ.accelZ, Int16(accelLsbPerG.rounded()))
         assertNear(onZ.accelX, 0)
@@ -109,9 +139,15 @@ final class MotionConversionTests: XCTestCase {
 
     func testAccelClampsBeyondFourG() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: -10, gravityY: 10, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: -10,
+            gravityY: 10,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         XCTAssertEqual(wire.accelX, Int16.max) // -(-10) = +10 g → clamp +max
         XCTAssertEqual(wire.accelY, Int16.min) // -(10) = -10 g → clamp -min
@@ -121,9 +157,15 @@ final class MotionConversionTests: XCTestCase {
 
     func testGyroZeroIsZero() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: 0, gravityY: 0, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: 0,
+            gravityY: 0,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         XCTAssertEqual(wire.gyroX, 0)
         XCTAssertEqual(wire.gyroY, 0)
@@ -136,9 +178,15 @@ final class MotionConversionTests: XCTestCase {
     func testGyroRadiansToDegreesPerAxis() {
         let halfPi = Double.pi / 2.0 // 90 deg/s
         let wire = gcMotionToWire(
-            rotationRateRadX: halfPi, rotationRateRadY: -halfPi, rotationRateRadZ: Double.pi,
-            gravityX: 0, gravityY: 0, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: halfPi,
+            rotationRateRadY: -halfPi,
+            rotationRateRadZ: Double.pi,
+            gravityX: 0,
+            gravityY: 0,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         assertNear(wire.gyroX, Int16((90.0 * gyroLsbPerDegPerSec).rounded()), "X: +π/2 rad/s → +90 deg/s")
         assertNear(wire.gyroY, Int16((-90.0 * gyroLsbPerDegPerSec).rounded()), "Y: -π/2 rad/s → -90 deg/s")
@@ -150,9 +198,15 @@ final class MotionConversionTests: XCTestCase {
     func testGyroFullScaleHitsInt16Limit() {
         let twoThousandDegInRad = 2000.0 * Double.pi / 180.0
         let wire = gcMotionToWire(
-            rotationRateRadX: twoThousandDegInRad, rotationRateRadY: -twoThousandDegInRad, rotationRateRadZ: 0,
-            gravityX: 0, gravityY: 0, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: twoThousandDegInRad,
+            rotationRateRadY: -twoThousandDegInRad,
+            rotationRateRadZ: 0,
+            gravityX: 0,
+            gravityY: 0,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         assertNear(wire.gyroX, Int16.max)
         assertNear(wire.gyroY, Int16.min)
@@ -161,9 +215,15 @@ final class MotionConversionTests: XCTestCase {
     func testGyroClampsBeyondTwoThousandDegPerSec() {
         let fourThousandDegInRad = 4000.0 * Double.pi / 180.0
         let wire = gcMotionToWire(
-            rotationRateRadX: fourThousandDegInRad, rotationRateRadY: -fourThousandDegInRad, rotationRateRadZ: 0,
-            gravityX: 0, gravityY: 0, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: fourThousandDegInRad,
+            rotationRateRadY: -fourThousandDegInRad,
+            rotationRateRadZ: 0,
+            gravityX: 0,
+            gravityY: 0,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         XCTAssertEqual(wire.gyroX, Int16.max)
         XCTAssertEqual(wire.gyroY, Int16.min)
@@ -173,18 +233,30 @@ final class MotionConversionTests: XCTestCase {
     /// leak into the accel axes and vice versa.
     func testGyroAndAccelDoNotCrossContaminate() {
         let pureSpin = gcMotionToWire(
-            rotationRateRadX: 1, rotationRateRadY: 2, rotationRateRadZ: 3,
-            gravityX: 0, gravityY: 0, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 1,
+            rotationRateRadY: 2,
+            rotationRateRadZ: 3,
+            gravityX: 0,
+            gravityY: 0,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         XCTAssertEqual(pureSpin.accelX, 0)
         XCTAssertEqual(pureSpin.accelY, 0)
         XCTAssertEqual(pureSpin.accelZ, 0)
 
         let pureAccel = gcMotionToWire(
-            rotationRateRadX: 0, rotationRateRadY: 0, rotationRateRadZ: 0,
-            gravityX: 1, gravityY: 0, gravityZ: 0,
-            userAccelX: 0, userAccelY: 0, userAccelZ: 0
+            rotationRateRadX: 0,
+            rotationRateRadY: 0,
+            rotationRateRadZ: 0,
+            gravityX: 1,
+            gravityY: 0,
+            gravityZ: 0,
+            userAccelX: 0,
+            userAccelY: 0,
+            userAccelZ: 0
         )
         XCTAssertEqual(pureAccel.gyroX, 0)
         XCTAssertEqual(pureAccel.gyroY, 0)
@@ -245,16 +317,19 @@ final class MotionConversionTests: XCTestCase {
         var id: UInt8 = 0
         var wasActive = false
         // First touch-down.
-        id = nextTouchpadTrackingId(wasActive: wasActive, isActive: true, current: id); wasActive = true
+        id = nextTouchpadTrackingId(wasActive: wasActive, isActive: true, current: id)
+        wasActive = true
         XCTAssertEqual(id, 1)
         // Drag (held).
         id = nextTouchpadTrackingId(wasActive: wasActive, isActive: true, current: id)
         XCTAssertEqual(id, 1)
         // Lift.
-        id = nextTouchpadTrackingId(wasActive: wasActive, isActive: false, current: id); wasActive = false
+        id = nextTouchpadTrackingId(wasActive: wasActive, isActive: false, current: id)
+        wasActive = false
         XCTAssertEqual(id, 1)
         // Second touch-down — a NEW contact, new id.
-        id = nextTouchpadTrackingId(wasActive: wasActive, isActive: true, current: id); wasActive = true
+        id = nextTouchpadTrackingId(wasActive: wasActive, isActive: true, current: id)
+        wasActive = true
         XCTAssertEqual(id, 2)
     }
 

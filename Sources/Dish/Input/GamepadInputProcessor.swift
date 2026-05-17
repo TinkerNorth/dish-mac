@@ -212,6 +212,13 @@ final class GamepadInputProcessor {
         batterySender?(deviceId, level, statusRaw)
     }
 
+    // `publishTouchpad` takes one argument per wire field (the protocol's
+    // §0x000C layout). Bundling them into a struct purely to satisfy the
+    // parameter-count rule would add an indirection the flat wire-mapping
+    // doesn't benefit from — same rationale as
+    // `SatelliteClient.encodeTouchpadPayload`.
+    // swiftlint:disable function_parameter_count
+
     /// Forward a touchpad sample. Coordinates are already scaled to int16 by
     /// the bridge, and the per-finger tracking ids are already resolved by it.
     /// No deadzone / filtering is applied — a touchpad is an absolute pointing
@@ -235,6 +242,8 @@ final class GamepadInputProcessor {
             buttonPressed
         )
     }
+
+    // swiftlint:enable function_parameter_count
 }
 
 // MARK: - Pure helpers (easily testable)
@@ -304,7 +313,13 @@ struct WireMotionSample: Equatable {
 /// the linear-acceleration term intact:
 ///   * at rest, +Y up: userAccel 0, gravity -1 up → wire `0 - (-1) = +1 g` up.
 ///   * accelerating up at 1 g: userAccel +1, gravity -1 up → `+1 - (-1) = +2 g`.
+///
+/// One argument per IMU axis — the three rad/s gyro components, three g
+/// gravity components, three g userAccel components. A struct wrapper would
+/// only relocate the nine fields without removing them, so the parameter-count
+/// rule is suppressed here the way the touchpad wire encoders do.
 @inline(__always)
+// swiftlint:disable:next function_parameter_count
 func gcMotionToWire(
     rotationRateRadX: Double, rotationRateRadY: Double, rotationRateRadZ: Double,
     gravityX: Double, gravityY: Double, gravityZ: Double,

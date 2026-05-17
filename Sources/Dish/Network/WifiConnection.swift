@@ -308,6 +308,12 @@ final class WifiConnection: ObservableObject, Identifiable {
         )
     }
 
+    // `sendTouchpad` takes one argument per wire field — it is a thin
+    // pass-through to `SatelliteClient.sendTouchpad`; a struct wrapper would
+    // only add an indirection, so the parameter-count rule is suppressed as it
+    // is there.
+    // swiftlint:disable function_parameter_count
+
     /// Forward a touchpad sample. Same threading discipline as `sendReport` —
     /// called from a GameController touchpad callback thread.
     ///
@@ -333,6 +339,8 @@ final class WifiConnection: ObservableObject, Identifiable {
             buttonPressed: buttonPressed
         )
     }
+
+    // swiftlint:enable function_parameter_count
 
     /// Install (or replace) the rumble handler. Called from the AppModel
     /// during composition; we cache it on the WifiConnection so that
