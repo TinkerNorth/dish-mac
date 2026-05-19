@@ -27,8 +27,11 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
     var name = ""
     var ip = ""
     var udpPort = 9876
-    var pairPort = 9878
-    var httpPort = 9877
+    /// HTTPS client API port (TLS, self-signed). Pairing and the connection
+    /// API now share this single port; mDNS advertises it under both the
+    /// `pair` and `http` TXT keys.
+    var pairPort = 9443
+    var httpPort = 9443
     /// Discovery path this server was heard on. Excluded from `CodingKeys`
     /// (not a wire field); stays `.broadcast` when decoded from a beacon.
     var source: DiscoverySource = .broadcast
@@ -41,8 +44,8 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         name: String = "",
         ip: String = "",
         udpPort: Int = 9876,
-        pairPort: Int = 9878,
-        httpPort: Int = 9877,
+        pairPort: Int = 9443,
+        httpPort: Int = 9443,
         source: DiscoverySource = .broadcast
     ) {
         self.name = name
@@ -67,8 +70,8 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         self.ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
         self.udpPort = try container.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
-        self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9878
-        self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9877
+        self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9443
+        self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9443
     }
 }
 

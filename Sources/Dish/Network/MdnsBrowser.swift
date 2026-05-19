@@ -222,8 +222,8 @@ enum MdnsBrowser {
                 name: name.isEmpty ? host : name,
                 ip: host,
                 udpPort: Int(txt["udp"] ?? "") ?? 9876,
-                pairPort: Int(txt["pair"] ?? "") ?? 9878,
-                httpPort: Int(txt["http"] ?? "") ?? 9877,
+                pairPort: Int(txt["pair"] ?? "") ?? 9443,
+                httpPort: Int(txt["http"] ?? "") ?? 9443,
                 source: .mdns
             )
         }
