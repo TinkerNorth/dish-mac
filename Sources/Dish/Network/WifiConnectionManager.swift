@@ -124,12 +124,12 @@ final class WifiConnectionManager: ObservableObject {
 
     // MARK: - Connect / Pair / Disconnect
 
-    /// Idempotent: a second call while CONNECTED/CONNECTING just refreshes
-    /// the server record without restarting the handshake.
+    /// Idempotent: a second call while live/linking just refreshes the
+    /// server record without restarting the handshake.
     func connect(to server: DiscoveredServer) {
         let id = WifiConnection.idFor(server)
         if let existing = connections[id] {
-            if existing.state == .connected || existing.state == .connecting {
+            if existing.state == .live || existing.state == .linking {
                 existing.updateServer(server)
                 return
             }
@@ -285,7 +285,7 @@ final class WifiConnectionManager: ObservableObject {
     func autoReconnectAll() {
         for remembered in store.remembered() {
             let existing = connections[remembered.id]
-            if existing?.state != .connected {
+            if existing?.state != .live {
                 connect(to: remembered.toDiscovered())
             }
         }

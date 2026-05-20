@@ -55,8 +55,25 @@ struct StatusDot: View {
 }
 
 /// Outlined button styled to match `Widget.Dish.Button.Outlined`.
+///
+/// Disabled buttons drop to **0.4 opacity** per the `ds-components.jsx`
+/// Button spec — that's the canonical Dish design-system rule for "this
+/// control is not tappable right now." Combined with the in-button loader
+/// (`DishSpinner`) for transient/in-flight actions, the disabled state and
+/// the "working" state become visually one thing: a dimmed button with a
+/// spinner. Press feedback is suppressed when disabled so a stray click
+/// doesn't flash the primary tint.
 struct DishOutlinedButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
+        DishOutlinedButtonLabel(configuration: configuration)
+    }
+}
+
+private struct DishOutlinedButtonLabel: View {
+    let configuration: ButtonStyleConfiguration
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
         configuration.label
             .font(.system(size: 12, weight: .medium))
             .foregroundColor(DishTheme.primary)
@@ -67,10 +84,12 @@ struct DishOutlinedButtonStyle: ButtonStyle {
                     .stroke(DishTheme.primary, lineWidth: 1)
                     .background(
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(configuration.isPressed
+                            .fill(configuration.isPressed && isEnabled
                                 ? DishTheme.primary.opacity(0.12)
                                 : Color.clear)
                     )
             )
+            .opacity(isEnabled ? 1.0 : 0.4)
+            .animation(.easeInOut(duration: 0.08), value: isEnabled)
     }
 }

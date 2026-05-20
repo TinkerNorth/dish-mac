@@ -51,7 +51,7 @@ struct MainView: View {
         let total = model.connections.count
         switch (live, total) {
         case (0, 0): return "No connections yet"
-        case (0, _): return "\(total) remembered"
+        case (0, _): return "\(total) paired"
         case (1, _): return model.connections.first { $0.live == .connected }?.label ?? ""
         default: return "\(live) active connections"
         }
@@ -61,8 +61,8 @@ struct MainView: View {
         let live = liveCount
         let total = model.connections.count
         if live == 0, total == 0 { return "Tap Manage to add one" }
-        if live == 0 { return "\(total) remembered" }
-        return "\(live) of \(total) connected"
+        if live == 0 { return "\(total) paired" }
+        return "\(live) of \(total) online"
     }
 
     private var header: some View {

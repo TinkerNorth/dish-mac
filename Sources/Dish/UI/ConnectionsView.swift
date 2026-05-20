@@ -20,9 +20,11 @@ struct ConnectionsView: View {
                     HStack(spacing: 8) {
                         SectionHeader(title: "WI-FI SERVERS")
                         if wifi.isScanning {
-                            ProgressView()
-                                .controlSize(.small)
-                                .progressViewStyle(.circular)
+                            // Mirror of the Scan-button loader: same vocabulary
+                            // (DishSpinner) at the section level so the user
+                            // can see "this list might still update" without
+                            // looking back at the header button.
+                            DishSpinner(size: 11)
                         }
                         Spacer()
                     }
@@ -67,8 +69,19 @@ struct ConnectionsView: View {
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(DishTheme.onSurface)
             Spacer()
-            Button(wifi.isScanning ? "Scanning…" : "Scan") {
-                model.startScan()
+            // Scan is non-atomic (~4 s discoveryRepo timeout) → loader lives
+            // *inside* the button so disabled-state and "working"-state read
+            // as one thing per the design spec. Button-style opacity at 0.4
+            // (see DishOutlinedButtonStyle) carries the not-tappable signal.
+            Button(action: { model.startScan() }) {
+                if wifi.isScanning {
+                    HStack(spacing: 6) {
+                        DishSpinner(size: 12)
+                        Text("Scanning…")
+                    }
+                } else {
+                    Text("Scan")
+                }
             }
             .buttonStyle(DishOutlinedButtonStyle())
             .disabled(wifi.isScanning)
@@ -128,11 +141,10 @@ struct ConnectionsView: View {
                     .foregroundColor(DishTheme.muted)
             }
             Spacer()
-            if wifi.pairingInFlight.contains(summary.id) {
-                ProgressView()
-                    .controlSize(.small)
-                    .progressViewStyle(.circular)
-            }
+            // The pairing-in-flight + .connecting loaders both live *inside*
+            // `primaryButton` now (DishSpinner accompanies the label) so we
+            // don't double up with a standalone row-level spinner here. The
+            // disabled-button styling (opacity 0.4) signals non-tappable.
             primaryButton(for: summary)
             Button("Forget") { model.forget(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())
@@ -141,7 +153,11 @@ struct ConnectionsView: View {
     }
 
     private func discoveredRow(_ server: DiscoveredServer) -> some View {
-        HStack(spacing: 10) {
+        // A freshly-discovered (unpaired) row: tapping Connect runs the same
+        // pair → openSession pipeline as a known row, so it gets the same
+        // in-button spinner + disabled treatment while pairing is in flight.
+        let pairing = wifi.pairingInFlight.contains(server.id)
+        return HStack(spacing: 10) {
             StatusDot(color: DishTheme.muted)
             VStack(alignment: .leading, spacing: 2) {
                 Text(server.name.isEmpty ? server.ip : server.name)
@@ -150,50 +166,97 @@ struct ConnectionsView: View {
                 Text("\(server.ip) • UDP \(server.udpPort)")
                     .font(.system(size: 11))
                     .foregroundColor(DishTheme.muted)
-                Text("Discovered · \(server.source.label)")
+                Text("Found · \(server.source.label)")
                     .font(.system(size: 10, design: .monospaced))
                     .foregroundColor(DishTheme.muted)
             }
             Spacer()
-            Button("Connect") { model.connect(server) }
-                .buttonStyle(DishOutlinedButtonStyle())
+            Button(action: { model.connect(server) }) {
+                if pairing {
+                    HStack(spacing: 6) {
+                        DishSpinner(size: 12)
+                        Text("Pairing…")
+                    }
+                } else {
+                    Text("Connect")
+                }
+            }
+            .buttonStyle(DishOutlinedButtonStyle())
+            .disabled(pairing)
         }
         .rowBackground()
     }
 
     @ViewBuilder
     private func primaryButton(for summary: ConnectionSummary) -> some View {
+        // Two in-flight signals can apply to the primary action:
+        //   1. `pairingInFlight` — POST /api/pair is running; the chip is still
+        //      a resting state because openSession hasn't started yet.
+        //   2. `.connecting` — pair succeeded, openSession is opening the UDP
+        //      socket and running the connection handshake.
+        // Both surface here as "spinner + label, button disabled" so the user
+        // sees a continuous working state through both stages of a fresh
+        // Connect rather than a brief un-disabled gap between them.
+        let pairing = wifi.pairingInFlight.contains(summary.id)
         switch summary.live {
-        case .connected:
+        case .connected, .unstable:
             Button("Disconnect") { model.disconnect(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())
         case .connecting:
-            Button("Connecting…") {}
-                .buttonStyle(DishOutlinedButtonStyle())
-                .disabled(true)
-        case .idle:
-            Button("Connect") {
-                if let remembered = wifi.remembered().first(where: { $0.id == summary.id }) {
-                    model.connect(remembered.toDiscovered())
+            Button(action: {}) {
+                HStack(spacing: 6) {
+                    DishSpinner(size: 12)
+                    Text("Connecting…")
                 }
             }
             .buttonStyle(DishOutlinedButtonStyle())
+            .disabled(true)
+        case .found, .stale, .saved, .ready:
+            Button(action: {
+                if let remembered = wifi.remembered().first(where: { $0.id == summary.id }) {
+                    model.connect(remembered.toDiscovered())
+                }
+            }) {
+                if pairing {
+                    HStack(spacing: 6) {
+                        DishSpinner(size: 12)
+                        Text("Pairing…")
+                    }
+                } else {
+                    Text("Connect")
+                }
+            }
+            .buttonStyle(DishOutlinedButtonStyle())
+            .disabled(pairing)
         }
     }
 
+    // User-facing chip text per LinkState. The internal enum names (live /
+    // linking / faltering) live one layer down in `SessionState`; this layer's
+    // job is to map every LinkState — including the discovery/pairing axis
+    // values the wire layer doesn't know about — to a noun (resting) or
+    // verb-with-ellipsis (transient) per the shared nomenclature.
     private func statusText(for summary: ConnectionSummary) -> String {
         switch summary.live {
-        case .connected: "Connected"
-        case .connecting: "Connecting"
-        case .idle: "Idle"
+        case .found: "Found"
+        case .stale: "Needs pairing"
+        case .saved: "Offline"
+        case .ready: "Ready"
+        case .connecting: "Connecting…"
+        case .connected: "Online"
+        case .unstable: "Unsteady"
         }
     }
 
+    // Color map keyed on LinkState. The "Unsteady" amber would ideally be a
+    // distinct color but we share `.primary` with "Connecting…" until a real
+    // amber lands in DishTheme — both signal "transient, watch this row" so
+    // the conflation is acceptable.
     private func dotColor(for summary: ConnectionSummary) -> Color {
         switch summary.live {
         case .connected: DishTheme.success
-        case .connecting: DishTheme.primary
-        case .idle: DishTheme.muted
+        case .connecting, .unstable: DishTheme.primary
+        case .found, .stale, .saved, .ready: DishTheme.muted
         }
     }
 }

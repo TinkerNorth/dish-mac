@@ -31,6 +31,13 @@ final class ConnectionHub: ObservableObject {
             .sink { [weak self] pool in self?.subscribeToPool(pool) }
             .store(in: &cancellables)
 
+        // Discovery changes also flip `.ready` ⇄ `.saved` (paired-seen vs
+        // paired-not-seen), so rebuild on every discovery emission. Mirrors
+        // dish-android's `combine(..., satellite.discoveredServers, ...)`.
+        wifi.$discoveredServers
+            .sink { [weak self] _ in self?.rebuild() }
+            .store(in: &cancellables)
+
         // Roll back local bindings when the server rejects a controller add.
         wifi.slotRegistrationFailed
             .sink { [weak self] slotId in self?.unbind(slotId: slotId) }
@@ -53,19 +60,37 @@ final class ConnectionHub: ObservableObject {
         rebuild()
     }
 
+    /// Derives `LinkState` from the wire-level `SessionState` plus whether
+    /// `id` is currently in the discovery set:
+    /// - `.live`      → `.connected`
+    /// - `.linking`   → `.connecting`
+    /// - `.faltering` → `.unstable` (not yet reachable; native exposes only
+    ///   the binary alive-poll boolean)
+    /// - `.idle` / no session:
+    ///     in discoveredIds     → `.ready`
+    ///     not in discoveredIds → `.saved`
+    ///
+    /// TODO(stale): a server-side forget should land us in `.stale`, but
+    /// detecting that requires the server to return a `PAIRING_UNKNOWN`
+    /// error so we can distinguish "peer forgot us" from a transient
+    /// unreachability. Until that protocol bit lands, a forgotten device
+    /// falls through to `.saved`/`.ready` and the user only sees connect
+    /// failures.
     private func rebuild() {
         let pool = wifi.connections
         let remembered = Dictionary(uniqueKeysWithValues: store.remembered().map { ($0.id, $0) })
+        let discoveredIds = Set(wifi.discoveredServers.map(\.id))
         let ids = Set(pool.keys).union(remembered.keys)
         var out: [ConnectionSummary] = []
         for id in ids {
             let conn = pool[id]
             let server = conn?.server ?? remembered[id]?.toDiscovered()
             guard let server else { continue }
-            let live: ConnectionLive = switch conn?.state {
-            case .connected: .connected
-            case .connecting: .connecting
-            default: .idle
+            let live: LinkState = switch conn?.state {
+            case .live: .connected
+            case .linking: .connecting
+            case .faltering: .unstable
+            default: discoveredIds.contains(id) ? .ready : .saved
             }
             let bound = bindings.first { $0.value == id }?.key
             let label = server.name.isEmpty ? server.ip : server.name

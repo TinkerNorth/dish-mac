@@ -95,13 +95,40 @@ struct ConnectResponse: Codable {
 
 // MARK: - UI-level aggregation (matches ConnectionHub.kt shapes)
 
-enum ConnectionLive { case idle, connecting, connected }
+/// UI-facing link state for one connection. This is the chip a row renders;
+/// combines the persistent "Pairing" axis (have we paired?) and the live
+/// "Presence" axis (do we see it / is the session up?).
+///
+/// Internally a Satellite session also has `SessionState` (the wire-level
+/// presence axis only); `LinkState` is derived from that plus discovery /
+/// remembered presence in `ConnectionHub.rebuild`.
+///
+/// | LinkState   | Pairing axis    | Presence axis    | User-facing chip |
+/// |-------------|-----------------|------------------|------------------|
+/// | `.found`    | unpaired        | seen             | "Found"          |
+/// | `.stale`    | broken (lost)   | any              | "Needs pairing"  |
+/// | `.saved`    | paired          | absent           | "Offline"        |
+/// | `.ready`    | paired          | seen, no session | "Ready"          |
+/// | `.connecting` | paired        | linking          | "Connecting…"    |
+/// | `.connected`  | paired        | live             | "Online"         |
+/// | `.unstable`   | paired        | faltering        | "Unsteady"       |
+///
+/// **`.stale`** is not yet entered: it requires the satellite to return a
+/// `PAIRING_UNKNOWN` error so the client can distinguish "peer forgot us"
+/// from a generic connect failure. Until that protocol change lands, a
+/// server-side forget surfaces as a generic disconnect.
+///
+/// **`.unstable`** is not yet entered: it requires the native layer to
+/// expose the consecutive-missed-heartbeat count separately from the binary
+/// alive-poll predicate. Today the connection flips `.connected` →
+/// (`.saved` | `.ready`) directly when misses hit the death threshold.
+enum LinkState { case found, stale, saved, ready, connecting, connected, unstable }
 
 struct ConnectionSummary: Identifiable, Hashable {
     let id: String
     let label: String
     let detail: String
-    let live: ConnectionLive
+    let live: LinkState
     let boundSlotId: String?
 }
 

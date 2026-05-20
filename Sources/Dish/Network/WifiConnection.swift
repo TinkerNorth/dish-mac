@@ -4,23 +4,39 @@
 import Combine
 import Foundation
 
-enum WifiState { case idle, connecting, connected }
+/// Internal wire-level session state for one Satellite connection — the
+/// "Presence" axis (per the shared nomenclature): how far the live network
+/// link has progressed for *this* connection.
+///
+/// Distinct from the UI-facing `LinkState` (in `ConnectionHub`), which folds
+/// pairing/discovery in on top of this.
+///
+/// - `idle` — no live session (paired or not).
+/// - `linking` — pair+auth handshake / `markConnecting()` is in flight;
+///   native socket not yet open. UI chip: "Connecting…".
+/// - `live` — native socket open, heartbeat ACKs flowing. UI chip: "Online".
+/// - `faltering` — `live`, but the heartbeat-miss counter is non-zero and
+///   below the death threshold. UI chip: "Unsteady". **Not yet entered** —
+///   reaching it requires the native side to expose the consecutive-missed
+///   count separately from the binary alive-poll boolean. Today the
+///   alive-poll flips `live` → `idle` directly when misses hit the threshold.
+enum SessionState { case idle, linking, live, faltering }
 
 /// A single live or potential WiFi session to one Satellite server. Owns a
-/// `SatelliteClient` instance (the native UDP session) once CONNECTED.
+/// `SatelliteClient` instance (the native UDP session) once `live`.
 /// Mirrors `WifiConnection.kt`.
 @MainActor
 final class WifiConnection: ObservableObject, Identifiable {
 
     let id: String
     @Published private(set) var server: DiscoveredServer
-    @Published private(set) var state: WifiState = .idle
+    @Published private(set) var state: SessionState = .idle
     @Published private(set) var boundSlotId: String?
     /// True while a `MSG_CONTROLLER_ADD` is awaiting `MSG_CONTROLLER_ACK`.
     /// The dashboard observes this to show a spinner.
     @Published private(set) var isRegisteringController = false
 
-    /// Server-issued connection id, valid while CONNECTED.
+    /// Server-issued connection id, valid while `live`.
     private(set) var connectionId: String?
     /// Shared reference holder for the live `SatelliteClient`. Writes happen
     /// on the main actor in `markConnected`/`markDisconnected`; reads happen
@@ -106,21 +122,21 @@ final class WifiConnection: ObservableObject, Identifiable {
     }
 
     func markConnecting() {
-        if state == .connected { return }
-        state = .connecting
+        if state == .live { return }
+        state = .linking
     }
 
-    /// Promote to CONNECTED. Starts the ACK receive loop + heartbeat, and if a
+    /// Promote to `live`. Starts the ACK receive loop + heartbeat, and if a
     /// slot was already bound it kicks the server-side controller handshake.
     func markConnected(
         client: SatelliteClient,
         connectionId: String,
         onDead: @escaping () -> Void
     ) {
-        guard state == .connecting else { return }
+        guard state == .linking else { return }
         clientRef.set(client)
         self.connectionId = connectionId
-        state = .connected
+        state = .live
         client.resetControllerAck()
         client.rumbleHandler = rumbleHandler
         client.lightbarHandler = lightbarHandler
@@ -132,6 +148,12 @@ final class WifiConnection: ObservableObject, Identifiable {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self else { return }
                 if self.clientRef.get()?.connectionAlive.get() == false {
+                    // TODO(faltering): when the native layer exposes the
+                    // consecutive-missed-heartbeat count separately from the
+                    // binary alive-poll, flip state = .faltering as misses
+                    // cross 1 and only fall through to onDead() at the death
+                    // threshold. Today the alive-poll is a hard boolean, so
+                    // we go live → idle directly here.
                     await MainActor.run { onDead() }
                     return
                 }
@@ -173,7 +195,7 @@ final class WifiConnection: ObservableObject, Identifiable {
         pendingControllerType = controllerType
         pendingHasMotion = hasMotion
         pendingHasLight = hasLight
-        if state == .connected, !controllerAdded {
+        if state == .live, !controllerAdded {
             await registerController(type: controllerType)
         }
     }

@@ -138,8 +138,10 @@ struct SlotCard: View {
         guard let status = slot.boundStatus else { return "unbound" }
         switch status.live {
         case .connected: return "→ \(status.label)"
+        case .unstable: return "→ \(status.label) (unsteady)"
         case .connecting: return "→ \(status.label) (connecting…)"
-        case .idle: return "→ \(status.label) (offline)"
+        case .ready: return "→ \(status.label) (ready)"
+        case .saved, .found, .stale: return "→ \(status.label) (offline)"
         }
     }
 
@@ -151,8 +153,8 @@ struct SlotCard: View {
     private func dotColorFor(_ status: ConnectionSummary) -> Color {
         switch status.live {
         case .connected: DishTheme.success
-        case .connecting: DishTheme.primary
-        case .idle: DishTheme.muted
+        case .connecting, .unstable: DishTheme.primary
+        case .found, .stale, .saved, .ready: DishTheme.muted
         }
     }
 }
