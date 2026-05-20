@@ -18,6 +18,11 @@ struct ConnectionsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(spacing: 8) {
+                        // v6 brand satellite glyph anchors the section so the
+                        // SwiftUI WI-FI SERVERS header reads visually the same
+                        // as the dish-android ImageView + label and the
+                        // satellite/web section-glyph in the dashboard.
+                        BrandIcon(kind: .satellite, state: .default, size: 18)
                         SectionHeader(title: "WI-FI SERVERS")
                         if wifi.isScanning {
                             // Mirror of the Scan-button loader: same vocabulary
@@ -128,7 +133,16 @@ struct ConnectionsView: View {
 
     private func knownRow(_ summary: ConnectionSummary) -> some View {
         HStack(spacing: 10) {
-            StatusDot(color: dotColor(for: summary))
+            // State-aware satellite glyph + status dot in one ZStack. Each
+            // row in this view IS a satellite server the laptop is reaching
+            // out to, so the silhouette is the satellite — not the dish on
+            // the laptop's end. The coloured dot stays as a secondary tonal
+            // cue in the corner (live=green, connecting=primary, else=muted),
+            // matching the dish-android row_connection.xml layout.
+            ZStack(alignment: .bottomTrailing) {
+                BrandIcon.satellite(for: summary.live, size: 28)
+                StatusDot(color: dotColor(for: summary))
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(summary.label)
                     .font(.system(size: 14, weight: .medium))
@@ -158,7 +172,10 @@ struct ConnectionsView: View {
         // in-button spinner + disabled treatment while pairing is in flight.
         let pairing = wifi.pairingInFlight.contains(server.id)
         return HStack(spacing: 10) {
-            StatusDot(color: DishTheme.muted)
+            ZStack(alignment: .bottomTrailing) {
+                BrandIcon(kind: .satellite, state: .default, size: 28)
+                StatusDot(color: DishTheme.muted)
+            }
             VStack(alignment: .leading, spacing: 2) {
                 Text(server.name.isEmpty ? server.ip : server.name)
                     .font(.system(size: 14, weight: .medium))

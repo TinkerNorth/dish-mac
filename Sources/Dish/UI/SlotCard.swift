@@ -17,7 +17,16 @@ struct SlotCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 10) {
-                StatusDot(color: dotColor)
+                // v6 brand connection-target glyph that mirrors the row this
+                // slot is bound to over on ConnectionsView. Satellite-server
+                // binding -> satellite glyph; an unbound slot falls back to
+                // the default (idle) variant so the silhouette still reads
+                // as "this slot routes to a satellite". The StatusDot stays
+                // in the lower-right as the secondary tonal cue.
+                ZStack(alignment: .bottomTrailing) {
+                    BrandIcon.satellite(for: slot.boundStatus?.live ?? .saved, size: 28)
+                    StatusDot(color: dotColor)
+                }
                 VStack(alignment: .leading, spacing: 2) {
                     Text(slot.name)
                         .font(.system(size: 14, weight: .medium))
@@ -47,7 +56,14 @@ struct SlotCard: View {
                             expanded = false
                         } label: {
                             HStack {
-                                StatusDot(color: dotColorFor(conn))
+                                // Each pickable row is a satellite server —
+                                // mirror the ConnectionsView row silhouette
+                                // here too so the bind picker reads as the
+                                // same surface.
+                                ZStack(alignment: .bottomTrailing) {
+                                    BrandIcon.satellite(for: conn.live, size: 22)
+                                    StatusDot(color: dotColorFor(conn))
+                                }
                                 VStack(alignment: .leading, spacing: 1) {
                                     Text(conn.label)
                                         .font(.system(size: 12, weight: .medium))

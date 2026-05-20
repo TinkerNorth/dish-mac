@@ -68,7 +68,17 @@ struct MainView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                StatusDot(color: liveCount > 0 ? DishTheme.success : DishTheme.muted)
+                // v6 brand satellite glyph + status dot. Same icon family
+                // the ConnectionsView rows render — the header reads as
+                // "n satellite servers online" rather than as a generic
+                // sender status. Flips to the "connected" variant (uplink
+                // dot above the antenna) when at least one is live.
+                ZStack(alignment: .bottomTrailing) {
+                    BrandIcon(kind: .satellite,
+                              state: liveCount > 0 ? .connected : .default,
+                              size: 28)
+                    StatusDot(color: liveCount > 0 ? DishTheme.success : DishTheme.muted)
+                }
                 Text(statusText)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(liveCount > 0 ? DishTheme.success : DishTheme.muted)
