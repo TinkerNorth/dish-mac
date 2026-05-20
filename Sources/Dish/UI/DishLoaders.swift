@@ -73,16 +73,16 @@ struct DishDots: View {
         // SwiftUI ticks the animation schedule.
         TimelineView(.animation) { timeline in
             let now = timeline.date.timeIntervalSinceReferenceDate
-            let scale = size / 64.0           // design-units → points
+            let scale = size / 64.0 // design-units → points
             // Three dots at design-x 16/32/48 → spacing of 16u between centers.
             HStack(spacing: scale * 6.0) {
-                ForEach(0..<3, id: \.self) { i in
+                ForEach(0 ..< 3, id: \.self) { i in
                     let phase = ((now + Double(i) * 0.18)
                         .truncatingRemainder(dividingBy: 1.2)) / 1.2
                     // Triangle: 0 at the edges of the cycle, 1 at the midpoint.
                     let tri = CGFloat(1.0 - abs(phase - 0.5) * 2.0)
-                    let opacity = 0.25 + 0.75 * Double(tri)        // 0.25 → 1
-                    let r = scale * (4.0 + 2.0 * tri)              // 4 → 6 (design units)
+                    let opacity = 0.25 + 0.75 * Double(tri) // 0.25 → 1
+                    let r = scale * (4.0 + 2.0 * tri) // 4 → 6 (design units)
                     Circle()
                         .fill(DishTheme.primary)
                         .frame(width: r * 2, height: r * 2)
@@ -106,9 +106,17 @@ struct DishBar: View {
 
     var width: CGFloat = 240
 
-    private var height: CGFloat { width * (16.0 / 240.0) }
-    private var trackHeight: CGFloat { width * (8.0 / 240.0) }
-    private var sliderWidth: CGFloat { width * (80.0 / 240.0) }
+    private var height: CGFloat {
+        width * (16.0 / 240.0)
+    }
+
+    private var trackHeight: CGFloat {
+        width * (8.0 / 240.0)
+    }
+
+    private var sliderWidth: CGFloat {
+        width * (80.0 / 240.0)
+    }
 
     var body: some View {
         TimelineView(.animation) { timeline in
@@ -127,7 +135,7 @@ struct DishBar: View {
                     .offset(x: x)
             }
             .frame(width: width, height: height, alignment: .leading)
-            .clipped()   // prevent the slider from spilling past the bar bounds
+            .clipped() // prevent the slider from spilling past the bar bounds
         }
         .accessibilityLabel("Loading")
     }

@@ -63,11 +63,11 @@ struct PairingSheet: View {
                 Button("Cancel") { dismiss() }
                     .buttonStyle(DishOutlinedButtonStyle())
                     .disabled(isPairing)
-                Button(action: {
+                Button {
                     didSubmit = true
                     model.errorMessage = nil
                     model.pairWithPin(server, pin: pin)
-                }) {
+                } label: {
                     if isPairing {
                         HStack(spacing: 6) {
                             DishSpinner(size: 12)

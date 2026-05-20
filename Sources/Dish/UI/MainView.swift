@@ -74,9 +74,11 @@ struct MainView: View {
                 // sender status. Flips to the "connected" variant (uplink
                 // dot above the antenna) when at least one is live.
                 ZStack(alignment: .bottomTrailing) {
-                    BrandIcon(kind: .satellite,
-                              state: liveCount > 0 ? .connected : .default,
-                              size: 28)
+                    BrandIcon(
+                        kind: .satellite,
+                        state: liveCount > 0 ? .connected : .default,
+                        size: 28
+                    )
                     StatusDot(color: liveCount > 0 ? DishTheme.success : DishTheme.muted)
                 }
                 Text(statusText)

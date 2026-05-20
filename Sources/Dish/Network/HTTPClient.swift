@@ -19,8 +19,8 @@ final class InsecureTrustDelegate: NSObject, URLSessionDelegate {
     ) {
         guard
             challenge.protectionSpace.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-            let trust = challenge.protectionSpace.serverTrust
-        else {
+            let trust = challenge.protectionSpace.serverTrust else
+        {
             // Not a server-trust challenge — let the system handle it.
             completionHandler(.performDefaultHandling, nil)
             return

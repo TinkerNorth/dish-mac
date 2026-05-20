@@ -78,7 +78,9 @@ struct ConnectionsView: View {
             // *inside* the button so disabled-state and "working"-state read
             // as one thing per the design spec. Button-style opacity at 0.4
             // (see DishOutlinedButtonStyle) carries the not-tappable signal.
-            Button(action: { model.startScan() }) {
+            Button {
+                model.startScan()
+            } label: {
                 if wifi.isScanning {
                     HStack(spacing: 6) {
                         DishSpinner(size: 12)
@@ -188,7 +190,9 @@ struct ConnectionsView: View {
                     .foregroundColor(DishTheme.muted)
             }
             Spacer()
-            Button(action: { model.connect(server) }) {
+            Button {
+                model.connect(server)
+            } label: {
                 if pairing {
                     HStack(spacing: 6) {
                         DishSpinner(size: 12)
@@ -220,7 +224,9 @@ struct ConnectionsView: View {
             Button("Disconnect") { model.disconnect(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())
         case .connecting:
-            Button(action: {}) {
+            Button {
+                // no-op: disabled
+            } label: {
                 HStack(spacing: 6) {
                     DishSpinner(size: 12)
                     Text("Connecting…")
@@ -229,11 +235,11 @@ struct ConnectionsView: View {
             .buttonStyle(DishOutlinedButtonStyle())
             .disabled(true)
         case .found, .stale, .saved, .ready:
-            Button(action: {
+            Button {
                 if let remembered = wifi.remembered().first(where: { $0.id == summary.id }) {
                     model.connect(remembered.toDiscovered())
                 }
-            }) {
+            } label: {
                 if pairing {
                     HStack(spacing: 6) {
                         DishSpinner(size: 12)
@@ -248,11 +254,11 @@ struct ConnectionsView: View {
         }
     }
 
-    // User-facing chip text per LinkState. The internal enum names (live /
-    // linking / faltering) live one layer down in `SessionState`; this layer's
-    // job is to map every LinkState — including the discovery/pairing axis
-    // values the wire layer doesn't know about — to a noun (resting) or
-    // verb-with-ellipsis (transient) per the shared nomenclature.
+    /// User-facing chip text per LinkState. The internal enum names (live /
+    /// linking / faltering) live one layer down in `SessionState`; this layer's
+    /// job is to map every LinkState — including the discovery/pairing axis
+    /// values the wire layer doesn't know about — to a noun (resting) or
+    /// verb-with-ellipsis (transient) per the shared nomenclature.
     private func statusText(for summary: ConnectionSummary) -> String {
         switch summary.live {
         case .found: "Found"
@@ -265,10 +271,10 @@ struct ConnectionsView: View {
         }
     }
 
-    // Color map keyed on LinkState. The "Unsteady" amber would ideally be a
-    // distinct color but we share `.primary` with "Connecting…" until a real
-    // amber lands in DishTheme — both signal "transient, watch this row" so
-    // the conflation is acceptable.
+    /// Color map keyed on LinkState. The "Unsteady" amber would ideally be a
+    /// distinct color but we share `.primary` with "Connecting…" until a real
+    /// amber lands in DishTheme — both signal "transient, watch this row" so
+    /// the conflation is acceptable.
     private func dotColor(for summary: ConnectionSummary) -> Color {
         switch summary.live {
         case .connected: DishTheme.success
