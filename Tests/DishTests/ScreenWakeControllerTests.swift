@@ -41,11 +41,11 @@ final class ScreenWakeControllerTests: XCTestCase {
         XCTAssertEqual(count, 0)
     }
 
-    func testStreamingCountIgnoresBindingsToIdleOrConnectingConnections() {
+    func testStreamingCountIgnoresBindingsToOfflineOrConnectingConnections() {
         let count = ScreenWakeController.streamingCount(
             bindings: ["slot-a": "conn-1", "slot-b": "conn-2", "slot-c": "conn-3"],
             connectionStates: [
-                "conn-1": .idle,
+                "conn-1": .saved,
                 "conn-2": .connecting,
                 "conn-3": .connected
             ]
@@ -59,7 +59,7 @@ final class ScreenWakeControllerTests: XCTestCase {
             connectionStates: [
                 "c1": .connected,
                 "c2": .connected,
-                "c3": .idle
+                "c3": .saved
             ]
         )
         XCTAssertEqual(count, 2)

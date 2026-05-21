@@ -5,12 +5,36 @@ import Foundation
 
 // MARK: - Server / protocol DTOs (names match Android Models.kt)
 
+/// Which discovery path surfaced a satellite. mDNS / Bonjour is the modern
+/// path; `broadcast` is the legacy UDP beacon; `both` means it answered on
+/// each. Not on the wire — assigned client-side by the discovery merge.
+enum DiscoverySource: String, Codable, Hashable {
+    case broadcast
+    case mdns
+    case both
+
+    /// Short human label for the connections list.
+    var label: String {
+        switch self {
+        case .broadcast: "UDP broadcast"
+        case .mdns: "mDNS"
+        case .both: "mDNS + broadcast"
+        }
+    }
+}
+
 struct DiscoveredServer: Codable, Hashable, Identifiable {
     var name = ""
     var ip = ""
     var udpPort = 9876
-    var pairPort = 9878
-    var httpPort = 9877
+    /// HTTPS client API port (TLS, self-signed). Pairing and the connection
+    /// API now share this single port; mDNS advertises it under both the
+    /// `pair` and `http` TXT keys.
+    var pairPort = 9443
+    var httpPort = 9443
+    /// Discovery path this server was heard on. Excluded from `CodingKeys`
+    /// (not a wire field); stays `.broadcast` when decoded from a beacon.
+    var source: DiscoverySource = .broadcast
 
     var id: String {
         "wifi:\(ip):\(udpPort)"
@@ -20,14 +44,16 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         name: String = "",
         ip: String = "",
         udpPort: Int = 9876,
-        pairPort: Int = 9878,
-        httpPort: Int = 9877
+        pairPort: Int = 9443,
+        httpPort: Int = 9443,
+        source: DiscoverySource = .broadcast
     ) {
         self.name = name
         self.ip = ip
         self.udpPort = udpPort
         self.pairPort = pairPort
         self.httpPort = httpPort
+        self.source = source
     }
 
     /// The satellite server's discovery beacon omits `ip` (the recipient observes
@@ -44,8 +70,8 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
         self.ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
         self.udpPort = try container.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
-        self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9878
-        self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9877
+        self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9443
+        self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9443
     }
 }
 
@@ -69,14 +95,75 @@ struct ConnectResponse: Codable {
 
 // MARK: - UI-level aggregation (matches ConnectionHub.kt shapes)
 
-enum ConnectionLive { case idle, connecting, connected }
+/// UI-facing link state for one connection. This is the chip a row renders;
+/// combines the persistent "Pairing" axis (have we paired?) and the live
+/// "Presence" axis (do we see it / is the session up?).
+///
+/// Internally a Satellite session also has `SessionState` (the wire-level
+/// presence axis only); `LinkState` is derived from that plus discovery /
+/// remembered presence in `ConnectionHub.rebuild`.
+///
+/// | LinkState   | Pairing axis    | Presence axis    | User-facing chip |
+/// |-------------|-----------------|------------------|------------------|
+/// | `.found`    | unpaired        | seen             | "Found"          |
+/// | `.stale`    | broken (lost)   | any              | "Needs pairing"  |
+/// | `.saved`    | paired          | absent           | "Offline"        |
+/// | `.ready`    | paired          | seen, no session | "Ready"          |
+/// | `.connecting` | paired        | linking          | "Connecting…"    |
+/// | `.connected`  | paired        | live             | "Online"         |
+/// | `.unstable`   | paired        | faltering        | "Unsteady"       |
+///
+/// **`.stale`** is not yet entered: it requires the satellite to return a
+/// `PAIRING_UNKNOWN` error so the client can distinguish "peer forgot us"
+/// from a generic connect failure. Until that protocol change lands, a
+/// server-side forget surfaces as a generic disconnect.
+///
+/// **`.unstable`** is not yet entered: it requires the native layer to
+/// expose the consecutive-missed-heartbeat count separately from the binary
+/// alive-poll predicate. Today the connection flips `.connected` →
+/// (`.saved` | `.ready`) directly when misses hit the death threshold.
+enum LinkState { case found, stale, saved, ready, connecting, connected, unstable }
 
 struct ConnectionSummary: Identifiable, Hashable {
     let id: String
     let label: String
     let detail: String
-    let live: ConnectionLive
+    let live: LinkState
     let boundSlotId: String?
+}
+
+// MARK: - Controller capabilities + battery (UX surface)
+
+/// What a physical controller's *hardware* exposes, detected once at attach.
+/// Distinct from `FeatureSettings`, which is whether the *user* wants each
+/// feature forwarded. The slot card shows capabilities as chips so the player
+/// can see at a glance that, e.g., their DualSense's gyro was detected — the
+/// "gyro detected" feedback every comparable tool (DS4Windows, Steam Input)
+/// surfaces.
+struct ControllerCapabilities: Hashable {
+    var hasMotion = false
+    var hasTouchpad = false
+    var hasRumble = false
+    /// The controller has an addressable RGB light bar (`GCController.light`).
+    /// Drives the "Lightbar" capability chip and the `CAP_LIGHTBAR` bit in
+    /// `MSG_CONTROLLER_ADD`.
+    var hasLightbar = false
+    var hasBattery = false
+
+    static let none = ControllerCapabilities()
+}
+
+/// Charging state for the slot-card battery pill. Maps from
+/// `GCDeviceBattery.State`; the raw wire value is in `SatelliteClient`.
+enum BatteryChargeState: Hashable {
+    case unknown, discharging, charging, full
+}
+
+/// Live battery reading shown in the slot card. `level` is 0...100, or nil
+/// when the controller reports state but not a percentage.
+struct BatteryReading: Hashable {
+    var level: Int?
+    var state: BatteryChargeState = .unknown
 }
 
 // MARK: - Controller slots (matches MainUiState.kt)
@@ -86,6 +173,10 @@ struct ControllerSlot: Identifiable, Hashable {
     let name: String
     var boundConnectionId: String?
     var boundStatus: ConnectionSummary?
+    /// Hardware capabilities detected at attach.
+    var capabilities: ControllerCapabilities = .none
+    /// Most recent battery reading, nil until the first sample arrives.
+    var battery: BatteryReading?
 }
 
 // MARK: - Persisted remembered connection (matches RememberedWifi)

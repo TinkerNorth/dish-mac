@@ -1,0 +1,30 @@
+/* English source strings — kept here so SwiftPM's `swift build` ships a
+ compiled `.strings` artifact alongside the `.xcstrings` source-of-truth.
+ The Catalog (`Localizable.xcstrings`) is authoritative; this file is the
+ runtime fallback for SPM, which doesn't yet compile `.xcstrings`. */
+"Connections" = "Connections";
+"CONTROLLERS" = "CONTROLLERS";
+"WI-FI SERVERS" = "WI-FI SERVERS";
+"Manage" = "Manage";
+"Scan" = "Scan";
+"Scanning…" = "Scanning…";
+"Connect" = "Connect";
+"Disconnect" = "Disconnect";
+"Connecting…" = "Connecting…";
+"Pairing…" = "Pairing…";
+"Forget" = "Forget";
+"Done" = "Done";
+"Cancel" = "Cancel";
+"Pair" = "Pair";
+"PIN" = "PIN";
+"Settings" = "Settings";
+"No connections yet" = "No connections yet";
+"No controllers connected" = "No controllers connected";
+"Press Scan to look for servers on your LAN" = "Press Scan to look for servers on your LAN";
+"Tap Manage to add one" = "Tap Manage to add one";
+"Found" = "Found";
+"Needs pairing" = "Needs pairing";
+"Offline" = "Offline";
+"Ready" = "Ready";
+"Online" = "Online";
+"Unsteady" = "Unsteady";

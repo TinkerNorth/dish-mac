@@ -78,8 +78,8 @@ extension SatelliteClient {
     func startHeartbeat() {
         if heartbeatRunning { return }
         heartbeatRunning = true
-        missedAcks = 0
-        connectionAlive = true
+        missedAcks.set(0)
+        connectionAlive.set(true)
         heartbeatQueue.async { [weak self] in self?.heartbeatLoop() }
     }
 
@@ -90,9 +90,8 @@ extension SatelliteClient {
     private func heartbeatLoop() {
         while heartbeatRunning {
             sendEncrypted(msgType: 0x0002, payload: [])
-            missedAcks += 1
-            if missedAcks >= Self.heartbeatMissMax {
-                connectionAlive = false
+            if missedAcks.incrementAndGet() >= Self.heartbeatMissMax {
+                connectionAlive.set(false)
             }
             // Sleep in 100ms chunks so stopHeartbeat kicks in quickly.
             var slept: UInt32 = 0
@@ -151,12 +150,19 @@ extension SatelliteClient {
               ) else { return }
 
         guard plain.count >= 4 else { return }
+        dispatchMessage(plain)
+    }
+
+    /// Decode the inner message type from a decrypted packet and route it.
+    /// Split out of `receiveOne` so the socket-recv path stays inside the
+    /// cyclomatic-complexity budget — this is the per-message-type branch.
+    private func dispatchMessage(_ plain: Data) {
         let msgType = (UInt16(plain[0]) << 8) | UInt16(plain[1])
         let msgLen = (UInt16(plain[2]) << 8) | UInt16(plain[3])
 
         if msgType == 0x0003 { // MSG_HEARTBEAT_ACK
-            missedAcks = 0
-            connectionAlive = true
+            missedAcks.set(0)
+            connectionAlive.set(true)
         } else if msgType == 0x0006, msgLen >= 4, plain.count >= 8 {
             let reqType = (UInt16(plain[4]) << 8) | UInt16(plain[5])
             let idx = plain[6]
@@ -177,6 +183,16 @@ extension SatelliteClient {
             if let handler = rumbleHandler {
                 handler(rm)
             }
+        } else if msgType == Self.msgLightbar {
+            // MSG_LIGHTBAR (0x000D) — decoupled light-bar return path. The
+            // 4-byte header is stripped; parseLightbarMessage decodes the
+            // ctrlIdx + RGB payload slice.
+            guard plain.count >= 4 else { return }
+            let payload = Array(plain[4 ..< plain.count])
+            guard let lm = SatelliteClient.parseLightbarMessage(payload[...]) else { return }
+            if let handler = lightbarHandler {
+                handler(lm)
+            }
         }
     }
 
@@ -185,38 +201,16 @@ extension SatelliteClient {
     /// truncation. Public + static so it can be exercised by unit tests
     /// without driving a live socket.
     ///
-    /// Wire layout:
+    /// Wire layout — a fixed 7-byte payload:
     ///
-    ///     ctrlIdx(1)  strong(2 BE)  weak(2 BE)  durMs(2 BE)  flags(1)
-    ///     [R(1)  G(1)  B(1)]    // present iff flags bit 0 set
+    ///     ctrlIdx(1)  strong(2 BE)  weak(2 BE)  durMs(2 BE)
     static func parseRumblePayload(_ payload: [UInt8]) -> RumbleMessage? {
-        // Mandatory section is 8 bytes.
-        guard payload.count >= 8 else { return nil }
-        let ctrlIdx = Int(payload[0])
-        let strong = (UInt16(payload[1]) << 8) | UInt16(payload[2])
-        let weak = (UInt16(payload[3]) << 8) | UInt16(payload[4])
-        let dur = (UInt16(payload[5]) << 8) | UInt16(payload[6])
-        let flags = payload[7]
-        let hasLightbar = (flags & 0x01) != 0
-        var r: UInt8 = 0
-        var g: UInt8 = 0
-        var b: UInt8 = 0
-        if hasLightbar {
-            // Declared lightbar but truncated tail → malformed.
-            guard payload.count >= 11 else { return nil }
-            r = payload[8]
-            g = payload[9]
-            b = payload[10]
-        }
+        guard payload.count >= 7 else { return nil }
         return RumbleMessage(
-            controllerIndex: ctrlIdx,
-            strongMagnitude: strong,
-            weakMagnitude: weak,
-            durationMs: dur,
-            hasLightbar: hasLightbar,
-            lightbarR: r,
-            lightbarG: g,
-            lightbarB: b
+            controllerIndex: Int(payload[0]),
+            strongMagnitude: (UInt16(payload[1]) << 8) | UInt16(payload[2]),
+            weakMagnitude: (UInt16(payload[3]) << 8) | UInt16(payload[4]),
+            durationMs: (UInt16(payload[5]) << 8) | UInt16(payload[6])
         )
     }
 }

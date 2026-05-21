@@ -11,6 +11,7 @@ struct MainView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var wifi: WifiConnectionManager
     @State private var showConnections = false
+    @State private var showSettings = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -27,6 +28,10 @@ struct MainView: View {
             ConnectionsView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)
+        }
+        .sheet(isPresented: $showSettings) {
+            SettingsView()
+                .environmentObject(model.settings)
         }
         .sheet(item: $model.pairingTarget) { server in
             PairingSheet(server: server)
@@ -45,8 +50,8 @@ struct MainView: View {
         let live = liveCount
         let total = model.connections.count
         switch (live, total) {
-        case (0, 0): return "No connections yet"
-        case (0, _): return "\(total) remembered"
+        case (0, 0): return String(localized: "No connections yet")
+        case (0, _): return "\(total) paired"
         case (1, _): return model.connections.first { $0.live == .connected }?.label ?? ""
         default: return "\(live) active connections"
         }
@@ -55,20 +60,41 @@ struct MainView: View {
     private var summaryText: String {
         let live = liveCount
         let total = model.connections.count
-        if live == 0, total == 0 { return "Tap Manage to add one" }
-        if live == 0 { return "\(total) remembered" }
-        return "\(live) of \(total) connected"
+        if live == 0, total == 0 { return String(localized: "Tap Manage to add one") }
+        if live == 0 { return "\(total) paired" }
+        return "\(live) of \(total) online"
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                StatusDot(color: liveCount > 0 ? DishTheme.success : DishTheme.muted)
+                // v6 brand satellite glyph + status dot. Same icon family
+                // the ConnectionsView rows render — the header reads as
+                // "n satellite servers online" rather than as a generic
+                // sender status. Flips to the "connected" variant (uplink
+                // dot above the antenna) when at least one is live.
+                ZStack(alignment: .bottomTrailing) {
+                    BrandIcon(
+                        kind: .satellite,
+                        state: liveCount > 0 ? .connected : .default,
+                        size: 28
+                    )
+                    StatusDot(color: liveCount > 0 ? DishTheme.success : DishTheme.muted)
+                }
                 Text(statusText)
                     .font(.system(size: 17, weight: .semibold))
                     .foregroundColor(liveCount > 0 ? DishTheme.success : DishTheme.muted)
                 Spacer()
-                Button("Manage") { showConnections = true }
+                Button {
+                    showSettings = true
+                } label: {
+                    Image(systemName: "gearshape")
+                        .font(.system(size: 14))
+                        .foregroundColor(DishTheme.primary)
+                }
+                .buttonStyle(.plain)
+                .help(Text("Settings"))
+                Button(String(localized: "Manage")) { showConnections = true }
                     .buttonStyle(DishOutlinedButtonStyle())
             }
             Text(summaryText)
@@ -82,7 +108,7 @@ struct MainView: View {
     private var slotSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                SectionHeader(title: "CONTROLLERS")
+                SectionHeader(title: String(localized: "CONTROLLERS"))
                 if wifi.anyControllerRegistering {
                     ProgressView()
                         .controlSize(.small)

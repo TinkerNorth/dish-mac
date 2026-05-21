@@ -1,0 +1,21 @@
+/* Portuguese (Brazil). Authoritative catalog is `../Localizable.xcstrings`. */
+"Connections" = "Conexões";
+"CONTROLLERS" = "CONTROLES";
+"Manage" = "Gerenciar";
+"Scan" = "Buscar";
+"Scanning…" = "Buscando…";
+"Connect" = "Conectar";
+"Disconnect" = "Desconectar";
+"Connecting…" = "Conectando…";
+"Pairing…" = "Pareando…";
+"Forget" = "Esquecer";
+"Cancel" = "Cancelar";
+"Pair" = "Parear";
+"PIN" = "PIN";
+"No connections yet" = "Nenhuma conexão ainda";
+"Found" = "Encontrado";
+"Needs pairing" = "Parear novamente";
+"Offline" = "Off-line";
+"Ready" = "Pronto";
+"Online" = "On-line";
+"Unsteady" = "Instável";
