@@ -9,6 +9,10 @@ import GameController
 /// `CHHapticEngine` instances (one per locator) so the satellite-driven
 /// rumble update can fan out to both motors with a single call.
 ///
+/// Vibration only — the light bar is a separate concern with its own return
+/// path (`MSG_LIGHTBAR` → `applyLightbar` in `GameControllerInput`); this
+/// actuator never touches `controller.light`.
+///
 /// Design notes:
 ///
 /// * GameController.framework's haptics surface is locator-based: the strong
@@ -55,43 +59,36 @@ final class RumbleActuator {
         rightEngine = nil
     }
 
-    /// Fire-and-forget actuation. `strong` drives the low-frequency motor
+    /// `durationMs == 0` "continuous" hold length. The protocol's 0 means
+    /// "keep the magnitudes applied until the next rumble packet", but a
+    /// `CHHapticEvent` needs a concrete duration — so a continuous packet
+    /// plays for this long and is replaced by whatever the next packet brings.
+    /// 30 s is CoreHaptics' practical continuous-event ceiling and far longer
+    /// than the gap between rumble updates from a vibrating game.
+    private static let continuousHoldSeconds: TimeInterval = 30.0
+
+    /// Fire-and-forget vibration. `strong` drives the low-frequency motor
     /// (`.leftHandle`); `weak` drives the high-frequency motor
     /// (`.rightHandle`). Both magnitudes are normalised from the wire-format
     /// 0..65535 range to CHHaptic's 0..1 intensity.
     ///
-    /// `durationMs == 0` is interpreted as "no actuation"; we keep the
-    /// engine alive but don't schedule a player so the motors stop after
-    /// the previous player elapses (typically <= 500 ms — see
-    /// `SessionService::handleRumbleFromBackend`'s `wireDurationMs`).
-    func apply(
-        strong: UInt16,
-        weak: UInt16,
-        durationMs: UInt16,
-        hasLightbar: Bool,
-        lightbarR: UInt8,
-        lightbarG: UInt8,
-        lightbarB: UInt8
-    ) {
-        if durationMs == 0 {
-            // Treat as "stop" — let any in-flight player finish naturally.
-            return
-        }
-        let duration = TimeInterval(durationMs) / 1000.0
+    /// `durationMs == 0` is the protocol's *continuous* mode (`RumbleReport`
+    /// in `satellite/src/core/types.h`: "0 = continuous (until next packet)") —
+    /// NOT "stop". The motors are driven and held until the next rumble packet
+    /// for this controller replaces them; a genuine stop arrives as an explicit
+    /// packet with zero magnitudes. Treating 0 as "no actuation" (the previous
+    /// behaviour) silently dropped every continuous-rumble packet — and a game
+    /// holding the motors across frames commonly sends exactly `durationMs == 0`.
+    ///
+    /// The light bar is deliberately *not* handled here — it has its own
+    /// return path (`MSG_LIGHTBAR` → `GameControllerInput.applyLightbar`),
+    /// gated independently of the Rumble setting.
+    func apply(strong: UInt16, weak: UInt16, durationMs: UInt16) {
+        let duration: TimeInterval = durationMs == 0
+            ? Self.continuousHoldSeconds
+            : TimeInterval(durationMs) / 1000.0
         play(engine: leftEngine, magnitude: strong, duration: duration)
         play(engine: rightEngine, magnitude: weak, duration: duration)
-
-        // GameController.framework also surfaces the DualSense / DualShock 4
-        // lightbar through `controller.light`. The satellite only publishes
-        // a colour when the receiver-side virtual device is a DualShock 4
-        // (Xbox 360 has no lightbar), so we gate on the wire-side flag.
-        if hasLightbar, let light = controller.light {
-            light.color = GCColor(
-                red: Float(lightbarR) / 255.0,
-                green: Float(lightbarG) / 255.0,
-                blue: Float(lightbarB) / 255.0
-            )
-        }
     }
 
     // MARK: - Internals

@@ -1,0 +1,23 @@
+/* Bosnian. Authoritative catalog is `../Localizable.xcstrings`; this is the
+ SPM runtime artifact. Keep both in sync. */
+"Connections" = "Veze";
+"CONTROLLERS" = "KONTROLERI";
+"Manage" = "Upravljanje";
+"Scan" = "Skeniraj";
+"Scanning…" = "Skeniranje…";
+"Connect" = "Poveži";
+"Disconnect" = "Prekini vezu";
+"Connecting…" = "Povezivanje…";
+"Pairing…" = "Uparivanje…";
+"Forget" = "Zaboravi";
+"Cancel" = "Otkaži";
+"Pair" = "Upari";
+"PIN" = "PIN";
+"No connections yet" = "Još nema veza";
+"Tap Manage to add one" = "Dodirnite Upravljanje da dodate jednu";
+"Found" = "Pronađen";
+"Needs pairing" = "Potrebno uparivanje";
+"Offline" = "Van veze";
+"Ready" = "Spreman";
+"Online" = "Na vezi";
+"Unsteady" = "Nestabilan";

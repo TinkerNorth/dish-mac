@@ -18,7 +18,7 @@ line_length:
   ignores_function_declarations: true
 
 function_body_length:
-  warning: 80
+  warning: 100
   error: 150
 
 type_body_length:
@@ -54,6 +54,7 @@ identifier_name:
   # in short-lived loop indices; wire layout constants use compact naming.
   # r/g/b: lightbar RGB color components. c: short-lived loop var in tests.
   # p: protocol payload byte buffer in parser tests.
+  # i: short loop index. o/s: SVG rendering aliases (overlay color / scale).
   excluded:
     - id
     - ip
@@ -65,7 +66,10 @@ identifier_name:
     - g
     - b
     - c
+    - i
+    - o
     - p
+    - s
     - lx
     - ly
     - rx

@@ -1,0 +1,21 @@
+/* German. Authoritative catalog is `../Localizable.xcstrings`. */
+"Connections" = "Verbindungen";
+"CONTROLLERS" = "CONTROLLER";
+"Manage" = "Verwalten";
+"Scan" = "Suchen";
+"Scanning…" = "Suche läuft…";
+"Connect" = "Verbinden";
+"Disconnect" = "Trennen";
+"Connecting…" = "Verbindet…";
+"Pairing…" = "Koppelt…";
+"Forget" = "Entfernen";
+"Cancel" = "Abbrechen";
+"Pair" = "Koppeln";
+"PIN" = "PIN";
+"No connections yet" = "Noch keine Verbindungen";
+"Found" = "Gefunden";
+"Needs pairing" = "Kopplung nötig";
+"Offline" = "Offline";
+"Ready" = "Bereit";
+"Online" = "Online";
+"Unsteady" = "Instabil";

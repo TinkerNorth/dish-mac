@@ -37,21 +37,19 @@ struct PairingSheet: View {
                 .font(.system(size: 12))
                 .foregroundColor(DishTheme.muted)
 
-            HStack(spacing: 10) {
-                TextField("PIN", text: $pin)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.system(size: 14, design: .monospaced))
-                    .onChange(of: pin) { newValue in
-                        let digits = newValue.filter(\.isNumber)
-                        let clipped = String(digits.prefix(4))
-                        if clipped != newValue { pin = clipped }
-                    }
-                if isPairing {
-                    ProgressView()
-                        .controlSize(.small)
-                        .progressViewStyle(.circular)
+            // Inline loader removed: the in-flight state now lives inside the
+            // Pair button below (spinner + "Pairing…"), per the design spec.
+            // Two loaders for the same submission read as visual noise in a
+            // sheet this small.
+            TextField(String(localized: "PIN"), text: $pin)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 14, design: .monospaced))
+                .disabled(isPairing)
+                .onChange(of: pin) { newValue in
+                    let digits = newValue.filter(\.isNumber)
+                    let clipped = String(digits.prefix(4))
+                    if clipped != newValue { pin = clipped }
                 }
-            }
 
             if didSubmit, let msg = model.errorMessage {
                 ErrorBanner(message: msg) {
@@ -64,10 +62,20 @@ struct PairingSheet: View {
                 Spacer()
                 Button("Cancel") { dismiss() }
                     .buttonStyle(DishOutlinedButtonStyle())
-                Button("Pair") {
+                    .disabled(isPairing)
+                Button {
                     didSubmit = true
                     model.errorMessage = nil
                     model.pairWithPin(server, pin: pin)
+                } label: {
+                    if isPairing {
+                        HStack(spacing: 6) {
+                            DishSpinner(size: 12)
+                            Text("Pairing…")
+                        }
+                    } else {
+                        Text("Pair")
+                    }
                 }
                 .buttonStyle(DishOutlinedButtonStyle())
                 .disabled(!pinValid || isPairing)

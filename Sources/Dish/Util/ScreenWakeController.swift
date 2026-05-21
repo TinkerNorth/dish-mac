@@ -28,13 +28,20 @@ final class ScreenWakeController {
     /// Pure helper that derives the count of bound + connected slots from the
     /// current binding table and the per-connection state. Extracted so unit
     /// tests can pin the arithmetic without instantiating a controller.
+    ///
+    /// `.unstable` (faltering session) still counts as streaming — packets
+    /// are still flowing, just with heartbeat wobble — so an unsteady slot
+    /// must not drop the wake lock.
     static func streamingCount(
         bindings: [String: String],
-        connectionStates: [String: ConnectionLive]
+        connectionStates: [String: LinkState]
     ) -> Int {
         var count = 0
-        for (_, cid) in bindings where connectionStates[cid] == .connected {
-            count += 1
+        for (_, cid) in bindings {
+            switch connectionStates[cid] {
+            case .connected, .unstable: count += 1
+            default: break
+            }
         }
         return count
     }

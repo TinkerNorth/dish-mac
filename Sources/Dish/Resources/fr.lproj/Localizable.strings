@@ -1,0 +1,22 @@
+/* French. Authoritative catalog is `../Localizable.xcstrings`. */
+"Connections" = "Connexions";
+"CONTROLLERS" = "MANETTES";
+"Manage" = "Gérer";
+"Scan" = "Scanner";
+"Scanning…" = "Recherche…";
+"Connect" = "Connecter";
+"Disconnect" = "Déconnecter";
+"Connecting…" = "Connexion…";
+"Pairing…" = "Appairage…";
+"Forget" = "Oublier";
+"Cancel" = "Annuler";
+"Pair" = "Appairer";
+"PIN" = "PIN";
+"No connections yet" = "Aucune connexion pour l'instant";
+"Tap Manage to add one" = "Touchez Gérer pour en ajouter une";
+"Found" = "Trouvée";
+"Needs pairing" = "Appairage requis";
+"Offline" = "Hors ligne";
+"Ready" = "Prête";
+"Online" = "En ligne";
+"Unsteady" = "Instable";

@@ -8,6 +8,11 @@ import SwiftUI
 struct DishApp: App {
 
     @StateObject private var model = AppModel()
+    /// Process-scoped queue + renderer for `DishNotification` banners.
+    /// Injected into the SwiftUI environment so any view + `AppModel` can
+    /// publish via `center.add(...)`; the `NotificationOverlay` at the
+    /// bottom of the window reads `visible` and renders the stack.
+    @StateObject private var notifications = DishNotificationCenter()
 
     init() {
         // `swift run` launches us as a bare Mach-O binary with no .app bundle,
@@ -23,9 +28,22 @@ struct DishApp: App {
             MainView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)
+                .environmentObject(model.settings)
+                .environmentObject(notifications)
                 .frame(minWidth: 520, minHeight: 640)
                 .background(DishTheme.background.ignoresSafeArea())
                 .preferredColorScheme(.dark)
+                // The notification strip stacks at the bottom of the
+                // window; sheets present above the main view tree so
+                // the overlay continues to render under the sheet
+                // without fighting it for the layer order.
+                .overlay(alignment: .bottom) {
+                    NotificationOverlay()
+                        .environmentObject(notifications)
+                }
+                .onAppear {
+                    model.bindNotifications(notifications)
+                }
         }
         .windowResizability(.contentMinSize)
     }

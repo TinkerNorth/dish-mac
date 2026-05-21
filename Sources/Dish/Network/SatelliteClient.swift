@@ -29,19 +29,28 @@ final class SatelliteClient {
     private static let msgServerStatus: UInt16 = 0x0007
     private static let msgControllerType: UInt16 = 0x0008
     static let msgRumble: UInt16 = 0x0009
+    private static let msgMotion: UInt16 = 0x000A
+    private static let msgBattery: UInt16 = 0x000B
+    private static let msgTouchpad: UInt16 = 0x000C
+    static let msgLightbar: UInt16 = 0x000D
 
-    /// Decoded `MSG_RUMBLE` payload. `lightbar*` are valid only when
-    /// `hasLightbar` is true (the optional trailing 3-byte tail of the
-    /// wire format).
+    /// Battery status enum on the wire — must match satellite/src/core/types.h
+    /// (`BATTERY_STATUS_*`). Values are stable across platforms.
+    enum BatteryStatus: UInt8 {
+        case unknown = 0
+        case discharging = 1
+        case charging = 2
+        case full = 3
+        case wired = 4
+    }
+
+    /// Decoded `MSG_RUMBLE` payload — motor magnitudes plus duration. The
+    /// light bar is a separate return path (`MSG_LIGHTBAR`).
     struct RumbleMessage {
         let controllerIndex: Int
         let strongMagnitude: UInt16
         let weakMagnitude: UInt16
         let durationMs: UInt16
-        let hasLightbar: Bool
-        let lightbarR: UInt8
-        let lightbarG: UInt8
-        let lightbarB: UInt8
     }
 
     static let heartbeatIntervalMs: UInt32 = 2000
@@ -65,8 +74,12 @@ final class SatelliteClient {
     let ackQueue = DispatchQueue(label: "dish.satellite.ack", qos: .utility)
     var ackRunning = false
 
-    var missedAcks = 0
-    var connectionAlive = true
+    /// Consecutive un-ACKed heartbeats. Bumped on `heartbeatQueue`, zeroed on
+    /// `ackQueue` — two queues, so it must be atomic (see `AtomicInt`).
+    let missedAcks = AtomicInt(0)
+    /// Liveness flag. Written from the heartbeat + ACK queues, read from the
+    /// `WifiConnection` liveness task — atomic for the same reason.
+    let connectionAlive = AtomicBool(true)
     /// Latest controller ACK packed as (requestType<<16)|(idx<<8)|result, or -1.
     var lastControllerAck: Int32 = -1
     var vigemAvailable: Int8 = -1
@@ -87,6 +100,23 @@ final class SatelliteClient {
             rumbleHandlerLock.lock()
             defer { rumbleHandlerLock.unlock() }
             _rumbleHandler = newValue
+        }
+    }
+
+    /// Per-packet light-bar dispatcher for the `MSG_LIGHTBAR` (0x000D)
+    /// return path. Same locking discipline as `rumbleHandler`.
+    private var _lightbarHandler: ((LightbarMessage) -> Void)?
+    private let lightbarHandlerLock = NSLock()
+    var lightbarHandler: ((LightbarMessage) -> Void)? {
+        get {
+            lightbarHandlerLock.lock()
+            defer { lightbarHandlerLock.unlock() }
+            return _lightbarHandler
+        }
+        set {
+            lightbarHandlerLock.lock()
+            defer { lightbarHandlerLock.unlock() }
+            _lightbarHandler = newValue
         }
     }
 
@@ -140,8 +170,8 @@ final class SatelliteClient {
         self.token = Array(token)
         self.key = SymmetricKey(data: key)
         counter.reset()
-        missedAcks = 0
-        connectionAlive = true
+        missedAcks.set(0)
+        connectionAlive.set(true)
         lastControllerAck = -1
     }
 
@@ -208,5 +238,160 @@ final class SatelliteClient {
 
     func resetControllerAck() {
         lastControllerAck = -1
+    }
+
+    // MARK: - Motion (IMU)
+
+    /// Forward a single IMU sample to the satellite. Wire payload:
+    ///
+    ///     ctrlIdx(1) + gyroX/Y/Z (3 × i16 LE) + accelX/Y/Z (3 × i16 LE)
+    ///                + timestampDeltaUs (u32 LE) = 17 bytes
+    ///
+    /// Axis scale follows the Cemuhook DSU convention as documented in
+    /// `satellite/docs/protocol.md` — senders MUST pre-scale to `±2000 deg/s`
+    /// for gyro and `±4 g` for accel before encoding. Senders SHOULD apply the
+    /// manufacturer-specific rotation matrix (DualSense rotates X/Z, etc.) so
+    /// the receiver does not need to rotate per controller type.
+    func sendMotion(
+        controllerIndex: Int,
+        gyroX: Int16, gyroY: Int16, gyroZ: Int16,
+        accelX: Int16, accelY: Int16, accelZ: Int16,
+        timestampDeltaUs: UInt32
+    ) {
+        var payload = [UInt8](repeating: 0, count: 17)
+        payload[0] = UInt8(truncatingIfNeeded: controllerIndex)
+        payload.withUnsafeMutableBufferPointer { buf in
+            storeLE16(gyroX, into: buf, at: 1)
+            storeLE16(gyroY, into: buf, at: 3)
+            storeLE16(gyroZ, into: buf, at: 5)
+            storeLE16(accelX, into: buf, at: 7)
+            storeLE16(accelY, into: buf, at: 9)
+            storeLE16(accelZ, into: buf, at: 11)
+            buf[13] = UInt8(truncatingIfNeeded: timestampDeltaUs)
+            buf[14] = UInt8(truncatingIfNeeded: timestampDeltaUs >> 8)
+            buf[15] = UInt8(truncatingIfNeeded: timestampDeltaUs >> 16)
+            buf[16] = UInt8(truncatingIfNeeded: timestampDeltaUs >> 24)
+        }
+        sendEncrypted(msgType: Self.msgMotion, payload: payload)
+    }
+
+    // MARK: - Battery
+
+    /// Forward a battery snapshot. Wire payload:
+    ///
+    ///     ctrlIdx(1) + level(1) + status(1) = 3 bytes
+    ///
+    /// `level` is 0..100 inclusive, or `0xFF` for unknown. Senders that can
+    /// only read the charging state but not the percentage SHOULD pass
+    /// `level = 0xFF` along with the known status. Senders with no battery
+    /// information at all SHOULD NOT call this method.
+    func sendBattery(controllerIndex: Int, level: UInt8, status: BatteryStatus) {
+        let payload: [UInt8] = [
+            UInt8(truncatingIfNeeded: controllerIndex),
+            level,
+            status.rawValue
+        ]
+        sendEncrypted(msgType: Self.msgBattery, payload: payload)
+    }
+
+    // MARK: - Touchpad
+
+    // The two touchpad encoders take one argument per wire field (10 each).
+    // Bundling them into a struct purely to satisfy the parameter-count rule
+    // would add an indirection the flat wire-mapping doesn't benefit from.
+    // swiftlint:disable function_parameter_count
+
+    /// Encoded MSG_TOUCHPAD inner payload (after the 4-byte type+length
+    /// header). Layout per satellite/docs/protocol.md §0x000C:
+    ///
+    ///     ctrlIdx(1) + flags(1) + finger0(1+2+2) + finger1(1+2+2) = 12 bytes
+    ///
+    /// `flags` bits: 0 = finger0 active, 1 = finger1 active, 2 = clicky
+    /// button pressed. Coordinates are normalised int16 (-32768..32767) on
+    /// both axes so the wire is resolution-independent.
+    ///
+    /// Exposed `static` so the byte layout can be pinned by unit tests
+    /// without bringing up a live socket — same pattern as
+    /// `parseRumbleMessage` on the return path and `encodeMotionPayload`
+    /// on the desktop senders.
+    static func encodeTouchpadPayload(
+        controllerIndex: UInt8,
+        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
+        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
+        buttonPressed: Bool
+    ) -> [UInt8] {
+        var payload = [UInt8](repeating: 0, count: 12)
+        payload[0] = controllerIndex
+        var flags: UInt8 = 0
+        if finger0Active { flags |= 0x01 }
+        if finger1Active { flags |= 0x02 }
+        if buttonPressed { flags |= 0x04 }
+        payload[1] = flags
+        payload[2] = finger0Id
+        /// Inline LE16 store — the storeLE16 helper on SatelliteClient is a
+        /// private instance method, and this encoder is static so tests can
+        /// pin the byte layout without an instance.
+        func putLE16(_ value: Int16, at offset: Int) {
+            let unsigned = UInt16(bitPattern: value)
+            payload[offset] = UInt8(truncatingIfNeeded: unsigned)
+            payload[offset + 1] = UInt8(truncatingIfNeeded: unsigned >> 8)
+        }
+        putLE16(finger0X, at: 3)
+        putLE16(finger0Y, at: 5)
+        payload[7] = finger1Id
+        putLE16(finger1X, at: 8)
+        putLE16(finger1Y, at: 10)
+        return payload
+    }
+
+    /// Forward a touchpad sample to the satellite. The caller is responsible
+    /// for normalising coordinates to int16 [-32768, 32767] before calling.
+    func sendTouchpad(
+        controllerIndex: Int,
+        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
+        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
+        buttonPressed: Bool
+    ) {
+        let payload = Self.encodeTouchpadPayload(
+            controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
+            finger0Active: finger0Active,
+            finger0Id: finger0Id,
+            finger0X: finger0X,
+            finger0Y: finger0Y,
+            finger1Active: finger1Active,
+            finger1Id: finger1Id,
+            finger1X: finger1X,
+            finger1Y: finger1Y,
+            buttonPressed: buttonPressed
+        )
+        sendEncrypted(msgType: Self.msgTouchpad, payload: payload)
+    }
+
+    // swiftlint:enable function_parameter_count
+
+    // MARK: - Lightbar (receive-side decoder)
+
+    /// Decoded MSG_LIGHTBAR (0x000D) message. The satellite-emitted payload
+    /// is `ctrlIdx(1) + r(1) + g(1) + b(1)` = 4 bytes. Senders apply the
+    /// colour via the appropriate platform API (`GCColor.setColor` on
+    /// macOS, `SDL_GameControllerSetLED` on desktop SDL backends).
+    struct LightbarMessage {
+        var controllerIndex: Int
+        var r: UInt8
+        var g: UInt8
+        var b: UInt8
+    }
+
+    /// Pure decoder for the MSG_LIGHTBAR inner payload (after the 4-byte
+    /// header). Returns nil on truncation. Kept `static` for unit tests.
+    static func parseLightbarMessage(_ payload: ArraySlice<UInt8>) -> LightbarMessage? {
+        guard payload.count >= 4 else { return nil }
+        let base = payload.startIndex
+        return LightbarMessage(
+            controllerIndex: Int(payload[base]),
+            r: payload[base + 1],
+            g: payload[base + 2],
+            b: payload[base + 3]
+        )
     }
 }

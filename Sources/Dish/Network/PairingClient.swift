@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import Darwin
 import Foundation
 
-/// Blocking TCP pair handshake with a Satellite server. Mirrors
-/// `satellite_jni.cpp :: pair`. Sends a single JSON line and reads the
-/// server's JSON reply.
+/// Blocking pair handshake with a Satellite server. Mirrors
+/// `satellite_jni.cpp :: pair`. Performs an HTTPS `POST /api/pair` and parses
+/// the server's JSON reply.
+///
+/// The transport changed: pairing used to be a bespoke raw-TCP JSON-line
+/// protocol on its own port. It is now a plain HTTPS POST on the client API
+/// server (`:9443`). The request/response JSON shapes are unchanged.
 enum PairingClient {
 
     struct Request: Encodable {
@@ -14,6 +17,24 @@ enum PairingClient {
         let deviceName: String
         let pin: String
     }
+
+    /// Dedicated `URLSession` for pairing. Uses the same self-signed-accepting
+    /// trust delegate as `HTTPClient` — the satellite's certificate is accepted
+    /// WITHOUT verification or pinning (`curl --insecure` equivalent), a
+    /// deliberate, approved project decision.
+    private static let trustDelegate = InsecureTrustDelegate()
+
+    private static let session: URLSession = {
+        let cfg = URLSessionConfiguration.ephemeral
+        cfg.timeoutIntervalForRequest = 5
+        cfg.timeoutIntervalForResource = 5
+        cfg.waitsForConnectivity = false
+        return URLSession(
+            configuration: cfg,
+            delegate: trustDelegate,
+            delegateQueue: nil
+        )
+    }()
 
     /// Classifies a `PairResponse` so callers can distinguish "server moved /
     /// went offline" (network failure) from "server refused our PIN / shared
@@ -43,6 +64,9 @@ enum PairingClient {
     /// = false` so the caller can surface a clean "Server unreachable —
     /// has it moved networks?" message instead of trapping the user behind
     /// a PIN prompt they can't satisfy.
+    ///
+    /// Synchronous by contract — drives a `DispatchSemaphore` around the async
+    /// `URLSession` call so existing callers keep working unchanged.
     static func pair(
         ip: String,
         port: Int,
@@ -50,87 +74,46 @@ enum PairingClient {
         deviceName: String,
         pin: String
     ) -> PairResponse {
-        let sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
-        guard sock >= 0 else { return PairResponse(ok: false, error: "socket failed") }
-        defer { close(sock) }
-
-        // Non-blocking connect + 4s select timeout, then back to blocking I/O
-        // so send/recv are simple. Same shape as the Android version.
-        let flags = fcntl(sock, F_GETFL, 0)
-        _ = fcntl(sock, F_SETFL, flags | O_NONBLOCK)
-
-        var addr = sockaddr_in()
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port = in_port_t(UInt16(port)).bigEndian
-        if inet_pton(AF_INET, ip, &addr.sin_addr) != 1 {
-            return PairResponse(ok: false, error: "bad ip")
+        guard let url = URL(string: "https://\(ip):\(port)/api/pair") else {
+            return PairResponse(ok: false, error: "bad url")
         }
 
-        let connectRet = withUnsafePointer(to: &addr) { ptr -> Int32 in
-            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                Darwin.connect(sock, sa, socklen_t(MemoryLayout<sockaddr_in>.size))
-            }
-        }
-        if connectRet != 0, errno != EINPROGRESS {
-            return PairResponse(ok: false, error: "connect failed")
-        }
-        if connectRet != 0 {
-            var tv = timeval(tv_sec: 4, tv_usec: 0)
-            var wset = fd_set()
-            fdZero(&wset)
-            fdSet(sock, &wset)
-            let sel = select(sock + 1, nil, &wset, nil, &tv)
-            if sel <= 0 { return PairResponse(ok: false, error: "connect timeout") }
-            var sockerr: Int32 = 0
-            var sl = socklen_t(MemoryLayout<Int32>.size)
-            _ = getsockopt(sock, SOL_SOCKET, SO_ERROR, &sockerr, &sl)
-            if sockerr != 0 { return PairResponse(ok: false, error: "connect refused") }
-        }
-        _ = fcntl(sock, F_SETFL, flags & ~O_NONBLOCK)
-
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         guard let body = try? JSONEncoder().encode(
             Request(deviceId: deviceId, deviceName: deviceName, pin: pin)
-        ) else { return PairResponse(ok: false, error: "encode failed") }
-
-        _ = body.withUnsafeBytes { ptr in
-            Darwin.send(sock, ptr.baseAddress, ptr.count, 0)
+        ) else {
+            return PairResponse(ok: false, error: "encode failed")
         }
+        req.httpBody = body
 
-        var rtv = timeval(tv_sec: 5, tv_usec: 0)
-        _ = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
+        var result = PairResponse(ok: false, error: "no response")
+        let done = DispatchSemaphore(value: 0)
 
-        var buf = [UInt8](repeating: 0, count: 512)
-        let bytesRead = buf.withUnsafeMutableBufferPointer { bp in
-            Darwin.recv(sock, bp.baseAddress, bp.count, 0)
+        let task = session.dataTask(with: req) { data, _, error in
+            defer { done.signal() }
+            if let error {
+                // Network-level failure: connect refused, timeout, DNS, TLS.
+                // `reachable` stays false so the caller treats it as offline.
+                result = PairResponse(ok: false, error: error.localizedDescription)
+                return
+            }
+            guard let data, !data.isEmpty else {
+                result = PairResponse(ok: false, error: "no response")
+                return
+            }
+            // The server always returns HTTP 200 with a JSON body; even
+            // `ok=false` counts as a successful round-trip, hence reachable.
+            if var parsed = try? JSONDecoder().decode(PairResponse.self, from: data) {
+                parsed.reachable = true
+                result = parsed
+            } else {
+                result = PairResponse(ok: false, error: "malformed response")
+            }
         }
-        if bytesRead <= 0 { return PairResponse(ok: false, error: "no response") }
-
-        let data = Data(buf[0 ..< bytesRead])
-        if var parsed = try? JSONDecoder().decode(PairResponse.self, from: data) {
-            // Successful round-trip with the server — even ok=false counts as
-            // reachable for the purposes of distinguishing offline-vs-auth.
-            parsed.reachable = true
-            return parsed
-        }
-        return PairResponse(ok: false, error: "malformed response")
-    }
-}
-
-// MARK: - fd_set helpers (Darwin's fd_set is opaque in Swift)
-
-@inline(__always)
-private func fdZero(_ set: inout fd_set) {
-    set = fd_set()
-}
-
-@inline(__always)
-private func fdSet(_ fd: Int32, _ set: inout fd_set) {
-    let intOffset = Int(fd / 32)
-    let bitOffset = fd % 32
-    let mask: Int32 = 1 << bitOffset
-    withUnsafeMutablePointer(to: &set.fds_bits) { ptr in
-        ptr.withMemoryRebound(to: Int32.self, capacity: 32) { bound in
-            bound[intOffset] |= mask
-        }
+        task.resume()
+        done.wait()
+        return result
     }
 }

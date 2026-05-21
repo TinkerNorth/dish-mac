@@ -94,9 +94,9 @@ GameController.framework's haptics surface.
                                                           (.leftHandle / .rightHandle)
 ```
 
-The wire format is documented in
-[`satellite/README.md`](https://github.com/TinkerNorth/satellite#rumble-return-path).
-On the dish-mac side:
+The `MSG_RUMBLE` inner payload is a fixed 7 bytes — `ctrlIdx(1) +
+strongMagnitude(2 BE) + weakMagnitude(2 BE) + durationMs(2 BE)`. On the
+dish-mac side:
 
 * **Parser** — `SatelliteClient.parseRumblePayload` is a pure static
   decoder so unit tests can exercise byte layouts without a live socket
@@ -109,11 +109,43 @@ On the dish-mac side:
   per controller (one for `.leftHandle`, one for `.rightHandle`). Each
   rumble packet builds a tiny `CHHapticPattern` with intensity scaled
   from 0..65535 to CoreHaptics's 0..1, and a fresh per-call player so we
-  don't pay engine start-up latency per packet. `controller.light?.color`
-  is set when the satellite published a DS4 lightbar colour.
-* **No haptics → silent no-op.** Legacy MFi pads that don't expose
+  don't pay engine start-up latency per packet.
+* **No haptics → silent no-op.** MFi pads that don't expose
   `controller.haptics` skip actuation entirely; the player just doesn't
   feel rumble — same outcome as if the satellite never sent the packet.
+
+## Light bar (return path)
+
+The light bar is its own return path, separate from rumble. A game on the
+satellite host sets the virtual controller's LED colour, the satellite
+forwards a `MSG_LIGHTBAR = 0x000D` packet, and the dish writes the colour to
+the matching `GCController.light` via GameController.framework.
+
+The `MSG_LIGHTBAR` inner payload is 4 bytes — `ctrlIdx(1) + R(1) + G(1) +
+B(1)` — decoded by `SatelliteClient.parseLightbarMessage` (a pure static
+decoder, unit-tested without a live socket). It routes through the same
+`SatelliteClient → WifiConnection → AppModel` chain as rumble, ending at
+`GameControllerInput.applyLightbar`, which sets `GCColor` on the
+`@MainActor`.
+
+* **Separate from rumble.** `RumbleActuator` never touches
+  `controller.light`. Vibration and the light bar are gated and routed
+  independently, so turning Rumble off in Settings does not affect the
+  light bar (and vice versa).
+* **`CAP_LIGHTBAR` (0x0008).** When a bound controller exposes an
+  addressable RGB light (`GCController.light != nil`), the dish OR's
+  `CAP_LIGHTBAR` into the per-controller `MSG_CONTROLLER_ADD` capability
+  word (alongside `CAP_ANALOG_TRIGGERS` / `CAP_RUMBLE` / `CAP_MOTION`).
+* **`LightbarMode` setting.** `FeatureSettings.lightbarMode` is a
+  two-case picker in Settings — *Follow game* (apply the host game's
+  colour) or *Off* (leave the LED untouched). Unlike the other features
+  it is a mode, not a plain toggle, mirroring DS4Windows / DualSenseX;
+  it collapses to a single `lightbar` boolean in the thread-safe
+  `ForwardingFlags` snapshot the receive-thread handlers read. *Off*
+  suppresses the `MSG_LIGHTBAR` colour.
+* **No light → silent no-op.** Controllers without a light bar (Xbox
+  pads) ignore `MSG_LIGHTBAR`; `applyLightbar` resolves `controller.light`
+  to `nil` and returns.
 
 ## Requirements
 
@@ -181,6 +213,8 @@ Unit tests cover the hex/byte-packing utilities, the XUSB input mapping (axis
 and trigger scaling, button bitfield, per-device deadzone application,
 zero-on-disconnect fan-out), the lock-free atomic counter under contention,
 the lenient beacon JSON decoder, the persisted-model codable round-trips, the
+`MSG_RUMBLE` / `MSG_LIGHTBAR` return-path decoders and the light-bar wiring
+(rumble vs. light-bar gating, the `CAP_LIGHTBAR` capability word), the
 `PairingClient.classify` outcome arms (success / authRequired / unreachable),
 and the `ScreenWakeController` acquire/release lifecycle via a fake
 `DisplaySleepInhibitor` (so the suite never has to touch IOKit). They run in
