@@ -23,7 +23,7 @@ struct ConnectionsView: View {
                         // as the dish-android ImageView + label and the
                         // satellite/web section-glyph in the dashboard.
                         BrandIcon(kind: .satellite, state: .default, size: 18)
-                        SectionHeader(title: "WI-FI SERVERS")
+                        SectionHeader(title: String(localized: "WI-FI SERVERS"))
                         if wifi.isScanning {
                             // Mirror of the Scan-button loader: same vocabulary
                             // (DishSpinner) at the section level so the user
@@ -35,6 +35,10 @@ struct ConnectionsView: View {
                     }
                     if combinedRows.isEmpty {
                         Text("Press Scan to look for servers on your LAN")
+                            // SwiftUI's `Text(literal:)` initializer treats this
+                            // bare string literal as a `LocalizedStringKey`, so
+                            // the `.xcstrings` "Press Scan…" entry resolves
+                            // automatically without an explicit wrap.
                             .font(.system(size: 12))
                             .foregroundColor(DishTheme.muted)
                             .padding(.vertical, 6)
@@ -70,6 +74,8 @@ struct ConnectionsView: View {
 
     private var header: some View {
         HStack {
+            // SwiftUI auto-localizes `Text("…")` against the `LocalizedStringKey`
+            // initializer, so "Connections" resolves through the catalog.
             Text("Connections")
                 .font(.system(size: 18, weight: .semibold))
                 .foregroundColor(DishTheme.onSurface)
@@ -92,7 +98,7 @@ struct ConnectionsView: View {
             }
             .buttonStyle(DishOutlinedButtonStyle())
             .disabled(wifi.isScanning)
-            Button("Done") { dismiss() }
+            Button(String(localized: "Done")) { dismiss() }
                 .buttonStyle(DishOutlinedButtonStyle())
         }
         .padding(20)
@@ -162,7 +168,7 @@ struct ConnectionsView: View {
             // don't double up with a standalone row-level spinner here. The
             // disabled-button styling (opacity 0.4) signals non-tappable.
             primaryButton(for: summary)
-            Button("Forget") { model.forget(summary.id) }
+            Button(String(localized: "Forget")) { model.forget(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())
         }
         .rowBackground()
@@ -207,6 +213,11 @@ struct ConnectionsView: View {
         }
         .rowBackground()
     }
+
+    // `Text("…")` literals in this file rely on SwiftUI's implicit
+    // `LocalizedStringKey` initializer to resolve through the catalog;
+    // the chip / button text below ("Connecting…", "Pairing…", "Connect",
+    // "Disconnect") all have catalog entries.
 
     @ViewBuilder
     private func primaryButton(for summary: ConnectionSummary) -> some View {
@@ -261,13 +272,13 @@ struct ConnectionsView: View {
     /// verb-with-ellipsis (transient) per the shared nomenclature.
     private func statusText(for summary: ConnectionSummary) -> String {
         switch summary.live {
-        case .found: "Found"
-        case .stale: "Needs pairing"
-        case .saved: "Offline"
-        case .ready: "Ready"
-        case .connecting: "Connecting…"
-        case .connected: "Online"
-        case .unstable: "Unsteady"
+        case .found: String(localized: "Found")
+        case .stale: String(localized: "Needs pairing")
+        case .saved: String(localized: "Offline")
+        case .ready: String(localized: "Ready")
+        case .connecting: String(localized: "Connecting…")
+        case .connected: String(localized: "Online")
+        case .unstable: String(localized: "Unsteady")
         }
     }
 

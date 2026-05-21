@@ -1,0 +1,21 @@
+/* Spanish. Authoritative catalog is `../Localizable.xcstrings`. */
+"Connections" = "Conexiones";
+"CONTROLLERS" = "MANDOS";
+"Manage" = "Gestionar";
+"Scan" = "Buscar";
+"Scanning…" = "Buscando…";
+"Connect" = "Conectar";
+"Disconnect" = "Desconectar";
+"Connecting…" = "Conectando…";
+"Pairing…" = "Emparejando…";
+"Forget" = "Olvidar";
+"Cancel" = "Cancelar";
+"Pair" = "Emparejar";
+"PIN" = "PIN";
+"No connections yet" = "Aún no hay conexiones";
+"Found" = "Encontrado";
+"Needs pairing" = "Emparejar";
+"Offline" = "Desconectado";
+"Ready" = "Listo";
+"Online" = "En línea";
+"Unsteady" = "Inestable";

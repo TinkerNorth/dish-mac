@@ -41,7 +41,7 @@ struct PairingSheet: View {
             // Pair button below (spinner + "Pairing…"), per the design spec.
             // Two loaders for the same submission read as visual noise in a
             // sheet this small.
-            TextField("PIN", text: $pin)
+            TextField(String(localized: "PIN"), text: $pin)
                 .textFieldStyle(.roundedBorder)
                 .font(.system(size: 14, design: .monospaced))
                 .disabled(isPairing)

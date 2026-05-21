@@ -50,7 +50,7 @@ struct MainView: View {
         let live = liveCount
         let total = model.connections.count
         switch (live, total) {
-        case (0, 0): return "No connections yet"
+        case (0, 0): return String(localized: "No connections yet")
         case (0, _): return "\(total) paired"
         case (1, _): return model.connections.first { $0.live == .connected }?.label ?? ""
         default: return "\(live) active connections"
@@ -60,7 +60,7 @@ struct MainView: View {
     private var summaryText: String {
         let live = liveCount
         let total = model.connections.count
-        if live == 0, total == 0 { return "Tap Manage to add one" }
+        if live == 0, total == 0 { return String(localized: "Tap Manage to add one") }
         if live == 0 { return "\(total) paired" }
         return "\(live) of \(total) online"
     }
@@ -93,8 +93,8 @@ struct MainView: View {
                         .foregroundColor(DishTheme.primary)
                 }
                 .buttonStyle(.plain)
-                .help("Settings")
-                Button("Manage") { showConnections = true }
+                .help(Text("Settings"))
+                Button(String(localized: "Manage")) { showConnections = true }
                     .buttonStyle(DishOutlinedButtonStyle())
             }
             Text(summaryText)
@@ -108,7 +108,7 @@ struct MainView: View {
     private var slotSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                SectionHeader(title: "CONTROLLERS")
+                SectionHeader(title: String(localized: "CONTROLLERS"))
                 if wifi.anyControllerRegistering {
                     ProgressView()
                         .controlSize(.small)

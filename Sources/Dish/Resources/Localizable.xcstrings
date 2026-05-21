@@ -1,0 +1,266 @@
+{
+  "sourceLanguage" : "en",
+  "version" : "1.0",
+  "strings" : {
+    "Connections" : {
+      "comment" : "Title of the connections-management sheet. Maps to Android `title_connections`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Veze" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbindungen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conexiones" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexions" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conexões" } }
+      }
+    },
+    "CONTROLLERS" : {
+      "comment" : "Dashboard section header for the controller list. Maps to Android `section_controllers`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "KONTROLERI" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "CONTROLLER" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "MANDOS" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "MANETTES" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "CONTROLES" } }
+      }
+    },
+    "WI-FI SERVERS" : {
+      "comment" : "Section header on the Connections sheet. Mac-specific surface (Android uses SATELLITES); marked new for localization.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
+        "de" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
+        "es" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
+        "fr" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
+        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } }
+      }
+    },
+    "Manage" : {
+      "comment" : "Dashboard action button — opens the connections sheet. Maps to Android `action_manage`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Upravljanje" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verwalten" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gestionar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gérer" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Gerenciar" } }
+      }
+    },
+    "Scan" : {
+      "comment" : "Trigger LAN scan. Maps to Android `action_scan`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Skeniraj" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Suchen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Buscar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Scanner" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Buscar" } }
+      }
+    },
+    "Scanning…" : {
+      "comment" : "In-flight label for the Scan button. Maps to Android `action_scanning`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Skeniranje…" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Suche läuft…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Buscando…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Recherche…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Buscando…" } }
+      }
+    },
+    "Connect" : {
+      "comment" : "Per-row connect button. Maps to Android `action_connect`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Poveži" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbinden" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conectar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connecter" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conectar" } }
+      }
+    },
+    "Disconnect" : {
+      "comment" : "Per-row disconnect button. Maps to Android `action_disconnect`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Prekini vezu" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Trennen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desconectar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Déconnecter" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Desconectar" } }
+      }
+    },
+    "Connecting…" : {
+      "comment" : "Status / button label while a session is opening. Maps to Android `chip_status_connecting`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Povezivanje…" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbindet…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conectando…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conectando…" } }
+      }
+    },
+    "Pairing…" : {
+      "comment" : "In-flight pairing chip / button label. Maps to Android `pair_dialog_pairing` (Pairing in progress).",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Uparivanje…" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Koppelt…" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Emparejando…" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Appairage…" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Pareando…" } }
+      }
+    },
+    "Forget" : {
+      "comment" : "Per-row forget action. Maps to Android `action_forget_short`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Zaboravi" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Entfernen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Olvidar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Oublier" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Esquecer" } }
+      }
+    },
+    "Done" : {
+      "comment" : "Dismiss-the-sheet button. No direct Android equivalent — left for translators.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
+        "de" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
+        "es" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
+        "fr" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
+        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Done" } }
+      }
+    },
+    "Cancel" : {
+      "comment" : "Generic cancel action. Maps to Android `action_cancel`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Otkaži" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } }
+      }
+    },
+    "Pair" : {
+      "comment" : "Submit-pairing button in the PIN sheet. Maps to Android `pair_dialog_submit` (uppercase on Android but the case is a per-locale choice).",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Upari" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Koppeln" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Emparejar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Appairer" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Parear" } }
+      }
+    },
+    "PIN" : {
+      "comment" : "PIN field placeholder. Maps to Android `pair_dialog_pin_hint`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } }
+      }
+    },
+    "Settings" : {
+      "comment" : "Tooltip / title for the settings gear button + sheet. No direct Android equivalent — left for translators.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
+        "de" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
+        "es" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
+        "fr" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
+        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Settings" } }
+      }
+    },
+    "No connections yet" : {
+      "comment" : "Dashboard empty-state. Maps to Android `dashboard_connections_empty`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Još nema veza" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Noch keine Verbindungen" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aún no hay conexiones" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune connexion pour l'instant" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhuma conexão ainda" } }
+      }
+    },
+    "No controllers connected" : {
+      "comment" : "Slot list empty-state. Mac-specific copy — marked new.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
+        "de" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
+        "es" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
+        "fr" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
+        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } }
+      }
+    },
+    "Press Scan to look for servers on your LAN" : {
+      "comment" : "Connections sheet empty-state hint. Mac-specific copy.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
+        "de" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
+        "es" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
+        "fr" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
+        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } }
+      }
+    },
+    "Tap Manage to add one" : {
+      "comment" : "Dashboard summary hint when no connections exist. Maps to Android `status_tap_manage`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Dodirnite Upravljanje da dodate jednu" } },
+        "de" : { "stringUnit" : { "state" : "new", "value" : "Tap Manage to add one" } },
+        "es" : { "stringUnit" : { "state" : "new", "value" : "Tap Manage to add one" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez Gérer pour en ajouter une" } },
+        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Tap Manage to add one" } }
+      }
+    },
+    "Found" : {
+      "comment" : "LinkState chip — discovered but unpaired. Maps to Android `chip_status_found`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Pronađen" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gefunden" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Encontrado" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Trouvée" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encontrado" } }
+      }
+    },
+    "Needs pairing" : {
+      "comment" : "LinkState chip — server forgot us. Maps to Android `chip_status_needs_pairing`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Potrebno uparivanje" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kopplung nötig" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Emparejar" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Appairage requis" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Parear novamente" } }
+      }
+    },
+    "Offline" : {
+      "comment" : "LinkState chip — paired but not seen. Maps to Android `chip_status_offline`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Van veze" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Offline" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desconectado" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Hors ligne" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Off-line" } }
+      }
+    },
+    "Ready" : {
+      "comment" : "LinkState chip — paired and seen, no live session. Maps to Android `chip_status_ready`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Spreman" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereit" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Listo" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Prête" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Pronto" } }
+      }
+    },
+    "Online" : {
+      "comment" : "LinkState chip — live session. Maps to Android `chip_status_online`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Na vezi" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Online" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "En línea" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En ligne" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "On-line" } }
+      }
+    },
+    "Unsteady" : {
+      "comment" : "LinkState chip — live but faltering. Maps to Android `chip_status_unstable`.",
+      "localizations" : {
+        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Nestabilan" } },
+        "de" : { "stringUnit" : { "state" : "translated", "value" : "Instabil" } },
+        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inestable" } },
+        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Instable" } },
+        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Instável" } }
+      }
+    }
+  }
+}
