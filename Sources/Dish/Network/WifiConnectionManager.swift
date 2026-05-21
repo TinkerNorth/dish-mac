@@ -10,6 +10,22 @@ enum ConnectionEvent {
     case error(String)
 }
 
+/// Why a connect attempt was initiated. The same connect path is shared
+/// between three callers with very different user-feedback expectations:
+///
+/// - `userInitiated` — the user tapped Connect / a discovered row. Failures
+///   SHOULD surface a banner (the user just took an action that's about to
+///   silently fail otherwise).
+/// - `autoReconnect` — fired on app launch by `autoReconnectAll`. Failures
+///   MUST be silent: a banner on every cold start where a server is down
+///   would be pure noise.
+/// - `retryAfterDeath` — fired by the alive-poll's onDead path after a short
+///   backoff. Same silence policy as `autoReconnect`: the row chip's natural
+///   Connecting → Online / Saved transition is the only feedback the user
+///   needs. Ports `ConnectIntent.RETRY_AFTER_DEATH` from
+///   `SatelliteConnectionManager.kt`.
+enum ConnectIntent { case userInitiated, autoReconnect, retryAfterDeath }
+
 /// Owns the pool of live + remembered WiFi sessions. Each session runs its
 /// own native socket, heartbeat and ACK loop so multiple servers can be
 /// active in parallel. Mirrors `WifiConnectionManager.kt`.
@@ -126,7 +142,14 @@ final class WifiConnectionManager: ObservableObject {
 
     /// Idempotent: a second call while live/linking just refreshes the
     /// server record without restarting the handshake.
-    func connect(to server: DiscoveredServer) {
+    ///
+    /// `intent` decides whether downstream failures emit a user-visible
+    /// banner. The default `.userInitiated` matches the legacy behaviour
+    /// (callers like the Connect button); `autoReconnectAll` + the
+    /// alive-poll's silent retry pass `.autoReconnect` / `.retryAfterDeath`
+    /// so a server that's down on launch / silently drops a session doesn't
+    /// fire a banner the user didn't ask for.
+    func connect(to server: DiscoveredServer, intent: ConnectIntent = .userInitiated) {
         let id = WifiConnection.idFor(server)
         if let existing = connections[id] {
             if existing.state == .live || existing.state == .linking {
@@ -141,10 +164,14 @@ final class WifiConnectionManager: ObservableObject {
         }()
         conn.updateServer(server)
         conn.markConnecting()
-        Task { await pairAndConnect(conn: conn, server: server) }
+        Task { await pairAndConnect(conn: conn, server: server, intent: intent) }
     }
 
-    private func pairAndConnect(conn: WifiConnection, server: DiscoveredServer) async {
+    private func pairAndConnect(
+        conn: WifiConnection,
+        server: DiscoveredServer,
+        intent: ConnectIntent
+    ) async {
         let id = WifiConnection.idFor(server)
         // Auto-reconnect fast path: if we already have a shared key saved for
         // this server, skip the TCP pair handshake entirely and go straight
@@ -153,7 +180,7 @@ final class WifiConnectionManager: ObservableObject {
         // trapping the user behind a PIN prompt that can't be satisfied.
         // Mirrors dish-android PR #43.
         if let saved = store.sharedKey(for: id), saved.count == 64 {
-            await openSession(conn: conn, server: server)
+            await openSession(conn: conn, server: server, intent: intent)
             return
         }
         // Snapshot main-actor state so the detached task doesn't need to hop.
@@ -173,13 +200,33 @@ final class WifiConnectionManager: ObservableObject {
         switch PairingClient.classify(pair) {
         case let .success(sharedKey):
             store.setSharedKey(sharedKey, for: id)
-            await openSession(conn: conn, server: server)
+            await openSession(conn: conn, server: server, intent: intent)
         case .authRequired:
             conn.markDisconnected()
-            events.send(.pairingRequired(server))
+            // Only pop the PIN dialog if the user just tapped Connect. A
+            // background auto-reconnect that lands here means the server
+            // forgot our pairing; surface it silently — the row chip falls
+            // back to .saved / .ready and the next user-initiated tap will
+            // trigger the dialog cleanly.
+            if intent == .userInitiated {
+                events.send(.pairingRequired(server))
+            }
         case let .unreachable(msg):
             conn.markDisconnected()
-            events.send(.error("Server unreachable — has it moved networks? (\(msg))"))
+            emitErrorIfUserInitiated(
+                intent,
+                "Server unreachable — has it moved networks? (\(msg))"
+            )
+        }
+    }
+
+    /// Emit a `ConnectionEvent.error` only when the user has a recent mental
+    /// model for "I asked for this". Background auto-reconnects + silent
+    /// retries after a heartbeat death already have all the feedback the
+    /// user needs in the row chip; a banner on top would be noise.
+    private func emitErrorIfUserInitiated(_ intent: ConnectIntent, _ message: String) {
+        if intent == .userInitiated {
+            events.send(.error(message))
         }
     }
 
@@ -208,7 +255,7 @@ final class WifiConnectionManager: ObservableObject {
             switch PairingClient.classify(pair) {
             case let .success(sharedKey):
                 store.setSharedKey(sharedKey, for: id)
-                await openSession(conn: conn, server: server)
+                await openSession(conn: conn, server: server, intent: .userInitiated)
             case .authRequired:
                 conn.markDisconnected()
                 events.send(.error(pair.error ?? "Pairing failed"))
@@ -219,14 +266,18 @@ final class WifiConnectionManager: ObservableObject {
         }
     }
 
-    private func openSession(conn: WifiConnection, server: DiscoveredServer) async {
+    private func openSession(
+        conn: WifiConnection,
+        server: DiscoveredServer,
+        intent: ConnectIntent
+    ) async {
         let id = WifiConnection.idFor(server)
         guard let keyHex = store.sharedKey(for: id),
               keyHex.count == 64,
               let keyData = hexToBytes(keyHex), keyData.count == 32 else
         {
             conn.markDisconnected()
-            events.send(.error("No shared key — re-pair needed"))
+            emitErrorIfUserInitiated(intent, "No shared key — re-pair needed")
             return
         }
         let resp = await HTTPClient.connect(
@@ -239,7 +290,7 @@ final class WifiConnectionManager: ObservableObject {
               let tokenData = hexToBytes(tokenHex), tokenData.count == 4 else
         {
             conn.markDisconnected()
-            events.send(.error("Error: \(resp.error ?? "connection failed")"))
+            emitErrorIfUserInitiated(intent, "Error: \(resp.error ?? "connection failed")")
             return
         }
         let client = SatelliteClient()
@@ -250,9 +301,35 @@ final class WifiConnectionManager: ObservableObject {
         client.setConnectionParams(token: tokenData, key: keyData)
         store.remember(server)
         conn.markConnected(client: client, connectionId: connId) { [weak self] in
-            self?.disconnect(id: conn.id)
+            // Heartbeats stopped. The alive-poll already flipped the wire
+            // state to `.stale` before invoking us; tear down the dead
+            // session and kick a short-backoff silent reconnect attempt
+            // using the saved shared key. If the satellite is just
+            // momentarily unreachable (Wi-Fi roam, brief drop) the chip
+            // glides Online → Connecting… → Online without a banner. If
+            // the outage persists, the silent retry fails and the chip
+            // lands on `.saved` / `.ready` — still no banner, because the
+            // user didn't ask for this attempt. Ports
+            // `SatelliteConnectionManager.kt` AUTO_RETRY_BACKOFF_MS.
+            guard let self else { return }
+            let staleServer = server
+            self.disconnect(id: conn.id)
+            Task { [weak self] in
+                try? await Task.sleep(nanoseconds: Self.autoRetryBackoffNs)
+                guard let self else { return }
+                if self.connections[conn.id]?.state == .idle {
+                    self.connect(to: staleServer, intent: .retryAfterDeath)
+                }
+            }
         }
     }
+
+    /// Delay before the alive-poll's onDead path attempts a silent reconnect.
+    /// Short enough that a momentary Wi-Fi drop self-heals before the user
+    /// navigates away in frustration; long enough that a real outage doesn't
+    /// burn the satellite's TCP/UDP buffers with back-to-back retries. The
+    /// retry path uses `.retryAfterDeath` so it's silent on failure.
+    private static let autoRetryBackoffNs: UInt64 = 1_500_000_000
 
     func disconnect(id: String) {
         guard let conn = connections[id] else { return }
@@ -282,11 +359,16 @@ final class WifiConnectionManager: ObservableObject {
 
     /// Reconnect every remembered server that isn't already live. Safe to call
     /// on every app-foreground — all paths are idempotent.
+    ///
+    /// Passes `.autoReconnect` so a server that's down on cold start fails
+    /// silently (the row chip carries the feedback). A banner here would
+    /// fire on every launch where a remembered satellite is offline, which
+    /// is noise the user didn't ask for.
     func autoReconnectAll() {
         for remembered in store.remembered() {
             let existing = connections[remembered.id]
             if existing?.state != .live {
-                connect(to: remembered.toDiscovered())
+                connect(to: remembered.toDiscovered(), intent: .autoReconnect)
             }
         }
     }

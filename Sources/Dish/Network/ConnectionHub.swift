@@ -66,16 +66,20 @@ final class ConnectionHub: ObservableObject {
     /// - `.linking`   → `.connecting`
     /// - `.faltering` → `.unstable` (not yet reachable; native exposes only
     ///   the binary alive-poll boolean)
+    /// - `.stale`     → `.unstable` while the silent re-handshake is in
+    ///   flight — the row stays on the live-ish chip rather than flicking
+    ///   back to `.saved` between the heartbeat drop and the retry landing.
     /// - `.idle` / no session:
     ///     in discoveredIds     → `.ready`
     ///     not in discoveredIds → `.saved`
     ///
-    /// TODO(stale): a server-side forget should land us in `.stale`, but
-    /// detecting that requires the server to return a `PAIRING_UNKNOWN`
-    /// error so we can distinguish "peer forgot us" from a transient
-    /// unreachability. Until that protocol bit lands, a forgotten device
-    /// falls through to `.saved`/`.ready` and the user only sees connect
-    /// failures.
+    /// TODO(stale-marker): a server-side forget should also surface
+    /// `.stale` on the row chip ("Needs pairing") after a silent
+    /// auto-reconnect comes back with `authRequired`. That requires
+    /// tracking a per-server "stale" marker alongside the SessionState (the
+    /// Android equivalent is `staleSatelliteIds`); for now a forgotten
+    /// device falls back to `.saved`/`.ready` and only the next
+    /// user-initiated tap surfaces the PIN prompt.
     private func rebuild() {
         let pool = wifi.connections
         let remembered = Dictionary(uniqueKeysWithValues: store.remembered().map { ($0.id, $0) })
@@ -89,7 +93,7 @@ final class ConnectionHub: ObservableObject {
             let live: LinkState = switch conn?.state {
             case .live: .connected
             case .linking: .connecting
-            case .faltering: .unstable
+            case .faltering, .stale: .unstable
             default: discoveredIds.contains(id) ? .ready : .saved
             }
             let bound = bindings.first { $0.value == id }?.key

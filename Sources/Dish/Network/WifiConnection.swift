@@ -19,8 +19,14 @@ import Foundation
 ///   below the death threshold. UI chip: "Unsteady". **Not yet entered** —
 ///   reaching it requires the native side to expose the consecutive-missed
 ///   count separately from the binary alive-poll boolean. Today the
-///   alive-poll flips `live` → `idle` directly when misses hit the threshold.
-enum SessionState { case idle, linking, live, faltering }
+///   alive-poll flips `live` → `stale` directly when misses hit the threshold.
+/// - `stale` — heartbeats stopped arriving but we still hold a shared key.
+///   The manager attempts a silent re-handshake (no user-visible error)
+///   using the saved key; only if that fails does the chip fall back to a
+///   resting `.saved` / `.ready` and surface a banner if the retry was
+///   user-initiated. Ports the `RETRY_AFTER_DEATH` path from
+///   `dish-android/source/connection/SatelliteConnectionManager.kt`.
+enum SessionState { case idle, linking, live, faltering, stale }
 
 /// A single live or potential WiFi session to one Satellite server. Owns a
 /// `SatelliteClient` instance (the native UDP session) once `live`.
@@ -152,9 +158,20 @@ final class WifiConnection: ObservableObject, Identifiable {
                     // consecutive-missed-heartbeat count separately from the
                     // binary alive-poll, flip state = .faltering as misses
                     // cross 1 and only fall through to onDead() at the death
-                    // threshold. Today the alive-poll is a hard boolean, so
-                    // we go live → idle directly here.
-                    await MainActor.run { onDead() }
+                    // threshold. Today the alive-poll is a hard boolean.
+                    //
+                    // Heartbeats stopped: flip the wire-level state to .stale
+                    // *before* invoking onDead so the manager's silent-retry
+                    // path can tell "we were alive a moment ago" from a fresh
+                    // user-initiated reconnect. The chip stays on "Online" /
+                    // "Unsteady" through the silent retry — only if the retry
+                    // can't restore the session does it fall back to .saved /
+                    // .ready (and only emit a user-visible banner if the
+                    // attempt was user-initiated).
+                    await MainActor.run {
+                        if self.state == .live { self.state = .stale }
+                        onDead()
+                    }
                     return
                 }
             }
