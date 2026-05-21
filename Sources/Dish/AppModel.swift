@@ -35,8 +35,17 @@ final class AppModel: ObservableObject {
 
     /// Set when the server asks us to re-pair with a PIN. Bound to a sheet.
     @Published var pairingTarget: DiscoveredServer?
-    /// Transient error banner.
+    /// Transient error banner. Kept for the inline `ErrorBanner` strip on
+    /// the sheets that still render it; the notification queue
+    /// (`DishNotificationCenter`) is the additive replacement for any
+    /// top-level error surface.
     @Published var errorMessage: String?
+
+    /// Weak handle to the process-scoped `DishNotificationCenter` (injected
+    /// from `DishApp` once the SwiftUI environment is up). Optional because
+    /// `AppModel` is constructed before the SwiftUI scene exists; emitters
+    /// call through `routeNotification(_:)` which no-ops if unbound.
+    private weak var notifications: DishNotificationCenter?
 
     /// Thread-safe slotId → live `WifiConnection` table, read by the input
     /// processor's `reportSender` from the GC callback thread and written
@@ -146,16 +155,36 @@ final class AppModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Surface pairing + error events to the UI.
+        // Surface pairing + error events to the UI. Errors are routed
+        // through the notification queue (the additive replacement for
+        // the single inline ErrorBanner) and also mirrored into
+        // `errorMessage` so existing sheets that still embed an
+        // `ErrorBanner` keep working unchanged.
         wifi.events
             .sink { [weak self] ev in
                 guard let self else { return }
                 switch ev {
                 case let .pairingRequired(server): self.pairingTarget = server
-                case let .error(msg): self.errorMessage = msg
+                case let .error(msg):
+                    self.errorMessage = msg
+                    // Keyed on a stable string so multiple back-to-back
+                    // failures collapse into one banner rather than
+                    // stacking the same message six times.
+                    self.notifications?.error(
+                        title: msg,
+                        key: "wifi.error"
+                    )
                 }
             }
             .store(in: &cancellables)
+    }
+
+    /// Wire the SwiftUI-owned notification center back into the model so
+    /// `wifi.events` failures + future emit sites can post banners. Called
+    /// from `DishApp.onAppear`. Idempotent: re-binding a fresh center on a
+    /// scene rebuild simply replaces the prior weak reference.
+    func bindNotifications(_ center: DishNotificationCenter) {
+        self.notifications = center
     }
 
     private func rebuildSlots(
