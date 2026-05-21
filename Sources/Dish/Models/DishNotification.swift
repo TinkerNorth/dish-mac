@@ -70,9 +70,9 @@ struct DishNotification: Identifiable, Equatable {
     }
 
     /// Roughly Toast.LENGTH_SHORT equivalent — matches Android's 3.5 s.
-    static let durationShort = 3_500
+    static let durationShort = 3500
     /// Roughly Toast.LENGTH_LONG equivalent — matches Android's 6 s.
-    static let durationLong = 6_000
+    static let durationLong = 6000
     /// Stays up until `DishNotificationCenter.dismiss(id:)` or a same-key
     /// replacement.
     static let durationPersistent = 0

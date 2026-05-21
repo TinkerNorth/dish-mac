@@ -162,8 +162,8 @@ final class DishNotificationCenter: ObservableObject {
     /// opt-in by passing `durationPersistent` directly.
     private static func defaultDuration(for severity: DishNotification.Severity) -> Int {
         switch severity {
-        case .info, .success: return DishNotification.durationShort
-        case .warn, .error: return DishNotification.durationLong
+        case .info, .success: DishNotification.durationShort
+        case .warn, .error: DishNotification.durationLong
         }
     }
 
@@ -172,10 +172,10 @@ final class DishNotificationCenter: ObservableObject {
     /// crossed-circle.
     private static func defaultGlyph(for severity: DishNotification.Severity) -> String {
         switch severity {
-        case .info: return "info.circle.fill"
-        case .success: return "checkmark.circle.fill"
-        case .warn: return "exclamationmark.triangle.fill"
-        case .error: return "xmark.octagon.fill"
+        case .info: "info.circle.fill"
+        case .success: "checkmark.circle.fill"
+        case .warn: "exclamationmark.triangle.fill"
+        case .error: "xmark.octagon.fill"
         }
     }
 

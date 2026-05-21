@@ -106,10 +106,10 @@ struct NotificationToast: View {
 
     private var railColor: Color {
         switch notification.severity {
-        case .info: return DishTheme.primary
-        case .success: return DishTheme.success
-        case .warn: return DishTheme.warning
-        case .error: return DishTheme.error
+        case .info: DishTheme.primary
+        case .success: DishTheme.success
+        case .warn: DishTheme.warning
+        case .error: DishTheme.error
         }
     }
 }
