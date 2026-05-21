@@ -38,6 +38,19 @@ final class ConnectionHub: ObservableObject {
             .sink { [weak self] _ in self?.rebuild() }
             .store(in: &cancellables)
 
+        // The persistent "Needs pairing" set drives the `.stale` row chip;
+        // mutate-on-failed-silent-retry / clear-on-live-session changes
+        // happen on the manager and must trigger a summary rebuild. Mirrors
+        // dish-android's `combine(..., staleSatelliteIds, ...)`. `@Published`
+        // fires in `willSet` (before the mutation is visible), so defer one
+        // tick — same pattern as `subscribeToPool` — otherwise the rebuild
+        // sees the *prior* set value and the chip never flips.
+        wifi.$staleSatelliteIds
+            .sink { [weak self] _ in
+                DispatchQueue.main.async { self?.rebuild() }
+            }
+            .store(in: &cancellables)
+
         // Roll back local bindings when the server rejects a controller add.
         wifi.slotRegistrationFailed
             .sink { [weak self] slotId in self?.unbind(slotId: slotId) }
@@ -60,30 +73,34 @@ final class ConnectionHub: ObservableObject {
         rebuild()
     }
 
-    /// Derives `LinkState` from the wire-level `SessionState` plus whether
-    /// `id` is currently in the discovery set:
+    /// Derives `LinkState` from the wire-level `SessionState`, the persistent
+    /// `staleSatelliteIds` set, and whether `id` is currently in the
+    /// discovery set:
     /// - `.live`      → `.connected`
     /// - `.linking`   → `.connecting`
     /// - `.faltering` → `.unstable` (not yet reachable; native exposes only
     ///   the binary alive-poll boolean)
-    /// - `.stale`     → `.unstable` while the silent re-handshake is in
-    ///   flight — the row stays on the live-ish chip rather than flicking
+    /// - `SessionState.stale` → `.unstable` while the silent re-handshake is
+    ///   in flight — the row stays on the live-ish chip rather than flicking
     ///   back to `.saved` between the heartbeat drop and the retry landing.
     /// - `.idle` / no session:
-    ///     in discoveredIds     → `.ready`
-    ///     not in discoveredIds → `.saved`
+    ///     id in staleSatelliteIds → `.stale` ("Needs pairing"), so the row
+    ///       still tells the user that the next tap will prompt for a PIN
+    ///       rather than silently retrying the same broken handshake. This
+    ///       is the persistent counterpart to `SessionState.stale`'s
+    ///       transient one — it survives the `disconnect`+silent-retry tear
+    ///       down/rebuild cycle by living on `WifiConnectionManager` rather
+    ///       than the per-connection state machine.
+    ///     in discoveredIds        → `.ready`
+    ///     not in discoveredIds    → `.saved`
     ///
-    /// TODO(stale-marker): a server-side forget should also surface
-    /// `.stale` on the row chip ("Needs pairing") after a silent
-    /// auto-reconnect comes back with `authRequired`. That requires
-    /// tracking a per-server "stale" marker alongside the SessionState (the
-    /// Android equivalent is `staleSatelliteIds`); for now a forgotten
-    /// device falls back to `.saved`/`.ready` and only the next
-    /// user-initiated tap surfaces the PIN prompt.
+    /// Mirrors the Android `staleSatelliteIds` derivation in
+    /// `SatelliteConnectionManager.kt`.
     private func rebuild() {
         let pool = wifi.connections
         let remembered = Dictionary(uniqueKeysWithValues: store.remembered().map { ($0.id, $0) })
         let discoveredIds = Set(wifi.discoveredServers.map(\.id))
+        let staleIds = wifi.staleSatelliteIds
         let ids = Set(pool.keys).union(remembered.keys)
         var out: [ConnectionSummary] = []
         for id in ids {
@@ -94,7 +111,9 @@ final class ConnectionHub: ObservableObject {
             case .live: .connected
             case .linking: .connecting
             case .faltering, .stale: .unstable
-            default: discoveredIds.contains(id) ? .ready : .saved
+            default: staleIds.contains(id)
+                ? .stale
+                : (discoveredIds.contains(id) ? .ready : .saved)
             }
             let bound = bindings.first { $0.value == id }?.key
             let label = server.name.isEmpty ? server.ip : server.name

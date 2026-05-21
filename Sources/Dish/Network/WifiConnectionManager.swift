@@ -41,6 +41,21 @@ final class WifiConnectionManager: ObservableObject {
     /// True while any pooled connection is awaiting `MSG_CONTROLLER_ACK`.
     /// Aggregated from each `WifiConnection.isRegisteringController`.
     @Published private(set) var anyControllerRegistering = false
+    /// Persistent "Needs pairing" markers — the server has forgotten this
+    /// device's shared key (or we never opened a session with our stored one)
+    /// so the row chip needs to read `.stale` until a fresh user-initiated
+    /// pair re-establishes us, *not* fall back to `.saved` between the failed
+    /// silent retry and the next user tap. Set when an auto-reconnect /
+    /// retry-after-death lands on `authRequired`; cleared the moment a live
+    /// session is established (or the user forgets the satellite). Mirrors
+    /// `staleSatelliteIds` in `dish-android/SatelliteConnectionManager.kt`.
+    ///
+    /// Keyed by `DiscoveredServer.id` (the `wifi:<ip>:<port>` string the
+    /// rest of this layer already uses for `connections[...]` and the store)
+    /// — no separate typed `SatelliteId` exists on the Mac client, and
+    /// matching the connection-pool key avoids a parallel id space the UI
+    /// would have to reconcile.
+    @Published private(set) var staleSatelliteIds: Set<String> = []
     let events = PassthroughSubject<ConnectionEvent, Never>()
     /// Forwarded from per-connection `slotRegistrationFailed` so
     /// `ConnectionHub` can roll back the local binding when the server
@@ -86,6 +101,29 @@ final class WifiConnectionManager: ObservableObject {
 
     private func recomputeAnyRegistering() {
         anyControllerRegistering = connections.values.contains { $0.isRegisteringController }
+    }
+
+    // MARK: - Stale markers
+
+    /// Insert a satellite into the persistent "Needs pairing" set. Idempotent
+    /// (already-stale ids stay a single entry). `internal` rather than
+    /// `private` so the unit tests can pin the set-mutation contract without
+    /// having to drive a real pair handshake — same seam pattern the Android
+    /// equivalent (`markStale` in `SatelliteConnectionManager.kt`) uses for
+    /// its own tests.
+    func markStale(_ id: String) {
+        if !staleSatelliteIds.contains(id) {
+            staleSatelliteIds.insert(id)
+        }
+    }
+
+    /// Drop a satellite from the stale set. Idempotent — calling on an id
+    /// that wasn't stale is a no-op (the published value doesn't churn,
+    /// which keeps SwiftUI diffs cheap).
+    func clearStale(_ id: String) {
+        if staleSatelliteIds.contains(id) {
+            staleSatelliteIds.remove(id)
+        }
     }
 
     // MARK: - Discovery
@@ -205,11 +243,15 @@ final class WifiConnectionManager: ObservableObject {
             conn.markDisconnected()
             // Only pop the PIN dialog if the user just tapped Connect. A
             // background auto-reconnect that lands here means the server
-            // forgot our pairing; surface it silently — the row chip falls
-            // back to .saved / .ready and the next user-initiated tap will
-            // trigger the dialog cleanly.
+            // forgot our pairing; surface it silently — the row chip flips
+            // to `.stale` ("Needs pairing") via the persistent
+            // `staleSatelliteIds` set so the user knows the next tap will
+            // prompt for a fresh PIN, rather than the chip flicking back to
+            // `.saved` / `.ready` and hiding the broken pairing.
             if intent == .userInitiated {
                 events.send(.pairingRequired(server))
+            } else {
+                markStale(id)
             }
         case let .unreachable(msg):
             conn.markDisconnected()
@@ -277,6 +319,13 @@ final class WifiConnectionManager: ObservableObject {
               let keyData = hexToBytes(keyHex), keyData.count == 32 else
         {
             conn.markDisconnected()
+            // Silent retry / cold-launch reconnect with no usable key on
+            // disk: the only useful next step is a fresh user-initiated
+            // pair, so mark the row "Needs pairing" until that happens.
+            // User-initiated callers already get the explicit banner.
+            if intent != .userInitiated {
+                markStale(id)
+            }
             emitErrorIfUserInitiated(intent, "No shared key — re-pair needed")
             return
         }
@@ -300,6 +349,11 @@ final class WifiConnectionManager: ObservableObject {
         }
         client.setConnectionParams(token: tokenData, key: keyData)
         store.remember(server)
+        // Successful authenticated session: any "Needs pairing" marker we
+        // set on a prior failed silent retry no longer applies. Clearing
+        // here (rather than in the caller) covers all three intents —
+        // userInitiated, autoReconnect, retryAfterDeath — uniformly.
+        clearStale(id)
         conn.markConnected(client: client, connectionId: connId) { [weak self] in
             // Heartbeats stopped. The alive-poll already flipped the wire
             // state to `.stale` before invoking us; tear down the dead
@@ -354,6 +408,9 @@ final class WifiConnectionManager: ObservableObject {
         store.forget(id)
         connections.removeValue(forKey: id)
         perConnCancellables.removeValue(forKey: id)
+        // The satellite is gone from the saved list — any stale marker for
+        // it would dangle on a row that no longer exists.
+        clearStale(id)
         recomputeAnyRegistering()
     }
 
