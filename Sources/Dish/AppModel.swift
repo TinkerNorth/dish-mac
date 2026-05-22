@@ -80,6 +80,7 @@ final class AppModel: ObservableObject {
         installTouchpadSender()
         installRumbleHandlers()
         installLightbarHandlers()
+        installMotionStatusObservers()
         // Auto-reconnect every remembered server on launch.
         wifi.autoReconnectAll()
     }
@@ -91,6 +92,15 @@ final class AppModel: ObservableObject {
     private var rumbleWiredConnections = Set<String>()
     /// Same idempotent-install bookkeeping for the light-bar return path.
     private var lightbarWiredConnections = Set<String>()
+    /// Same idempotent-install bookkeeping for the motion-backend-status
+    /// observer. Distinct subscription set so a future `forget(id:)` only
+    /// has to tear down one closure per axis.
+    private var motionStatusWiredConnections = Set<String>()
+    /// Per-connection `motionBackendStatus` subscriptions — held here so
+    /// they survive pool churn (we re-install once per id and tear down
+    /// alongside the rumble / light bar wires when the connection is
+    /// forgotten).
+    private var motionStatusCancellables: [String: AnyCancellable] = [:]
 
     // MARK: - Wiring
 
@@ -131,26 +141,33 @@ final class AppModel: ObservableObject {
             }
             .store(in: &cancellables)
 
-        // Make sure every newly-pooled WifiConnection has its rumble + light
-        // bar handlers installed. The pool only grows during a session —
-        // `register` adds entries, `forget` removes — so we re-walk it on
-        // each pool change.
+        // Make sure every newly-pooled WifiConnection has its rumble +
+        // light bar handlers + motion-backend-status observer installed.
+        // The pool only grows during a session — `register` adds entries,
+        // `forget` removes — so we re-walk it on each pool change.
         wifi.$connections
             .sink { [weak self] _ in
                 self?.installRumbleHandlers()
                 self?.installLightbarHandlers()
+                self?.installMotionStatusObservers()
             }
             .store(in: &cancellables)
 
-        // Mirror every `FeatureSettings` change into the thread-safe gate.
-        // `objectWillChange` fires *before* the property mutates, so we hop
-        // one runloop tick — same deferral `ConnectionHub` uses for its
-        // per-connection `objectWillChange` subscriptions.
+        // Mirror every `FeatureSettings` change into the thread-safe gate
+        // and reconcile each live connection's advertised caps against the
+        // post-toggle truth (the motion bit is the only one currently
+        // wired through `MSG_CONTROLLER_CAPS_UPDATE`; the rumble / touchpad
+        // / lightbar gates live on the dish's own send path and don't
+        // affect what the receiver expects to receive). `objectWillChange`
+        // fires *before* the property mutates, so we hop one runloop tick
+        // — same deferral `ConnectionHub` uses for its per-connection
+        // `objectWillChange` subscriptions.
         settings.objectWillChange
             .sink { [weak self] _ in
                 DispatchQueue.main.async {
                     guard let self else { return }
                     self.gate.update(self.settings.flags)
+                    self.refreshAllAdvertisedCaps()
                 }
             }
             .store(in: &cancellables)
@@ -344,6 +361,75 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Subscribe to each pooled WifiConnection's `motionBackendStatus` and
+    /// surface a warning notification when the receiver tells us motion
+    /// bytes won't actually reach the virtual gamepad's IMU surface. Today
+    /// the only signal we can act on is `backendOk == false` — the
+    /// receiver's kernel rejected the per-serial IMU sink at plug-in time
+    /// (Linux uinput with a too-old kernel, missing `/dev/uinput`
+    /// permission, etc.). A satellite that simply doesn't support motion
+    /// for the chosen controller type (`sinkSupportedForType == false`) is
+    /// the normal Xbox / generic-HID case and not worth a notification.
+    ///
+    /// `nil` means either no registration has happened yet, or the
+    /// satellite is pre-extension (4-byte legacy ACK with no motion byte) —
+    /// in both cases the UI falls back to local hardware truth rather than
+    /// surfacing a misleading warning. `dish-mac` talking to a `macOS`
+    /// satellite never lights this up because the satellite returns
+    /// `ACK_ERR_BACKEND_UNAVAIL` long before computing motion flags — the
+    /// notification surface is meaningful only against Linux / Windows
+    /// receivers.
+    ///
+    /// Notification key includes the connection id so two different broken
+    /// satellites stack as two banners rather than collapsing into one,
+    /// and a re-bind on the same connection re-keys the same banner so it
+    /// doesn't pile up over time.
+    private func installMotionStatusObservers() {
+        for (id, conn) in wifi.connections {
+            if motionStatusWiredConnections.contains(id) { continue }
+            motionStatusWiredConnections.insert(id)
+            let cancellable = conn.$motionBackendStatus
+                .removeDuplicates()
+                .sink { [weak self] status in
+                    guard let self else { return }
+                    guard let status, !status.backendOk, status.sinkSupportedForType else {
+                        // Either pre-extension satellite, broken type
+                        // (Xbox on Linux — not a failure), or motion is
+                        // actually fine. Nothing to surface.
+                        return
+                    }
+                    let label = self.wifi.connections[id]?.server.name ?? id
+                    self.notifications?.warn(
+                        title: "Server can't deliver motion",
+                        body: "\(label) supports motion for this controller, but the "
+                            + "receiver couldn't create the IMU sink (kernel rejected the "
+                            + "per-serial motion node). Gyro forwarding will land nowhere.",
+                        key: "motion.backend.\(id)"
+                    )
+                }
+            motionStatusCancellables[id] = cancellable
+        }
+    }
+
+    /// Push a fresh capability word to every live connection so the
+    /// receiver's `Controller::caps` matches the post-toggle truth. Called
+    /// from the `FeatureSettings` observer after the toggle has settled.
+    ///
+    /// Idempotent: a connection whose toggle didn't change (or whose
+    /// `lastAdvertisedCaps` already matches) sends zero wire packets,
+    /// thanks to `WifiConnection.refreshCapsIfChanged`'s internal de-dup
+    /// — so an unrelated toggle (rumble / touchpad / lightbar) re-emitting
+    /// `objectWillChange` doesn't burn a UDP packet per tick. Mirrors
+    /// `dish-android`'s `SatelliteConnection.refreshCapsIfChanged`
+    /// reconciliation step in `SatelliteConnectionManager`'s composer
+    /// subscription.
+    private func refreshAllAdvertisedCaps() {
+        let motionEnabled = settings.motionEnabled
+        for (_, conn) in wifi.connections {
+            conn.refreshCapsIfChanged(motionEnabled: motionEnabled)
+        }
+    }
+
     /// Wire battery snapshots. This callback runs on the main actor (the
     /// GCDeviceBattery polling timer is scheduled on `.main`), so the lookup
     /// is safe but the send itself is `nonisolated` so the lock-free hot path
@@ -387,12 +473,20 @@ final class AppModel: ObservableObject {
         // from its detected capabilities, so `WifiConnection` can advertise
         // CAP_MOTION / CAP_LIGHTBAR in MSG_CONTROLLER_ADD. Both default to
         // false for an unknown slot id.
+        // `motionEnabled` is the user's live toggle — folded into the
+        // CAP_MOTION advertisement so we never tell the receiver we're
+        // about to stream motion while the toggle is off (the receiver
+        // would otherwise wait for samples that never arrive). When the
+        // toggle flips after this bind, `installCapsRefresher` pushes a
+        // `MSG_CONTROLLER_CAPS_UPDATE` (0x000E) to keep the receiver in
+        // sync without unplugging the virtual controller.
         let caps = slots.first { $0.id == slotId }?.capabilities
         hub.bind(
             slotId: slotId,
             connectionId: connectionId,
             hasMotion: caps?.hasMotion ?? false,
-            hasLight: caps?.hasLightbar ?? false
+            hasLight: caps?.hasLightbar ?? false,
+            motionEnabled: settings.motionEnabled
         )
     }
 

@@ -33,6 +33,67 @@ final class SatelliteClient {
     private static let msgBattery: UInt16 = 0x000B
     private static let msgTouchpad: UInt16 = 0x000C
     static let msgLightbar: UInt16 = 0x000D
+    /// Mid-session capability update for an already-registered controller.
+    /// Same payload shape as the caps field of `MSG_CONTROLLER_ADD` —
+    /// `ctrlIdx(1) + caps(2 BE) = 3 bytes`. Sent when the user's
+    /// motion-forwarding toggle flips after registration, so the receiver's
+    /// `Controller::caps` matches what the dish is willing to stream
+    /// without unplugging the virtual device. A pre-extension satellite
+    /// drops the packet silently in `inner_dispatch.cpp` (the runtime
+    /// listener gate on the dish is the load-bearing correctness path —
+    /// dropping the wire update only costs the receiver's dashboard
+    /// staleness, not real bytes-on-the-wire honesty).
+    static let msgControllerCapsUpdate: UInt16 = 0x000E
+
+    // MARK: - Motion-flag bits on MSG_CONTROLLER_ACK (post-extension satellites)
+
+    /// Optional 5th byte of the `MSG_CONTROLLER_ACK` payload. Bit 0
+    /// (`ACK_MOTION_FLAG_SINK_SUPPORTED_FOR_TYPE`) — receiver's backend has
+    /// an IMU surface for the slot's chosen controller type. Universal
+    /// across shipping backends: PlayStation = yes; Xbox / generic = no;
+    /// macOS receiver returns false because there's no IMU backend. Bit 1
+    /// (`ACK_MOTION_FLAG_BACKEND_OK`) — receiver's backend successfully
+    /// created the per-serial IMU sink at plug-in time. False distinguishes
+    /// "kernel rejected the motion node" from "no game has subscribed yet"
+    /// — the former is a real failure the dish surfaces to the user, the
+    /// latter is normal. Pinned to the wire values shared with
+    /// `satellite/src/core/types.h::ACK_MOTION_FLAG_*` and
+    /// `dish-android`'s `SatelliteMotionBackendStatus`.
+    static let ackMotionFlagSinkSupportedForType: UInt8 = 0x01
+    static let ackMotionFlagBackendOk: UInt8 = 0x02
+
+    /// Decoded receiver-side motion-backend truth from the post-extension
+    /// `MSG_CONTROLLER_ACK` motion-flags byte. Surfaced so the user can tell
+    /// "motion is streaming and the host can land it" apart from "motion is
+    /// streaming but the receiver's kernel rejected the IMU node". A
+    /// pre-extension satellite (4-byte ACK payload, no motion byte) is
+    /// represented by an *absent* status — the model treats unknown as
+    /// "fall back to local hardware truth," not "broken."
+    struct MotionBackendStatus: Equatable {
+        /// Bit 0 — receiver's backend supports IMU for the slot's chosen type.
+        let sinkSupportedForType: Bool
+        /// Bit 1 — receiver's backend created the per-serial IMU sink.
+        let backendOk: Bool
+        /// True iff motion bytes will actually reach the virtual gamepad's
+        /// IMU surface on the receiver. False ⇒ surface a warning rather
+        /// than the cheerful "Motion: on" the local toggle would suggest.
+        var effective: Bool {
+            sinkSupportedForType && backendOk
+        }
+
+        /// Decode the packed motion-flags byte from the 5th byte of the
+        /// `MSG_CONTROLLER_ACK` payload. Caller short-circuits on the
+        /// "no extended ACK seen / pre-extension satellite" sentinel
+        /// (`lastControllerAckMotionFlags == -1`) and only calls this for
+        /// `0..255`. Pure + static so it can be exercised by unit tests
+        /// without a live socket — same seam as `parseRumblePayload`.
+        static func fromFlags(_ flags: UInt8) -> MotionBackendStatus {
+            MotionBackendStatus(
+                sinkSupportedForType: (flags & ackMotionFlagSinkSupportedForType) != 0,
+                backendOk: (flags & ackMotionFlagBackendOk) != 0
+            )
+        }
+    }
 
     /// Battery status enum on the wire — must match satellite/src/core/types.h
     /// (`BATTERY_STATUS_*`). Values are stable across platforms.
@@ -82,6 +143,20 @@ final class SatelliteClient {
     let connectionAlive = AtomicBool(true)
     /// Latest controller ACK packed as (requestType<<16)|(idx<<8)|result, or -1.
     var lastControllerAck: Int32 = -1
+    /// Latest motion-flags byte from the optional 5th byte of a
+    /// `MSG_CONTROLLER_ACK` payload, or `-1` if no extended ACK has been
+    /// observed for this session. Sentinel `-1` collapses to "unknown" on
+    /// the dish side rather than treating either bit as false — a
+    /// pre-extension satellite always leaves this at `-1`, and silently
+    /// reading "kernel rejected" out of an absent byte would permanently
+    /// disable the motion pill against an old satellite. Reset alongside
+    /// `lastControllerAck` so a fresh registration cannot read its
+    /// predecessor's flags. Atomicity guarantee: written from the
+    /// `ackQueue` receive thread, read from the main actor in
+    /// `WifiConnection.registerController` once the ACK has landed — the
+    /// happens-before is the same `Int32` write that `lastControllerAck`
+    /// uses, so the pair is sequentially consistent on the reader side.
+    var lastControllerAckMotionFlags: Int32 = -1
     var vigemAvailable: Int8 = -1
     var activeControllerCount: Int8 = -1
 
@@ -173,6 +248,7 @@ final class SatelliteClient {
         missedAcks.set(0)
         connectionAlive.set(true)
         lastControllerAck = -1
+        lastControllerAckMotionFlags = -1
     }
 
     // MARK: - Encrypted send (hot path)
@@ -238,6 +314,30 @@ final class SatelliteClient {
 
     func resetControllerAck() {
         lastControllerAck = -1
+        // Reset the motion-flags shadow too so a new registration doesn't
+        // read the previous slot's flags. Kept atomic-paired with
+        // `lastControllerAck` (same reset point) — divergence would mean a
+        // freshly-reset slot could spuriously read its predecessor's
+        // "kernel rejected" flag. Mirrors `satellite_jni.cpp`'s
+        // `resetControllerAck`.
+        lastControllerAckMotionFlags = -1
+    }
+
+    /// Mid-session capability update — same payload shape as the caps field
+    /// of `controllerAdd` (`ctrlIdx(1) + caps(2 BE)` = 3 bytes), routed
+    /// through `MSG_CONTROLLER_CAPS_UPDATE` (0x000E) instead of an ADD. The
+    /// receiver overwrites `Controller::caps` in place and re-derives
+    /// `motionCapable()` / `lightbarCapable()` from the new word; no
+    /// replug, no fresh ACK round-trip, no controller flicker. A
+    /// pre-extension satellite drops the packet silently — the dish-side
+    /// `WifiConnection.refreshCapsIfChanged` runtime gate stays the
+    /// load-bearing correctness path, so dropping the wire update only
+    /// costs receiver dashboard staleness.
+    func controllerCapsUpdate(index: Int, capabilities: UInt16) {
+        var payload = [UInt8](repeating: 0, count: 3)
+        payload[0] = UInt8(truncatingIfNeeded: index)
+        putBE16(capabilities, into: &payload, at: 1)
+        sendEncrypted(msgType: Self.msgControllerCapsUpdate, payload: payload)
     }
 
     // MARK: - Motion (IMU)

@@ -74,6 +74,36 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// capability word as `CAP_MOTION` — a pad with no IMU must not advertise
     /// that it streams motion.
     private var pendingHasMotion = false
+    /// Snapshot of the user's `FeatureSettings.motionEnabled` toggle at
+    /// bind time. The honest CAP_MOTION advertisement is
+    /// `hasMotion && motionEnabled`: a pad with an IMU whose owner has
+    /// switched motion forwarding off must not advertise that it streams
+    /// motion (the receiver would otherwise wait for samples that never
+    /// arrive). When the toggle flips after registration,
+    /// `refreshCapsIfChanged(motionEnabled:)` pushes a
+    /// `MSG_CONTROLLER_CAPS_UPDATE` so the receiver's cap word matches.
+    private var pendingMotionEnabled = true
+    /// Most recent capability word the dish has told the satellite about
+    /// for this connection — either via the original `MSG_CONTROLLER_ADD`
+    /// or a subsequent `MSG_CONTROLLER_CAPS_UPDATE` (0x000E).
+    /// `refreshCapsIfChanged(motionEnabled:)` uses this to de-dup
+    /// composer-style emissions that don't actually change the wire word,
+    /// so a churning settings sink (e.g. an unrelated toggle re-emitting
+    /// `objectWillChange`) doesn't burn a UDP packet per tick. `nil` means
+    /// "no registration has happened yet" — there's nothing to refresh
+    /// against; the next `registerController` will pick up the fresh caps.
+    /// Mirrors `SlotBinding.lastAdvertisedCaps` in `dish-android`.
+    @Published private(set) var lastAdvertisedCaps: UInt16?
+    /// Receiver-side motion-backend truth from the optional 5th byte of the
+    /// last `MSG_CONTROLLER_ACK`. `nil` means either no registration has
+    /// happened yet, or the satellite is a pre-extension build that only
+    /// sent the legacy 4-byte ACK payload — both collapse to "unknown" so
+    /// callers fall back to local hardware truth rather than reading the
+    /// missing byte as "backend broken." Surfaced to the UI / notification
+    /// layer so a user with motion on a controller whose receiver kernel
+    /// rejected the IMU node sees a real reason rather than a cheerful
+    /// "Motion: on" pill while motion bytes silently land nowhere.
+    @Published private(set) var motionBackendStatus: SatelliteClient.MotionBackendStatus?
 
     /// Set once during composition; re-applied to each fresh `SatelliteClient`
     /// in `markConnected` so we don't lose rumble across reconnects. The
@@ -102,14 +132,25 @@ final class WifiConnection: ObservableObject, Identifiable {
     private nonisolated static let ackWaitIntervalMs: UInt64 = 100
 
     /// The `MSG_CONTROLLER_ADD` capability word for a controller: the fixed
-    /// `defaultCaps` bits with `CAP_MOTION` / `CAP_LIGHTBAR` OR'd in only when
-    /// the bound physical controller actually exposes an IMU / an addressable
-    /// RGB light. `internal` (not `private`) so the per-controller cap
-    /// computation can be unit-tested without standing up a live session —
-    /// the same seam pattern as `SatelliteClient.parseRumblePayload`.
-    nonisolated static func capabilityWord(hasMotion: Bool, hasLight: Bool) -> UInt16 {
+    /// `defaultCaps` bits with `CAP_LIGHTBAR` OR'd in only when the bound
+    /// physical controller actually exposes an addressable RGB light, and
+    /// `CAP_MOTION` OR'd in only when the controller exposes an IMU **and**
+    /// the user's motion-forwarding toggle is on. The toggle is part of the
+    /// derivation because the dish that advertises CAP_MOTION but never
+    /// emits `MSG_MOTION` is dishonest about what it's willing to stream —
+    /// the receiver would wait for samples that never arrive. Mirrors
+    /// `MotionCapabilityComposer.toCapBits` on `dish-android`.
+    ///
+    /// `internal` (not `private`) so the per-controller cap computation can
+    /// be unit-tested without standing up a live session — the same seam
+    /// pattern as `SatelliteClient.parseRumblePayload`.
+    nonisolated static func capabilityWord(
+        hasMotion: Bool,
+        hasLight: Bool,
+        motionEnabled: Bool = true
+    ) -> UInt16 {
         var word = defaultCaps
-        if hasMotion { word |= capMotion }
+        if hasMotion, motionEnabled { word |= capMotion }
         if hasLight { word |= capLightbar }
         return word
     }
@@ -197,6 +238,11 @@ final class WifiConnection: ObservableObject, Identifiable {
         clientRef.set(nil)
         connectionId = nil
         controllerAdded = false
+        // Receiver-side facts (advertised caps + motion-backend status) are
+        // bound to the live session; a fresh session must compute them
+        // anew rather than reading the previous handshake's truth.
+        lastAdvertisedCaps = nil
+        motionBackendStatus = nil
         state = .idle
     }
 
@@ -206,12 +252,14 @@ final class WifiConnection: ObservableObject, Identifiable {
         _ slotId: String,
         controllerType: Int,
         hasMotion: Bool,
-        hasLight: Bool
+        hasLight: Bool,
+        motionEnabled: Bool
     ) async {
         boundSlotId = slotId
         pendingControllerType = controllerType
         pendingHasMotion = hasMotion
         pendingHasLight = hasLight
+        pendingMotionEnabled = motionEnabled
         if state == .live, !controllerAdded {
             await registerController(type: controllerType)
         }
@@ -227,6 +275,14 @@ final class WifiConnection: ObservableObject, Identifiable {
             live.controllerRemove(index: Self.defaultCtrlIndex)
         }
         controllerAdded = false
+        // Drop the cached per-slot caps + receiver-side motion truth — the
+        // next attach for this slot writes a fresh status, and leaving
+        // stale data here would mislead the notification surface in the
+        // meantime. Mirrors `dish-android`'s
+        // `SatelliteMotionBackendStatusStore.clear(connectionId, slotId)`
+        // call from `SatelliteConnection.detachSlot`.
+        lastAdvertisedCaps = nil
+        motionBackendStatus = nil
     }
 
     private func registerController(type: Int) async {
@@ -234,14 +290,20 @@ final class WifiConnection: ObservableObject, Identifiable {
         let slotId = boundSlotId
         live.resetControllerAck()
         // Capability word is per-controller: the fixed analog/rumble bits,
-        // plus CAP_MOTION only when the bound pad has an IMU and CAP_LIGHTBAR
-        // only when it has an addressable RGB light.
+        // plus CAP_LIGHTBAR only when the bound pad has an addressable RGB
+        // light, and CAP_MOTION only when the pad has an IMU **and** the
+        // user's motion-forwarding toggle is on. Advertising CAP_MOTION
+        // while motion is toggled off would be dishonest — the receiver
+        // would wait for samples that never arrive — so the cap word
+        // tracks the dish's actual willingness to stream.
+        let caps = Self.capabilityWord(
+            hasMotion: pendingHasMotion,
+            hasLight: pendingHasLight,
+            motionEnabled: pendingMotionEnabled
+        )
         live.controllerAdd(
             index: Self.defaultCtrlIndex,
-            capabilities: Self.capabilityWord(
-                hasMotion: pendingHasMotion,
-                hasLight: pendingHasLight
-            )
+            capabilities: caps
         )
         isRegisteringController = true
         defer { isRegisteringController = false }
@@ -261,10 +323,70 @@ final class WifiConnection: ObservableObject, Identifiable {
         if result == 0x00 /* ACK_OK */ {
             live.sendControllerType(index: Self.defaultCtrlIndex, type: type)
             controllerAdded = true
+            // Record what we just advertised so a later
+            // `refreshCapsIfChanged(motionEnabled:)` can de-dup
+            // unchanged-toggle emissions. Must happen after the ACK has
+            // landed (the receiver's `Controller::caps` now matches this
+            // word); writing it before would let a toggle flip *during*
+            // the ACK wait sneak in a duplicate update.
+            lastAdvertisedCaps = caps
+            // Capture the optional motion-flags byte the satellite
+            // appended to the ACK. A pre-extension satellite leaves
+            // `lastControllerAckMotionFlags == -1` here — leave
+            // `motionBackendStatus = nil` so the UI falls back to local
+            // hardware truth rather than treating absent flags as
+            // "permanently broken." A `dish-mac` talking to a `macOS`
+            // satellite never reaches this branch (the satellite returns
+            // `ACK_ERR_BACKEND_UNAVAIL` before computing motion flags);
+            // that's expected.
+            let flagsRaw = live.lastControllerAckMotionFlags
+            if flagsRaw >= 0 {
+                motionBackendStatus = SatelliteClient.MotionBackendStatus.fromFlags(
+                    UInt8(truncatingIfNeeded: flagsRaw)
+                )
+            } else {
+                motionBackendStatus = nil
+            }
         } else {
             errorMessages.send(Self.controllerAckErrorMessage(result))
             if let slotId { slotRegistrationFailed.send(slotId) }
         }
+    }
+
+    /// Push a fresh capability word to the satellite if the user's motion
+    /// toggle has flipped since registration. The new caps are computed
+    /// from the same `hasMotion` / `hasLight` snapshot captured at bind
+    /// time, with the runtime `motionEnabled` argument folded in — so the
+    /// receiver's `Controller::caps` always matches what the dish is
+    /// willing to stream right now.
+    ///
+    /// Idempotent: calling with the same `motionEnabled` value twice
+    /// results in zero wire packets because `lastAdvertisedCaps` already
+    /// equals the recomputed word. The pendingMotionEnabled mirror is
+    /// updated so a later re-registration (e.g. after a stale-session
+    /// reconnect) picks up the post-toggle truth via the same
+    /// `capabilityWord` derivation.
+    ///
+    /// Wire shape: `MSG_CONTROLLER_CAPS_UPDATE` (0x000E), payload
+    /// `ctrlIdx(1) + caps(2 BE)` — see `SatelliteClient.controllerCapsUpdate`.
+    /// A pre-extension satellite drops the packet silently in
+    /// `inner_dispatch.cpp`; the dish-side `motionEnabled` gate on the
+    /// motion sender is the load-bearing correctness path, so the wire
+    /// update is purely a receiver-dashboard freshener.
+    func refreshCapsIfChanged(motionEnabled: Bool) {
+        pendingMotionEnabled = motionEnabled
+        guard controllerAdded, let live = clientRef.get() else { return }
+        let newCaps = Self.capabilityWord(
+            hasMotion: pendingHasMotion,
+            hasLight: pendingHasLight,
+            motionEnabled: motionEnabled
+        )
+        if lastAdvertisedCaps == newCaps { return }
+        live.controllerCapsUpdate(
+            index: Self.defaultCtrlIndex,
+            capabilities: newCaps
+        )
+        lastAdvertisedCaps = newCaps
     }
 
     /// Maps the `MSG_CONTROLLER_ACK` result byte to a human-readable string.

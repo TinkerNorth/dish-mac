@@ -4,11 +4,19 @@
 import CryptoKit
 import Darwin
 import Foundation
+import os
 
 /// Encrypt + sendto, heartbeat loop, and ACK receive loop. Factored out of
 /// the main `SatelliteClient` class for readability only — all state still
 /// lives in the single session instance.
 extension SatelliteClient {
+
+    /// Per-session log channel. The ACK receive loop logs at `info` so a
+    /// failure to land motion bytes ("backend_ok=false") is visible in
+    /// Console.app and `log stream` without bumping every other dispatch
+    /// up to debug. Matches the `satellite_jni.cpp` LOGI convention so the
+    /// two clients read the same in the field.
+    static let receiveLog = Logger(subsystem: "com.tinkernorth.dish", category: "satellite.receive")
 
     // MARK: - Encrypt + sendto
 
@@ -168,6 +176,38 @@ extension SatelliteClient {
             let idx = plain[6]
             let result = plain[7]
             lastControllerAck = (Int32(reqType) << 16) | (Int32(idx) << 8) | Int32(result)
+            // Optional motion-status byte (post-extension satellites). A
+            // pre-extension satellite sends only 4 bytes (msgLen == 4) and
+            // the extra byte is absent — leave the stored flags at -1 so
+            // the dish treats the status as "unknown" rather than
+            // misreading the missing byte as "backend broken." A
+            // post-extension satellite always sends the byte (zero or
+            // not), so `msgLen >= 5 && plain.count >= 9` is the live-data
+            // branch. macOS satellites return `ACK_ERR_BACKEND_UNAVAIL`
+            // before they get to the motion-flags computation, so a
+            // dish-mac talking to a macOS satellite never sees this
+            // branch fire — that's expected; test against Linux/Windows
+            // satellites. Mirrors `satellite_jni.cpp`'s ACK branch and
+            // `dish-android`'s `SatelliteMotionBackendStatus`.
+            if msgLen >= 5, plain.count >= 9 {
+                let flags = plain[8]
+                lastControllerAckMotionFlags = Int32(flags)
+                let status = SatelliteClient.MotionBackendStatus.fromFlags(flags)
+                SatelliteClient.receiveLog.info("""
+                controller ACK: reqType=0x\(String(reqType, radix: 16), privacy: .public) \
+                idx=\(idx, privacy: .public) \
+                result=0x\(String(result, radix: 16), privacy: .public) \
+                motion=0x\(String(flags, radix: 16), privacy: .public) \
+                (sinkSupportedForType=\(status.sinkSupportedForType, privacy: .public) \
+                backendOk=\(status.backendOk, privacy: .public))
+                """)
+            } else {
+                SatelliteClient.receiveLog.info("""
+                controller ACK: reqType=0x\(String(reqType, radix: 16), privacy: .public) \
+                idx=\(idx, privacy: .public) \
+                result=0x\(String(result, radix: 16), privacy: .public) (legacy)
+                """)
+            }
         } else if msgType == 0x0007, msgLen >= 2, plain.count >= 6 {
             vigemAvailable = Int8(plain[4] == 0 ? 0 : 1)
             activeControllerCount = Int8(bitPattern: plain[5])

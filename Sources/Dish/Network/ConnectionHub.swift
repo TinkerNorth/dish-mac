@@ -137,10 +137,20 @@ final class ConnectionHub: ObservableObject {
     /// `hasMotion` / `hasLight` report whether the bound physical controller
     /// exposes a `GCMotion` IMU / an addressable RGB light; they are forwarded
     /// into the `MSG_CONTROLLER_ADD` capability word as `CAP_MOTION` /
-    /// `CAP_LIGHTBAR`. The caller (`AppModel`) resolves them from the slot's
-    /// detected `ControllerCapabilities` — `ConnectionHub` has no controller
-    /// handle of its own.
-    func bind(slotId: String, connectionId: String, hasMotion: Bool, hasLight: Bool) {
+    /// `CAP_LIGHTBAR`. `motionEnabled` is the user's current
+    /// `FeatureSettings.motionEnabled` snapshot — folded into CAP_MOTION at
+    /// the same registration step so we never advertise we're going to
+    /// stream motion while the toggle is off. The caller (`AppModel`)
+    /// resolves all three from the slot's detected `ControllerCapabilities`
+    /// and the live settings — `ConnectionHub` has no controller handle or
+    /// settings reference of its own.
+    func bind(
+        slotId: String,
+        connectionId: String,
+        hasMotion: Bool,
+        hasLight: Bool,
+        motionEnabled: Bool
+    ) {
         var current = bindings
         if let priorSlot = current.first(where: { $0.value == connectionId })?.key,
            priorSlot != slotId
@@ -157,7 +167,8 @@ final class ConnectionHub: ObservableObject {
                     slotId,
                     controllerType: 0,
                     hasMotion: hasMotion,
-                    hasLight: hasLight
+                    hasLight: hasLight,
+                    motionEnabled: motionEnabled
                 )
             }
         }
