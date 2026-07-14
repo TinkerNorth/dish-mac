@@ -6,9 +6,9 @@ name: CodeQL
 # build` against the autobuild detector.
 #
 # Pin map (verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`):
-#   actions/checkout         @ v4.2.2  → 11bd71901bbe5b1630ceea73d27597364c9af683
+#   actions/checkout         @ v6.0.2  → de0fac2e4500dabe0009e67214ff5f5447ce83dd
 #   actions/cache            @ v5.0.5  → 27d5ce7f107fe9357f9df03efb73ab90386fccae
-#   github/codeql-action/*   @ v3.27.0 → 662472033e021d55d94146f66f6058822b0b39fd
+#   github/codeql-action/*   @ v4.35.5 → 9e0d7b8d25671d64c341c19c0152d693099fb5ba
 
 on:
   push:
