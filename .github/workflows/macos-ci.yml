@@ -1,9 +1,9 @@
 name: macOS CI
 
 # Pin map (verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`):
-#   actions/checkout         @ v4.2.2 → 11bd71901bbe5b1630ceea73d27597364c9af683
+#   actions/checkout         @ v6.0.2 → de0fac2e4500dabe0009e67214ff5f5447ce83dd
 #   actions/cache            @ v5.0.5 → 27d5ce7f107fe9357f9df03efb73ab90386fccae
-#   actions/upload-artifact  @ v4.4.3 → b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882
+#   actions/upload-artifact  @ v7.0.1 → 043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
 
 on:
   push:
