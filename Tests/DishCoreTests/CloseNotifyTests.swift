@@ -5,8 +5,8 @@
 // values themselves (contract §UDP messages / §Session-close notify). Ports
 // dish-linux test_close_notify.cpp.
 
-import XCTest
 import DishCore
+import XCTest
 
 final class CloseNotifyTests: XCTestCase {
 

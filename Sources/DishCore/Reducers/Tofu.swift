@@ -46,11 +46,11 @@ public func sha256FingerprintHex(_ der: Data) -> String {
 /// ASCII-only case-insensitive equality (no locale dependence — hex digits
 /// and ASCII ids only on this path). Byte-count inequality is an immediate
 /// mismatch, exactly like the C++ port.
-func equalsIgnoreCaseASCII(_ a: String, _ b: String) -> Bool {
-    let aBytes = Array(a.utf8)
-    let bBytes = Array(b.utf8)
-    guard aBytes.count == bBytes.count else { return false }
-    for (x, y) in zip(aBytes, bBytes) where lowerASCII(x) != lowerASCII(y) {
+func equalsIgnoreCaseASCII(_ lhs: String, _ rhs: String) -> Bool {
+    let lhsBytes = Array(lhs.utf8)
+    let rhsBytes = Array(rhs.utf8)
+    guard lhsBytes.count == rhsBytes.count else { return false }
+    for (x, y) in zip(lhsBytes, rhsBytes) where lowerASCII(x) != lowerASCII(y) {
         return false
     }
     return true

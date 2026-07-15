@@ -6,8 +6,8 @@
 // 409, retryable transport failure / 503 / 5xx. Ports the dish-linux
 // Network/RestOutcome.h semantics (dish-windows reducer test port).
 
-import XCTest
 import DishCore
+import XCTest
 
 final class RestOutcomeTests: XCTestCase {
 

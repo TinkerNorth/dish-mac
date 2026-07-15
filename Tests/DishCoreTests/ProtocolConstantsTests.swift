@@ -6,8 +6,8 @@
 // The deleted topology opcodes 0x0004–0x0008 / 0x000E have NO constant — a
 // stray reference fails to compile, which is the point.
 
-import XCTest
 import DishCore
+import XCTest
 
 final class ProtocolConstantsTests: XCTestCase {
 

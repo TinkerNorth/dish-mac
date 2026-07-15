@@ -8,8 +8,8 @@
 // dish-windows test_session_crypto.cpp, dish-android SessionCryptoTest.
 
 import CryptoKit
-import XCTest
 import DishCore
+import XCTest
 
 final class SessionCryptoVectorTests: XCTestCase {
 

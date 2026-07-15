@@ -136,10 +136,10 @@ public enum SessionCrypto {
     /// Constant-time byte comparison (libsodium `sodium_memcmp` analogue) for
     /// secret material the type system doesn't already guard. Length mismatch
     /// returns false immediately — lengths are not secret here.
-    public static func constantTimeEquals(_ a: Data, _ b: Data) -> Bool {
-        guard a.count == b.count else { return false }
+    public static func constantTimeEquals(_ lhs: Data, _ rhs: Data) -> Bool {
+        guard lhs.count == rhs.count else { return false }
         var acc: UInt8 = 0
-        for (left, right) in zip(a, b) {
+        for (left, right) in zip(lhs, rhs) {
             acc |= left ^ right
         }
         return acc == 0

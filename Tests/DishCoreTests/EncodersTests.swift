@@ -7,8 +7,8 @@
 // touchpad layout with the trailing eventTimeMs u32 LE @ offset 12 is the
 // protocol-1 shape the server requires (legacy 12-byte bodies are dropped).
 
-import XCTest
 import DishCore
+import XCTest
 
 final class EncodersTests: XCTestCase {
 
@@ -92,8 +92,14 @@ final class EncodersTests: XCTestCase {
     func testTouchpadPayloadPinsTheSixteenByteLayoutWithTrailingEventTime() {
         let payload = Encoders.touchpadPayload(
             controllerIndex: 5,
-            finger0Active: true, finger0Id: 7, finger0X: 0x1234, finger0Y: -2,
-            finger1Active: false, finger1Id: 9, finger1X: 100, finger1Y: -100,
+            finger0Active: true,
+            finger0Id: 7,
+            finger0X: 0x1234,
+            finger0Y: -2,
+            finger1Active: false,
+            finger1Id: 9,
+            finger1X: 100,
+            finger1Y: -100,
             buttonPressed: true,
             eventTimeMs: 0x0102_0304
         )
@@ -119,8 +125,14 @@ final class EncodersTests: XCTestCase {
         func flags(_ f0: Bool, _ f1: Bool, _ button: Bool) -> UInt8 {
             let payload = Encoders.touchpadPayload(
                 controllerIndex: 0,
-                finger0Active: f0, finger0Id: 0, finger0X: 0, finger0Y: 0,
-                finger1Active: f1, finger1Id: 0, finger1X: 0, finger1Y: 0,
+                finger0Active: f0,
+                finger0Id: 0,
+                finger0X: 0,
+                finger0Y: 0,
+                finger1Active: f1,
+                finger1Id: 0,
+                finger1X: 0,
+                finger1Y: 0,
                 buttonPressed: button,
                 eventTimeMs: 0
             )
@@ -136,8 +148,14 @@ final class EncodersTests: XCTestCase {
     func testTouchpadEventTimeRidesAtOffsetTwelveLittleEndian() {
         let payload = Encoders.touchpadPayload(
             controllerIndex: 0,
-            finger0Active: false, finger0Id: 0, finger0X: 0, finger0Y: 0,
-            finger1Active: false, finger1Id: 0, finger1X: 0, finger1Y: 0,
+            finger0Active: false,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: false,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
             buttonPressed: false,
             eventTimeMs: 0xDEAD_BEEF
         )

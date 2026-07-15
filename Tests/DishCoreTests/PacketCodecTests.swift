@@ -7,8 +7,8 @@
 // round-trips with the counters-start-at-1 convention.
 
 import CryptoKit
-import XCTest
 import DishCore
+import XCTest
 
 final class PacketCodecTests: XCTestCase {
 

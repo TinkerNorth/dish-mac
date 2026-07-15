@@ -5,8 +5,8 @@
 // parity: 1s, 2s, 4s, … capped at 60s) and the send-counter re-push guard.
 // Pure — no clock, no timer. Ports dish-linux test_backoff.cpp.
 
-import XCTest
 import DishCore
+import XCTest
 
 final class BackoffTests: XCTestCase {
 

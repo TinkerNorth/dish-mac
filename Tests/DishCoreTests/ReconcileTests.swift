@@ -6,8 +6,8 @@
 // the late-slot converge diff. Ports the dish-linux test_reconcile.cpp cases
 // (themselves the dish-windows test_session_reconcile ports).
 
-import XCTest
 import DishCore
+import XCTest
 
 final class ReconcileTests: XCTestCase {
 

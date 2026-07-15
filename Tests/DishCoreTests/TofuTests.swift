@@ -9,8 +9,8 @@
 //   * otherwise              -> mismatch       (an empty-string pin CAN mismatch)
 // The fingerprint is lowercase 64-hex SHA-256 of the cert DER bytes.
 
-import XCTest
 import DishCore
+import XCTest
 
 final class TofuTests: XCTestCase {
 

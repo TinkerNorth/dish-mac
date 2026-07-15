@@ -8,8 +8,8 @@
 // deterministic "~3.4 ms" display formatting. Pure, no clock. Ports
 // dish-linux test_latency_window.cpp (dish-android #138 policy).
 
-import XCTest
 import DishCore
+import XCTest
 
 final class LatencyWindowTests: XCTestCase {
 
