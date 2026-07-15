@@ -102,7 +102,14 @@ public enum SessionCrypto {
             nonce: ChaChaPoly.Nonce(data: nonceBytes(direction: direction, counter: counter)),
             authenticating: aadBytes(token: token)
         )
-        return sealed.ciphertext + sealed.tag
+        // Assemble into a FRESH Data: CryptoKit's `ciphertext`/`tag` are
+        // slices of its internal combined buffer, and concatenating slices
+        // leaks a non-zero startIndex — the classic Data footgun for any
+        // caller that indexes the box from 0.
+        var box = Data(capacity: sealed.ciphertext.count + sealed.tag.count)
+        box.append(sealed.ciphertext)
+        box.append(sealed.tag)
+        return box
     }
 
     /// Open one `ciphertext+tag` box sealed by the peer. Throws on any
@@ -121,7 +128,9 @@ public enum SessionCrypto {
             ciphertext: box.dropLast(ProtocolConstants.authTagSize),
             tag: box.suffix(ProtocolConstants.authTagSize)
         )
-        return try ChaChaPoly.open(sealed, using: key, authenticating: aadBytes(token: token))
+        let plain = try ChaChaPoly.open(sealed, using: key, authenticating: aadBytes(token: token))
+        // Re-base to startIndex 0 for the same slice-index hygiene as seal().
+        return Data(plain)
     }
 
     /// Constant-time byte comparison (libsodium `sodium_memcmp` analogue) for
