@@ -54,9 +54,9 @@ enum FakeSatelliteCrypto {
 
     private static func nibble(_ char: UInt8) -> UInt8? {
         switch char {
-        case 0x30 ... 0x39: return char - 0x30
-        case 0x61 ... 0x66: return char - 0x61 + 10
-        default: return nil
+        case 0x30 ... 0x39: char - 0x30
+        case 0x61 ... 0x66: char - 0x61 + 10
+        default: nil
         }
     }
 

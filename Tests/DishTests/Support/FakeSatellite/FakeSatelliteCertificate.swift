@@ -91,7 +91,8 @@ enum FakeSatelliteCertificateMint {
     /// identity), else ephemerally (DER-only identity, HTTP fallback).
     static func mint(commonName: String) throws -> FakeSatelliteIdentity {
         if let keychain = FakeSatelliteThrowawayKeychain.shared,
-           let keychainKey = keychainBackedKey(keychain: keychain, label: commonName) {
+           let keychainKey = keychainBackedKey(keychain: keychain, label: commonName)
+        {
             return try mintCertificate(commonName: commonName, privateKey: keychainKey, keychain: keychain)
         }
         var error: Unmanaged<CFError>?
@@ -109,7 +110,8 @@ enum FakeSatelliteCertificateMint {
     static func mintCertificate(commonName: String, privateKey: SecKey, keychain: SecKeychain?) throws -> FakeSatelliteIdentity {
         var error: Unmanaged<CFError>?
         guard let publicKey = SecKeyCopyPublicKey(privateKey),
-              let publicPoint = SecKeyCopyExternalRepresentation(publicKey, &error) as Data? else {
+              let publicPoint = SecKeyCopyExternalRepresentation(publicKey, &error) as Data? else
+        {
             throw FakeSatelliteCertificateError.keyGenerationFailed(describe(error))
         }
         let tbs = tbsCertificate(commonName: commonName, publicKeyX963: publicPoint)
@@ -194,8 +196,8 @@ enum FakeSatelliteCertificateMint {
         formatter.timeZone = TimeZone(secondsFromGMT: 0) ?? .current
         formatter.dateFormat = "yyMMddHHmmss'Z'"
         let now = Date()
-        let notBefore = formatter.string(from: now.addingTimeInterval(-3_600))
-        let notAfter = formatter.string(from: now.addingTimeInterval(2 * 365 * 24 * 3_600))
+        let notBefore = formatter.string(from: now.addingTimeInterval(-3600))
+        let notAfter = formatter.string(from: now.addingTimeInterval(2 * 365 * 24 * 3600))
         return Asn1.sequence(Asn1.utcTime(notBefore) + Asn1.utcTime(notAfter))
     }
 }
@@ -218,21 +220,44 @@ private enum Asn1 {
         Data([tag]) + lengthField(content.count) + content
     }
 
-    static func sequence(_ content: Data) -> Data { tagged(0x30, content) }
-    static func set(_ content: Data) -> Data { tagged(0x31, content) }
-    static func octetString(_ content: Data) -> Data { tagged(0x04, content) }
-    static func utf8String(_ value: String) -> Data { tagged(0x0C, Data(value.utf8)) }
-    static func utcTime(_ value: String) -> Data { tagged(0x17, Data(value.utf8)) }
-    static func oid(_ body: [UInt8]) -> Data { tagged(0x06, Data(body)) }
+    static func sequence(_ content: Data) -> Data {
+        tagged(0x30, content)
+    }
+
+    static func set(_ content: Data) -> Data {
+        tagged(0x31, content)
+    }
+
+    static func octetString(_ content: Data) -> Data {
+        tagged(0x04, content)
+    }
+
+    static func utf8String(_ value: String) -> Data {
+        tagged(0x0C, Data(value.utf8))
+    }
+
+    static func utcTime(_ value: String) -> Data {
+        tagged(0x17, Data(value.utf8))
+    }
+
+    static func oid(_ body: [UInt8]) -> Data {
+        tagged(0x06, Data(body))
+    }
 
     /// BIT STRING with zero unused bits.
-    static func bitString(_ content: Data) -> Data { tagged(0x03, Data([0x00]) + content) }
+    static func bitString(_ content: Data) -> Data {
+        tagged(0x03, Data([0x00]) + content)
+    }
 
     /// Context-specific constructed [n] EXPLICIT wrapper.
-    static func explicitTag(_ number: UInt8, _ content: Data) -> Data { tagged(0xA0 | number, content) }
+    static func explicitTag(_ number: UInt8, _ content: Data) -> Data {
+        tagged(0xA0 | number, content)
+    }
 
     /// Small non-negative INTEGER (used for the X.509 version field).
-    static func integer(_ value: UInt8) -> Data { tagged(0x02, Data([value])) }
+    static func integer(_ value: UInt8) -> Data {
+        tagged(0x02, Data([value]))
+    }
 
     /// Arbitrary-width positive INTEGER from raw big-endian bytes.
     static func integer(_ raw: Data) -> Data {
