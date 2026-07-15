@@ -9,8 +9,18 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [.macOS(.v13)],
     targets: [
+        // The suite's compiler-enforced pure core: wire codecs, crypto,
+        // protocol constants and policy reducers. Foundation + CryptoKit ONLY —
+        // no Network, AppKit, GameController or app imports (PLAN D1; the C++
+        // repos enforce this purity by convention, SwiftPM enforces it at
+        // build level).
+        .target(
+            name: "DishCore",
+            path: "Sources/DishCore"
+        ),
         .executableTarget(
             name: "Dish",
+            dependencies: ["DishCore"],
             path: "Sources/Dish",
             resources: [
                 // The String Catalog lives at `Sources/Dish/Resources/Localizable.xcstrings`.
@@ -23,6 +33,11 @@ let package = Package(
             name: "DishTests",
             dependencies: ["Dish"],
             path: "Tests/DishTests"
+        ),
+        .testTarget(
+            name: "DishCoreTests",
+            dependencies: ["DishCore"],
+            path: "Tests/DishCoreTests"
         )
     ]
 )
