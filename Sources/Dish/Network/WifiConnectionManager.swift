@@ -2,12 +2,37 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import DishCore
 import Foundation
 import os
 
 enum ConnectionEvent {
     case pairingRequired(DiscoveredServer)
     case error(String)
+}
+
+/// Thread-safe breadcrumb log of hosts whose presented TLS cert mismatched
+/// the stored TOFU pin. The `PinVerifier` (URLSession delegate queue) records;
+/// the manager's failure paths consume so a mismatch abort surfaces as the
+/// honest "identity changed" message instead of a generic "unreachable" —
+/// mirrors dish-android's IDENTITY_CHANGED_MSG UX.
+final class PinMismatchLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var hosts: Set<String> = []
+
+    func record(_ host: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        hosts.insert(host)
+    }
+
+    /// True (and clears the breadcrumb) when `host` mismatched since the
+    /// last consume.
+    func consume(_ host: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return hosts.remove(host) != nil
+    }
 }
 
 /// Why a connect attempt was initiated. The same connect path is shared
@@ -68,13 +93,61 @@ final class WifiConnectionManager: ObservableObject {
         subsystem: "com.tinkernorth.dish", category: "discovery"
     )
 
-    private let store: ConnectionStore
-    private lazy var deviceId = store.getOrCreateDeviceId()
-    private let deviceName = Host.current().localizedName ?? "Mac"
+    // The stored properties below are `internal` (not `private`) because the
+    // pairing flows live in `WifiConnectionManager+Pairing.swift` — Swift
+    // scopes `private` to the file, and weakening the lint limits instead of
+    // splitting the file is not an option.
+
+    let store: ConnectionStore
+    lazy var deviceId = store.getOrCreateDeviceId()
+    let deviceName = Host.current().localizedName ?? "Mac"
     private var perConnCancellables: [String: Set<AnyCancellable>] = [:]
+    /// TOFU mismatch breadcrumbs recorded by the pin verifier (see
+    /// `PinMismatchLog`).
+    let pinMismatches = PinMismatchLog()
+    /// Pairing gateway with the TOFU delegate installed. Lazy: the verifier
+    /// composition needs `store`.
+    lazy var pairing = PairingClient(pinVerifier: makePinVerifier())
+    /// In-flight path-B approval polls, keyed by connection id, so a
+    /// re-issued request supersedes the prior poll and forget/disconnect can
+    /// cancel it.
+    var approvalPolls: [String: Task<Void, Never>] = [:]
 
     init(store: ConnectionStore) {
         self.store = store
+    }
+
+    /// `pairingInFlight` mutation helpers for the `+Pairing` split (the
+    /// published set keeps its `private(set)`).
+    func beginPairing(_ id: String) {
+        pairingInFlight.insert(id)
+    }
+
+    func endPairing(_ id: String) {
+        pairingInFlight.remove(id)
+    }
+
+    /// TOFU (gap G7): first contact pins the cert's SHA-256 DER fingerprint
+    /// for this host; any later cert that differs is rejected (anti-MITM) and
+    /// the mismatch is breadcrumbed for the honest error message. The store's
+    /// pin accessors are lock-guarded because this runs on URLSession's
+    /// delegate queue. Composes DishCore's pure verdict ladder.
+    func makePinVerifier() -> PinVerifier {
+        let store = store
+        let mismatches = pinMismatches
+        return { host, der in
+            let presented = sha256FingerprintHex(der)
+            switch tofuVerdict(pinned: store.certPin(host: host), presented: presented) {
+            case .trustFirstUse:
+                store.setCertPin(host: host, fingerprintHex: presented)
+                return true
+            case .match:
+                return true
+            case .mismatch:
+                mismatches.record(host)
+                return false
+            }
+        }
     }
 
     func get(_ id: String) -> WifiConnection? {
@@ -83,8 +156,8 @@ final class WifiConnectionManager: ObservableObject {
 
     /// Insert `conn` into the pool and start forwarding its per-connection
     /// signals (controller-ack errors + slot-registration-failed) into the
-    /// manager-level event streams.
-    private func register(_ conn: WifiConnection) {
+    /// manager-level event streams. (Internal for the `+Pairing` split.)
+    func register(_ conn: WifiConnection) {
         connections[conn.id] = conn
         var bag = Set<AnyCancellable>()
         conn.errorMessages
@@ -205,110 +278,18 @@ final class WifiConnectionManager: ObservableObject {
         Task { await pairAndConnect(conn: conn, server: server, intent: intent) }
     }
 
-    private func pairAndConnect(
-        conn: WifiConnection,
-        server: DiscoveredServer,
-        intent: ConnectIntent
-    ) async {
-        let id = WifiConnection.idFor(server)
-        // Auto-reconnect fast path: if we already have a shared key saved for
-        // this server, skip the TCP pair handshake entirely and go straight
-        // to `openSession`. A moved/offline server then fails fast in the
-        // HTTP layer instead of bouncing through pair → PairingRequired and
-        // trapping the user behind a PIN prompt that can't be satisfied.
-        // Mirrors dish-android PR #43.
-        if let saved = store.sharedKey(for: id), saved.count == 64 {
-            await openSession(conn: conn, server: server, intent: intent)
-            return
-        }
-        // Snapshot main-actor state so the detached task doesn't need to hop.
-        let did = deviceId, dname = deviceName
-        pairingInFlight.insert(conn.id)
-        defer { pairingInFlight.remove(conn.id) }
-        // Empty PIN is the "already-paired, re-use saved shared key" path.
-        let pair = await Task.detached(priority: .userInitiated) {
-            PairingClient.pair(
-                ip: server.ip,
-                port: server.pairPort,
-                deviceId: did,
-                deviceName: dname,
-                pin: ""
-            )
-        }.value
-        switch PairingClient.classify(pair) {
-        case let .success(sharedKey):
-            store.setSharedKey(sharedKey, for: id)
-            await openSession(conn: conn, server: server, intent: intent)
-        case .authRequired:
-            conn.markDisconnected()
-            // Only pop the PIN dialog if the user just tapped Connect. A
-            // background auto-reconnect that lands here means the server
-            // forgot our pairing; surface it silently — the row chip flips
-            // to `.stale` ("Needs pairing") via the persistent
-            // `staleSatelliteIds` set so the user knows the next tap will
-            // prompt for a fresh PIN, rather than the chip flicking back to
-            // `.saved` / `.ready` and hiding the broken pairing.
-            if intent == .userInitiated {
-                events.send(.pairingRequired(server))
-            } else {
-                markStale(id)
-            }
-        case let .unreachable(msg):
-            conn.markDisconnected()
-            emitErrorIfUserInitiated(
-                intent,
-                "Server unreachable — has it moved networks? (\(msg))"
-            )
-        }
-    }
-
     /// Emit a `ConnectionEvent.error` only when the user has a recent mental
     /// model for "I asked for this". Background auto-reconnects + silent
     /// retries after a heartbeat death already have all the feedback the
     /// user needs in the row chip; a banner on top would be noise.
-    private func emitErrorIfUserInitiated(_ intent: ConnectIntent, _ message: String) {
+    /// (Internal for the `+Pairing` split.)
+    func emitErrorIfUserInitiated(_ intent: ConnectIntent, _ message: String) {
         if intent == .userInitiated {
             events.send(.error(message))
         }
     }
 
-    /// Finish pairing with a user-supplied PIN.
-    func pairWithPin(_ server: DiscoveredServer, pin: String) {
-        let id = WifiConnection.idFor(server)
-        let conn = connections[id] ?? {
-            let newConn = WifiConnection(id: id, server: server)
-            register(newConn)
-            return newConn
-        }()
-        conn.markConnecting()
-        let did = deviceId, dname = deviceName
-        Task {
-            pairingInFlight.insert(conn.id)
-            defer { pairingInFlight.remove(conn.id) }
-            let pair = await Task.detached(priority: .userInitiated) {
-                PairingClient.pair(
-                    ip: server.ip,
-                    port: server.pairPort,
-                    deviceId: did,
-                    deviceName: dname,
-                    pin: pin
-                )
-            }.value
-            switch PairingClient.classify(pair) {
-            case let .success(sharedKey):
-                store.setSharedKey(sharedKey, for: id)
-                await openSession(conn: conn, server: server, intent: .userInitiated)
-            case .authRequired:
-                conn.markDisconnected()
-                events.send(.error(pair.error ?? "Pairing failed"))
-            case let .unreachable(msg):
-                conn.markDisconnected()
-                events.send(.error("Server unreachable — has it moved networks? (\(msg))"))
-            }
-        }
-    }
-
-    private func openSession(
+    func openSession(
         conn: WifiConnection,
         server: DiscoveredServer,
         intent: ConnectIntent
@@ -404,6 +385,7 @@ final class WifiConnectionManager: ObservableObject {
     }
 
     func forget(id: String) {
+        cancelApprovalPoll(id)
         disconnect(id: id)
         store.forget(id)
         connections.removeValue(forKey: id)
