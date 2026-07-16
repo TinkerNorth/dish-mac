@@ -139,11 +139,8 @@ struct PairResponse: Codable {
     }
 }
 
-struct ConnectResponse: Codable {
-    var connectionId: String?
-    var token: String?
-    var error: String?
-}
+// (Protocol-0's `ConnectResponse` is deleted: the session handshake is the
+// declarative PUT and its `SessionResponse` DTO in Network/RestModels.swift.)
 
 // MARK: - UI-level aggregation (matches ConnectionHub.kt shapes)
 

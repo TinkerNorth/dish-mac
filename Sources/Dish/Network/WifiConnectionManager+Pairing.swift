@@ -19,6 +19,7 @@ extension WifiConnectionManager {
         "This app and the satellite speak different protocol versions. Update both to the latest version."
     static let approvalDeclinedMessage = "The satellite declined the pairing request."
     static let approvalTimeoutMessage = "No response from the satellite. The pairing request timed out."
+    static let repairNeededMessage = "This satellite no longer recognizes this device. Re-pair needed."
 
     /// Path-B poll cadence — matches the satellite's 2-minute pairing-request
     /// TTL: stop waiting once the request can no longer be accepted on the

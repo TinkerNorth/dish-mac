@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import CryptoKit
 import DishCore
 import Foundation
 import os
@@ -108,6 +109,9 @@ final class WifiConnectionManager: ObservableObject {
     /// Pairing gateway with the TOFU delegate installed. Lazy: the verifier
     /// composition needs `store`.
     lazy var pairing = PairingClient(pinVerifier: makePinVerifier())
+    /// Authenticated REST gateway (sessions/controllers/unpair), same TOFU
+    /// delegate composition.
+    lazy var http = HTTPClient(pinVerifier: makePinVerifier())
     /// In-flight path-B approval polls, keyed by connection id, so a
     /// re-issued request supersedes the prior poll and forget/disconnect can
     /// cancel it.
@@ -289,16 +293,18 @@ final class WifiConnectionManager: ObservableObject {
         }
     }
 
+    /// Open (or converge) the protocol-1 session: one declarative
+    /// `PUT /api/connections` carrying the full desired controller set + the
+    /// hmacProof, then HKDF the session key from (pairingKey, response salt,
+    /// response token) — the pairing key itself never touches the UDP path
+    /// (contract §Crypto; gaps G6/G8).
     func openSession(
         conn: WifiConnection,
         server: DiscoveredServer,
         intent: ConnectIntent
     ) async {
         let id = WifiConnection.idFor(server)
-        guard let keyHex = store.sharedKey(for: id),
-              keyHex.count == 64,
-              let keyData = hexToBytes(keyHex), keyData.count == 32 else
-        {
+        guard let pairingKey = pairingKeyData(for: id) else {
             conn.markDisconnected()
             // Silent retry / cold-launch reconnect with no usable key on
             // disk: the only useful next step is a fresh user-initiated
@@ -310,31 +316,91 @@ final class WifiConnectionManager: ObservableObject {
             emitErrorIfUserInitiated(intent, "No shared key — re-pair needed")
             return
         }
-        let resp = await HTTPClient.connect(
+        let proof = SessionCrypto.hmacProofHex(pairingKey: pairingKey, deviceId: deviceId)
+
+        // The declarative PUT carries the WHOLE desired controller set (empty
+        // is a valid zero-controller session — a user sitting in menus).
+        // SEAM(W2-B): populated from `conn.desiredDescriptor` once the
+        // data-plane rewrite exposes it; until then the slot converge still
+        // rides the legacy in-connection registration path.
+        let descriptors: [ControllerDescriptor] = []
+
+        let resp = await http.putSession(
             ip: server.ip,
             port: server.httpPort,
-            deviceId: deviceId
+            deviceId: deviceId,
+            deviceName: deviceName,
+            hmacProof: proof,
+            controllers: descriptors
         )
-        guard let connId = resp.connectionId,
+        if resp.unauthorized || resp.httpStatus == 401 {
+            // NOT_PAIRED / BAD_PROOF: the satellite revoked our trust —
+            // terminal (contract §hmacProof).
+            handleTerminalAuth(id, loud: intent == .userInitiated)
+            return
+        }
+        if resp.httpStatus == 409 {
+            conn.markDisconnected()
+            emitErrorIfUserInitiated(intent, Self.protocolMismatchMessage)
+            return
+        }
+        guard resp.reachable,
+              let connId = resp.connectionId,
               let tokenHex = resp.token,
-              let tokenData = hexToBytes(tokenHex), tokenData.count == 4 else
+              let saltHex = resp.sessionSalt else
         {
             conn.markDisconnected()
             emitErrorIfUserInitiated(intent, "Error: \(resp.error ?? "connection failed")")
             return
         }
+        guard let tokenData = hexToBytes(tokenHex), tokenData.count == 4,
+              let saltData = hexToBytes(saltHex),
+              saltData.count == ProtocolConstants.sessionSaltSize else
+        {
+            conn.markDisconnected()
+            emitErrorIfUserInitiated(intent, "Bad token from server")
+            return
+        }
+        let token = tokenData.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
+
+        // sessionKey = HKDF(pairingKey, salt, token) — derived here in the
+        // control plane; the client below only ever sees the SESSION key.
+        let sessionKey = SessionCrypto.deriveSessionKey(
+            pairingKey: pairingKey,
+            salt: saltData,
+            token: token
+        )
+
         let client = SatelliteClient()
         guard client.openSocket(ip: server.ip, port: server.udpPort) else {
             conn.markDisconnected()
             return
         }
-        client.setConnectionParams(token: tokenData, key: keyData)
+        // SEAM(W2-B): flips to `setConnectionParams(host:udpPort:token:sessionKey:)`
+        // (PLAN §4) when the data-plane client lands it; the derived-key
+        // handoff is already protocol-1.
+        client.setConnectionParams(
+            token: tokenData,
+            key: sessionKey.withUnsafeBytes { Data($0) }
+        )
         store.remember(server)
         // Successful authenticated session: any "Needs pairing" marker we
         // set on a prior failed silent retry no longer applies. Clearing
         // here (rather than in the caller) covers all three intents —
         // userInitiated, autoReconnect, retryAfterDeath — uniformly.
         clearStale(id)
+
+        // Surface each requested slot's apply outcome from the PUT itself
+        // (partial success is a 200 — contract §Error model).
+        if let slotId = conn.boundSlotId {
+            for descriptor in descriptors {
+                let applied = resp.controllers.first { $0.ctrlIdx == descriptor.ctrlIdx }
+                if applied?.slotIsLive != true {
+                    events.send(.error("Server could not apply the controller"))
+                    slotRegistrationFailed.send(slotId)
+                }
+            }
+        }
         conn.markConnected(client: client, connectionId: connId) { [weak self] in
             // Heartbeats stopped. The alive-poll already flipped the wire
             // state to `.stale` before invoking us; tear down the dead
@@ -366,26 +432,51 @@ final class WifiConnectionManager: ObservableObject {
     /// retry path uses `.retryAfterDeath` so it's silent on failure.
     private static let autoRetryBackoffNs: UInt64 = 1_500_000_000
 
+    /// Graceful close: `DELETE /api/connections/{id}` (authed; no notify —
+    /// the closer already knows).
     func disconnect(id: String) {
         guard let conn = connections[id] else { return }
         let server = conn.server
         let cid = conn.connectionId
         let did = deviceId
+        let proof = proofFor(id)
         conn.markDisconnected()
         if let cid {
+            let http = http
             Task.detached(priority: .utility) {
-                _ = await HTTPClient.disconnect(
+                await http.deleteSession(
                     ip: server.ip,
                     port: server.httpPort,
                     connectionId: cid,
-                    deviceId: did
+                    deviceId: did,
+                    hmacProof: proof
                 )
             }
         }
     }
 
+    /// Forget also self-unpairs server-side (`DELETE /api/pair`,
+    /// best-effort): the satellite drops this deviceId so its operator list
+    /// stays truthful (contract §Pairing Delete; gap G16). Needs the proof,
+    /// so it must run BEFORE the key is deleted.
     func forget(id: String) {
         cancelApprovalPoll(id)
+        let endpoint: (ip: String, httpPort: Int)? =
+            connections[id].map { ($0.server.ip, $0.server.httpPort) }
+                ?? store.remembered().first { $0.id == id }.map { ($0.ip, $0.httpPort) }
+        let proof = proofFor(id)
+        if let endpoint, !proof.isEmpty {
+            let did = deviceId
+            let http = http
+            Task.detached(priority: .utility) {
+                await http.unpair(
+                    ip: endpoint.ip,
+                    port: endpoint.httpPort,
+                    deviceId: did,
+                    hmacProof: proof
+                )
+            }
+        }
         disconnect(id: id)
         store.forget(id)
         connections.removeValue(forKey: id)
@@ -394,6 +485,35 @@ final class WifiConnectionManager: ObservableObject {
         // it would dangle on a row that no longer exists.
         clearStale(id)
         recomputeAnyRegistering()
+    }
+
+    // MARK: - Auth material (contract §hmacProof)
+
+    /// The stored pairing key as raw bytes, or nil when absent/malformed.
+    private func pairingKeyData(for id: String) -> Data? {
+        guard let hex = store.sharedKey(for: id), hex.count == 64,
+              let data = hexToBytes(hex), data.count == 32 else { return nil }
+        return data
+    }
+
+    /// `hex(HMAC-SHA256(pairingKey, "satellite-proof:" + deviceId))` for the
+    /// `X-Hmac-Proof` header; empty when no key is stored.
+    func proofFor(_ id: String) -> String {
+        guard let key = pairingKeyData(for: id) else { return "" }
+        return SessionCrypto.hmacProofHex(pairingKey: key, deviceId: deviceId)
+    }
+
+    /// Terminal 401 (NOT_PAIRED / BAD_PROOF): the satellite revoked our
+    /// trust. Drop ONLY the key — the remembered row survives and parks on
+    /// the persistent "Needs pairing" marker instead of silently deleting
+    /// the satellite. Loud only for user intents (gap G6).
+    func handleTerminalAuth(_ id: String, loud: Bool) {
+        store.forgetKey(for: id)
+        markStale(id)
+        connections[id]?.markDisconnected()
+        if loud {
+            events.send(.error(Self.repairNeededMessage))
+        }
     }
 
     /// Reconnect every remembered server that isn't already live. Safe to call
