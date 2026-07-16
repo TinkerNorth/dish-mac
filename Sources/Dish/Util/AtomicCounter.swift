@@ -20,6 +20,23 @@ final class AtomicCounter: @unchecked Sendable {
         return current
     }
 
+    /// Current value without advancing — the rekey poll (`needsRekey`)
+    /// compares this against the contract's re-PUT threshold.
+    func current() -> UInt64 {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return value
+    }
+
+    /// Force a specific value. Production code only ever `reset()`s; tests
+    /// use this to place the counter near the exhaustion threshold without
+    /// four billion increments.
+    func set(_ newValue: UInt64) {
+        os_unfair_lock_lock(&lock)
+        value = newValue
+        os_unfair_lock_unlock(&lock)
+    }
+
     func reset() {
         os_unfair_lock_lock(&lock)
         value = 0
