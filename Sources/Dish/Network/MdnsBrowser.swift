@@ -95,7 +95,9 @@ enum MdnsBrowser {
             guard case let .service(name, _, _, _) = result.endpoint else { return }
             var txt: [String: String] = [:]
             if case let .bonjour(record) = result.metadata {
-                for key in ["udp", "pair", "http"] {
+                // `mid` is the satellite's stable machineId (contract
+                // §Identity) — the key remembered satellites are stored under.
+                for key in ["udp", "pair", "http", "mid"] {
                     if case let .string(value) = record.getEntry(for: key) { txt[key] = value }
                 }
             }
@@ -224,6 +226,7 @@ enum MdnsBrowser {
                 udpPort: Int(txt["udp"] ?? "") ?? 9876,
                 pairPort: Int(txt["pair"] ?? "") ?? 9443,
                 httpPort: Int(txt["http"] ?? "") ?? 9443,
+                machineId: txt["mid"] ?? "",
                 source: .mdns
             )
         }
