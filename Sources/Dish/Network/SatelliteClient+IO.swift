@@ -26,7 +26,13 @@ extension SatelliteClient {
     func sendEncrypted(msgType: UInt16, payload: Data) {
         guard isOpen else { return }
         let session = params.get()
-        let ctr = UInt32(truncatingIfNeeded: counter.incrementAndGet())
+        // A counter can never wrap (contract §Crypto): sealing two plaintexts
+        // under one (key, nonce) would be catastrophic, so past 2^32 − 1 the
+        // session goes SILENT instead and self-heals via re-PUT — in practice
+        // the G4 proactive re-key fires at 0xF0000000, 268M packets earlier.
+        let sequence = counter.incrementAndGet()
+        guard sequence <= UInt64(UInt32.max) else { return }
+        let ctr = UInt32(sequence)
         let inner = PacketCodec.innerFrame(msgType: msgType, payload: payload)
         guard let box = try? SessionCrypto.seal(
             inner,

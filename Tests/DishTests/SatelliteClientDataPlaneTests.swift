@@ -261,6 +261,34 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         XCTAssertFalse(fired, "old-token datagrams no longer decrypt after the re-key")
     }
 
+    func testExhaustedCounterGoesSilentInsteadOfWrapping() throws {
+        // Contract §Crypto: a counter can never wrap — nonce reuse under one
+        // key would be catastrophic. Past 2^32 − 1 the client stops sending
+        // (the session self-heals via re-PUT; G4 re-keys long before).
+        let (fd, port) = try XCTUnwrap(DataPlaneTestHelpers.bindLoopbackSocket())
+        defer { close(fd) }
+        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
+        defer { client.closeSocket() }
+
+        client.counter.set(UInt64(UInt32.max) - 1)
+        client.sendBattery(controllerIndex: 0, level: 1, status: .unknown)
+        let last = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
+        XCTAssertEqual(
+            DataPlaneTestHelpers.openUplink(last)?.counter,
+            UInt32.max,
+            "the final counter value is still usable"
+        )
+
+        client.sendBattery(controllerIndex: 0, level: 2, status: .unknown)
+        client.sendBattery(controllerIndex: 0, level: 3, status: .unknown)
+        XCTAssertNil(
+            DataPlaneTestHelpers.receiveDatagram(fd: fd),
+            "past exhaustion the session goes silent — no wrapped nonces on the wire"
+        )
+        XCTAssertEqual(client.sendCounter, UInt32.max, "the G4 poll keeps reading re-PUT needed")
+        XCTAssertTrue(counterNeedsRepush(client.sendCounter))
+    }
+
     func testClosedClientDropsSendsWithoutTrapping() throws {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
         client.closeSocket()

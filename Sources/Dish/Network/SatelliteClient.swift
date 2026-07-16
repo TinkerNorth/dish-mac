@@ -168,6 +168,14 @@ final class SatelliteClient {
         boundPort = 0
     }
 
+    deinit {
+        // Safety net for the rare drop-without-markConnected path (the
+        // connection torn down while openSession was in flight): both loop
+        // stops are no-ops when never started, and the fd must not outlive
+        // the client.
+        closeSocket()
+    }
+
     /// Open (or keep) the UDP socket aimed at `host:udpPort`. DSCP EF +
     /// no-SIGPIPE + 500 ms recv timeout, matching the sibling clients.
     private func ensureSocket(host: String, udpPort: UInt16) -> Bool {
@@ -234,9 +242,11 @@ final class SatelliteClient {
     }
 
     /// Current send counter (the last value used), for the proactive re-PUT
-    /// guard `DishCore.counterNeedsRepush` (gap G4).
+    /// guard `DishCore.counterNeedsRepush` (gap G4). Clamping, not
+    /// truncating: past exhaustion the poll must keep reading "re-PUT
+    /// needed", never wrap back under the threshold.
     var sendCounter: UInt32 {
-        UInt32(truncatingIfNeeded: counter.current())
+        UInt32(clamping: counter.current())
     }
 
     /// Median heartbeat RTT halved (symmetric-path one-way estimate) + the
