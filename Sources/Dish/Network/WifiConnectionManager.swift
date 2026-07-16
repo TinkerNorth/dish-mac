@@ -226,6 +226,17 @@ final class WifiConnectionManager: ObservableObject {
                 guard let self else { return }
                 self.discoveredServers = merged
                 self.isScanning = false
+                // Re-home remembered satellites whose machineId matched under
+                // a new address (DHCP move): the store refreshes rows in
+                // place, and any idle pool entry re-points so the next
+                // connect targets the current endpoint (gap G11; mirrors
+                // dish-linux startDiscovery).
+                self.store.refreshFromDiscovery(merged)
+                let pool = self.connections
+                for server in merged {
+                    guard let conn = pool[server.id], conn.state == .idle else { continue }
+                    conn.updateServer(server)
+                }
                 if merged.isEmpty {
                     self.events.send(.error("No servers found — check your network"))
                 }
