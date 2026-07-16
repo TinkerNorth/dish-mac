@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import DishCore
 import Foundation
 
 /// Internal wire-level session state for one Satellite connection — the
@@ -17,9 +18,8 @@ import Foundation
 /// - `live` — native socket open, heartbeat ACKs flowing. UI chip: "Online".
 /// - `faltering` — `live`, but the heartbeat-miss counter is non-zero and
 ///   below the death threshold. UI chip: "Unsteady". **Not yet entered** —
-///   reaching it requires the native side to expose the consecutive-missed
-///   count separately from the binary alive-poll boolean. Today the
-///   alive-poll flips `live` → `stale` directly when misses hit the threshold.
+///   wiring the `missedAcks` count into the alive tick is W3-A (gap G15).
+///   Today the alive-poll flips `live` → `stale` directly at the threshold.
 /// - `stale` — heartbeats stopped arriving but we still hold a shared key.
 ///   The manager attempts a silent re-handshake (no user-visible error)
 ///   using the saved key; only if that fails does the chip fall back to a
@@ -29,8 +29,10 @@ import Foundation
 enum SessionState { case idle, linking, live, faltering, stale }
 
 /// A single live or potential WiFi session to one Satellite server. Owns a
-/// `SatelliteClient` instance (the native UDP session) once `live`.
-/// Mirrors `WifiConnection.kt`.
+/// `SatelliteClient` instance (the protocol-1 UDP data plane) once `live`.
+/// Topology changes never ride UDP: the bound slot surfaces as
+/// `desiredDescriptor` and the manager converges it over REST (session PUT /
+/// per-slot routes — contract §Session). Mirrors `WifiConnection.kt`.
 @MainActor
 final class WifiConnection: ObservableObject, Identifiable {
 
@@ -38,8 +40,8 @@ final class WifiConnection: ObservableObject, Identifiable {
     @Published private(set) var server: DiscoveredServer
     @Published private(set) var state: SessionState = .idle
     @Published private(set) var boundSlotId: String?
-    /// True while a `MSG_CONTROLLER_ADD` is awaiting `MSG_CONTROLLER_ACK`.
-    /// The dashboard observes this to show a spinner.
+    /// True while the manager's per-slot PUT/DELETE for this connection is in
+    /// flight. The dashboard observes this to show a spinner.
     @Published private(set) var isRegisteringController = false
 
     /// Server-issued connection id, valid while `live`.
@@ -53,64 +55,73 @@ final class WifiConnection: ObservableObject, Identifiable {
         clientRef.get()
     }
 
-    /// Human-readable controller-registration errors (timeout or server
-    /// rejection codes). Listened to by `WifiConnectionManager` and forwarded
+    /// Human-readable controller-registration errors (apply failures from the
+    /// REST slot routes). Listened to by `WifiConnectionManager` and forwarded
     /// into the global event stream so the UI can surface them inline.
     let errorMessages = PassthroughSubject<String, Never>()
-    /// Emitted with the slot id when registration is rejected/times out so
+    /// Emitted with the slot id when the server can't apply the bound slot so
     /// `ConnectionHub` can roll back the local binding.
     let slotRegistrationFailed = PassthroughSubject<String, Never>()
 
+    /// Fired (main actor) when the bound slot changes while `live` — the
+    /// manager converges the server via the per-slot REST routes.
+    var onTopologyChanged: (() -> Void)?
+    /// Fired (main actor, once per approach) when the send counter crosses
+    /// the proactive re-PUT threshold — the manager re-PUTs for fresh
+    /// token/salt/key before the counter can exhaust (gap G4).
+    var onRekeyNeeded: (() -> Void)?
+    /// Forwarded (main actor) from the client's authenticated
+    /// MSG_SESSION_CLOSE parse. Reason-specific teardown policy
+    /// (`closeActionForReason`) is wired by W3-A; the alive tick already
+    /// reaps the dead session either way (gap G10 parse side).
+    var onSessionClose: ((CloseReason) -> Void)?
+
+    /// Latest enriched heartbeat ack, refreshed by the 1 Hz alive tick while
+    /// `live` — the reconcile driver's (W3-A) polled input (gap G9).
+    private(set) var lastHeartbeatAck: HeartbeatAck?
+
     private var aliveTask: Task<Void, Never>?
-    private var registrationTask: Task<Void, Never>?
-    private var controllerAdded = false
+    /// Single-fire latch for `onRekeyNeeded`: armed again only after the
+    /// re-key lands (the fresh counter drops back under the threshold), so a
+    /// slow / failing re-PUT isn't re-requested every tick.
+    private var rekeyRequested = false
     private var pendingControllerType = 0
     /// Whether the bound physical controller exposes an addressable RGB light
-    /// (`GCController.light != nil`). Captured at bind time and folded into the
-    /// `MSG_CONTROLLER_ADD` capability word as `CAP_LIGHTBAR`.
+    /// (`GCController.light != nil`). Captured at bind time and folded into
+    /// the descriptor caps word as `CAP_LIGHTBAR`.
     private var pendingHasLight = false
-    /// Whether the bound physical controller exposes a `GCMotion` IMU surface.
-    /// Captured at bind time and folded into the `MSG_CONTROLLER_ADD`
-    /// capability word as `CAP_MOTION` — a pad with no IMU must not advertise
-    /// that it streams motion.
+    /// Whether the bound physical controller exposes a `GCMotion` IMU
+    /// surface. Captured at bind time and folded into the descriptor caps
+    /// word as `CAP_MOTION` — a pad with no IMU must not advertise that it
+    /// streams motion.
     private var pendingHasMotion = false
 
     /// Set once during composition; re-applied to each fresh `SatelliteClient`
     /// in `markConnected` so we don't lose rumble across reconnects. The
     /// closure runs on the SatelliteClient's receive-loop dispatch queue.
-    private var rumbleHandler: ((SatelliteClient.RumbleMessage) -> Void)?
+    private var rumbleHandler: ((RumbleCommand) -> Void)?
     /// Same pattern for the decoupled `MSG_LIGHTBAR` return path.
-    private var lightbarHandler: ((SatelliteClient.LightbarMessage) -> Void)?
+    private var lightbarHandler: ((LightbarCommand) -> Void)?
 
-    private nonisolated static let defaultCtrlIndex = 0
-    /// `MSG_CONTROLLER_ADD` capability word, fixed bits: analog triggers
-    /// (`CAP_ANALOG_TRIGGERS` 0x0001) | rumble (`CAP_RUMBLE` 0x0002). Every
-    /// macOS-bridged extended gamepad has analog triggers and accepts the
-    /// rumble return path, so these two are always advertised. `CAP_MOTION`
-    /// and `CAP_LIGHTBAR` are per-controller — see `capabilityWord`.
-    nonisolated static let defaultCaps: UInt16 = 0x0003
-    /// `CAP_MOTION` — set per-controller when the bound pad exposes a
-    /// `GCMotion` IMU. Matches `CAP_MOTION` in `satellite/src/core/types.h`.
-    /// A pad with no IMU must not advertise it streams `MSG_MOTION`.
-    nonisolated static let capMotion: UInt16 = 0x0004
-    /// `CAP_LIGHTBAR` — set per-controller when the bound pad has an
-    /// addressable RGB LED (`GCController.light != nil`). Matches
-    /// `satellite/src/core/types.h` and is decoded identically by every
-    /// dish client.
-    nonisolated static let capLightbar: UInt16 = 0x0008
-    private nonisolated static let ackWaitAttempts = 20
-    private nonisolated static let ackWaitIntervalMs: UInt64 = 100
+    nonisolated static let defaultCtrlIndex = 0
+    /// Descriptor capability bits always advertised: analog triggers
+    /// (`CAP_ANALOG_TRIGGERS`) | rumble (`CAP_RUMBLE`). Every macOS-bridged
+    /// extended gamepad has analog triggers and accepts the rumble return
+    /// path. `CAP_MOTION` / `CAP_LIGHTBAR` are per-controller — see
+    /// `capabilityWord`.
+    nonisolated static let defaultCaps: UInt16 =
+        ProtocolConstants.capAnalogTriggers | ProtocolConstants.capRumble
 
-    /// The `MSG_CONTROLLER_ADD` capability word for a controller: the fixed
-    /// `defaultCaps` bits with `CAP_MOTION` / `CAP_LIGHTBAR` OR'd in only when
-    /// the bound physical controller actually exposes an IMU / an addressable
-    /// RGB light. `internal` (not `private`) so the per-controller cap
-    /// computation can be unit-tested without standing up a live session —
-    /// the same seam pattern as `SatelliteClient.parseRumblePayload`.
+    /// The descriptor `caps` word for a controller: the fixed `defaultCaps`
+    /// bits with `CAP_MOTION` / `CAP_LIGHTBAR` OR'd in only when the bound
+    /// physical controller actually exposes an IMU / an addressable RGB
+    /// light. Rides the REST descriptor's caps object (protocol-1; the UDP
+    /// capability word is gone with opcode 0x0004). `internal` so the rule is
+    /// unit-testable without standing up a live session.
     nonisolated static func capabilityWord(hasMotion: Bool, hasLight: Bool) -> UInt16 {
         var word = defaultCaps
-        if hasMotion { word |= capMotion }
-        if hasLight { word |= capLightbar }
+        if hasMotion { word |= ProtocolConstants.capMotion }
+        if hasLight { word |= ProtocolConstants.capLightbar }
         return word
     }
 
@@ -132,8 +143,23 @@ final class WifiConnection: ObservableObject, Identifiable {
         state = .linking
     }
 
-    /// Promote to `live`. Starts the ACK receive loop + heartbeat, and if a
-    /// slot was already bound it kicks the server-side controller handshake.
+    /// The COMPLETE desired controller set for the declarative session PUT
+    /// (contract §Session): the bound slot as a whole descriptor, or nil for
+    /// a valid zero-controller session. `touchpadMode` stays `.off` until the
+    /// per-type picker lands (W3-A) — matching the previous hardcoded Xbox
+    /// target, which has no touchpad sink.
+    var desiredDescriptor: ControllerDescriptor? {
+        guard boundSlotId != nil else { return nil }
+        var descriptor = ControllerDescriptor()
+        descriptor.ctrlIdx = Self.defaultCtrlIndex
+        descriptor.type = UInt8(truncatingIfNeeded: pendingControllerType)
+        descriptor.caps = Self.capabilityWord(hasMotion: pendingHasMotion, hasLight: pendingHasLight)
+        descriptor.touchpadMode = .off
+        return descriptor
+    }
+
+    /// Promote to `live`. Starts the receive loop + heartbeat and the 1 Hz
+    /// alive tick (liveness, enriched-ack snapshot poll, re-key poll).
     func markConnected(
         client: SatelliteClient,
         connectionId: String,
@@ -143,9 +169,18 @@ final class WifiConnection: ObservableObject, Identifiable {
         clientRef.set(client)
         self.connectionId = connectionId
         state = .live
-        client.resetControllerAck()
-        client.rumbleHandler = rumbleHandler
-        client.lightbarHandler = lightbarHandler
+        lastHeartbeatAck = nil
+        rekeyRequested = false
+        client.onRumble = rumbleHandler
+        client.onLightbar = lightbarHandler
+        client.onSessionClose = { [weak self] reason in
+            // Receive-queue → main-actor hop. The client already dropped
+            // `connectionAlive`, so the alive tick below reaps the session
+            // within a tick; this forwards the parsed WHY.
+            Task { @MainActor [weak self] in
+                self?.onSessionClose?(reason)
+            }
+        }
         client.startReceiveLoop()
         client.startHeartbeat()
 
@@ -153,34 +188,40 @@ final class WifiConnection: ObservableObject, Identifiable {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: 1_000_000_000)
                 guard let self else { return }
-                if self.clientRef.get()?.connectionAlive.get() == false {
-                    // TODO(faltering): when the native layer exposes the
-                    // consecutive-missed-heartbeat count separately from the
-                    // binary alive-poll, flip state = .faltering as misses
-                    // cross 1 and only fall through to onDead() at the death
-                    // threshold. Today the alive-poll is a hard boolean.
+                guard let live = self.clientRef.get() else { return }
+                self.tickSnapshotsAndRekey(live)
+                if !live.connectionAlive.get() {
+                    // TODO(faltering): W3-A flips state = .faltering as
+                    // `missedAcks` crosses the not-responding threshold and
+                    // only falls through to onDead() at the death threshold
+                    // (gap G15).
                     //
-                    // Heartbeats stopped: flip the wire-level state to .stale
-                    // *before* invoking onDead so the manager's silent-retry
-                    // path can tell "we were alive a moment ago" from a fresh
-                    // user-initiated reconnect. The chip stays on "Online" /
-                    // "Unsteady" through the silent retry — only if the retry
-                    // can't restore the session does it fall back to .saved /
-                    // .ready (and only emit a user-visible banner if the
-                    // attempt was user-initiated).
-                    await MainActor.run {
-                        if self.state == .live { self.state = .stale }
-                        onDead()
-                    }
+                    // Heartbeats stopped (or an authenticated close-notify
+                    // landed): flip the wire-level state to .stale *before*
+                    // invoking onDead so the manager's silent-retry path can
+                    // tell "we were alive a moment ago" from a fresh
+                    // user-initiated reconnect.
+                    if self.state == .live { self.state = .stale }
+                    onDead()
                     return
                 }
             }
         }
-        if boundSlotId != nil, !controllerAdded {
-            registrationTask = Task { [weak self] in
-                guard let self else { return }
-                await self.registerController(type: self.pendingControllerType)
+    }
+
+    /// One alive-tick's polling half: refresh the enriched-ack snapshot for
+    /// the reconcile driver (G9) and fire the single-shot re-key request when
+    /// the send counter approaches exhaustion (G4). Pure wiring — the
+    /// threshold rule is `DishCore.counterNeedsRepush`.
+    private func tickSnapshotsAndRekey(_ live: SatelliteClient) {
+        lastHeartbeatAck = live.heartbeatAckSnapshot()
+        if counterNeedsRepush(live.sendCounter) {
+            if !rekeyRequested {
+                rekeyRequested = true
+                onRekeyNeeded?()
             }
+        } else {
+            rekeyRequested = false
         }
     }
 
@@ -189,102 +230,40 @@ final class WifiConnection: ObservableObject, Identifiable {
         if state == .idle, existing == nil { return }
         aliveTask?.cancel()
         aliveTask = nil
-        registrationTask?.cancel()
-        registrationTask = nil
         isRegisteringController = false
-        existing?.stopHeartbeat()
         existing?.closeSocket()
         clientRef.set(nil)
         connectionId = nil
-        controllerAdded = false
+        lastHeartbeatAck = nil
         state = .idle
     }
 
-    // MARK: - Slot binding
+    // MARK: - Slot binding (REST-converged; no UDP registration)
 
     func attachSlot(
         _ slotId: String,
         controllerType: Int,
         hasMotion: Bool,
         hasLight: Bool
-    ) async {
+    ) {
         boundSlotId = slotId
         pendingControllerType = controllerType
         pendingHasMotion = hasMotion
         pendingHasLight = hasLight
-        if state == .live, !controllerAdded {
-            await registerController(type: controllerType)
-        }
+        if state == .live { onTopologyChanged?() }
     }
 
     func detachSlot() {
         if boundSlotId == nil { return }
         boundSlotId = nil
-        registrationTask?.cancel()
-        registrationTask = nil
-        isRegisteringController = false
-        if controllerAdded, let live = client {
-            live.controllerRemove(index: Self.defaultCtrlIndex)
-        }
-        controllerAdded = false
+        if state == .live { onTopologyChanged?() }
     }
 
-    private func registerController(type: Int) async {
-        guard let live = clientRef.get() else { return }
-        let slotId = boundSlotId
-        live.resetControllerAck()
-        // Capability word is per-controller: the fixed analog/rumble bits,
-        // plus CAP_MOTION only when the bound pad has an IMU and CAP_LIGHTBAR
-        // only when it has an addressable RGB light.
-        live.controllerAdd(
-            index: Self.defaultCtrlIndex,
-            capabilities: Self.capabilityWord(
-                hasMotion: pendingHasMotion,
-                hasLight: pendingHasLight
-            )
-        )
-        isRegisteringController = true
-        defer { isRegisteringController = false }
-
-        var attempts = 0
-        while attempts < Self.ackWaitAttempts, live.lastControllerAck == -1 {
-            try? await Task.sleep(nanoseconds: Self.ackWaitIntervalMs * 1_000_000)
-            attempts += 1
-        }
-        let ack = live.lastControllerAck
-        if ack == -1 {
-            errorMessages.send("Server did not acknowledge controller add (timeout)")
-            if let slotId { slotRegistrationFailed.send(slotId) }
-            return
-        }
-        let result = UInt8(ack & 0xFF)
-        if result == 0x00 /* ACK_OK */ {
-            live.sendControllerType(index: Self.defaultCtrlIndex, type: type)
-            controllerAdded = true
-        } else {
-            errorMessages.send(Self.controllerAckErrorMessage(result))
-            if let slotId { slotRegistrationFailed.send(slotId) }
-        }
-    }
-
-    /// Maps the `MSG_CONTROLLER_ACK` result byte to a human-readable string.
-    /// Codes match `satellite/src/core/types.h` and are kept identical to
-    /// `dish-linux` and `dish-android` so users see the same text on any client.
-    private nonisolated static func controllerAckErrorMessage(_ result: UInt8) -> String {
-        switch result {
-        case 0x01:
-            "Server has no virtual gamepad backend — controller cannot be created"
-        case 0x02:
-            "Server has no free controller slots"
-        case 0x03:
-            "Controller already added on the server"
-        case 0x04:
-            "Controller not found on the server"
-        case 0x05:
-            "Server failed to plug in the virtual controller"
-        default:
-            "Server rejected controller add (code \(result))"
-        }
+    /// Spinner state for the manager's in-flight slot converge (kept a
+    /// manager call, not a self-toggle, so the published flag mirrors the
+    /// REAL request lifetime).
+    func setSlotSyncInFlight(_ inFlight: Bool) {
+        isRegisteringController = inFlight
     }
 
     // MARK: - Hot path
@@ -338,7 +317,7 @@ final class WifiConnection: ObservableObject, Identifiable {
 
     /// Forward a battery snapshot. Sent on connect and every 30 s by the
     /// `BatteryReporter` background timer plus on charging-state transitions.
-    nonisolated func sendBattery(level: UInt8, status: SatelliteClient.BatteryStatus) {
+    nonisolated func sendBattery(level: UInt8, status: BatteryStatus) {
         guard let live = clientRef.get() else { return }
         live.sendBattery(
             controllerIndex: Self.defaultCtrlIndex,
@@ -356,13 +335,15 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// Forward a touchpad sample. Same threading discipline as `sendReport` —
     /// called from a GameController touchpad callback thread.
     ///
-    /// `fingerNId` is the monotonic per-finger tracking id resolved upstream by
-    /// `GameControllerInput.pushTouchpad` — bumped on each fresh contact, the
-    /// id the protocol's §0x000C expects (it used to be hardcoded 0 / 1).
+    /// `fingerNId` is the monotonic per-finger tracking id resolved upstream
+    /// by `GameControllerInput.pushTouchpad`; `eventTimeMs` is the
+    /// sender-side sample uptime stamp the 16-byte protocol-1 payload carries
+    /// at offset 12 (contract §0x000C).
     nonisolated func sendTouchpad(
         finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
         finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool
+        buttonPressed: Bool,
+        eventTimeMs: UInt32
     ) {
         guard let live = clientRef.get() else { return }
         live.sendTouchpad(
@@ -375,7 +356,8 @@ final class WifiConnection: ObservableObject, Identifiable {
             finger1Id: finger1Id,
             finger1X: finger1X,
             finger1Y: finger1Y,
-            buttonPressed: buttonPressed
+            buttonPressed: buttonPressed,
+            eventTimeMs: eventTimeMs
         )
     }
 
@@ -385,16 +367,16 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// during composition; we cache it on the WifiConnection so that
     /// `markConnected` can re-install it on each fresh `SatelliteClient`
     /// instance after a reconnect.
-    func setRumbleHandler(_ handler: @escaping (SatelliteClient.RumbleMessage) -> Void) {
+    func setRumbleHandler(_ handler: @escaping (RumbleCommand) -> Void) {
         rumbleHandler = handler
-        clientRef.get()?.rumbleHandler = handler
+        clientRef.get()?.onRumble = handler
     }
 
     /// Install (or replace) the light-bar handler — same cache-and-reapply
     /// pattern as `setRumbleHandler` so it survives a reconnect.
-    func setLightbarHandler(_ handler: @escaping (SatelliteClient.LightbarMessage) -> Void) {
+    func setLightbarHandler(_ handler: @escaping (LightbarCommand) -> Void) {
         lightbarHandler = handler
-        clientRef.get()?.lightbarHandler = handler
+        clientRef.get()?.onLightbar = handler
     }
 }
 

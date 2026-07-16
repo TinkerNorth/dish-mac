@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import XCTest
 @testable import Dish
 
@@ -16,7 +17,7 @@ import XCTest
 ///
 /// The full I/O path (UDP encrypt + send) is intentionally out of scope here;
 /// it would require driving a real socket. The wire packing is exercised by
-/// `SatelliteClientMotionBatteryTests` (this file's sibling).
+/// the DishCore `Encoders` pins in `Tests/DishCoreTests/EncodersTests.swift`.
 final class MotionBatteryProcessorTests: XCTestCase {
 
     // MARK: - scaleGyro
@@ -328,16 +329,16 @@ final class MotionBatteryProcessorTests: XCTestCase {
     // MARK: - BatteryStatus enum (wire contract)
 
     func testBatteryStatusEnumWireValues() {
-        XCTAssertEqual(SatelliteClient.BatteryStatus.unknown.rawValue, 0)
-        XCTAssertEqual(SatelliteClient.BatteryStatus.discharging.rawValue, 1)
-        XCTAssertEqual(SatelliteClient.BatteryStatus.charging.rawValue, 2)
-        XCTAssertEqual(SatelliteClient.BatteryStatus.full.rawValue, 3)
-        XCTAssertEqual(SatelliteClient.BatteryStatus.wired.rawValue, 4)
+        XCTAssertEqual(BatteryStatus.unknown.rawValue, 0)
+        XCTAssertEqual(BatteryStatus.discharging.rawValue, 1)
+        XCTAssertEqual(BatteryStatus.charging.rawValue, 2)
+        XCTAssertEqual(BatteryStatus.full.rawValue, 3)
+        XCTAssertEqual(BatteryStatus.wired.rawValue, 4)
     }
 
     func testBatteryStatusInitFromRaw() {
-        XCTAssertEqual(SatelliteClient.BatteryStatus(rawValue: 0), .unknown)
-        XCTAssertEqual(SatelliteClient.BatteryStatus(rawValue: 4), .wired)
-        XCTAssertNil(SatelliteClient.BatteryStatus(rawValue: 5))
+        XCTAssertEqual(BatteryStatus(rawValue: 0), .unknown)
+        XCTAssertEqual(BatteryStatus(rawValue: 4), .wired)
+        XCTAssertNil(BatteryStatus(rawValue: 5))
     }
 }

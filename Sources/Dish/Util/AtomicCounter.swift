@@ -101,3 +101,29 @@ final class AtomicBool: @unchecked Sendable {
         return value
     }
 }
+
+/// Lock-guarded box for any value crossing threads whole — session crypto
+/// params swapped by a re-key while the send/receive paths read them, the
+/// return-path handlers installed from the main actor and invoked on the
+/// receive queue, the enriched-ack snapshot. Same `os_unfair_lock` bridge
+/// family as the atomics above (PLAN D6: no actor rewrite this initiative).
+final class LockedBox<Value>: @unchecked Sendable {
+    private var value: Value
+    private var lock = os_unfair_lock_s()
+
+    init(_ initial: Value) {
+        value = initial
+    }
+
+    func get() -> Value {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return value
+    }
+
+    func set(_ newValue: Value) {
+        os_unfair_lock_lock(&lock)
+        value = newValue
+        os_unfair_lock_unlock(&lock)
+    }
+}

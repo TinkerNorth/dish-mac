@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import DishCore
 import Foundation
 
 /// Top-level application state. Owns the network + input layers and stitches
@@ -300,7 +301,7 @@ final class AppModel: ObservableObject {
     private func installTouchpadSender() {
         let table = routingTable
         let gate = self.gate
-        input.processor.touchpadSender = { deviceId, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn in
+        input.processor.touchpadSender = { deviceId, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn, eventTimeMs in
             guard gate.snapshot().touchpad else { return }
             guard let conn = table.get(deviceId) else { return }
             conn.sendTouchpad(
@@ -312,7 +313,8 @@ final class AppModel: ObservableObject {
                 finger1Id: f1id,
                 finger1X: f1x,
                 finger1Y: f1y,
-                buttonPressed: btn
+                buttonPressed: btn,
+                eventTimeMs: eventTimeMs
             )
         }
     }
@@ -355,7 +357,7 @@ final class AppModel: ObservableObject {
             // Coerce the raw byte back to the enum at the boundary; default
             // to .unknown if a future firmware ever surfaces a state we
             // haven't seen, so we never crash on malformed input.
-            let status = SatelliteClient.BatteryStatus(rawValue: statusRaw) ?? .unknown
+            let status = BatteryStatus(rawValue: statusRaw) ?? .unknown
             conn.sendBattery(level: level, status: status)
         }
     }

@@ -67,12 +67,14 @@ final class GamepadInputProcessor {
     /// Invoked on every touchpad sample. Coordinates are pre-scaled int16.
     /// `fingerNId` is a monotonic per-finger tracking id, bumped by the bridge
     /// on each fresh contact (the protocol's per-finger id; GameController
-    /// surfaces no native one).
+    /// surfaces no native one). `eventTimeMs` is the sender-side sample
+    /// uptime stamp (ms) the protocol-1 16-byte payload carries at offset 12.
     typealias TouchpadSender = (
         _ deviceId: DeviceId,
         _ finger0Active: Bool, _ finger0Id: UInt8, _ finger0X: Int16, _ finger0Y: Int16,
         _ finger1Active: Bool, _ finger1Id: UInt8, _ finger1X: Int16, _ finger1Y: Int16,
-        _ buttonPressed: Bool
+        _ buttonPressed: Bool,
+        _ eventTimeMs: UInt32
     ) -> Void
 
     var reportSender: ReportSender?
@@ -206,7 +208,7 @@ final class GamepadInputProcessor {
     }
 
     /// Forward a battery snapshot. `level` is 0..100 inclusive or `0xFF`
-    /// (unknown). `statusRaw` is one of the `SatelliteClient.BatteryStatus`
+    /// (unknown). `statusRaw` is one of the `DishCore.BatteryStatus`
     /// raw values; the bridge resolves the enum before calling.
     func publishBattery(deviceId: DeviceId, level: UInt8, statusRaw: UInt8) {
         batterySender?(deviceId, level, statusRaw)
@@ -215,19 +217,25 @@ final class GamepadInputProcessor {
     // `publishTouchpad` takes one argument per wire field (the protocol's
     // §0x000C layout). Bundling them into a struct purely to satisfy the
     // parameter-count rule would add an indirection the flat wire-mapping
-    // doesn't benefit from — same rationale as
-    // `SatelliteClient.encodeTouchpadPayload`.
+    // doesn't benefit from — same rationale as `DishCore.Encoders`'
+    // touchpad encoder.
     // swiftlint:disable function_parameter_count
 
     /// Forward a touchpad sample. Coordinates are already scaled to int16 by
     /// the bridge, and the per-finger tracking ids are already resolved by it.
     /// No deadzone / filtering is applied — a touchpad is an absolute pointing
     /// surface, not a self-centring stick.
+    ///
+    /// `nowNs` stamps the wire's `eventTimeMs` (sender-side uptime, ms —
+    /// contract §0x000C). GameController surfaces no per-event timestamp, so
+    /// the publish instant is the closest stamp to the sample; the default is
+    /// overridable for tests, same seam as `publishMotion`.
     func publishTouchpad(
         deviceId: DeviceId,
         finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
         finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool
+        buttonPressed: Bool,
+        nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
     ) {
         touchpadSender?(
             deviceId,
@@ -239,7 +247,8 @@ final class GamepadInputProcessor {
             finger1Id,
             finger1X,
             finger1Y,
-            buttonPressed
+            buttonPressed,
+            UInt32(truncatingIfNeeded: nowNs / 1_000_000)
         )
     }
 

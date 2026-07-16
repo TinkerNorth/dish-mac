@@ -151,16 +151,12 @@ final class ConnectionHub: ObservableObject {
         current[slotId] = connectionId
         bindings = current
         rebuild()
-        if let conn = wifi.get(connectionId) {
-            Task {
-                await conn.attachSlot(
-                    slotId,
-                    controllerType: 0,
-                    hasMotion: hasMotion,
-                    hasLight: hasLight
-                )
-            }
-        }
+        wifi.get(connectionId)?.attachSlot(
+            slotId,
+            controllerType: 0,
+            hasMotion: hasMotion,
+            hasLight: hasLight
+        )
     }
 
     func unbind(slotId: String) {

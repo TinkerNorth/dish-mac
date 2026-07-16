@@ -3,182 +3,277 @@
 
 import CryptoKit
 import Darwin
+import DishCore
 import Foundation
 
-/// Encrypted UDP session to a single Satellite server — the Swift analogue of
-/// `satellite_jni.cpp` on Android. Owns one raw POSIX socket, the ChaCha20
-/// key/token, a monotonically-increasing nonce counter, a heartbeat sender
-/// thread and an ACK receive thread.
+/// Encrypted protocol-1 UDP data-plane session to a single Satellite server —
+/// the Swift analogue of dish-linux `Network/SatelliteClient` and the Android
+/// `satellite_jni` UDP path. Owns one raw POSIX UDP socket, the per-session
+/// ChaCha20-Poly1305 key/token, monotonic per-direction counters (starting
+/// at 1), a heartbeat timer and a receive loop.
 ///
-/// Thread-safety:
-///   * `sendReport` is called directly from the GameController callback thread
-///     and must be lock-free on the hot path — we grab `sendLock` only for the
-///     duration of one `sendto`.
-///   * Every other mutating call is funneled through the public API which is
-///     expected to run on the main actor or a background dispatch queue.
+/// Topology is REST-only in protocol-1: this class carries STREAMS only
+/// (input, heartbeat, motion, battery, touchpad up; heartbeat-ack, rumble,
+/// lightbar, session-close down). The deleted topology opcodes 0x0004–0x0008
+/// and 0x000E have no constants anywhere in this target — a stray reference
+/// fails to compile (PLAN D5).
+///
+/// Crypto is delegated to `DishCore.SessionCrypto` (frozen, byte-exact vs the
+/// satellite): nonce = `dir(1) | 0x00×7 | counter(4 BE)`, AAD = token(4 BE),
+/// key = the HKDF-derived SESSION key — the pairing key never reaches this
+/// class (contract §Crypto, gaps G1/G2).
+///
+/// Thread-safety (PLAN D6 lock-bridges; gap G19):
+///   * `sendReport` is called directly from the GameController callback
+///     thread and stays lock-free outside one params snapshot + the `sendto`
+///     under `sendLock`.
+///   * Session params (`key`/`token`) live in a `LockedBox` so a proactive
+///     re-key (G4) can swap them while the hot paths read.
+///   * Loop flags / liveness / counters are `Atomic*` bridges; the fd is
+///     mutated only under `sendLock` and the receive loop is joined (bounded)
+///     before the fd closes.
 final class SatelliteClient {
 
-    // MARK: - Message types (on-wire)
+    // MARK: - Cadence (contract §Liveness)
 
-    private static let msgGamepadData: UInt16 = 0x0001
-    private static let msgHeartbeatPing: UInt16 = 0x0002
-    private static let msgHeartbeatAck: UInt16 = 0x0003
-    private static let msgControllerAdd: UInt16 = 0x0004
-    private static let msgControllerRemove: UInt16 = 0x0005
-    private static let msgControllerAck: UInt16 = 0x0006
-    private static let msgServerStatus: UInt16 = 0x0007
-    private static let msgControllerType: UInt16 = 0x0008
-    static let msgRumble: UInt16 = 0x0009
-    private static let msgMotion: UInt16 = 0x000A
-    private static let msgBattery: UInt16 = 0x000B
-    private static let msgTouchpad: UInt16 = 0x000C
-    static let msgLightbar: UInt16 = 0x000D
-
-    /// Battery status enum on the wire — must match satellite/src/core/types.h
-    /// (`BATTERY_STATUS_*`). Values are stable across platforms.
-    enum BatteryStatus: UInt8 {
-        case unknown = 0
-        case discharging = 1
-        case charging = 2
-        case full = 3
-        case wired = 4
-    }
-
-    /// Decoded `MSG_RUMBLE` payload — motor magnitudes plus duration. The
-    /// light bar is a separate return path (`MSG_LIGHTBAR`).
-    struct RumbleMessage {
-        let controllerIndex: Int
-        let strongMagnitude: UInt16
-        let weakMagnitude: UInt16
-        let durationMs: UInt16
-    }
-
-    static let heartbeatIntervalMs: UInt32 = 2000
-    static let heartbeatMissMax = 5
+    static let heartbeatIntervalMs = ProtocolConstants.heartbeatIntervalMs
+    static let heartbeatMissMax = ProtocolConstants.heartbeatMissMax
 
     // MARK: - Session state
 
-    var sock: Int32 = -1
-    var dest = sockaddr_in()
-    var token = [UInt8](repeating: 0, count: 4)
-    private var key = SymmetricKey(data: Data(count: 32))
-    var currentKey: SymmetricKey {
-        key
+    /// Socket fd (−1 when closed). Written only under `sendLock`; readers
+    /// snapshot it via `socketSnapshot()`.
+    private var sock: Int32 = -1
+    private var dest = sockaddr_in()
+    /// Endpoint the socket is aimed at — a same-endpoint `setConnectionParams`
+    /// (the G4 re-key) keeps the socket so the hot path never blips.
+    private var boundHost = ""
+    private var boundPort: UInt16 = 0
+
+    /// Per-session AEAD material, swapped whole on every (re-)PUT.
+    struct SessionParams {
+        var key = SymmetricKey(data: Data(count: ProtocolConstants.cryptoKeySize))
+        var token: UInt32 = 0
     }
 
+    let params = LockedBox(SessionParams())
+
+    /// Client→server counter; post-increment, so the first packet after a
+    /// `reset()` rides counter 1 (contract §Crypto). `current()` feeds the
+    /// manager's proactive re-key poll (gap G4).
     let counter = AtomicCounter()
+    /// Server→client replay guard: highest counter successfully DECRYPTED
+    /// (a forged header can't advance it). First packet exempt while 0 (G3).
+    let lastRecvCounter = AtomicCounter()
     let sendLock = NSLock()
 
-    var heartbeatRunning = false
+    let heartbeatRunning = AtomicBool(false)
     let heartbeatQueue = DispatchQueue(label: "dish.satellite.heartbeat", qos: .utility)
+    var heartbeatTimer: DispatchSourceTimer?
     let ackQueue = DispatchQueue(label: "dish.satellite.ack", qos: .utility)
-    var ackRunning = false
+    let ackRunning = AtomicBool(false)
+    /// Balances the receive loop so `closeSocket` can join it (bounded by the
+    /// 500 ms recv timeout) before the fd closes — no recv on a reused fd.
+    let receiveDrained = DispatchGroup()
 
-    /// Consecutive un-ACKed heartbeats. Bumped on `heartbeatQueue`, zeroed on
-    /// `ackQueue` — two queues, so it must be atomic (see `AtomicInt`).
+    /// Consecutive un-ACKed heartbeats. Bumped on the heartbeat timer, zeroed
+    /// on the receive queue.
     let missedAcks = AtomicInt(0)
-    /// Liveness flag. Written from the heartbeat + ACK queues, read from the
-    /// `WifiConnection` liveness task — atomic for the same reason.
+    /// Liveness flag. Written from the heartbeat/receive queues, read from
+    /// the `WifiConnection` alive tick.
     let connectionAlive = AtomicBool(true)
-    /// Latest controller ACK packed as (requestType<<16)|(idx<<8)|result, or -1.
-    var lastControllerAck: Int32 = -1
-    var vigemAvailable: Int8 = -1
-    var activeControllerCount: Int8 = -1
 
-    /// Per-packet rumble dispatcher. Set from the main actor; invoked from
-    /// the receive-loop dispatch queue. Guarded by `rumbleHandlerLock` so we
-    /// can swap handlers without racing the receive loop.
-    private var _rumbleHandler: ((RumbleMessage) -> Void)?
-    private let rumbleHandlerLock = NSLock()
-    var rumbleHandler: ((RumbleMessage) -> Void)? {
-        get {
-            rumbleHandlerLock.lock()
-            defer { rumbleHandlerLock.unlock() }
-            return _rumbleHandler
-        }
-        set {
-            rumbleHandlerLock.lock()
-            defer { rumbleHandlerLock.unlock() }
-            _rumbleHandler = newValue
-        }
+    /// Latest enriched heartbeat ack (epoch/bitmap/backend/count), polled by
+    /// the 1 Hz alive tick for the reconcile loop (gap G9 parse side).
+    private let lastHeartbeatAck = LockedBox<HeartbeatAck?>(nil)
+    /// Latched SESSION_CLOSE reason byte, −1 while none (dish-linux
+    /// `sessionCloseReason_`). Reset by `setConnectionParams`.
+    let sessionCloseReason = AtomicInt(-1)
+
+    /// One-way latency estimate off the heartbeat round trip (gap G13). The
+    /// heartbeat timer arms the ping clock; the receive queue pairs acks.
+    private let latencyLock = NSLock()
+    private var latencyWindow = LatencyWindow()
+
+    // MARK: - Callbacks out of the client (PLAN §4 seam)
+
+    /// Fired on the receive queue for every parsed MSG_RUMBLE (0x0009).
+    private let rumbleBox = LockedBox<((RumbleCommand) -> Void)?>(nil)
+    var onRumble: ((RumbleCommand) -> Void)? {
+        get { rumbleBox.get() }
+        set { rumbleBox.set(newValue) }
     }
 
-    /// Per-packet light-bar dispatcher for the `MSG_LIGHTBAR` (0x000D)
-    /// return path. Same locking discipline as `rumbleHandler`.
-    private var _lightbarHandler: ((LightbarMessage) -> Void)?
-    private let lightbarHandlerLock = NSLock()
-    var lightbarHandler: ((LightbarMessage) -> Void)? {
-        get {
-            lightbarHandlerLock.lock()
-            defer { lightbarHandlerLock.unlock() }
-            return _lightbarHandler
-        }
-        set {
-            lightbarHandlerLock.lock()
-            defer { lightbarHandlerLock.unlock() }
-            _lightbarHandler = newValue
-        }
+    /// Fired on the receive queue for every parsed MSG_LIGHTBAR (0x000D).
+    private let lightbarBox = LockedBox<((LightbarCommand) -> Void)?>(nil)
+    var onLightbar: ((LightbarCommand) -> Void)? {
+        get { lightbarBox.get() }
+        set { lightbarBox.set(newValue) }
+    }
+
+    /// Fired on the receive queue for an authenticated MSG_SESSION_CLOSE
+    /// (0x000F); an unknown FUTURE reason byte degrades to `.shutdown` (the
+    /// transient default arm, like the C++ ports). The client also drops
+    /// `connectionAlive` so the alive tick reaps without the death wait
+    /// (gap G10 parse side).
+    private let sessionCloseBox = LockedBox<((CloseReason) -> Void)?>(nil)
+    var onSessionClose: ((CloseReason) -> Void)? {
+        get { sessionCloseBox.get() }
+        set { sessionCloseBox.set(newValue) }
     }
 
     // MARK: - Lifecycle
 
-    /// Open a UDP socket aimed at `ip:port`. Returns `true` on success; on
-    /// failure the client is left in a closed state and further calls no-op.
+    /// Install the post-PUT session material (PLAN §4 seam): aim the socket at
+    /// `host:udpPort` (kept when unchanged — the re-key path), swap in the
+    /// token + the HKDF-DERIVED session key, and restart every per-session
+    /// mirror: counters back to 1/0, replay guard, liveness, enriched-ack
+    /// snapshot, close latch, latency window. Call after every session PUT.
+    ///
+    /// Returns false (leaving the client closed) when the socket cannot be
+    /// aimed at the endpoint. Endpoint CHANGES require the loops stopped —
+    /// the manager builds a fresh client per connect; only a same-endpoint
+    /// re-key happens live.
     @discardableResult
-    func openSocket(ip: String, port: Int) -> Bool {
-        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        if fd < 0 { return false }
-
-        // DSCP EF (Expedited Forwarding). macOS allows this without root on
-        // loopback/LAN; on some Wi-Fi drivers it's silently dropped but never
-        // errors — so treat failure as non-fatal, matching the Android JNI.
-        var tos: Int32 = 0xB8
-        _ = setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, socklen_t(MemoryLayout<Int32>.size))
-
-        // Prevent SIGPIPE from killing the process if the server vanishes mid-send.
-        var one: Int32 = 1
-        _ = setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
-
-        // 500ms recv timeout — same as Android (so receiveAck loop can check cancel).
-        var rtv = timeval(tv_sec: 0, tv_usec: 500_000)
-        _ = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
-
-        var addr = sockaddr_in()
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port = in_port_t(UInt16(port)).bigEndian
-        if inet_pton(AF_INET, ip, &addr.sin_addr) != 1 {
-            close(fd)
-            return false
-        }
-
-        self.sock = fd
-        self.dest = addr
+    func setConnectionParams(
+        host: String,
+        udpPort: UInt16,
+        token: UInt32,
+        sessionKey: SymmetricKey
+    ) -> Bool {
+        guard ensureSocket(host: host, udpPort: udpPort) else { return false }
+        params.set(SessionParams(key: sessionKey, token: token))
+        counter.reset()
+        lastRecvCounter.set(0)
+        missedAcks.set(0)
+        connectionAlive.set(true)
+        lastHeartbeatAck.set(nil)
+        sessionCloseReason.set(-1)
+        latencyLock.lock()
+        latencyWindow.reset()
+        latencyLock.unlock()
         return true
     }
 
     func closeSocket() {
         stopHeartbeat()
-        ackRunning = false
-        if sock >= 0 { close(sock)
+        stopReceiveLoop()
+        sendLock.lock()
+        defer { sendLock.unlock() }
+        if sock >= 0 {
+            close(sock)
             sock = -1
         }
+        boundHost = ""
+        boundPort = 0
     }
 
-    /// Install the post-pair token + shared key. Resets the counter/ACK state.
-    func setConnectionParams(token: Data, key: Data) {
-        guard token.count == 4, key.count == 32 else { return }
-        self.token = Array(token)
-        self.key = SymmetricKey(data: key)
-        counter.reset()
-        missedAcks.set(0)
-        connectionAlive.set(true)
-        lastControllerAck = -1
+    /// Open (or keep) the UDP socket aimed at `host:udpPort`. DSCP EF +
+    /// no-SIGPIPE + 500 ms recv timeout, matching the sibling clients.
+    private func ensureSocket(host: String, udpPort: UInt16) -> Bool {
+        sendLock.lock()
+        defer { sendLock.unlock() }
+        if sock >= 0, host == boundHost, udpPort == boundPort { return true }
+
+        var addr = sockaddr_in()
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = udpPort.bigEndian
+        guard inet_pton(AF_INET, host, &addr.sin_addr) == 1 else { return false }
+
+        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
+        if fd < 0 { return false }
+
+        // DSCP EF (Expedited Forwarding). Best-effort: some Wi-Fi drivers
+        // silently strip TOS but never error — matching the sibling clients.
+        var tos: Int32 = 0xB8
+        _ = setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, socklen_t(MemoryLayout<Int32>.size))
+        // Prevent SIGPIPE from killing the process if the server vanishes.
+        var one: Int32 = 1
+        _ = setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &one, socklen_t(MemoryLayout<Int32>.size))
+        // 500 ms recv timeout so the receive loop can poll `ackRunning`.
+        var rtv = timeval(tv_sec: 0, tv_usec: 500_000)
+        _ = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
+
+        if sock >= 0 { close(sock) }
+        sock = fd
+        dest = addr
+        boundHost = host
+        boundPort = udpPort
+        return true
     }
 
-    // MARK: - Encrypted send (hot path)
+    /// Run `body` with the fd + destination under `sendLock` — the send
+    /// path's mutual exclusion with `closeSocket`, so a datagram can never
+    /// race onto a closed (and possibly reused) fd.
+    func withSocketLocked<T>(_ body: (Int32, sockaddr_in) -> T) -> T {
+        sendLock.lock()
+        defer { sendLock.unlock() }
+        return body(sock, dest)
+    }
+
+    /// fd + destination snapshot for the receive path (fd mutation stays
+    /// behind `sendLock`; the receive loop is joined before the fd closes).
+    func socketSnapshot() -> (fd: Int32, dest: sockaddr_in) {
+        withSocketLocked { fd, dest in (fd, dest) }
+    }
+
+    var isOpen: Bool {
+        socketSnapshot().fd >= 0
+    }
+
+    // MARK: - Reconcile / re-key / latency snapshots (PLAN §4 seam)
+
+    /// Latest enriched heartbeat ack, or nil before the first one this
+    /// session. Thread-safe; polled by the 1 Hz alive tick.
+    func heartbeatAckSnapshot() -> HeartbeatAck? {
+        lastHeartbeatAck.get()
+    }
+
+    func storeHeartbeatAck(_ ack: HeartbeatAck) {
+        lastHeartbeatAck.set(ack)
+    }
+
+    /// Current send counter (the last value used), for the proactive re-PUT
+    /// guard `DishCore.counterNeedsRepush` (gap G4).
+    var sendCounter: UInt32 {
+        UInt32(truncatingIfNeeded: counter.current())
+    }
+
+    /// Median heartbeat RTT halved (symmetric-path one-way estimate) + the
+    /// sample count the UI shows beside the figure. Nil until the first
+    /// paired ack; zeroed by `setConnectionParams` (gap G13).
+    func latencySnapshot() -> (p50OneWayMs: Double?, samples: Int) {
+        latencyLock.lock()
+        defer { latencyLock.unlock() }
+        return (latencyWindow.p50OneWayMs(), latencyWindow.sampleCount)
+    }
+
+    /// Stamp the single-in-flight ping clock (heartbeat timer). The 5 s loss
+    /// reclaim + never-overwrite rule live in `DishCore.LatencyWindow`.
+    func armLatencyPing(nowMs: Int64) {
+        latencyLock.lock()
+        defer { latencyLock.unlock() }
+        latencyWindow.armPing(nowMs: nowMs)
+    }
+
+    /// Pair an arriving heartbeat ack with the in-flight ping (receive queue).
+    func recordLatencyAck(nowMs: Int64) {
+        latencyLock.lock()
+        defer { latencyLock.unlock() }
+        latencyWindow.ackReceived(nowMs: nowMs)
+    }
+
+    /// Monotonic milliseconds for the latency clock (never 0 in practice, so
+    /// `LatencyWindow`'s 0-sentinel stays free).
+    static func monotonicNowMs() -> Int64 {
+        Int64(DispatchTime.now().uptimeNanoseconds / 1_000_000)
+    }
+
+    // MARK: - Encrypted send: input (hot path)
 
     /// Called directly from the GCController callback thread for minimum
-    /// latency. One `sendto` per report, no buffering.
+    /// latency. One `sendto` per report, no buffering. MSG_INPUT (0x0001):
+    /// full-state snapshot per packet — never delta-encoded.
     func sendReport(
         controllerIndex: Int,
         buttons: UInt16,
@@ -189,209 +284,100 @@ final class SatelliteClient {
         rx: Int16,
         ry: Int16
     ) {
-        // Payload: controllerIndex(1) + XUSB_REPORT(12) = 13 bytes.
-        var payload = [UInt8](repeating: 0, count: 13)
-        payload[0] = UInt8(truncatingIfNeeded: controllerIndex)
-        payload.withUnsafeMutableBufferPointer { buf in
-            // XUSB_REPORT is little-endian on the wire.
-            buf[1] = UInt8(truncatingIfNeeded: buttons)
-            buf[2] = UInt8(truncatingIfNeeded: buttons >> 8)
-            buf[3] = lt
-            buf[4] = rt
-            storeLE16(Int16(bitPattern: UInt16(lx) & 0xFFFF), into: buf, at: 5)
-            storeLE16(ly, into: buf, at: 7)
-            storeLE16(rx, into: buf, at: 9)
-            storeLE16(ry, into: buf, at: 11)
-        }
-        sendEncrypted(msgType: Self.msgGamepadData, payload: payload)
-    }
-
-    private func storeLE16(_ value: Int16, into buf: UnsafeMutableBufferPointer<UInt8>, at offset: Int) {
-        let unsigned = UInt16(bitPattern: value)
-        buf[offset] = UInt8(truncatingIfNeeded: unsigned)
-        buf[offset + 1] = UInt8(truncatingIfNeeded: unsigned >> 8)
-    }
-
-    func controllerAdd(index: Int, capabilities: UInt16) {
-        var payload = [UInt8](repeating: 0, count: 3)
-        payload[0] = UInt8(truncatingIfNeeded: index)
-        putBE16(capabilities, into: &payload, at: 1)
-        sendEncrypted(msgType: Self.msgControllerAdd, payload: payload)
-    }
-
-    func controllerRemove(index: Int) {
         sendEncrypted(
-            msgType: Self.msgControllerRemove,
-            payload: [UInt8(truncatingIfNeeded: index)]
+            msgType: ProtocolConstants.msgInput,
+            payload: Encoders.inputPayload(
+                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
+                buttons: buttons,
+                lt: lt,
+                rt: rt,
+                lx: lx,
+                ly: ly,
+                rx: rx,
+                ry: ry
+            )
         )
-    }
-
-    func sendControllerType(index: Int, type: Int) {
-        sendEncrypted(
-            msgType: Self.msgControllerType,
-            payload: [
-                UInt8(truncatingIfNeeded: index),
-                UInt8(truncatingIfNeeded: type)
-            ]
-        )
-    }
-
-    func resetControllerAck() {
-        lastControllerAck = -1
     }
 
     // MARK: - Motion (IMU)
 
-    /// Forward a single IMU sample to the satellite. Wire payload:
-    ///
-    ///     ctrlIdx(1) + gyroX/Y/Z (3 × i16 LE) + accelX/Y/Z (3 × i16 LE)
-    ///                + timestampDeltaUs (u32 LE) = 17 bytes
-    ///
-    /// Axis scale follows the Cemuhook DSU convention as documented in
-    /// `satellite/docs/protocol.md` — senders MUST pre-scale to `±2000 deg/s`
-    /// for gyro and `±4 g` for accel before encoding. Senders SHOULD apply the
-    /// manufacturer-specific rotation matrix (DualSense rotates X/Z, etc.) so
-    /// the receiver does not need to rotate per controller type.
+    /// Forward a single IMU sample (MSG_MOTION 0x000A). Scale: gyro ±2000
+    /// deg/s, accel ±4 g over int16; right-handed frame, +X right, +Y up,
+    /// +Z toward player — senders apply the rotation, receivers do not.
+    /// `timestampDeltaUs` is µs since the previous motion packet for the same
+    /// controller (0 on the first). Hot path: GCMotion callback thread.
     func sendMotion(
         controllerIndex: Int,
         gyroX: Int16, gyroY: Int16, gyroZ: Int16,
         accelX: Int16, accelY: Int16, accelZ: Int16,
         timestampDeltaUs: UInt32
     ) {
-        var payload = [UInt8](repeating: 0, count: 17)
-        payload[0] = UInt8(truncatingIfNeeded: controllerIndex)
-        payload.withUnsafeMutableBufferPointer { buf in
-            storeLE16(gyroX, into: buf, at: 1)
-            storeLE16(gyroY, into: buf, at: 3)
-            storeLE16(gyroZ, into: buf, at: 5)
-            storeLE16(accelX, into: buf, at: 7)
-            storeLE16(accelY, into: buf, at: 9)
-            storeLE16(accelZ, into: buf, at: 11)
-            buf[13] = UInt8(truncatingIfNeeded: timestampDeltaUs)
-            buf[14] = UInt8(truncatingIfNeeded: timestampDeltaUs >> 8)
-            buf[15] = UInt8(truncatingIfNeeded: timestampDeltaUs >> 16)
-            buf[16] = UInt8(truncatingIfNeeded: timestampDeltaUs >> 24)
-        }
-        sendEncrypted(msgType: Self.msgMotion, payload: payload)
+        sendEncrypted(
+            msgType: ProtocolConstants.msgMotion,
+            payload: Encoders.motionPayload(
+                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
+                gyroX: gyroX,
+                gyroY: gyroY,
+                gyroZ: gyroZ,
+                accelX: accelX,
+                accelY: accelY,
+                accelZ: accelZ,
+                timestampDeltaUs: timestampDeltaUs
+            )
+        )
     }
 
     // MARK: - Battery
 
-    /// Forward a battery snapshot. Wire payload:
-    ///
-    ///     ctrlIdx(1) + level(1) + status(1) = 3 bytes
-    ///
-    /// `level` is 0..100 inclusive, or `0xFF` for unknown. Senders that can
-    /// only read the charging state but not the percentage SHOULD pass
-    /// `level = 0xFF` along with the known status. Senders with no battery
-    /// information at all SHOULD NOT call this method.
+    /// Forward a battery snapshot (MSG_BATTERY 0x000B). `level` is 0...100,
+    /// or `ProtocolConstants.batteryLevelUnknown` (0xFF) for status-only
+    /// readers; senders with no battery information at all MUST NOT call.
     func sendBattery(controllerIndex: Int, level: UInt8, status: BatteryStatus) {
-        let payload: [UInt8] = [
-            UInt8(truncatingIfNeeded: controllerIndex),
-            level,
-            status.rawValue
-        ]
-        sendEncrypted(msgType: Self.msgBattery, payload: payload)
+        sendEncrypted(
+            msgType: ProtocolConstants.msgBattery,
+            payload: Encoders.batteryPayload(
+                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
+                level: level,
+                status: status
+            )
+        )
     }
 
     // MARK: - Touchpad
 
-    // The two touchpad encoders take one argument per wire field (10 each).
-    // Bundling them into a struct purely to satisfy the parameter-count rule
-    // would add an indirection the flat wire-mapping doesn't benefit from.
+    // One argument per wire field (contract §0x000C); a struct wrapper would
+    // only add an indirection — same precedent as the sibling senders.
     // swiftlint:disable function_parameter_count
 
-    /// Encoded MSG_TOUCHPAD inner payload (after the 4-byte type+length
-    /// header). Layout per satellite/docs/protocol.md §0x000C:
-    ///
-    ///     ctrlIdx(1) + flags(1) + finger0(1+2+2) + finger1(1+2+2) = 12 bytes
-    ///
-    /// `flags` bits: 0 = finger0 active, 1 = finger1 active, 2 = clicky
-    /// button pressed. Coordinates are normalised int16 (-32768..32767) on
-    /// both axes so the wire is resolution-independent.
-    ///
-    /// Exposed `static` so the byte layout can be pinned by unit tests
-    /// without bringing up a live socket — same pattern as
-    /// `parseRumbleMessage` on the return path and `encodeMotionPayload`
-    /// on the desktop senders.
-    static func encodeTouchpadPayload(
-        controllerIndex: UInt8,
-        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
-        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool
-    ) -> [UInt8] {
-        var payload = [UInt8](repeating: 0, count: 12)
-        payload[0] = controllerIndex
-        var flags: UInt8 = 0
-        if finger0Active { flags |= 0x01 }
-        if finger1Active { flags |= 0x02 }
-        if buttonPressed { flags |= 0x04 }
-        payload[1] = flags
-        payload[2] = finger0Id
-        /// Inline LE16 store — the storeLE16 helper on SatelliteClient is a
-        /// private instance method, and this encoder is static so tests can
-        /// pin the byte layout without an instance.
-        func putLE16(_ value: Int16, at offset: Int) {
-            let unsigned = UInt16(bitPattern: value)
-            payload[offset] = UInt8(truncatingIfNeeded: unsigned)
-            payload[offset + 1] = UInt8(truncatingIfNeeded: unsigned >> 8)
-        }
-        putLE16(finger0X, at: 3)
-        putLE16(finger0Y, at: 5)
-        payload[7] = finger1Id
-        putLE16(finger1X, at: 8)
-        putLE16(finger1Y, at: 10)
-        return payload
-    }
-
-    /// Forward a touchpad sample to the satellite. The caller is responsible
-    /// for normalising coordinates to int16 [-32768, 32767] before calling.
+    /// Forward a touchpad sample (MSG_TOUCHPAD 0x000C) — the 16-byte
+    /// protocol-1 payload incl. the trailing `eventTimeMs` (sender-side
+    /// sample uptime, ms; u32 LE at offset 12). The server drops legacy
+    /// 12-byte bodies (gap G12). Coordinates are normalised int16; the caller
+    /// scales. Hot path: GameController touchpad callback thread.
     func sendTouchpad(
         controllerIndex: Int,
         finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
         finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool
+        buttonPressed: Bool,
+        eventTimeMs: UInt32
     ) {
-        let payload = Self.encodeTouchpadPayload(
-            controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-            finger0Active: finger0Active,
-            finger0Id: finger0Id,
-            finger0X: finger0X,
-            finger0Y: finger0Y,
-            finger1Active: finger1Active,
-            finger1Id: finger1Id,
-            finger1X: finger1X,
-            finger1Y: finger1Y,
-            buttonPressed: buttonPressed
+        sendEncrypted(
+            msgType: ProtocolConstants.msgTouchpad,
+            payload: Encoders.touchpadPayload(
+                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
+                finger0Active: finger0Active,
+                finger0Id: finger0Id,
+                finger0X: finger0X,
+                finger0Y: finger0Y,
+                finger1Active: finger1Active,
+                finger1Id: finger1Id,
+                finger1X: finger1X,
+                finger1Y: finger1Y,
+                buttonPressed: buttonPressed,
+                eventTimeMs: eventTimeMs
+            )
         )
-        sendEncrypted(msgType: Self.msgTouchpad, payload: payload)
     }
 
     // swiftlint:enable function_parameter_count
-
-    // MARK: - Lightbar (receive-side decoder)
-
-    /// Decoded MSG_LIGHTBAR (0x000D) message. The satellite-emitted payload
-    /// is `ctrlIdx(1) + r(1) + g(1) + b(1)` = 4 bytes. Senders apply the
-    /// colour via the appropriate platform API (`GCColor.setColor` on
-    /// macOS, `SDL_GameControllerSetLED` on desktop SDL backends).
-    struct LightbarMessage {
-        var controllerIndex: Int
-        var r: UInt8
-        var g: UInt8
-        var b: UInt8
-    }
-
-    /// Pure decoder for the MSG_LIGHTBAR inner payload (after the 4-byte
-    /// header). Returns nil on truncation. Kept `static` for unit tests.
-    static func parseLightbarMessage(_ payload: ArraySlice<UInt8>) -> LightbarMessage? {
-        guard payload.count >= 4 else { return nil }
-        let base = payload.startIndex
-        return LightbarMessage(
-            controllerIndex: Int(payload[base]),
-            r: payload[base + 1],
-            g: payload[base + 2],
-            b: payload[base + 3]
-        )
-    }
 }
