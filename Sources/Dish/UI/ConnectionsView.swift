@@ -271,7 +271,7 @@ struct ConnectionsView: View {
     /// values the wire layer doesn't know about — to a noun (resting) or
     /// verb-with-ellipsis (transient) per the shared nomenclature.
     private func statusText(for summary: ConnectionSummary) -> String {
-        let base: String = switch summary.live {
+        let base = switch summary.live {
         case .found: String(localized: "Found")
         case .stale: String(localized: "Needs pairing")
         case .saved: String(localized: "Offline")
