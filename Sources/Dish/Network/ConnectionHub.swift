@@ -41,14 +41,10 @@ final class ConnectionHub: ObservableObject {
         // The persistent "Needs pairing" set drives the `.stale` row chip;
         // mutate-on-failed-silent-retry / clear-on-live-session changes
         // happen on the manager and must trigger a summary rebuild. Mirrors
-        // dish-android's `combine(..., staleSatelliteIds, ...)`. `@Published`
-        // fires in `willSet` (before the mutation is visible), so defer one
-        // tick — same pattern as `subscribeToPool` — otherwise the rebuild
-        // sees the *prior* set value and the chip never flips.
+        // dish-android's `combine(..., staleSatelliteIds, ...)`.
         wifi.$staleSatelliteIds
-            .sink { [weak self] _ in
-                DispatchQueue.main.async { self?.rebuild() }
-            }
+            .afterMutationSettles()
+            .sink { [weak self] _ in self?.rebuild() }
             .store(in: &cancellables)
 
         // Roll back local bindings when the server rejects a controller add.
@@ -64,10 +60,9 @@ final class ConnectionHub: ObservableObject {
         }
         // Add subscriptions for new entries.
         for (id, conn) in pool where perConnCancellables[id] == nil {
-            let cancellable = conn.objectWillChange.sink { [weak self] _ in
-                // objectWillChange fires *before* the mutation; defer one tick.
-                DispatchQueue.main.async { self?.rebuild() }
-            }
+            let cancellable = conn.objectWillChange
+                .afterMutationSettles()
+                .sink { [weak self] _ in self?.rebuild() }
             perConnCancellables[id] = cancellable
         }
         rebuild()

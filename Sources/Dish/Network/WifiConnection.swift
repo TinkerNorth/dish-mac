@@ -559,6 +559,18 @@ final class WifiConnection: ObservableObject, Identifiable {
         lightbarHandler = handler
         clientRef.get()?.onLightbar = handler
     }
+
+    /// Whether a rumble handler is installed. `internal` so the G19
+    /// prune/re-add tests can observe `AppModel`'s install pass without a
+    /// live client — same seam pattern as `capabilityWord`.
+    var hasRumbleHandler: Bool {
+        rumbleHandler != nil
+    }
+
+    /// Same observability seam for the light-bar return path.
+    var hasLightbarHandler: Bool {
+        lightbarHandler != nil
+    }
 }
 
 /// Thread-safe holder for the live `SatelliteClient` reference. Writes from
