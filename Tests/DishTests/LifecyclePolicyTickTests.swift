@@ -287,7 +287,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
 
     func testTeardownResetsReconcileAndTelemetryState() throws {
         var hooks = SessionHooks()
-        hooks.reconcile = { }
+        hooks.reconcile = {}
         (conn, client) = try makeLive(epoch: 7, hooks: hooks)
         conn.setReconcileInFlight(true)
         conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
