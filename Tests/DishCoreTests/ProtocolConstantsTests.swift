@@ -49,7 +49,6 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertEqual(ProtocolConstants.heartbeatIntervalMs, 2000)
         XCTAssertEqual(ProtocolConstants.heartbeatMissNotResponding, 2)
         XCTAssertEqual(ProtocolConstants.heartbeatMissMax, 5)
-        XCTAssertEqual(ProtocolConstants.restLivenessGraceSec, 15)
         XCTAssertEqual(ProtocolConstants.latencyWindowCapacity, 64)
         XCTAssertEqual(ProtocolConstants.counterRepushThreshold, 0xF000_0000)
     }

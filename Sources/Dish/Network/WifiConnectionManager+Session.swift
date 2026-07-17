@@ -75,13 +75,17 @@ extension WifiConnectionManager {
             hmacProof: proof,
             controllers: descriptors
         )
-        if resp.unauthorized || resp.httpStatus == 401 {
+        // Outcome classification rides DishCore's error-model reducer
+        // (`RestStamped.verdict` → `classifyRest`); the code-based
+        // `unauthorized` stays as the dish-linux-parity belt for a terminal
+        // machine code on a non-401 status.
+        if resp.unauthorized || resp.verdict == .unauthorized {
             // NOT_PAIRED / BAD_PROOF: the satellite revoked our trust —
             // terminal (contract §hmacProof).
             handleTerminalAuth(id, loud: intent == .userInitiated)
             return
         }
-        if resp.httpStatus == 409 {
+        if resp.verdict == .versionMismatch {
             conn.markDisconnected()
             emitErrorIfUserInitiated(intent, Self.protocolMismatchMessage)
             return
@@ -203,7 +207,7 @@ extension WifiConnectionManager {
             hmacProof: proof,
             controllers: descriptors
         )
-        if resp.unauthorized || resp.httpStatus == 401 {
+        if resp.unauthorized || resp.verdict == .unauthorized {
             handleTerminalAuth(id, loud: false)
             return
         }
@@ -252,7 +256,7 @@ extension WifiConnectionManager {
                 hmacProof: proof,
                 descriptor: descriptor
             )
-            if resp.unauthorized || resp.httpStatus == 401 {
+            if resp.unauthorized || resp.verdict == .unauthorized {
                 handleTerminalAuth(conn.id, loud: false)
                 return
             }

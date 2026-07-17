@@ -116,9 +116,9 @@ extension WifiConnectionManager {
             hmacProof: proofFor(id)
         )
         conn.setReconcileInFlight(false)
-        if view.unauthorized || view.httpStatus == 401 {
+        if view.unauthorized || view.verdict == .unauthorized {
             // Centralised terminal-auth funnel; quiet — the user did not
-            // initiate a reconcile.
+            // initiate a reconcile (DishCore verdict; see `RestStamped`).
             handleTerminalAuth(id, loud: false)
             return
         }

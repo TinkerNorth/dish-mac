@@ -157,11 +157,12 @@ final class HTTPClientLiveTests: XCTestCase {
         satellite.protocolVersionReject = true
         let resp = await putSession()
         XCTAssertEqual(resp.httpStatus, 409)
+        // Same construction `RestStamped.verdict` wires into the shell.
         let verdict = classifyRest(RestReply(
             status: resp.httpStatus, bodyParsed: resp.reachable, code: resp.code ?? ""
         ))
         XCTAssertEqual(verdict, .versionMismatch)
-        XCTAssertTrue(restVerdictTerminal(verdict))
+        XCTAssertEqual(resp.verdict, .versionMismatch)
     }
 
     // MARK: - GET /api/connections/{id} (reconcile view)
@@ -259,7 +260,6 @@ final class HTTPClientLiveTests: XCTestCase {
         XCTAssertEqual(reply.status, 401)
         XCTAssertEqual(reply.code, "NOT_PAIRED")
         XCTAssertEqual(classifyRest(reply), .unauthorized)
-        XCTAssertTrue(restVerdictTerminal(classifyRest(reply)))
     }
 
     // MARK: - Transport failure
@@ -271,6 +271,6 @@ final class HTTPClientLiveTests: XCTestCase {
         XCTAssertFalse(resp.reachable)
         let verdict = classifyRest(RestReply(status: 0, bodyParsed: false, code: ""))
         XCTAssertEqual(verdict, .unreachable)
-        XCTAssertTrue(restVerdictRetryable(verdict))
+        XCTAssertEqual(resp.verdict, .unreachable)
     }
 }

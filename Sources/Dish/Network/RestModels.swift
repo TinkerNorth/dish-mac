@@ -284,3 +284,29 @@ private func nonEmpty(_ value: String?) -> String? {
 func isTerminalAuthCode(_ code: String?) -> Bool {
     code == ProtocolConstants.authCodeNotPaired || code == ProtocolConstants.authCodeBadProof
 }
+
+/// The client-side stamp every authed-route DTO carries (`HTTPClient` fills
+/// `httpStatus`/`reachable`), so the exchange can be classified through
+/// DishCore's error-model reducer instead of open-coded status checks
+/// (PLAN D2: the shell delegates decisions to DishCore).
+protocol RestStamped {
+    var httpStatus: Int { get }
+    var reachable: Bool { get }
+    var code: String? { get }
+}
+
+extension RestStamped {
+    /// `DishCore.classifyRest` over the stamped exchange. `bodyParsed` maps
+    /// to `reachable` (this gateway's only bodyless replies are the status-0
+    /// transport-failure sentinel), which makes the mapping exact:
+    /// `verdict == .unauthorized` ⇔ `httpStatus == 401` and
+    /// `verdict == .versionMismatch` ⇔ `httpStatus == 409` — any non-zero
+    /// status implies `reachable`. Same construction the live-HTTP tests pin.
+    var verdict: RestVerdict {
+        classifyRest(RestReply(status: httpStatus, bodyParsed: reachable, code: code ?? ""))
+    }
+}
+
+extension SessionResponse: RestStamped {}
+extension ControllerPutResponse: RestStamped {}
+extension SessionViewDto: RestStamped {}

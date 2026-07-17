@@ -52,21 +52,4 @@ final class RestOutcomeTests: XCTestCase {
         XCTAssertEqual(classifyRest(RestReply(status: 404, bodyParsed: true)), .serverError)
         XCTAssertEqual(classifyRest(RestReply(status: 500, bodyParsed: true)), .serverError)
     }
-
-    func testTerminalAndRetryablePartitionTheVerdicts() {
-        // Terminal: stop the retry loop, surface a user decision.
-        XCTAssertTrue(restVerdictTerminal(.unauthorized))
-        XCTAssertTrue(restVerdictTerminal(.versionMismatch))
-        XCTAssertFalse(restVerdictTerminal(.ok))
-        XCTAssertFalse(restVerdictTerminal(.shuttingDown))
-        XCTAssertFalse(restVerdictTerminal(.unreachable))
-        XCTAssertFalse(restVerdictTerminal(.serverError))
-        // Retryable: feed the exponential backoff schedule.
-        XCTAssertTrue(restVerdictRetryable(.unreachable))
-        XCTAssertTrue(restVerdictRetryable(.shuttingDown))
-        XCTAssertTrue(restVerdictRetryable(.serverError))
-        XCTAssertFalse(restVerdictRetryable(.ok))
-        XCTAssertFalse(restVerdictRetryable(.unauthorized))
-        XCTAssertFalse(restVerdictRetryable(.versionMismatch))
-    }
 }

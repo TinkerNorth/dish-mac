@@ -86,10 +86,9 @@ public enum ProtocolConstants {
     public static let heartbeatMissNotResponding = 2
     /// Consecutive missed acks before the link counts as dead.
     public static let heartbeatMissMax = 5
-    /// A fresh/rotated session counts the REST upsert as provisional liveness
-    /// for this long, so a half-open session (UDP blocked one way) surfaces on
-    /// the client instead of flapping through the reaper.
-    public static let restLivenessGraceSec = 15
+    // (The satellite's REST-liveness reaper grace — 15 s of provisional
+    // liveness after a session PUT — is server-side policy the client never
+    // consults; its former mirror constant here was dropped as dead, W4C-F1.)
 
     // MARK: - Latency readout (dish-linux Util/LatencyWindow.h; android #138)
 

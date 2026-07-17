@@ -5,7 +5,10 @@
 // fields into a decision the session layer acts on. Free functions only so
 // the rules unit-test without sockets. These encode the contract's error
 // model (§Error model, §hmacProof) once, in one place. Ports dish-linux
-// Network/RestOutcome.h.
+// Network/RestOutcome.h, minus its terminal/retryable boolean helpers: the
+// shell's decision arms act per-verdict (the two terminal arms return before
+// the retry arm), so a boolean partition had no behavior-identical call site
+// and was dropped rather than kept dead (W4C-F1).
 
 import Foundation
 
@@ -23,16 +26,6 @@ public enum RestVerdict: Equatable, Sendable {
     case unreachable
     /// Any other non-2xx with a body — usually retryable.
     case serverError
-}
-
-/// Terminal verdicts stop the retry loop and surface a user decision.
-public func restVerdictTerminal(_ verdict: RestVerdict) -> Bool {
-    verdict == .unauthorized || verdict == .versionMismatch
-}
-
-/// Retryable verdicts feed the exponential backoff schedule.
-public func restVerdictRetryable(_ verdict: RestVerdict) -> Bool {
-    verdict == .unreachable || verdict == .shuttingDown || verdict == .serverError
 }
 
 /// The decoded shape every REST reply carries through this layer: the HTTP
