@@ -159,6 +159,12 @@ final class EncodersTests: XCTestCase {
             buttonPressed: false,
             eventTimeMs: 0xDEAD_BEEF
         )
+        // Length gate BEFORE the subscript: a short-encoder regression must
+        // fail with a diagnostic, not trap the whole test process (the
+        // sibling test above pins count == 16 as the layout contract).
+        guard payload.count == 16 else {
+            return XCTFail("expected a 16-byte touchpad payload, got \(payload.count)")
+        }
         XCTAssertEqual([UInt8](payload[12 ... 15]), [0xEF, 0xBE, 0xAD, 0xDE])
     }
 
