@@ -285,6 +285,61 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertNotNil(store.sharedKey(for: id), "trust still intact after the pair-time abort")
     }
 
+    /// The KEYED reconnect path must surface the same identity-changed UX the
+    /// pair paths do (gap G7 UX parity; W4A-F1): a TOFU mismatch is an
+    /// identity problem, not a connectivity one, so the generic "connection
+    /// failed" must never stand in for it. And it must not feed the silent
+    /// retry curve — backoff can't outrun a changed identity; only the user
+    /// (re-pair / forget) can resolve it. Mirrors dish-android's keyed-path
+    /// `failSession(..., IDENTITY_CHANGED_MSG, retry = false)`.
+    func testKeyedConnectAgainstImposterSurfacesIdentityChangeAndStopsRetry() async throws {
+        let id = server.id
+
+        // Real trust first: the genuine satellite pins its cert, then goes down.
+        satellite.pairingKeyHex = String(repeating: "2b", count: 32)
+        store.setSharedKey(String(repeating: "2b", count: 32), for: id)
+        manager.connect(to: server)
+        let live = await waitUntil { self.manager.get(id)?.state == .live }
+        XCTAssertTrue(live)
+        manager.disconnect(id: id)
+        satellite.stop()
+
+        // Same satellite identity, different runtime-minted certificate.
+        let imposter = try FakeSatellite(machineId: satellite.machineId)
+        let imposterPorts = try imposter.start()
+        defer { imposter.stop() }
+        imposter.pairingKeyHex = store.sharedKey(for: id)
+        let imposterServer = server(for: imposter, ports: imposterPorts)
+
+        // USER-INITIATED keyed connect: the pre-request abort must read as an
+        // identity change, never the generic transport failure.
+        manager.connect(to: imposterServer)
+        let surfaced = await waitUntil {
+            self.errorMessages.contains(WifiConnectionManager.identityChangedMessage)
+        }
+        XCTAssertTrue(surfaced, "the keyed path must surface the identity-changed message")
+        XCTAssertFalse(
+            errorMessages.contains { $0.contains("connection failed") },
+            "the generic transport error must not stand in for an identity problem"
+        )
+        XCTAssertTrue(imposter.sessionPuts.isEmpty, "zero request bytes may reach the imposter")
+        XCTAssertNotNil(store.sharedKey(for: id), "an imposter must not cost the stored pairing")
+        XCTAssertNil(manager.retry[id], "a user-initiated failure never arms the curve")
+
+        // SILENT keyed retry (auto paths): still no banner — and, unlike a
+        // plain outage, NO armed backoff retry either: the row parks until
+        // the user acts (android parity, retry = false).
+        let messagesBefore = errorMessages.count
+        manager.connect(to: imposterServer, intent: .autoReconnect)
+        XCTAssertEqual(manager.get(id)?.state, .linking, "connect flips to linking synchronously")
+        let parked = await waitUntil { self.manager.get(id)?.state == .idle }
+        XCTAssertTrue(parked, "the silent attempt must abort back to idle")
+        XCTAssertEqual(errorMessages.count, messagesBefore, "silent intents stay silent")
+        XCTAssertNil(manager.retry[id], "an identity mismatch must not enter the backoff curve")
+        XCTAssertNil(manager.retryTasks[id], "no one-shot retry may be armed against an imposter")
+        XCTAssertFalse(manager.staleSatelliteIds.contains(id), "no 'Needs pairing' for an imposter")
+    }
+
     // MARK: - Pair-time protocol-version 409
 
     func testPairTimeVersionRejectionSurfacesMismatchUX() async {

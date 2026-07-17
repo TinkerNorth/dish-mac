@@ -96,7 +96,18 @@ extension WifiConnectionManager {
             // attempt rides `backoffDelayMs` instead of a fixed period
             // (gap G14; mirrors dish-linux openSession).
             conn.markDisconnected()
-            if intent == .userInitiated {
+            if pinMismatches.consume(server.ip) {
+                // A TOFU mismatch aborts the handshake pre-request (zero
+                // bytes flowed) and lands here as a transport failure. It is
+                // an identity problem, not a connectivity one: surface the
+                // honest message instead of the generic failure, and do NOT
+                // arm the backoff curve — no retry can outrun a changed
+                // identity; only the user (re-pair / forget) can. Mirrors
+                // dish-android's keyed-path `failSession(...,
+                // IDENTITY_CHANGED_MSG, retry = false)` and the pair paths'
+                // `unreachableMessage` consume (gap G7 UX parity).
+                emitErrorIfUserInitiated(intent, Self.identityChangedMessage)
+            } else if intent == .userInitiated {
                 events.send(.error("Error: \(resp.error ?? "connection failed")"))
             } else {
                 scheduleRetry(id)
