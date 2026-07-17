@@ -118,16 +118,19 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
         return try XCTUnwrap(json["currentPin"] as? String, "satellite must expose the rotating PIN")
     }
 
+    /// `/api/connections` answers `{"connections":[...], "backendAvailable":…}`.
     private func adminConnectionRow(deviceId: String) async throws -> [String: Any]? {
         let raw = try await adminJSON("/api/connections")
-        let rows = try XCTUnwrap(raw as? [[String: Any]])
+        let wrapper = try XCTUnwrap(raw as? [String: Any])
+        let rows = try XCTUnwrap(wrapper["connections"] as? [[String: Any]])
         return rows.first { ($0["deviceId"] as? String) == deviceId }
     }
 
+    /// `/api/devices` answers a bare array of `{"id":…, "state":…}` rows.
     private func adminDeviceIds() async throws -> [String] {
         let raw = try await adminJSON("/api/devices")
         let rows = try XCTUnwrap(raw as? [[String: Any]])
-        return rows.compactMap { $0["deviceId"] as? String }
+        return rows.compactMap { $0["id"] as? String }
     }
 
     /// Bounded poll of an async admin predicate (the admin view trails the
@@ -212,7 +215,11 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
         XCTAssertTrue(active, "the real satellite must mark this session active off decrypted UDP")
         let maybeRow = try await adminConnectionRow(deviceId: deviceId)
         let row = try XCTUnwrap(maybeRow)
-        XCTAssertGreaterThanOrEqual(try XCTUnwrap(row["epoch"] as? Int), 1)
+        // Epoch counts APPLIED topology changes: an unentitled backend never
+        // plugs the slot, so 0 is the honest value there; entitled runs have
+        // at least the plug itself.
+        let epoch = try XCTUnwrap(row["epoch"] as? Int)
+        XCTAssertGreaterThanOrEqual(epoch, entitled ? 1 : 0)
 
         // Slot outcome depends on the entitlement boundary (see header).
         let controllers = try XCTUnwrap(row["controllers"] as? [[String: Any]])
