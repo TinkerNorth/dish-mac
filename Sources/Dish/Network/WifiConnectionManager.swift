@@ -116,6 +116,15 @@ final class WifiConnectionManager: ObservableObject {
     /// re-issued request supersedes the prior poll and forget/disconnect can
     /// cancel it.
     var approvalPolls: [String: Task<Void, Never>] = [:]
+    /// Per-connection reconnect throttle on the `DishCore.backoffDelayMs`
+    /// curve (gap G14). Mutated only by the `+Lifecycle` split
+    /// (`scheduleRetry` / `suppressRetry` / `clearRetry`); user action clears
+    /// everything. `internal` for the split + the lifecycle tests.
+    var retry: [String: RetryState] = [:]
+    /// The armed one-shot retry task per connection (fires
+    /// `connect(intent: .retryAfterDeath)` when the backoff delay elapses).
+    /// Superseded on re-schedule, cancelled by `clearRetry`/`suppressRetry`.
+    var retryTasks: [String: Task<Void, Never>] = [:]
 
     init(store: ConnectionStore) {
         self.store = store
@@ -288,8 +297,13 @@ final class WifiConnectionManager: ObservableObject {
     /// fire a banner the user didn't ask for.
     func connect(to server: DiscoveredServer, intent: ConnectIntent = .userInitiated) {
         let id = WifiConnection.idFor(server)
+        // A user action resets the backoff curve AND lifts the
+        // replaced-session suppression — the user outranks both (gap G14).
+        if intent == .userInitiated { clearRetry(id) }
         if let existing = connections[id] {
-            if existing.state == .live || existing.state == .linking {
+            // Faltering is still a live session — reconnecting over it would
+            // kick a link that's mid-recovery (dish-linux connectTo).
+            if existing.state == .live || existing.state == .linking || existing.state == .faltering {
                 existing.updateServer(server)
                 return
             }
@@ -329,6 +343,9 @@ final class WifiConnectionManager: ObservableObject {
         let did = deviceId
         let proof = proofFor(id)
         conn.markDisconnected()
+        // An explicit disconnect parks the row — no scheduled silent retry
+        // should resurrect a session the user just closed.
+        clearRetry(id)
         if let cid {
             let http = http
             Task.detached(priority: .utility) {
@@ -369,9 +386,11 @@ final class WifiConnectionManager: ObservableObject {
         store.forget(id)
         connections.removeValue(forKey: id)
         perConnCancellables.removeValue(forKey: id)
-        // The satellite is gone from the saved list — any stale marker for
-        // it would dangle on a row that no longer exists.
+        // The satellite is gone from the saved list — any stale marker or
+        // armed retry for it would dangle on (or resurrect) a row that no
+        // longer exists.
         clearStale(id)
+        clearRetry(id)
         recomputeAnyRegistering()
     }
 
@@ -392,13 +411,18 @@ final class WifiConnectionManager: ObservableObject {
         return SessionCrypto.hmacProofHex(pairingKey: key, deviceId: deviceId)
     }
 
-    /// Terminal 401 (NOT_PAIRED / BAD_PROOF): the satellite revoked our
-    /// trust. Drop ONLY the key — the remembered row survives and parks on
-    /// the persistent "Needs pairing" marker instead of silently deleting
-    /// the satellite. Loud only for user intents (gap G6).
+    /// Terminal auth (401 NOT_PAIRED / BAD_PROOF on any authed route, and
+    /// close-notify(unpaired) via `handleClose`): the satellite revoked our
+    /// trust. The ONE funnel for every trust-revocation path — drops ONLY the
+    /// key (the remembered row survives and parks on the persistent "Needs
+    /// pairing" marker instead of silently deleting the satellite), tears the
+    /// session, and STOPS the retry curve — re-pairing needs the user, so
+    /// silent retries would just hammer a server that already said no.
+    /// Loud only when the user has context for the failure (gaps G6/G15).
     func handleTerminalAuth(_ id: String, loud: Bool) {
         store.forgetKey(for: id)
         markStale(id)
+        clearRetry(id)
         connections[id]?.markDisconnected()
         if loud {
             events.send(.error(Self.repairNeededMessage))
@@ -412,12 +436,20 @@ final class WifiConnectionManager: ObservableObject {
     /// silently (the row chip carries the feedback). A banner here would
     /// fire on every launch where a remembered satellite is offline, which
     /// is noise the user didn't ask for.
+    ///
+    /// Respects the per-connection backoff curve and the replaced-session
+    /// suppression (gap G14): a row whose armed retry hasn't come due — or
+    /// that close-notify(replaced) parked until the user acts — is skipped.
     func autoReconnectAll() {
+        let now = Self.nowMs()
         for remembered in store.remembered() {
             let existing = connections[remembered.id]
-            if existing?.state != .live {
-                connect(to: remembered.toDiscovered(), intent: .autoReconnect)
+            let resting = existing == nil || existing?.state == .idle || existing?.state == .stale
+            guard resting else { continue }
+            if let throttle = retry[remembered.id], throttle.suppressed || now < throttle.nextRetryAtMs {
+                continue
             }
+            connect(to: remembered.toDiscovered(), intent: .autoReconnect)
         }
     }
 

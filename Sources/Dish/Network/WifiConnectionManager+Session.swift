@@ -15,13 +15,6 @@ import Foundation
 
 extension WifiConnectionManager {
 
-    /// Delay before the alive-poll's onDead path attempts a silent reconnect.
-    /// Short enough that a momentary Wi-Fi drop self-heals before the user
-    /// navigates away in frustration; long enough that a real outage doesn't
-    /// burn the satellite's TCP/UDP buffers with back-to-back retries. The
-    /// retry path uses `.retryAfterDeath` so it's silent on failure.
-    static let autoRetryBackoffNs: UInt64 = 1_500_000_000
-
     /// Parse a session PUT response's token + salt hex and derive the session
     /// key: `HKDF-SHA256(pairingKey, sessionSalt, "satellite-session-v1" ‖
     /// token BE)` — both the fresh-session and re-key paths share this. Nil
@@ -98,8 +91,16 @@ extension WifiConnectionManager {
               let tokenHex = resp.token,
               let saltHex = resp.sessionSalt else
         {
+            // Down / moved / malformed-core response. Loud only for the
+            // user; silent intents re-enter the backoff curve so the next
+            // attempt rides `backoffDelayMs` instead of a fixed period
+            // (gap G14; mirrors dish-linux openSession).
             conn.markDisconnected()
-            emitErrorIfUserInitiated(intent, "Error: \(resp.error ?? "connection failed")")
+            if intent == .userInitiated {
+                events.send(.error("Error: \(resp.error ?? "connection failed")"))
+            } else {
+                scheduleRetry(id)
+            }
             return
         }
         // sessionKey = HKDF(pairingKey, salt, token) — derived here in the
@@ -109,6 +110,8 @@ extension WifiConnectionManager {
             saltHex: saltHex,
             pairingKey: pairingKey
         ), let udpPort = UInt16(exactly: server.udpPort) else {
+            // Protocol garbage, not an outage — retrying the same request
+            // can't help, so no backoff entry (dish-linux parity).
             conn.markDisconnected()
             emitErrorIfUserInitiated(intent, "Bad token from server")
             return
@@ -122,48 +125,42 @@ extension WifiConnectionManager {
             sessionKey: material.key
         ) else {
             conn.markDisconnected()
+            if intent != .userInitiated { scheduleRetry(id) }
             return
         }
         store.remember(server)
         // Successful authenticated session: any "Needs pairing" marker we
-        // set on a prior failed silent retry no longer applies. Clearing
-        // here (rather than in the caller) covers all three intents —
-        // userInitiated, autoReconnect, retryAfterDeath — uniformly.
+        // set on a prior failed silent retry no longer applies, and the
+        // backoff curve resets. Clearing here (rather than in the caller)
+        // covers all three intents uniformly.
         clearStale(id)
+        clearRetry(id)
 
         // Surface each requested slot's apply outcome from the PUT itself
-        // (partial success is a 200 — contract §Error model).
+        // (partial success is a 200 — contract §Error model), and record the
+        // applied belief BEFORE markConnected so its late-slot converge only
+        // fires for slots attached while the session was still linking.
+        var slotLiveInPut = false
         if let slotId = conn.boundSlotId {
             for descriptor in descriptors {
                 let applied = resp.controllers.first { $0.ctrlIdx == descriptor.ctrlIdx }
-                if applied?.slotIsLive != true {
+                if applied?.slotIsLive == true {
+                    slotLiveInPut = true
+                } else {
                     events.send(.error("Server could not apply the controller"))
                     slotRegistrationFailed.send(slotId)
                 }
             }
         }
-        conn.markConnected(client: client, connectionId: connId) { [weak self] in
-            // Heartbeats stopped. The alive-poll already flipped the wire
-            // state to `.stale` before invoking us; tear down the dead
-            // session and kick a short-backoff silent reconnect attempt
-            // using the saved shared key. If the satellite is just
-            // momentarily unreachable (Wi-Fi roam, brief drop) the chip
-            // glides Online → Connecting… → Online without a banner. If
-            // the outage persists, the silent retry fails and the chip
-            // lands on `.saved` / `.ready` — still no banner, because the
-            // user didn't ask for this attempt. Ports
-            // `SatelliteConnectionManager.kt` AUTO_RETRY_BACKOFF_MS.
-            guard let self else { return }
-            let staleServer = server
-            self.disconnect(id: conn.id)
-            Task { [weak self] in
-                try? await Task.sleep(nanoseconds: Self.autoRetryBackoffNs)
-                guard let self else { return }
-                if self.connections[conn.id]?.state == .idle {
-                    self.connect(to: staleServer, intent: .retryAfterDeath)
-                }
-            }
+        if slotLiveInPut {
+            conn.markSlotApplied()
         }
+        conn.markConnected(
+            client: client,
+            connectionId: connId,
+            epoch: resp.epoch,
+            hooks: makeHooks(id: conn.id)
+        )
     }
 
     // MARK: - Proactive re-key (gap G4)
@@ -177,7 +174,10 @@ extension WifiConnectionManager {
     /// paths, and a session that truly exhausts goes silent and self-heals
     /// via the death-retry re-PUT.
     func rekeySession(_ conn: WifiConnection) async {
-        guard conn.state == .live, let client = conn.client else { return }
+        // Faltering still counts as live here: REST may be perfectly healthy
+        // while UDP acks are lossy, and bailing mid-re-key after the server
+        // rotated the token would orphan the session.
+        guard conn.state == .live || conn.state == .faltering, let client = conn.client else { return }
         let id = conn.id
         let server = conn.server
         guard let pairingKey = pairingKeyData(for: id) else { return }
@@ -196,7 +196,7 @@ extension WifiConnectionManager {
             handleTerminalAuth(id, loud: false)
             return
         }
-        guard conn.state == .live,
+        guard conn.state == .live || conn.state == .faltering,
               resp.reachable,
               let tokenHex = resp.token,
               let saltHex = resp.sessionSalt,
@@ -212,6 +212,9 @@ extension WifiConnectionManager {
             token: material.token,
             sessionKey: material.key
         )
+        // The re-PUT is an applied-topology change server-side — adopt its
+        // epoch so the next enriched ack doesn't read as drift (gap G9).
+        conn.setLastAppliedEpoch(resp.epoch)
     }
 
     // MARK: - Live slot converge (contract §Controller)
@@ -222,7 +225,8 @@ extension WifiConnectionManager {
     /// (removes the SLOT only; the session lives on). Sessions that are not
     /// live converge through the next session PUT instead.
     func syncBoundSlot(_ conn: WifiConnection) async {
-        guard conn.state == .live, let cid = conn.connectionId else { return }
+        guard conn.state == .live || conn.state == .faltering,
+              let cid = conn.connectionId else { return }
         let server = conn.server
         let proof = proofFor(conn.id)
         conn.setSlotSyncInFlight(true)
@@ -244,13 +248,18 @@ extension WifiConnectionManager {
             // Apply outcome: replugFailed leaves the previous pad live —
             // streams keep flowing; every other non-ok code means the slot
             // is not plugged (partial success is a 200).
-            if resp.controller?.slotIsLive != true, let slotId = conn.boundSlotId {
+            if resp.controller?.slotIsLive == true {
+                // Applied belief + epoch adoption for the reconcile compare
+                // (dish-linux registerController callback; gap G9).
+                conn.markSlotApplied()
+                conn.setLastAppliedEpoch(resp.epoch)
+            } else if let slotId = conn.boundSlotId {
                 events.send(.error("Server could not apply the controller"))
                 slotRegistrationFailed.send(slotId)
             }
         } else {
             // Detach: best-effort. A failed DELETE self-heals via the
-            // enriched-ack reconcile (W3-A) or the next session PUT.
+            // enriched-ack reconcile or the next session PUT.
             _ = await http.deleteController(
                 ip: server.ip,
                 port: server.httpPort,

@@ -16,10 +16,10 @@ import Foundation
 /// - `linking` — pair+auth handshake / `markConnecting()` is in flight;
 ///   native socket not yet open. UI chip: "Connecting…".
 /// - `live` — native socket open, heartbeat ACKs flowing. UI chip: "Online".
-/// - `faltering` — `live`, but the heartbeat-miss counter is non-zero and
-///   below the death threshold. UI chip: "Unsteady". **Not yet entered** —
-///   wiring the `missedAcks` count into the alive tick is W3-A (gap G15).
-///   Today the alive-poll flips `live` → `stale` directly at the threshold.
+/// - `faltering` — `live`, but the consecutive missed-ack count has reached
+///   the "not responding" threshold (2) without hitting death (5). The alive
+///   tick flips `live` ⇄ `faltering` from `SatelliteClient.missedAcks`
+///   (contract §Liveness; gap G15). UI chip: "Unsteady".
 /// - `stale` — heartbeats stopped arriving but we still hold a shared key.
 ///   The manager attempts a silent re-handshake (no user-visible error)
 ///   using the saved key; only if that fails does the chip fall back to a
@@ -27,6 +27,27 @@ import Foundation
 ///   user-initiated. Ports the `RETRY_AFTER_DEATH` path from
 ///   `dish-android/source/connection/SatelliteConnectionManager.kt`.
 enum SessionState { case idle, linking, live, faltering, stale }
+
+/// Control-plane callbacks installed by `WifiConnectionManager` at
+/// `markConnected` (dish-linux `SessionHooks`; PLAN D2 "humble object"): the
+/// connection OBSERVES the wire and calls out — every decision (backoff
+/// scheduling, close-reason policy, reconcile HTTP) lives in the manager.
+/// All hooks fire on the main actor from the 1 Hz alive tick. Defaults are
+/// no-ops so a connection is safely constructible without a manager.
+struct SessionHooks {
+    /// Heartbeat death (contract §Liveness: 5 consecutive misses) — the
+    /// manager tears the session down and schedules the backoff retry.
+    var onDead: () -> Void = {}
+    /// An authenticated MSG_SESSION_CLOSE reason byte latched on the client —
+    /// the manager maps it through `DishCore.closeAction(forReasonByte:)`
+    /// (unpaired drops the key, replaced stays down, shutdown/kicked re-enter
+    /// backoff). Raw byte so an unknown FUTURE reason still routes.
+    var onClose: (UInt8) -> Void = { _ in }
+    /// The enriched ack's epoch/bitmap drifted from what we last applied —
+    /// the manager runs the GET-then-converge reconcile. Single-flight is
+    /// guarded by `reconcileInFlight` on the connection.
+    var reconcile: () -> Void = {}
+}
 
 /// A single live or potential WiFi session to one Satellite server. Owns a
 /// `SatelliteClient` instance (the protocol-1 UDP data plane) once `live`.
@@ -71,14 +92,44 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// token/salt/key before the counter can exhaust (gap G4).
     var onRekeyNeeded: (() -> Void)?
     /// Forwarded (main actor) from the client's authenticated
-    /// MSG_SESSION_CLOSE parse. Reason-specific teardown policy
-    /// (`closeActionForReason`) is wired by W3-A; the alive tick already
-    /// reaps the dead session either way (gap G10 parse side).
+    /// MSG_SESSION_CLOSE parse — an OBSERVATIONAL relay for UI/tests.
+    /// Teardown policy does NOT ride this: the alive tick's latched-reason
+    /// branch dispatches `SessionHooks.onClose` so close handling has exactly
+    /// one policy path (gap G10).
     var onSessionClose: ((CloseReason) -> Void)?
 
     /// Latest enriched heartbeat ack, refreshed by the 1 Hz alive tick while
-    /// `live` — the reconcile driver's (W3-A) polled input (gap G9).
+    /// `live` — the reconcile driver's polled input (gap G9).
     private(set) var lastHeartbeatAck: HeartbeatAck?
+
+    /// One-way latency readout cached from the alive tick (median heartbeat
+    /// RTT halved, rounded to 0.1 ms so the published value only moves when
+    /// the displayed figure does — dish-linux `telemetryChanged` discipline).
+    /// Nil until the first paired ack of the session (gap G13 readout).
+    @Published private(set) var latencyOneWayMs: Double?
+    /// RTT samples currently in the latency window (0 until the first ack).
+    @Published private(set) var latencySamples = 0
+
+    /// Manager-installed policy callbacks, valid while a session is up.
+    private var hooks = SessionHooks()
+    /// The session epoch we last applied (from the session PUT / per-slot PUT
+    /// response / a benign reconcile). Compared against the enriched ack's
+    /// epoch by the alive tick; −1 while no session (gap G9).
+    private(set) var lastAppliedEpoch = -1
+    /// Single-flight guard for the manager's reconcile: true from the moment
+    /// the drift hook fires until the manager's GET lands. The alive tick
+    /// skips re-triggering while set.
+    private(set) var reconcileInFlight = false
+    /// Whether the server confirmed the bound slot applied (session PUT or
+    /// per-slot PUT reported the slot live) — dish-linux `controllerAdded_`.
+    /// This is the expected-bitmap belief: during a converge's flight the
+    /// DESIRE exists but no bitmap bit does yet, and treating want-as-applied
+    /// would false-positive the drift check on every tick.
+    private(set) var slotApplied = false
+
+    /// Alive-tick cadence. Injectable so lifecycle tests can park the loop
+    /// (`.max`) and drive `aliveTick()` deterministically.
+    private let tickIntervalNs: UInt64
 
     private var aliveTask: Task<Void, Never>?
     /// Single-fire latch for `onRekeyNeeded`: armed again only after the
@@ -125,9 +176,10 @@ final class WifiConnection: ObservableObject, Identifiable {
         return word
     }
 
-    init(id: String, server: DiscoveredServer) {
+    init(id: String, server: DiscoveredServer, tickIntervalNs: UInt64 = 1_000_000_000) {
         self.id = id
         self.server = server
+        self.tickIntervalNs = tickIntervalNs
     }
 
     static func idFor(_ server: DiscoveredServer) -> String {
@@ -139,7 +191,7 @@ final class WifiConnection: ObservableObject, Identifiable {
     }
 
     func markConnecting() {
-        if state == .live { return }
+        if state == .live || state == .faltering { return }
         state = .linking
     }
 
@@ -159,24 +211,36 @@ final class WifiConnection: ObservableObject, Identifiable {
     }
 
     /// Promote to `live`. Starts the receive loop + heartbeat and the 1 Hz
-    /// alive tick (liveness, enriched-ack snapshot poll, re-key poll).
+    /// alive tick (close-notify policy, liveness/faltering, telemetry,
+    /// enriched-ack reconcile poll, re-key poll).
+    ///
+    /// `epoch` is the session PUT response's applied-topology epoch — the
+    /// reconcile compare's baseline. `hooks` are the manager's policy
+    /// callbacks; the connection itself decides nothing (PLAN D2).
     func markConnected(
         client: SatelliteClient,
         connectionId: String,
-        onDead: @escaping () -> Void
+        epoch: Int,
+        hooks: SessionHooks
     ) {
         guard state == .linking else { return }
         clientRef.set(client)
         self.connectionId = connectionId
+        self.hooks = hooks
         state = .live
         lastHeartbeatAck = nil
+        lastAppliedEpoch = epoch
+        reconcileInFlight = false
         rekeyRequested = false
+        latencyOneWayMs = nil
+        latencySamples = 0
         client.onRumble = rumbleHandler
         client.onLightbar = lightbarHandler
         client.onSessionClose = { [weak self] reason in
-            // Receive-queue → main-actor hop. The client already dropped
-            // `connectionAlive`, so the alive tick below reaps the session
-            // within a tick; this forwards the parsed WHY.
+            // Receive-queue → main-actor hop; observational relay of the
+            // parsed WHY (UI/tests). POLICY rides the alive tick's
+            // latched-reason branch so close handling has exactly one
+            // dispatch point (dish-linux onAliveTick).
             Task { @MainActor [weak self] in
                 self?.onSessionClose?(reason)
             }
@@ -184,29 +248,85 @@ final class WifiConnection: ObservableObject, Identifiable {
         client.startReceiveLoop()
         client.startHeartbeat()
 
+        let interval = tickIntervalNs
         aliveTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 1_000_000_000)
-                guard let self else { return }
-                guard let live = self.clientRef.get() else { return }
-                self.tickSnapshotsAndRekey(live)
-                if !live.connectionAlive.get() {
-                    // TODO(faltering): W3-A flips state = .faltering as
-                    // `missedAcks` crosses the not-responding threshold and
-                    // only falls through to onDead() at the death threshold
-                    // (gap G15).
-                    //
-                    // Heartbeats stopped (or an authenticated close-notify
-                    // landed): flip the wire-level state to .stale *before*
-                    // invoking onDead so the manager's silent-retry path can
-                    // tell "we were alive a moment ago" from a fresh
-                    // user-initiated reconnect.
-                    if self.state == .live { self.state = .stale }
-                    onDead()
-                    return
-                }
+                try? await Task.sleep(nanoseconds: interval)
+                guard !Task.isCancelled, let self else { return }
+                if self.aliveTick() == .sessionEnded { return }
             }
         }
+
+        // A slot attached while the session was still linking missed both the
+        // session PUT's descriptor snapshot and the live-converge trigger —
+        // fire the converge now. (When the PUT itself carried and applied the
+        // slot, the manager calls `markSlotApplied()` before this method.)
+        if boundSlotId != nil, !slotApplied {
+            onTopologyChanged?()
+        }
+    }
+
+    /// Whether an `aliveTick()` ended the session (a hook fired that will
+    /// tear it down) — the alive loop stops looping on `.sessionEnded`.
+    enum TickOutcome { case running, sessionEnded }
+
+    /// One evaluation of the 1 Hz alive poll, in dish-linux `onAliveTick`
+    /// order: latched close-notify FIRST (terminal-now, no death wait), then
+    /// heartbeat death, then the live ⇄ faltering flip off the consecutive
+    /// missed-ack count (contract §Liveness: "not responding" at 2, dead
+    /// at 5), then telemetry + the reconcile drift check. Internal (not
+    /// private) so lifecycle tests can drive transitions deterministically
+    /// with the loop parked (`tickIntervalNs: .max`).
+    @discardableResult
+    func aliveTick() -> TickOutcome {
+        guard let live = clientRef.get() else {
+            hooks.onDead()
+            return .sessionEnded
+        }
+        tickSnapshotsAndRekey(live)
+        let closeReason = live.sessionCloseReason.get()
+        if closeReason >= 0 {
+            hooks.onClose(UInt8(truncatingIfNeeded: closeReason))
+            return .sessionEnded
+        }
+        guard live.connectionAlive.get() else {
+            hooks.onDead()
+            return .sessionEnded
+        }
+        let faltering = live.missedAcks.get() >= ProtocolConstants.heartbeatMissNotResponding
+        let want: SessionState = faltering ? .faltering : .live
+        if state != want, state == .live || state == .faltering {
+            state = want
+        }
+        publishLatency(live)
+        evaluateReconcile()
+        return .running
+    }
+
+    /// Refresh the published latency readout, mutating only when the
+    /// 0.1 ms-rounded figure (or the sample count) actually moved so the
+    /// 1 Hz tick doesn't churn `objectWillChange` (gap G13 readout).
+    private func publishLatency(_ live: SatelliteClient) {
+        let snapshot = live.latencySnapshot()
+        let rounded = snapshot.p50OneWayMs.map { ($0 * 10).rounded() / 10 }
+        if rounded != latencyOneWayMs { latencyOneWayMs = rounded }
+        if snapshot.samples != latencySamples { latencySamples = snapshot.samples }
+    }
+
+    /// Reconcile trigger (gap G9 policy side): does the enriched ack's
+    /// epoch/bitmap indicate the server's applied topology drifted from what
+    /// we believe applied? Drift calls out ONCE — the manager's hook flips
+    /// `reconcileInFlight` synchronously and clears it when its GET lands.
+    /// The rule itself is `DishCore.reconcileNeeded` — wired, not reimplemented.
+    private func evaluateReconcile() {
+        guard !reconcileInFlight, let ack = lastHeartbeatAck else { return }
+        guard reconcileNeeded(
+            serverEpoch: Int(ack.epoch),
+            serverBitmap: Int(ack.bitmap),
+            lastAppliedEpoch: lastAppliedEpoch,
+            expectedBitmap: expectedBitmap(appliedBeliefSlots())
+        ) else { return }
+        hooks.reconcile()
     }
 
     /// One alive-tick's polling half: refresh the enriched-ack snapshot for
@@ -226,8 +346,22 @@ final class WifiConnection: ObservableObject, Identifiable {
     }
 
     func markDisconnected() {
+        teardown(parkedOn: .idle)
+    }
+
+    /// Death-path teardown: identical to `markDisconnected` but parks the
+    /// wire state on `.stale` — "was live moments ago, holding a key, silent
+    /// retry pending" — so the row chip reads Unsteady through the backoff
+    /// window instead of flicking straight to Offline. Only if the retry
+    /// itself fails does the chip fall to the resting `.saved`/`.ready`
+    /// (gap G15; ports `SatelliteConnectionManager.kt`'s stale window).
+    func parkStaleAwaitingRetry() {
+        teardown(parkedOn: .stale)
+    }
+
+    private func teardown(parkedOn endState: SessionState) {
         let existing = clientRef.get()
-        if state == .idle, existing == nil { return }
+        if state == .idle, existing == nil, endState == .idle { return }
         aliveTask?.cancel()
         aliveTask = nil
         isRegisteringController = false
@@ -235,7 +369,48 @@ final class WifiConnection: ObservableObject, Identifiable {
         clientRef.set(nil)
         connectionId = nil
         lastHeartbeatAck = nil
-        state = .idle
+        lastAppliedEpoch = -1
+        reconcileInFlight = false
+        slotApplied = false
+        hooks = SessionHooks()
+        latencyOneWayMs = nil
+        latencySamples = 0
+        state = endState
+    }
+
+    // MARK: - Reconcile state (manager-driven; gap G9)
+
+    /// Mark the bound slot server-applied — called by the manager when a
+    /// session PUT / per-slot PUT reports the slot live. Feeds the
+    /// expected-bitmap belief (dish-linux `markSlotApplied`).
+    func markSlotApplied() {
+        if boundSlotId != nil { slotApplied = true }
+    }
+
+    /// Adopt a server epoch as "what we last applied" (PUT responses and
+    /// benign reconcile drift both land here).
+    func setLastAppliedEpoch(_ epoch: Int) {
+        lastAppliedEpoch = epoch
+    }
+
+    /// Flip the reconcile single-flight guard: true when the manager's GET
+    /// launches, false when it lands.
+    func setReconcileInFlight(_ inFlight: Bool) {
+        reconcileInFlight = inFlight
+    }
+
+    /// The desired set as reconcile-comparable slots — the GET-compare input
+    /// (`DishCore.appliedMatchesDesired`).
+    func desiredSlots() -> [DesiredSlot] {
+        guard let descriptor = desiredDescriptor else { return [] }
+        return [DesiredSlot(ctrlIdx: UInt8(truncatingIfNeeded: descriptor.ctrlIdx), type: descriptor.type)]
+    }
+
+    /// The slots we believe the server has APPLIED — the expected-bitmap
+    /// input. Distinct from `desiredSlots()` while a converge is in flight
+    /// (see `slotApplied`).
+    private func appliedBeliefSlots() -> [DesiredSlot] {
+        slotApplied ? desiredSlots() : []
     }
 
     // MARK: - Slot binding (REST-converged; no UDP registration)
@@ -250,13 +425,19 @@ final class WifiConnection: ObservableObject, Identifiable {
         pendingControllerType = controllerType
         pendingHasMotion = hasMotion
         pendingHasLight = hasLight
-        if state == .live { onTopologyChanged?() }
+        // Faltering is still a live session (missed acks below the death
+        // threshold) — topology converges ride REST, which may well be
+        // healthy while UDP acks are lossy. Mirrors dish-linux attachSlot.
+        if state == .live || state == .faltering { onTopologyChanged?() }
     }
 
     func detachSlot() {
         if boundSlotId == nil { return }
         boundSlotId = nil
-        if state == .live { onTopologyChanged?() }
+        // The belief updates immediately: the DELETE is fired by the manager
+        // asynchronously, and a failed DELETE self-heals via the reconcile.
+        slotApplied = false
+        if state == .live || state == .faltering { onTopologyChanged?() }
     }
 
     /// Spinner state for the manager's in-flight slot converge (kept a
