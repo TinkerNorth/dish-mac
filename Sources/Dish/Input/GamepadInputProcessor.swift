@@ -363,7 +363,7 @@ func nextTouchpadTrackingId(wasActive: Bool, isActive: Bool, current: UInt8) -> 
 /// Convert GameController's centre-origin `-1..1` touchpad axes into the
 /// MSG_TOUCHPAD wire frame: centre-origin int16 with `+x` right and `+y`
 /// *down*. GameController's direction-pad `+y` is up, so y is negated — the
-/// flip §0x000C of `satellite/docs/protocol.md` requires of the macOS sender.
+/// flip §0x000C of `satellite/docs/contract.md` requires of the macOS sender.
 /// Pure so the negation can be unit-tested without a live touchpad.
 @inline(__always)
 func gcTouchpadAxisToWire(x: Float, y: Float) -> (x: Int16, y: Int16) {
