@@ -73,8 +73,7 @@ final class ConnectionHub: ObservableObject {
     /// discovery set:
     /// - `.live`      → `.connected`
     /// - `.linking`   → `.connecting`
-    /// - `.faltering` → `.unstable` (not yet reachable; native exposes only
-    ///   the binary alive-poll boolean)
+    /// - `.faltering` → `.unstable`
     /// - `SessionState.stale` → `.unstable` while the silent re-handshake is
     ///   in flight — the row stays on the live-ish chip rather than flicking
     ///   back to `.saved` between the heartbeat drop and the retry landing.
@@ -132,10 +131,11 @@ final class ConnectionHub: ObservableObject {
     ///
     /// `hasMotion` / `hasLight` report whether the bound physical controller
     /// exposes a `GCMotion` IMU / an addressable RGB light; they are forwarded
-    /// into the `MSG_CONTROLLER_ADD` capability word as `CAP_MOTION` /
-    /// `CAP_LIGHTBAR`. The caller (`AppModel`) resolves them from the slot's
-    /// detected `ControllerCapabilities` — `ConnectionHub` has no controller
-    /// handle of its own.
+    /// into the REST controller descriptor's caps word as `capMotion` /
+    /// `capLightbar` (declarative session PUT / per-slot converge). The
+    /// caller (`AppModel`) resolves them from the slot's detected
+    /// `ControllerCapabilities` — `ConnectionHub` has no controller handle
+    /// of its own.
     func bind(slotId: String, connectionId: String, hasMotion: Bool, hasLight: Bool) {
         var current = bindings
         if let priorSlot = current.first(where: { $0.value == connectionId })?.key,

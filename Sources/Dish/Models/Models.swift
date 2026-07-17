@@ -198,8 +198,8 @@ struct ControllerCapabilities: Hashable {
     var hasTouchpad = false
     var hasRumble = false
     /// The controller has an addressable RGB light bar (`GCController.light`).
-    /// Drives the "Lightbar" capability chip and the `CAP_LIGHTBAR` bit in
-    /// `MSG_CONTROLLER_ADD`.
+    /// Drives the "Lightbar" capability chip and the `capLightbar` bit in the
+    /// REST controller descriptor's caps word.
     var hasLightbar = false
     var hasBattery = false
 

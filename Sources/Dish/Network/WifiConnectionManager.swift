@@ -64,7 +64,8 @@ final class WifiConnectionManager: ObservableObject {
     /// IDs currently in the pair-and-handshake flow. The connections page
     /// uses this to render a spinner per row.
     @Published private(set) var pairingInFlight: Set<String> = []
-    /// True while any pooled connection is awaiting `MSG_CONTROLLER_ACK`.
+    /// True while any pooled connection is still converging its bound slot
+    /// over the per-slot REST routes (descriptor PUT/DELETE while live).
     /// Aggregated from each `WifiConnection.isRegisteringController`.
     @Published private(set) var anyControllerRegistering = false
     /// Persistent "Needs pairing" markers — the server has forgotten this

@@ -419,8 +419,9 @@ final class AppModel: ObservableObject {
     func bind(slotId: String, connectionId: String) {
         // Resolve whether the bound controller has an IMU / an RGB light bar
         // from its detected capabilities, so `WifiConnection` can advertise
-        // CAP_MOTION / CAP_LIGHTBAR in MSG_CONTROLLER_ADD. Both default to
-        // false for an unknown slot id.
+        // the `capMotion` / `capLightbar` bits in the REST descriptor's caps
+        // word (declarative session PUT / per-slot converge). Both default
+        // to false for an unknown slot id.
         let caps = slots.first { $0.id == slotId }?.capabilities
         hub.bind(
             slotId: slotId,
