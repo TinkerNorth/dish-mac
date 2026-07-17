@@ -271,7 +271,7 @@ struct ConnectionsView: View {
     /// values the wire layer doesn't know about — to a noun (resting) or
     /// verb-with-ellipsis (transient) per the shared nomenclature.
     private func statusText(for summary: ConnectionSummary) -> String {
-        switch summary.live {
+        let base: String = switch summary.live {
         case .found: String(localized: "Found")
         case .stale: String(localized: "Needs pairing")
         case .saved: String(localized: "Offline")
@@ -280,6 +280,13 @@ struct ConnectionsView: View {
         case .connected: String(localized: "Online")
         case .unstable: String(localized: "Unsteady")
         }
+        // One-way latency readout beside the live chip (gap G13). Numeric +
+        // SI unit, deliberately unlocalized — same convention as the
+        // "IP • UDP port" detail line above it.
+        if let ms = summary.latencyMs, summary.live == .connected || summary.live == .unstable {
+            return base + String(format: " · %.1f ms", ms)
+        }
+        return base
     }
 
     /// Color map keyed on LinkState. The "Unsteady" amber would ideally be a

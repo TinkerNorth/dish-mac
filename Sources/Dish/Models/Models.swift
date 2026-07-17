@@ -160,17 +160,17 @@ struct PairResponse: Codable {
 /// | `.ready`    | paired          | seen, no session | "Ready"          |
 /// | `.connecting` | paired        | linking          | "Connecting…"    |
 /// | `.connected`  | paired        | live             | "Online"         |
-/// | `.unstable`   | paired        | faltering        | "Unsteady"       |
+/// | `.unstable`   | paired        | faltering/stale  | "Unsteady"       |
 ///
-/// **`.stale`** is not yet entered: it requires the satellite to return a
-/// `PAIRING_UNKNOWN` error so the client can distinguish "peer forgot us"
-/// from a generic connect failure. Until that protocol change lands, a
-/// server-side forget surfaces as a generic disconnect.
+/// **`.stale`** enters when the satellite revokes trust: a terminal 401
+/// (NOT_PAIRED / BAD_PROOF) on any authed route or an authenticated
+/// close-notify(unpaired) — both funnel through the manager's
+/// `handleTerminalAuth`, which drops only the key and parks the row in the
+/// persistent `staleSatelliteIds` set (gaps G6/G15).
 ///
-/// **`.unstable`** is not yet entered: it requires the native layer to
-/// expose the consecutive-missed-heartbeat count separately from the binary
-/// alive-poll predicate. Today the connection flips `.connected` →
-/// (`.saved` | `.ready`) directly when misses hit the death threshold.
+/// **`.unstable`** enters from `SessionState.faltering` (2 consecutive
+/// missed heartbeat acks — contract §Liveness) and from
+/// `SessionState.stale`, the death→silent-retry backoff window (gap G15).
 enum LinkState { case found, stale, saved, ready, connecting, connected, unstable }
 
 struct ConnectionSummary: Identifiable, Hashable {
@@ -179,6 +179,10 @@ struct ConnectionSummary: Identifiable, Hashable {
     let detail: String
     let live: LinkState
     let boundSlotId: String?
+    /// One-way latency readout (median heartbeat RTT ÷ 2, rounded to
+    /// 0.1 ms), present only while a session is up and has paired at least
+    /// one ack (gap G13).
+    var latencyMs: Double?
 }
 
 // MARK: - Controller capabilities + battery (UX surface)

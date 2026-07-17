@@ -132,6 +132,19 @@ final class LifecyclePolicyLiveTests: XCTestCase {
 
     // MARK: - Close reasons end-to-end (gap G10 policy)
 
+    // MARK: - Latency readout reaches the row summary (gap G13)
+
+    func testHubSummaryCarriesLatencyReadoutWhileLive() async throws {
+        let conn = try await connectAndAwaitLive()
+        let sampled = await waitUntil { conn.latencySamples >= 1 && conn.latencyOneWayMs != nil }
+        XCTAssertTrue(sampled, "heartbeat acks must seed the readout")
+        let surfaced = await waitUntil(timeout: 4) {
+            self.hub.summary(self.server.id)?.latencyMs != nil
+        }
+        XCTAssertTrue(surfaced, "the row summary must carry the latency readout")
+        XCTAssertEqual(hub.summary(server.id)?.latencyMs, conn.latencyOneWayMs)
+    }
+
     func testKickedCloseParksStaleThenHealsThroughBackoff() async throws {
         let conn = try await connectAndAwaitLive()
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1))

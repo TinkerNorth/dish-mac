@@ -117,7 +117,8 @@ final class ConnectionHub: ObservableObject {
                 label: label,
                 detail: "\(server.ip) • UDP \(server.udpPort)",
                 live: live,
-                boundSlotId: bound
+                boundSlotId: bound,
+                latencyMs: conn?.latencyOneWayMs
             ))
         }
         connections = out.sorted { $0.label < $1.label }
