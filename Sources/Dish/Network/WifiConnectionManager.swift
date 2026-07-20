@@ -77,11 +77,12 @@ final class WifiConnectionManager: ObservableObject {
     /// session is established (or the user forgets the satellite). Mirrors
     /// `staleSatelliteIds` in `dish-android/SatelliteConnectionManager.kt`.
     ///
-    /// Keyed by `DiscoveredServer.id` (the `wifi:<ip>:<port>` string the
-    /// rest of this layer already uses for `connections[...]` and the store)
-    /// — no separate typed `SatelliteId` exists on the Mac client, and
-    /// matching the connection-pool key avoids a parallel id space the UI
-    /// would have to reconcile.
+    /// Keyed by `DiscoveredServer.id` (`mid:<machineId>`, or the legacy
+    /// `wifi:<ip>:<port>` fallback for satellites with no machineId — the
+    /// same key `connections[...]` and the store use) — no separate typed
+    /// `SatelliteId` exists on the Mac client, and matching the
+    /// connection-pool key avoids a parallel id space the UI would have to
+    /// reconcile.
     @Published private(set) var staleSatelliteIds: Set<String> = []
     let events = PassthroughSubject<ConnectionEvent, Never>()
     /// Forwarded from per-connection `slotRegistrationFailed` so

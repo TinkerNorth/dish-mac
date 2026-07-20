@@ -24,9 +24,10 @@ SwiftUI (MainView, ConnectionsView)
         └── GameControllerInput ── GameController.framework push callbacks
               └── GamepadInputProcessor → SatelliteClient.sendReport()
 
-DishCore (SwiftPM library target; Foundation + CryptoKit ONLY)
-  ── the compiler-enforced pure protocol core: wire codecs, session
-     crypto (HKDF/AEAD/proof), protocol constants, policy reducers
+DishCore (SwiftPM library target; Foundation + CryptoKit ONLY —
+          the import allowlist is pinned by CorePurityTests)
+  ── the pure protocol core: wire codecs, session crypto
+     (HKDF/AEAD/proof), protocol constants, policy reducers
      (reconcile, backoff, close-notify, TOFU verdicts, latency window).
 ```
 

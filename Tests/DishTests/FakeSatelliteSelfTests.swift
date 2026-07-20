@@ -13,8 +13,8 @@ import Security
 import XCTest
 
 // WARNING (cross-repo contract): the hex vectors below are pinned to the
-// SAME bytes asserted by satellite tests/test_windows_platform.cpp +
-// test_session_crypto, dish-linux tests/test_session_crypto.cpp,
+// SAME bytes asserted by satellite tests/test_session_crypto.cpp,
+// dish-linux tests/test_session_crypto.cpp,
 // dish-windows test_session_crypto.cpp and dish-android SessionCryptoTest.
 // Any drift on any end is a cross-end protocol break, not a refactor.
 private let interopPairingBytes = Data((1 ... 32).map { UInt8($0) })

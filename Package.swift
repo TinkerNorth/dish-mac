@@ -9,11 +9,11 @@ let package = Package(
     defaultLocalization: "en",
     platforms: [.macOS(.v13)],
     targets: [
-        // The suite's compiler-enforced pure core: wire codecs, crypto,
-        // protocol constants and policy reducers. Foundation + CryptoKit ONLY —
-        // no Network, AppKit, GameController or app imports (PLAN D1; the C++
-        // repos enforce this purity by convention, SwiftPM enforces it at
-        // build level).
+        // The suite's pure core: wire codecs, crypto, protocol constants and
+        // policy reducers. Foundation + CryptoKit ONLY — no Network, AppKit,
+        // GameController or app imports (PLAN D1). SwiftPM enforces the
+        // dependency graph; the import allowlist itself is pinned by
+        // CorePurityTests.
         .target(
             name: "DishCore",
             path: "Sources/DishCore"

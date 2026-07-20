@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: LGPL-3.0-or-later
 # ============================================================================
 #  e2e_local.sh — loopback end-to-end: this client vs the REAL satellite
 #
@@ -62,6 +63,11 @@ for port in "${REST_PORT}" "${ADMIN_PORT}"; do
         fail "port ${port} is already in use — is a real satellite running? Stop it first."
     fi
 done
+# UDP has no connect-probe; a stale binding on the data-plane port would make
+# the satellite's bind fail (or worse, a stray listener eat the datagrams).
+if lsof -nP -iUDP:"${UDP_PORT}" >/dev/null 2>&1; then
+    fail "UDP port ${UDP_PORT} is already bound — is a real satellite running? Stop it first."
+fi
 
 # ------------------------------------------------------------------- build
 if [ -n "${SATELLITE_BIN:-}" ]; then

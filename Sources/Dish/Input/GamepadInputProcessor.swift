@@ -347,12 +347,13 @@ func gcMotionToWire(
 
 /// Advance a finger's monotonic touchpad tracking id across one sample.
 ///
-/// The MSG_TOUCHPAD protocol wants a per-finger id that increments on each
-/// **new contact** so the receiver can tell "finger lifted then a new finger
-/// touched" from "the same finger kept sliding". GameController exposes no
-/// native id, so the bridge derives one from the active-edge: a `false → true`
-/// transition (a fresh touch-down) bumps the id; every other case keeps it.
-/// `UInt8` wraps freely — the protocol says ids "wrap freely".
+/// Per-finger wire id: increments on each **new contact** so the receiver
+/// can tell "finger lifted then a new finger touched" from "the same finger
+/// kept sliding" (the same up→down edge rule the satellite's own DS4
+/// tracking-id derivation uses). GameController exposes no native id, so the
+/// bridge derives one from the active-edge: a `false → true` transition (a
+/// fresh touch-down) bumps the id; every other case keeps it. `UInt8` wrap
+/// is harmless — only the edge carries information.
 ///
 /// Pure so the edge logic can be unit-tested without a live touchpad.
 @inline(__always)
@@ -362,8 +363,9 @@ func nextTouchpadTrackingId(wasActive: Bool, isActive: Bool, current: UInt8) -> 
 
 /// Convert GameController's centre-origin `-1..1` touchpad axes into the
 /// MSG_TOUCHPAD wire frame: centre-origin int16 with `+x` right and `+y`
-/// *down*. GameController's direction-pad `+y` is up, so y is negated — the
-/// flip §0x000C of `satellite/docs/contract.md` requires of the macOS sender.
+/// *down* (the wire convention pinned in
+/// `satellite/src/core/touchpad_codec.h`). GameController's direction-pad
+/// `+y` is up, so y is negated.
 /// Pure so the negation can be unit-tested without a live touchpad.
 @inline(__always)
 func gcTouchpadAxisToWire(x: Float, y: Float) -> (x: Int16, y: Int16) {

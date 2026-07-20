@@ -4,7 +4,7 @@
 // Pins DishCore session crypto to the SAME interop vectors as satellite /
 // dish-windows / dish-linux / dish-android — any drift is a cross-end
 // protocol break, not a refactor. Sources: satellite
-// tests/test_windows_platform.cpp, dish-linux tests/test_session_crypto.cpp,
+// tests/test_session_crypto.cpp, dish-linux tests/test_session_crypto.cpp,
 // dish-windows test_session_crypto.cpp, dish-android SessionCryptoTest.
 
 import CryptoKit
