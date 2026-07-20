@@ -65,7 +65,10 @@ final class ConnectionHub: ObservableObject {
                 .sink { [weak self] _ in self?.rebuild() }
             perConnCancellables[id] = cancellable
         }
-        rebuild()
+        // Rebuild from the EMITTED pool: `wifi.connections` is still
+        // pre-mutation while `@Published` delivers (willSet), and a forget of
+        // a resting row produces no later emission to self-correct on.
+        rebuild(pool: pool)
     }
 
     /// Derives `LinkState` from the wire-level `SessionState`, the persistent
@@ -90,8 +93,8 @@ final class ConnectionHub: ObservableObject {
     ///
     /// Mirrors the Android `staleSatelliteIds` derivation in
     /// `SatelliteConnectionManager.kt`.
-    private func rebuild() {
-        let pool = wifi.connections
+    private func rebuild(pool: [String: WifiConnection]? = nil) {
+        let pool = pool ?? wifi.connections
         let remembered = Dictionary(uniqueKeysWithValues: store.remembered().map { ($0.id, $0) })
         let discoveredIds = Set(wifi.discoveredServers.map(\.id))
         let staleIds = wifi.staleSatelliteIds
@@ -143,6 +146,9 @@ final class ConnectionHub: ObservableObject {
         {
             current.removeValue(forKey: priorSlot)
             wifi.get(connectionId)?.detachSlot()
+        }
+        if let priorConnection = current[slotId], priorConnection != connectionId {
+            wifi.get(priorConnection)?.detachSlot()
         }
         current[slotId] = connectionId
         bindings = current
