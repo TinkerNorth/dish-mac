@@ -147,6 +147,8 @@ final class FakeSatelliteStore {
         var protocolVersionReject = false
         var holdNextSessionPut = false
         var heldSessionPuts = 0
+        var holdNextPair = false
+        var heldPairs = 0
         var ackEpochOverride: UInt16?
         var ackBitmapOverride: UInt16?
         var ackCountOverride: UInt8?
@@ -380,6 +382,22 @@ final class FakeSatellite {
     @discardableResult
     func releaseHeldSessionPut() -> Bool {
         rest.releaseHeldSessionPut()
+    }
+
+    /// One-shot hold for POST /api/pair — parks the caller inside its submit
+    /// await so a supersede/cancel deterministically lands mid-flight.
+    var holdNextPair: Bool {
+        get { store.with { $0.holdNextPair } }
+        set { store.with { $0.holdNextPair = newValue } }
+    }
+
+    var heldPairCount: Int {
+        store.with { $0.heldPairs }
+    }
+
+    @discardableResult
+    func releaseHeldPair() -> Bool {
+        rest.releaseHeldPair()
     }
 
     /// Overrides for the enriched heartbeat ack (and, for epoch, the

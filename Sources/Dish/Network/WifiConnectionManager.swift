@@ -132,13 +132,24 @@ final class WifiConnectionManager: ObservableObject {
     }
 
     /// `pairingInFlight` mutation helpers for the `+Pairing` split (the
-    /// published set keeps its `private(set)`).
+    /// published set keeps its `private(set)`). Depth-counted: a superseded
+    /// approval flow unwinding after cancellation must not clear the marker
+    /// its successor holds under the same id.
+    private var pairingDepth: [String: Int] = [:]
+
     func beginPairing(_ id: String) {
+        pairingDepth[id, default: 0] += 1
         pairingInFlight.insert(id)
     }
 
     func endPairing(_ id: String) {
-        pairingInFlight.remove(id)
+        let depth = (pairingDepth[id] ?? 1) - 1
+        if depth > 0 {
+            pairingDepth[id] = depth
+        } else {
+            pairingDepth.removeValue(forKey: id)
+            pairingInFlight.remove(id)
+        }
     }
 
     /// TOFU (gap G7): first contact pins the cert's SHA-256 DER fingerprint
@@ -339,6 +350,7 @@ final class WifiConnectionManager: ObservableObject {
     /// the closer already knows).
     func disconnect(id: String) {
         guard let conn = connections[id] else { return }
+        cancelApprovalPoll(id)
         let server = conn.server
         let cid = conn.connectionId
         let did = deviceId

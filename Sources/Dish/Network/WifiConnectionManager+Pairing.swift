@@ -178,6 +178,10 @@ extension WifiConnectionManager {
             pin: "",
             clientPin: clientPin
         )
+        // A superseded/cancelled flow resumes here with a synthesized
+        // unreachable — its side effects (banner, state knock) belong to
+        // the successor now.
+        if Task.isCancelled { return }
         switch PairingClient.classify(submitted) {
         case let .success(sharedKey):
             // Not the documented path-B shape, but a key is a key.

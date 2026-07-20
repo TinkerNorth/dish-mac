@@ -227,4 +227,58 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         XCTAssertNil(store.sharedKey(for: serverId))
         XCTAssertEqual(manager.get(serverId)?.state, .idle)
     }
+
+    func testSupersededApprovalFlowRunsNoVisibleSideEffects() async {
+        WifiConnectionManager.approvalPollIntervalMs = 50
+        satellite.pairingKeyHex = nil
+
+        // Park flow 1 INSIDE its submit await; the supersede then cancels it
+        // mid-flight and its POST resumes as a synthesized unreachable.
+        satellite.holdNextPair = true
+        manager.pairWithClientPin(server, clientPin: "1111")
+        let parked = await waitUntil { self.satellite.heldPairCount >= 1 }
+        XCTAssertTrue(parked, "flow 1's submit must park server-side")
+
+        manager.pairWithClientPin(server, clientPin: "2222")
+        let superseded = await waitUntil { self.satellite.lastClientPin == "2222" }
+        XCTAssertTrue(superseded, "flow 2 must submit its own client PIN")
+
+        // Let flow 1 unwind fully, then assert it left no fingerprints:
+        // no banner, no .linking -> .idle knock, and the shared
+        // pairingInFlight marker still belongs to flow 2.
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(errorMessages, [], "a superseded flow must not surface a banner")
+        XCTAssertEqual(manager.get(serverId)?.state, .linking, "flow 2's handshake must not be knocked idle")
+        XCTAssertTrue(
+            manager.pairingInFlight.contains(serverId),
+            "flow 1's unwind must not clear flow 2's pairing marker"
+        )
+
+        // Flow 2 still completes end-to-end.
+        satellite.approveClientPin()
+        let live = await waitUntil { self.manager.get(self.serverId)?.state == .live }
+        XCTAssertTrue(live)
+        let cleared = await waitUntil { !self.manager.pairingInFlight.contains(self.serverId) }
+        XCTAssertTrue(cleared, "the marker clears once the surviving flow lands")
+    }
+
+    func testDisconnectCancelsInFlightApprovalPoll() async {
+        WifiConnectionManager.approvalPollIntervalMs = 50
+        satellite.pairingKeyHex = nil
+
+        manager.pairWithClientPin(server, clientPin: "3333")
+        let submitted = await waitUntil { self.satellite.lastClientPin == "3333" }
+        XCTAssertTrue(submitted)
+
+        manager.disconnect(id: serverId)
+        XCTAssertNil(manager.approvalPolls[serverId], "disconnect must cancel the approval poll")
+
+        // The cancelled poll goes quiet: no further status polls land.
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        let polls = satellite.pairStatusPolls
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(satellite.pairStatusPolls, polls, "no polls after disconnect")
+        let cleared = await waitUntil { !self.manager.pairingInFlight.contains(self.serverId) }
+        XCTAssertTrue(cleared)
+    }
 }

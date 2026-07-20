@@ -26,11 +26,12 @@ final class FakeSatelliteRest {
     private var listener: NWListener?
     private let connectionsLock = NSLock()
     private var connections: [NWConnection] = []
-    /// One parked (connection, serialized response) for the
-    /// hold-next-session-PUT knob: the PUT is processed normally, only the
-    /// response delivery waits for `releaseHeldSessionPut()`.
+    /// Parked (connection, serialized response) slots for the hold knobs:
+    /// the request is processed normally, only the response delivery waits
+    /// for the matching release call.
     private let heldLock = NSLock()
     private var heldSessionPut: (NWConnection, Data)?
+    private var heldPair: (NWConnection, Data)?
     private(set) var transport: FakeSatellite.Transport = .http
     private(set) var port: UInt16 = 0
 
@@ -72,6 +73,7 @@ final class FakeSatelliteRest {
         listener = nil
         heldLock.lock()
         heldSessionPut = nil
+        heldPair = nil
         heldLock.unlock()
         connectionsLock.lock()
         let open = connections
@@ -86,6 +88,18 @@ final class FakeSatelliteRest {
         heldLock.lock()
         let parked = heldSessionPut
         heldSessionPut = nil
+        heldLock.unlock()
+        guard let (connection, data) = parked else { return false }
+        connection.send(content: data, completion: .contentProcessed { _ in })
+        return true
+    }
+
+    /// Deliver the parked pair response. False when nothing is parked.
+    @discardableResult
+    func releaseHeldPair() -> Bool {
+        heldLock.lock()
+        let parked = heldPair
+        heldPair = nil
         heldLock.unlock()
         guard let (connection, data) = parked else { return false }
         connection.send(content: data, completion: .contentProcessed { _ in })
@@ -134,7 +148,7 @@ final class FakeSatelliteRest {
 
     private func route(_ request: FakeSatelliteHttp.Request, on connection: NWConnection) -> FakeSatelliteHttp.Response? {
         switch (request.method, request.plainPath) {
-        case ("POST", "/api/pair"): return pair(request)
+        case ("POST", "/api/pair"): return pair(request, on: connection)
         case ("GET", "/api/pair/status"): return pairStatus(request)
         case ("DELETE", "/api/pair"): return selfUnpair(request)
         case ("PUT", "/api/connections"): return putSession(request, on: connection)
@@ -205,7 +219,24 @@ final class FakeSatelliteRest {
 
     // MARK: - Pairing (contract §Pairing)
 
-    private func pair(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
+    private func pair(_ request: FakeSatelliteHttp.Request, on connection: NWConnection) -> FakeSatelliteHttp.Response? {
+        let response = pairResponse(request)
+        let held = store.with { state -> Bool in
+            guard state.holdNextPair else { return false }
+            state.holdNextPair = false
+            state.heldPairs += 1
+            return true
+        }
+        if held {
+            heldLock.lock()
+            heldPair = (connection, FakeSatelliteHttp.serialize(response))
+            heldLock.unlock()
+            return nil
+        }
+        return response
+    }
+
+    private func pairResponse(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
         let body = FakeSatelliteHttp.parseJSON(request.body)
         if let rejection = versionRejection(body) { return rejection }
         let deviceId = body["deviceId"] as? String ?? ""
