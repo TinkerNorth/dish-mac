@@ -59,7 +59,8 @@ final class AppModel: ObservableObject {
     init(
         inhibitor: DisplaySleepInhibitor? = nil,
         store: ConnectionStore = ConnectionStore(),
-        notificationCenter: NotificationCenter = .default
+        notificationCenter: NotificationCenter = .default,
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
     ) {
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
@@ -78,6 +79,7 @@ final class AppModel: ObservableObject {
 
         observe()
         installFocusLossRelease(notificationCenter)
+        installSleepWakeHandling(workspaceNotificationCenter)
         installReportSender()
         installMotionSender()
         installBatterySender()
@@ -99,6 +101,25 @@ final class AppModel: ObservableObject {
         center.publisher(for: NSApplication.didResignActiveNotification)
             .sink { [weak self] _ in
                 self?.input.processor.zeroAndSendAll()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Sleep/wake (NSWorkspace notifications — a forced lid-close may never
+    /// deliver `didResignActive`, so a held button would stay latched on the
+    /// virtual pad until heartbeat death): on sleep run the same release-all
+    /// path as focus loss; on wake reconnect NOW instead of waiting out the
+    /// backoff curve (the socket may be dead, the IP may have moved).
+    /// dish-android holds a PARTIAL_WAKE_LOCK for the same class of problem.
+    private func installSleepWakeHandling(_ center: NotificationCenter) {
+        center.publisher(for: NSWorkspace.willSleepNotification)
+            .sink { [weak self] _ in
+                self?.input.processor.zeroAndSendAll()
+            }
+            .store(in: &cancellables)
+        center.publisher(for: NSWorkspace.didWakeNotification)
+            .sink { [weak self] _ in
+                self?.wifi.resumeAfterWake()
             }
             .store(in: &cancellables)
     }

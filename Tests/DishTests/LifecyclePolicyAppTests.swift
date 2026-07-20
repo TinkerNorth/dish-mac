@@ -18,6 +18,7 @@ final class LifecyclePolicyAppTests: XCTestCase {
     private var defaults: UserDefaults!
     private var defaultsName: String!
     private var center: NotificationCenter!
+    private var workspaceCenter: NotificationCenter!
     private var model: AppModel!
 
     override func setUp() {
@@ -25,9 +26,11 @@ final class LifecyclePolicyAppTests: XCTestCase {
         defaultsName = "dish.test.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: defaultsName)
         center = NotificationCenter()
+        workspaceCenter = NotificationCenter()
         model = AppModel(
             store: ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore()),
-            notificationCenter: center
+            notificationCenter: center,
+            workspaceNotificationCenter: workspaceCenter
         )
     }
 
@@ -86,6 +89,74 @@ final class LifecyclePolicyAppTests: XCTestCase {
             releases.allSatisfy { $0.buttons == 0 && $0.lt == 0 && $0.lx == 0 },
             "every axis and button must read released"
         )
+    }
+
+    // MARK: - Sleep/wake (forced sleep may never deliver didResignActive)
+
+    func testSystemWillSleepZeroesAndSendsAllKnownDevices() {
+        var reports: [(id: String, buttons: UInt16)] = []
+        model.input.processor.reportSender = { id, buttons, _, _, _, _, _, _ in
+            reports.append((id, buttons))
+        }
+        var held = GamepadInputProcessor.DeviceState()
+        held.wButtons = 0x1000
+        model.input.processor.publish(deviceId: "pad-a", state: held)
+        XCTAssertEqual(reports.count, 1)
+
+        // Lid closes: the release-all must fire without a didResignActive.
+        workspaceCenter.post(name: NSWorkspace.willSleepNotification, object: nil)
+
+        spinUntil({ reports.count >= 2 }, message: "willSleep must emit a release-all per device")
+        XCTAssertEqual(reports.last?.id, "pad-a")
+        XCTAssertEqual(reports.last?.buttons, 0, "the held button must read released")
+    }
+
+    func testSystemDidWakeReconnectsWithoutWaitingOutBackoff() {
+        // A remembered satellite parked deep in the backoff curve.
+        let server = DiscoveredServer(
+            name: "Napper",
+            ip: "192.0.2.77",
+            udpPort: 9876,
+            machineId: "nap-sat"
+        )
+        model.store.remember(server)
+        model.wifi.retry[server.id] = WifiConnectionManager.RetryState(
+            attempt: 5,
+            nextRetryAtMs: WifiConnectionManager.nowMs() + 60_000,
+            suppressed: false
+        )
+
+        workspaceCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+
+        spinUntil(
+            { self.model.wifi.connections[server.id] != nil },
+            message: "wake must reconnect the resting row immediately, not in 60 s"
+        )
+        XCTAssertNil(model.wifi.retry[server.id], "the wake clears the stale time throttle")
+    }
+
+    func testSystemDidWakeKeepsReplacedSessionsSuppressed() {
+        // close-notify(replaced) parks a row until the USER acts — a wake
+        // must not resurrect a session that would kick the newer owner.
+        let server = DiscoveredServer(
+            name: "Replaced",
+            ip: "192.0.2.78",
+            udpPort: 9876,
+            machineId: "replaced-sat"
+        )
+        model.store.remember(server)
+        model.wifi.retry[server.id] = WifiConnectionManager.RetryState(
+            attempt: 1,
+            nextRetryAtMs: 0,
+            suppressed: true
+        )
+
+        workspaceCenter.post(name: NSWorkspace.didWakeNotification, object: nil)
+
+        // Bounded negative observation: the suppressed row must stay parked.
+        RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.2))
+        XCTAssertNil(model.wifi.connections[server.id], "suppressed rows stay parked through a wake")
+        XCTAssertEqual(model.wifi.retry[server.id]?.suppressed, true)
     }
 
     // MARK: - Return-path wiring prune (gap G19)

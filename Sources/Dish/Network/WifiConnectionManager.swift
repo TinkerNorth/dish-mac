@@ -467,6 +467,17 @@ final class WifiConnectionManager: ObservableObject {
         }
     }
 
+    /// Wake-from-sleep: sockets may be dead and the IP may have moved, so
+    /// resting rows reconnect NOW instead of waiting out the backoff curve.
+    /// Suppressed rows (close-notify `replaced`) stay parked — only the user
+    /// lifts those.
+    func resumeAfterWake() {
+        for (id, state) in retry where !state.suppressed {
+            clearRetry(id)
+        }
+        autoReconnectAll()
+    }
+
     func remembered() -> [RememberedWifi] {
         store.remembered()
     }
