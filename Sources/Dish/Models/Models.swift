@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import Darwin
 import Foundation
 
 // MARK: - Server / protocol DTOs (names match Android Models.kt)
@@ -12,6 +13,9 @@ enum DiscoverySource: String, Codable, Hashable {
     case broadcast
     case mdns
     case both
+    /// Typed in by the user (`DiscoveredServer.manual`) — the escape hatch
+    /// when Local Network permission is denied or the LAN drops multicast.
+    case manual
 
     /// Short human label for the connections list.
     var label: String {
@@ -19,6 +23,7 @@ enum DiscoverySource: String, Codable, Hashable {
         case .broadcast: "UDP broadcast"
         case .mdns: "mDNS"
         case .both: "mDNS + broadcast"
+        case .manual: "added by address"
         }
     }
 }
@@ -86,6 +91,32 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9443
         self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9443
         self.machineId = try container.decodeIfPresent(String.self, forKey: .machineId) ?? ""
+    }
+
+    /// Manual "add by address" entry — the escape hatch when discovery is
+    /// dead (Local Network permission denied, multicast-blocked LAN): an
+    /// IPv4 literal with an optional `:udpPort`, seeding the legacy
+    /// `wifi:<ip>:<port>` identity the pool and store already support. Nil
+    /// on anything else — the UDP data plane dials IPv4 literals only
+    /// (`inet_pton`), exactly like the discovery beacon's `ip`.
+    static func manual(from input: String) -> DiscoveredServer? {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: ":", omittingEmptySubsequences: false)
+        let host: String
+        var udpPort = 9876
+        switch parts.count {
+        case 1:
+            host = String(parts[0])
+        case 2:
+            guard let port = Int(parts[1]), (1 ... 65535).contains(port) else { return nil }
+            host = String(parts[0])
+            udpPort = port
+        default:
+            return nil
+        }
+        var addr = in_addr()
+        guard !host.isEmpty, host.withCString({ inet_pton(AF_INET, $0, &addr) }) == 1 else { return nil }
+        return DiscoveredServer(name: "", ip: host, udpPort: udpPort, source: .manual)
     }
 }
 

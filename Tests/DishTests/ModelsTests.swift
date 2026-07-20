@@ -6,6 +6,30 @@ import XCTest
 
 final class ModelsTests: XCTestCase {
 
+    // MARK: - Manual add-by-address (the discovery-denied escape hatch)
+
+    func testManualEntryParsesIPv4WithDefaultAndExplicitPort() throws {
+        let plain = try XCTUnwrap(DiscoveredServer.manual(from: " 192.168.1.50 "))
+        XCTAssertEqual(plain.ip, "192.168.1.50")
+        XCTAssertEqual(plain.udpPort, 9876)
+        XCTAssertEqual(plain.id, "wifi:192.168.1.50:9876", "manual entries ride the legacy identity")
+        XCTAssertEqual(plain.source, .manual)
+
+        let ported = try XCTUnwrap(DiscoveredServer.manual(from: "10.0.0.9:9999"))
+        XCTAssertEqual(ported.udpPort, 9999)
+        XCTAssertEqual(ported.id, "wifi:10.0.0.9:9999")
+    }
+
+    func testManualEntryRejectsNonIPv4AndBadPorts() {
+        XCTAssertNil(DiscoveredServer.manual(from: ""))
+        XCTAssertNil(DiscoveredServer.manual(from: "mac-mini.local"), "the UDP plane dials IPv4 literals only")
+        XCTAssertNil(DiscoveredServer.manual(from: "999.1.1.1"))
+        XCTAssertNil(DiscoveredServer.manual(from: "192.168.1.50:0"))
+        XCTAssertNil(DiscoveredServer.manual(from: "192.168.1.50:70000"))
+        XCTAssertNil(DiscoveredServer.manual(from: "192.168.1.50:abc"))
+        XCTAssertNil(DiscoveredServer.manual(from: "1.2.3.4:9:9"))
+    }
+
     func testDiscoveredServerIdEncodesIpAndUdpPortWhenNoMachineId() {
         let server = DiscoveredServer(
             name: "foo",

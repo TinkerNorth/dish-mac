@@ -91,6 +91,19 @@ final class LifecyclePolicyAppTests: XCTestCase {
         )
     }
 
+    // MARK: - Manual add-by-address seeds the normal connect flow
+
+    func testConnectManualSeedsPoolRowUnderLegacyIdentity() {
+        XCTAssertTrue(model.connectManual("192.0.2.50"))
+        XCTAssertNotNil(
+            model.wifi.connections["wifi:192.0.2.50:9876"],
+            "a manual add must register a pool row under the legacy wifi: identity"
+        )
+
+        XCTAssertFalse(model.connectManual("not-an-address"))
+        XCTAssertEqual(model.wifi.connections.count, 1, "a rejected address must not seed anything")
+    }
+
     // MARK: - Sleep/wake (forced sleep may never deliver didResignActive)
 
     func testSystemWillSleepZeroesAndSendsAllKnownDevices() {

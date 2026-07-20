@@ -425,6 +425,15 @@ final class AppModel: ObservableObject {
         wifi.connect(to: server)
     }
 
+    /// Manual add-by-address (discovery denied/blocked). False when `input`
+    /// is not a usable `IPv4[:port]` address — the caller surfaces the hint.
+    @discardableResult
+    func connectManual(_ input: String) -> Bool {
+        guard let server = DiscoveredServer.manual(from: input) else { return false }
+        wifi.connect(to: server)
+        return true
+    }
+
     func forget(_ id: String) {
         wifi.forget(id: id)
     }
