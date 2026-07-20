@@ -27,11 +27,12 @@ import Foundation
 ///   * `sendReport` is called directly from the GameController callback
 ///     thread and stays lock-free outside one params snapshot + the `sendto`
 ///     under `sendLock`.
-///   * Session params (`key`/`token`) live in a `LockedBox` so a proactive
-///     re-key (G4) can swap them while the hot paths read.
-///   * Loop flags / liveness / counters are `Atomic*` bridges; the fd is
-///     mutated only under `sendLock` and the receive loop is joined (bounded)
-///     before the fd closes.
+///   * Session params (`key`/`token`/send counter) live in ONE `LockedBox`
+///     so a proactive re-key (G4) swaps the whole generation while the hot
+///     paths draw (key, token, sequence) in a single hold (`nextSendMaterial`).
+///   * Loop flags / liveness / the replay guard are `Atomic*` bridges; the fd
+///     is mutated only under `sendLock` and the receive loop is joined
+///     (bounded) before the fd closes.
 final class SatelliteClient {
 
     // MARK: - Cadence (contract §Liveness)
@@ -50,18 +51,29 @@ final class SatelliteClient {
     private var boundHost = ""
     private var boundPort: UInt16 = 0
 
-    /// Per-session AEAD material, swapped whole on every (re-)PUT.
+    /// Per-session AEAD material + the client→server send counter, swapped
+    /// whole on every (re-)PUT. The counter lives INSIDE the box so one
+    /// `params.set` swaps key, token and counter as a single generation — a
+    /// send racing a re-key can never seal under the old key with a fresh
+    /// counter (nonce reuse) or under the new key with a stale one.
     struct SessionParams {
         var key = SymmetricKey(data: Data(count: ProtocolConstants.cryptoKeySize))
         var token: UInt32 = 0
+        /// Post-increment, so the first packet of a generation rides
+        /// counter 1 (contract §Crypto).
+        var counter: UInt64 = 0
     }
 
     let params = LockedBox(SessionParams())
 
-    /// Client→server counter; post-increment, so the first packet after a
-    /// `reset()` rides counter 1 (contract §Crypto). `current()` feeds the
-    /// manager's proactive re-key poll (gap G4).
-    let counter = AtomicCounter()
+    /// One packet's (key, token, sequence) drawn in a single lock hold —
+    /// the seal must never mix generations with a concurrent re-key swap.
+    func nextSendMaterial() -> (key: SymmetricKey, token: UInt32, sequence: UInt64) {
+        params.mutate { session in
+            session.counter &+= 1
+            return (session.key, session.token, session.counter)
+        }
+    }
     /// Server→client replay guard: highest counter successfully DECRYPTED
     /// (a forged header can't advance it). First packet exempt while 0 (G3).
     let lastRecvCounter = AtomicCounter()
@@ -131,9 +143,10 @@ final class SatelliteClient {
     /// snapshot, close latch, latency window. Call after every session PUT.
     ///
     /// Returns false (leaving the client closed) when the socket cannot be
-    /// aimed at the endpoint. Endpoint CHANGES require the loops stopped —
-    /// the manager builds a fresh client per connect; only a same-endpoint
-    /// re-key happens live.
+    /// aimed at the endpoint. An endpoint CHANGE stops and joins the loops
+    /// before the old fd closes (the manager builds a fresh client per
+    /// connect; only a same-endpoint re-key happens live) — the caller must
+    /// restart them.
     @discardableResult
     func setConnectionParams(
         host: String,
@@ -143,7 +156,6 @@ final class SatelliteClient {
     ) -> Bool {
         guard ensureSocket(host: host, udpPort: udpPort) else { return false }
         params.set(SessionParams(key: sessionKey, token: token))
-        counter.reset()
         lastRecvCounter.set(0)
         missedAcks.set(0)
         connectionAlive.set(true)
@@ -180,8 +192,10 @@ final class SatelliteClient {
     /// no-SIGPIPE + 500 ms recv timeout, matching the sibling clients.
     private func ensureSocket(host: String, udpPort: UInt16) -> Bool {
         sendLock.lock()
-        defer { sendLock.unlock() }
-        if sock >= 0, host == boundHost, udpPort == boundPort { return true }
+        let alreadyBound = sock >= 0 && host == boundHost && udpPort == boundPort
+        let replacing = sock >= 0 && !alreadyBound
+        sendLock.unlock()
+        if alreadyBound { return true }
 
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
@@ -202,6 +216,13 @@ final class SatelliteClient {
         var rtv = timeval(tv_sec: 0, tv_usec: 500_000)
         _ = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
 
+        // Endpoint swap on an open client: the loops must stop and the
+        // receive loop must be JOINED before its fd closes — the same
+        // ordering `closeSocket` upholds (no recv on a reused fd).
+        if replacing { closeSocket() }
+
+        sendLock.lock()
+        defer { sendLock.unlock() }
         if sock >= 0 { close(sock) }
         sock = fd
         dest = addr
@@ -246,7 +267,7 @@ final class SatelliteClient {
     /// truncating: past exhaustion the poll must keep reading "re-PUT
     /// needed", never wrap back under the threshold.
     var sendCounter: UInt32 {
-        UInt32(clamping: counter.current())
+        UInt32(clamping: params.get().counter)
     }
 
     /// Median heartbeat RTT halved (symmetric-path one-way estimate) + the

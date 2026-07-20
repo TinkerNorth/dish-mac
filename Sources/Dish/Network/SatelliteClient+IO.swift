@@ -25,23 +25,24 @@ extension SatelliteClient {
     /// the GameController callback thread — every stream is loss-safe.
     func sendEncrypted(msgType: UInt16, payload: Data) {
         guard isOpen else { return }
-        let session = params.get()
+        // One lock hold draws key, token and sequence together — a re-key
+        // swapping mid-send can never pair an old key with a fresh counter.
+        let (key, token, sequence) = nextSendMaterial()
         // A counter can never wrap (contract §Crypto): sealing two plaintexts
         // under one (key, nonce) would be catastrophic, so past 2^32 − 1 the
         // session goes SILENT instead and self-heals via re-PUT — in practice
         // the G4 proactive re-key fires at 0xF0000000, 268M packets earlier.
-        let sequence = counter.incrementAndGet()
         guard sequence <= UInt64(UInt32.max) else { return }
         let ctr = UInt32(sequence)
         let inner = PacketCodec.innerFrame(msgType: msgType, payload: payload)
         guard let box = try? SessionCrypto.seal(
             inner,
-            key: session.key,
+            key: key,
             direction: .up,
             counter: ctr,
-            token: session.token
+            token: token
         ) else { return }
-        let packet = PacketCodec.frame(token: session.token, counter: ctr, box: box)
+        let packet = PacketCodec.frame(token: token, counter: ctr, box: box)
 
         withSocketLocked { fd, sendDest in
             guard fd >= 0 else { return }

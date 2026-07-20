@@ -188,7 +188,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         client.sendBattery(controllerIndex: 0, level: 50, status: .charging)
         XCTAssertEqual(client.sendCounter, 2)
         XCTAssertFalse(counterNeedsRepush(client.sendCounter))
-        client.counter.set(UInt64(ProtocolConstants.counterRepushThreshold))
+        client.params.mutate { $0.counter = UInt64(ProtocolConstants.counterRepushThreshold) }
         XCTAssertTrue(counterNeedsRepush(client.sendCounter), "the G4 poll sees the exposed counter")
     }
 
@@ -261,6 +261,67 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         XCTAssertFalse(fired, "old-token datagrams no longer decrypt after the re-key")
     }
 
+    func testRekeySwapNeverYieldsAReusedCounterOrACarriedOneAcrossGenerations() throws {
+        // `nextSendMaterial` is what every uplink seal draws from. Under
+        // concurrent re-key swaps the drawn (token, sequence) pairs must
+        // uphold the nonce invariant: no pair repeats within a generation,
+        // and every generation's sequences run contiguously from 1 — a swap
+        // can neither reset the counter under the old key (nonce reuse) nor
+        // leak the old generation's high counter into the new one.
+        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
+        defer { client.closeSocket() }
+
+        let drawsPerThread = 4000
+        let threads = 4
+        let collected = LockedBox<[(UInt32, UInt64)]>([])
+        let group = DispatchGroup()
+        let start = DispatchSemaphore(value: 0)
+        for _ in 0 ..< threads {
+            group.enter()
+            DispatchQueue.global().async {
+                start.wait()
+                var local: [(UInt32, UInt64)] = []
+                local.reserveCapacity(drawsPerThread)
+                for _ in 0 ..< drawsPerThread {
+                    let material = client.nextSendMaterial()
+                    local.append((material.token, material.sequence))
+                }
+                collected.mutate { $0.append(contentsOf: local) }
+                group.leave()
+            }
+        }
+        for _ in 0 ..< threads { start.signal() }
+        // Re-key on the SAME endpoint (the live G4 path) while the senders
+        // draw.
+        for generation in 1 ... 200 {
+            XCTAssertTrue(client.setConnectionParams(
+                host: "127.0.0.1",
+                udpPort: 9,
+                token: UInt32(generation),
+                sessionKey: SymmetricKey(data: Data(repeating: UInt8(generation % 251), count: 32))
+            ))
+        }
+        XCTAssertEqual(group.wait(timeout: .now() + 30), .success)
+
+        var byGeneration: [UInt32: [UInt64]] = [:]
+        for (token, sequence) in collected.get() {
+            byGeneration[token, default: []].append(sequence)
+        }
+        for (token, sequences) in byGeneration {
+            let unique = Set(sequences)
+            XCTAssertEqual(
+                unique.count,
+                sequences.count,
+                "token \(token): a (generation, counter) pair was drawn twice — nonce reuse"
+            )
+            XCTAssertEqual(
+                unique,
+                Set(1 ... UInt64(sequences.count)),
+                "token \(token): sequences must run contiguously from 1"
+            )
+        }
+    }
+
     func testExhaustedCounterGoesSilentInsteadOfWrapping() throws {
         // Contract §Crypto: a counter can never wrap — nonce reuse under one
         // key would be catastrophic. Past 2^32 − 1 the client stops sending
@@ -270,7 +331,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
         defer { client.closeSocket() }
 
-        client.counter.set(UInt64(UInt32.max) - 1)
+        client.params.mutate { $0.counter = UInt64(UInt32.max) - 1 }
         client.sendBattery(controllerIndex: 0, level: 1, status: .unknown)
         let last = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
         XCTAssertEqual(
@@ -287,6 +348,43 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         )
         XCTAssertEqual(client.sendCounter, UInt32.max, "the G4 poll keeps reading re-PUT needed")
         XCTAssertTrue(counterNeedsRepush(client.sendCounter))
+    }
+
+    func testEndpointSwapJoinsTheReceiveLoopBeforeClosingItsSocket() throws {
+        // The class invariant ("receive loop joined before the fd closes")
+        // must hold on the live endpoint-swap replace path too, not just
+        // `closeSocket` — otherwise a blocked recv can land on a reused fd.
+        let (fdA, portA) = try XCTUnwrap(DataPlaneTestHelpers.bindLoopbackSocket())
+        defer { close(fdA) }
+        let (fdB, portB) = try XCTUnwrap(DataPlaneTestHelpers.bindLoopbackSocket())
+        defer { close(fdB) }
+        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: portA))
+        defer { client.closeSocket() }
+        client.startReceiveLoop()
+        XCTAssertTrue(client.ackRunning.get())
+
+        XCTAssertTrue(client.setConnectionParams(
+            host: "127.0.0.1",
+            udpPort: portB,
+            token: DataPlaneTestHelpers.testToken,
+            sessionKey: DataPlaneTestHelpers.testKey
+        ))
+
+        XCTAssertFalse(
+            client.ackRunning.get(),
+            "an endpoint swap must stop the receive loop before the old fd closes"
+        )
+        XCTAssertEqual(
+            client.receiveDrained.wait(timeout: .now()),
+            .success,
+            "the old receive loop must have exited (joined), not been left on a closed fd"
+        )
+        XCTAssertTrue(client.isOpen)
+        client.sendBattery(controllerIndex: 0, level: 9, status: .unknown)
+        XCTAssertNotNil(
+            DataPlaneTestHelpers.receiveDatagram(fd: fdB),
+            "the client must be aimed at the NEW endpoint after the swap"
+        )
     }
 
     func testClosedClientDropsSendsWithoutTrapping() throws {

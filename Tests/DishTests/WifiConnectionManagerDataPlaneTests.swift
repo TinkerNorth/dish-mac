@@ -176,7 +176,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
 
         // Park the send counter past the 0xF0000000 threshold — the next
         // 1 Hz tick fires onRekeyNeeded exactly once.
-        try XCTUnwrap(conn.client).counter.set(UInt64(ProtocolConstants.counterRepushThreshold))
+        try XCTUnwrap(conn.client).params.mutate { $0.counter = UInt64(ProtocolConstants.counterRepushThreshold) }
 
         let rePut = await waitUntil { self.satellite.sessionPuts.count >= 2 }
         XCTAssertTrue(rePut, "the manager must re-PUT before the counter can exhaust")

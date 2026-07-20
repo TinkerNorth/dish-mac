@@ -126,4 +126,13 @@ final class LockedBox<Value>: @unchecked Sendable {
         value = newValue
         os_unfair_lock_unlock(&lock)
     }
+
+    /// Read-modify-write under one lock hold, returning `body`'s result —
+    /// for values whose fields must never be observed across two holds
+    /// (the session params' key/token/counter draw).
+    func mutate<T>(_ body: (inout Value) -> T) -> T {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return body(&value)
+    }
 }
