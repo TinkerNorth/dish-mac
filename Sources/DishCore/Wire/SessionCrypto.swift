@@ -192,16 +192,29 @@ func hexEncodeLower(_ bytes: some Sequence<UInt8>) -> String {
 }
 
 /// Decode a lower- or upper-case hex string; nil on odd length or non-hex
-/// characters.
+/// characters. Per-nibble parse — `UInt8(_, radix:)` accepts a leading
+/// sign/whitespace, which would break the "False on malformed hex" contract.
 func hexDecode(_ hex: String) -> Data? {
     guard hex.count % 2 == 0 else { return nil }
     var out = Data(capacity: hex.count / 2)
-    var index = hex.startIndex
-    while index < hex.endIndex {
-        let next = hex.index(index, offsetBy: 2)
-        guard let byte = UInt8(hex[index ..< next], radix: 16) else { return nil }
-        out.append(byte)
-        index = next
+    var high: UInt8?
+    for char in hex.utf8 {
+        guard let nibble = hexNibble(char) else { return nil }
+        if let pending = high {
+            out.append(pending << 4 | nibble)
+            high = nil
+        } else {
+            high = nibble
+        }
     }
     return out
+}
+
+private func hexNibble(_ char: UInt8) -> UInt8? {
+    switch char {
+    case 0x30 ... 0x39: char - 0x30
+    case 0x61 ... 0x66: char - 0x61 + 10
+    case 0x41 ... 0x46: char - 0x41 + 10
+    default: nil
+    }
 }
