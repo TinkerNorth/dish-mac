@@ -145,6 +145,8 @@ final class FakeSatelliteStore {
         // Knobs.
         var forced401Code: String?
         var protocolVersionReject = false
+        var holdNextSessionPut = false
+        var heldSessionPuts = 0
         var ackEpochOverride: UInt16?
         var ackBitmapOverride: UInt16?
         var ackCountOverride: UInt8?
@@ -358,6 +360,26 @@ final class FakeSatellite {
     var protocolVersionReject: Bool {
         get { store.with { $0.protocolVersionReject } }
         set { store.with { $0.protocolVersionReject = newValue } }
+    }
+
+    /// One-shot: process the next session PUT normally but park its response
+    /// until `releaseHeldSessionPut()` — an in-flight re-PUT whose result the
+    /// client has not seen yet.
+    var holdNextSessionPut: Bool {
+        get { store.with { $0.holdNextSessionPut } }
+        set { store.with { $0.holdNextSessionPut = newValue } }
+    }
+
+    /// Number of session-PUT responses ever parked by the hold knob. Poll
+    /// with an async wait — a blocking wait on the main actor would starve
+    /// the main-actor flow driving the PUT.
+    var heldSessionPutCount: Int {
+        store.with { $0.heldSessionPuts }
+    }
+
+    @discardableResult
+    func releaseHeldSessionPut() -> Bool {
+        rest.releaseHeldSessionPut()
     }
 
     /// Overrides for the enriched heartbeat ack (and, for epoch, the

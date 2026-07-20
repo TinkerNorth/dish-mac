@@ -211,7 +211,11 @@ extension WifiConnectionManager {
             handleTerminalAuth(id, loud: false)
             return
         }
+        // `conn.client === client`: a death+reconnect during the PUT flight
+        // replaced the session — applying the stale material would re-arm the
+        // dead client and stamp a stale epoch onto the new session.
         guard conn.state == .live || conn.state == .faltering,
+              conn.client === client,
               resp.reachable,
               let tokenHex = resp.token,
               let saltHex = resp.sessionSalt,

@@ -26,6 +26,11 @@ final class FakeSatelliteRest {
     private var listener: NWListener?
     private let connectionsLock = NSLock()
     private var connections: [NWConnection] = []
+    /// One parked (connection, serialized response) for the
+    /// hold-next-session-PUT knob: the PUT is processed normally, only the
+    /// response delivery waits for `releaseHeldSessionPut()`.
+    private let heldLock = NSLock()
+    private var heldSessionPut: (NWConnection, Data)?
     private(set) var transport: FakeSatellite.Transport = .http
     private(set) var port: UInt16 = 0
 
@@ -65,11 +70,26 @@ final class FakeSatelliteRest {
     func stop() {
         listener?.cancel()
         listener = nil
+        heldLock.lock()
+        heldSessionPut = nil
+        heldLock.unlock()
         connectionsLock.lock()
         let open = connections
         connections = []
         connectionsLock.unlock()
         open.forEach { $0.cancel() }
+    }
+
+    /// Deliver the parked session-PUT response. False when nothing is parked.
+    @discardableResult
+    func releaseHeldSessionPut() -> Bool {
+        heldLock.lock()
+        let parked = heldSessionPut
+        heldSessionPut = nil
+        heldLock.unlock()
+        guard let (connection, data) = parked else { return false }
+        connection.send(content: data, completion: .contentProcessed { _ in })
+        return true
     }
 
     private func startListener(with params: NWParameters) throws -> UInt16 {
@@ -98,7 +118,8 @@ final class FakeSatelliteRest {
             if let data { buffer.append(data) }
             while let (request, consumed) = FakeSatelliteHttp.parseRequest(buffer) {
                 buffer.removeFirst(consumed)
-                let response = self.route(request)
+                // nil = the response was parked by the hold knob.
+                guard let response = self.route(request, on: connection) else { continue }
                 connection.send(content: FakeSatelliteHttp.serialize(response), completion: .contentProcessed { _ in })
             }
             if error != nil || isComplete {
@@ -111,12 +132,12 @@ final class FakeSatelliteRest {
 
     // MARK: - Routing
 
-    private func route(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
+    private func route(_ request: FakeSatelliteHttp.Request, on connection: NWConnection) -> FakeSatelliteHttp.Response? {
         switch (request.method, request.plainPath) {
         case ("POST", "/api/pair"): return pair(request)
         case ("GET", "/api/pair/status"): return pairStatus(request)
         case ("DELETE", "/api/pair"): return selfUnpair(request)
-        case ("PUT", "/api/connections"): return putSession(request)
+        case ("PUT", "/api/connections"): return putSession(request, on: connection)
         case ("GET", "/api/server/capabilities"): return FakeSatelliteHttp.json(200, raw: Self.capabilitiesJSON)
         case ("GET", "/api/catalog"): return catalog(request)
         default:
@@ -298,7 +319,7 @@ final class FakeSatelliteRest {
 
     // MARK: - Session (contract §Session)
 
-    private func putSession(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
+    private func putSession(_ request: FakeSatelliteHttp.Request, on connection: NWConnection) -> FakeSatelliteHttp.Response? {
         let body = FakeSatelliteHttp.parseJSON(request.body)
         if let rejection = versionRejection(body) { return rejection }
         if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
@@ -348,7 +369,20 @@ final class FakeSatelliteRest {
         // Contract: replacement close-notify goes to the OLD token,
         // best-effort (only when that session ever showed a reply path).
         if let previous = result.previous { udp.sendClose(.replaced, to: previous) }
-        return FakeSatelliteHttp.json(200, result.response)
+        let response = FakeSatelliteHttp.json(200, result.response)
+        let held = store.with { state -> Bool in
+            guard state.holdNextSessionPut else { return false }
+            state.holdNextSessionPut = false
+            state.heldSessionPuts += 1
+            return true
+        }
+        if held {
+            heldLock.lock()
+            heldSessionPut = (connection, FakeSatelliteHttp.serialize(response))
+            heldLock.unlock()
+            return nil
+        }
+        return response
     }
 
     private static func sameTopology(_ old: [[String: Any]], _ new: [[String: Any]]) -> Bool {

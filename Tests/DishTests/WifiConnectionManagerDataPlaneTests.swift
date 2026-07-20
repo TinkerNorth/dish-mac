@@ -200,6 +200,46 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         XCTAssertFalse(conn.state == .stale, "re-key must not bounce the session")
     }
 
+    func testStaleRekeyResultAfterMidFlightReconnectIsDiscarded() async throws {
+        let conn = try await connectAndAwaitLive()
+        let oldClient = try XCTUnwrap(conn.client)
+        XCTAssertEqual(satellite.sessionPuts.count, 1)
+
+        // Park the re-key PUT's response in flight: the server already
+        // processed it; only the client-side continuation is late.
+        satellite.holdNextSessionPut = true
+        let rekey = Task { await self.manager.rekeySession(conn) }
+        let parked = await waitUntil { self.satellite.heldSessionPutCount >= 1 }
+        XCTAssertTrue(parked, "the re-key PUT must reach the server and park")
+
+        // Death + reconnect while the result is in flight: the session now
+        // runs on a FRESH client, and a live converge moves the epoch on.
+        conn.markDisconnected()
+        _ = try await connectAndAwaitLive()
+        let newClient = try XCTUnwrap(conn.client)
+        XCTAssertTrue(newClient !== oldClient, "reconnect must build a fresh client")
+        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        let applied = await waitUntil {
+            self.satellite.appliedControllers.count == 1 && conn.lastAppliedEpoch >= 2
+        }
+        XCTAssertTrue(applied)
+        let epochBefore = conn.lastAppliedEpoch
+
+        XCTAssertTrue(satellite.releaseHeldSessionPut())
+        _ = await rekey.value
+
+        // The stale snapshot must be dropped whole: no epoch rollback onto
+        // the new session, no resurrecting the replaced client's socket.
+        XCTAssertEqual(
+            conn.lastAppliedEpoch,
+            epochBefore,
+            "a stale re-key result must not overwrite the new session's epoch belief"
+        )
+        XCTAssertFalse(oldClient.isOpen, "the replaced client must stay closed")
+        XCTAssertTrue(conn.client === newClient)
+        XCTAssertEqual(conn.state, .live)
+    }
+
     // MARK: - Slot converge over REST (D5: no UDP registration)
 
     func testAttachedSlotRidesTheSessionPut() async throws {
