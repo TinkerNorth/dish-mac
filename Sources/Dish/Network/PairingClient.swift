@@ -51,7 +51,9 @@ final class PairingClient {
     /// Pure classifier. Driven only by fields on the response so it's
     /// trivially unit-testable.
     static func classify(_ response: PairResponse) -> Outcome {
-        if response.ok, let key = response.sharedKey, !key.isEmpty {
+        // Same 64-hex gate as the path-B poll: a malformed key must never
+        // classify as success and get persisted.
+        if response.ok, let key = response.sharedKey, isSharedKeyHex(key) {
             return .success(sharedKeyHex: key)
         }
         if response.httpStatus == 409 {

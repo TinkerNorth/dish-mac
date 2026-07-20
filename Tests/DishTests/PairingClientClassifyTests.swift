@@ -10,12 +10,28 @@ import XCTest
 /// from trapping the user behind an unanswerable PIN prompt.
 final class PairingClientClassifyTests: XCTestCase {
 
-    func testSuccessRequiresOkAndSharedKey() {
+    func testSuccessRequiresOkAndFullHexSharedKey() {
         var r = PairResponse()
         r.ok = true
-        r.sharedKey = "abcd"
+        r.sharedKey = String(repeating: "ab", count: 32)
         r.reachable = true
-        XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: "abcd"))
+        XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: String(repeating: "ab", count: 32)))
+    }
+
+    func testOkWithMalformedSharedKeyIsNotSuccess() {
+        // Path A rides the same 64-hex gate as the path-B poll: a short or
+        // non-hex key must never be persisted as trust material.
+        var short = PairResponse()
+        short.ok = true
+        short.sharedKey = "abcd"
+        short.reachable = true
+        XCTAssertEqual(PairingClient.classify(short), .authRequired)
+
+        var nonHex = PairResponse()
+        nonHex.ok = true
+        nonHex.sharedKey = String(repeating: "zz", count: 32)
+        nonHex.reachable = true
+        XCTAssertEqual(PairingClient.classify(nonHex), .authRequired)
     }
 
     func testReachableButNotOkIsAuthRequired() {
@@ -94,9 +110,9 @@ final class PairingClientClassifyTests: XCTestCase {
         var r = PairResponse()
         r.ok = true
         r.pending = true
-        r.sharedKey = "abcd"
+        r.sharedKey = String(repeating: "ab", count: 32)
         r.reachable = true
-        XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: "abcd"))
+        XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: String(repeating: "ab", count: 32)))
     }
 
     // MARK: - Path-B status poll classification (ports dish-android PairingApproval)
