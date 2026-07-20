@@ -37,6 +37,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         try super.setUpWithError()
         satellite = try FakeSatellite()
         ports = try satellite.start()
+        try satellite.requireHTTPSTransport()
         defaultsName = "dish.test.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: defaultsName)
         store = ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore())

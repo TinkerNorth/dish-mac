@@ -19,6 +19,7 @@ final class PairingClientLiveTests: XCTestCase {
         try super.setUpWithError()
         satellite = try FakeSatellite(operatorPin: "4321")
         ports = try satellite.start()
+        try satellite.requireHTTPSTransport()
         // Trust-everything verifier: TOFU has its own suite; these tests pin
         // the REST semantics.
         client = PairingClient(pinVerifier: { _, _ in true })

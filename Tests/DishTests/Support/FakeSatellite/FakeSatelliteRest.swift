@@ -62,6 +62,11 @@ final class FakeSatelliteRest {
                 return httpsPort
             }
         }
+        // Keychain-refusing runner: without a SecIdentity there is no TLS
+        // listener, and every https-only app suite would fail as a misleading
+        // "unreachable". Say so loudly; those suites XCTSkip via
+        // `requireHTTPSTransport()`.
+        print("FakeSatellite: SecIdentity unavailable (keychain refused) — serving PLAIN HTTP; https-only app suites will skip")
         let httpPort = try startListener(with: .tcp)
         transport = .http
         port = httpPort
@@ -184,24 +189,35 @@ final class FakeSatelliteRest {
         case unauthorized(code: String)
     }
 
-    /// Header wins over body when both carry credentials (contract).
+    /// Header wins over body when both carry credentials (contract). Scoped
+    /// to the paired device like the real `clientAuthed`: an unknown deviceId
+    /// draws NOT_PAIRED regardless of proof. A pre-seeded key (the
+    /// `pairingKeyHex` knob) has no device row yet, so the first deviceId
+    /// that proves key possession is adopted as the paired device.
     private func authenticate(_ request: FakeSatelliteHttp.Request, body: [String: Any]) -> AuthOutcome {
-        if let forced = store.with({ $0.forced401Code }) {
-            return .unauthorized(code: forced)
-        }
-        guard let keyHex = store.with({ $0.pairingKeyHex }),
-              let key = FakeSatelliteCrypto.hexToData(keyHex) else
-        {
-            return .unauthorized(code: "NOT_PAIRED")
-        }
-        let deviceId = request.headers["x-device-id"] ?? body["deviceId"] as? String
+        let suppliedId = request.headers["x-device-id"] ?? body["deviceId"] as? String
         let proof = request.headers["x-hmac-proof"] ?? body["hmacProof"] as? String
-        guard let deviceId, let proof,
-              FakeSatelliteCrypto.verifyHmacProof(pairingKey: key, deviceId: deviceId, proofHex: proof) else
-        {
-            return .unauthorized(code: "BAD_PROOF")
+        return store.with { state -> AuthOutcome in
+            if let forced = state.forced401Code {
+                return .unauthorized(code: forced)
+            }
+            guard let keyHex = state.pairingKeyHex,
+                  let key = FakeSatelliteCrypto.hexToData(keyHex),
+                  let deviceId = suppliedId, !deviceId.isEmpty else
+            {
+                return .unauthorized(code: "NOT_PAIRED")
+            }
+            if let paired = state.pairedDeviceId, paired != deviceId {
+                return .unauthorized(code: "NOT_PAIRED")
+            }
+            guard let proof,
+                  FakeSatelliteCrypto.verifyHmacProof(pairingKey: key, deviceId: deviceId, proofHex: proof) else
+            {
+                return .unauthorized(code: "BAD_PROOF")
+            }
+            if state.pairedDeviceId == nil { state.pairedDeviceId = deviceId }
+            return .ok(deviceId: deviceId)
         }
-        return .ok(deviceId: deviceId)
     }
 
     private func unauthorized(_ code: String) -> FakeSatelliteHttp.Response {
@@ -258,9 +274,6 @@ final class FakeSatelliteRest {
                 "protocolVersion": 1
             ])
         }
-        if !pin.isEmpty {
-            return FakeSatelliteHttp.json(200, ["ok": false, "error": "invalid pin"])
-        }
         if !clientPin.isEmpty {
             store.with { state in
                 state.lastClientPin = clientPin
@@ -269,16 +282,20 @@ final class FakeSatelliteRest {
             }
             return FakeSatelliteHttp.json(200, ["ok": false, "pending": true, "message": "awaiting approval on the satellite"])
         }
-        return FakeSatelliteHttp.json(400, ["ok": false, "error": "pairing required"])
+        // Wrong AND empty PIN both land on the real route's terminal arm:
+        // 200 `{"ok":false,...}` (routes_client.cpp pairRoute), never 400.
+        return FakeSatelliteHttp.json(200, ["ok": false, "error": "invalid or expired PIN"])
     }
 
     /// Key rotation: a valid hmacProof against the CURRENT key re-mints the
     /// key (closing any live session with reason `replaced` first); a failed
     /// proof falls through to the PIN paths (contract §Pairing Update).
+    /// Device-scoped like the real route (the row is looked up by deviceId).
     private func rotateIfProofValid(_ body: [String: Any], deviceId: String, deviceName: String) -> FakeSatelliteHttp.Response? {
         guard let proof = body["hmacProof"] as? String,
               let keyHex = store.with({ $0.pairingKeyHex }),
               let key = FakeSatelliteCrypto.hexToData(keyHex),
+              store.with({ $0.pairedDeviceId }).map({ $0 == deviceId }) ?? true,
               FakeSatelliteCrypto.verifyHmacProof(pairingKey: key, deviceId: deviceId, proofHex: proof) else
         {
             return nil
@@ -352,8 +369,13 @@ final class FakeSatelliteRest {
 
     private func putSession(_ request: FakeSatelliteHttp.Request, on connection: NWConnection) -> FakeSatelliteHttp.Response? {
         let body = FakeSatelliteHttp.parseJSON(request.body)
-        if let rejection = versionRejection(body) { return rejection }
+        // Real route order (upsertConnectionRoute): shutting-down 503 first,
+        // then auth, then version.
+        if store.with({ $0.shuttingDown }) {
+            return FakeSatelliteHttp.json(503, ["error": "shutting down"])
+        }
         if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
+        if let rejection = versionRejection(body) { return rejection }
         guard let keyHex = store.with({ $0.pairingKeyHex }),
               let pairingKey = FakeSatelliteCrypto.hexToData(keyHex) else
         {
@@ -364,9 +386,15 @@ final class FakeSatelliteRest {
         let salt = FakeSatelliteRandom.data(8)
         let result = store.with { state -> (response: [String: Any], previous: FakeSatelliteSession?) in
             state.sessionPuts.append(body)
-            let previous = state.activeToken.flatMap { state.sessions[$0] }
-            if !Self.sameTopology(state.controllers, controllers) { state.epoch &+= 1 }
-            state.controllers = controllers
+            // Retire the replaced session: old tokens must stop decrypting
+            // (the real satellite `extract`s the row; close-notify below
+            // still reaches it through the captured object).
+            let previous = state.activeToken.flatMap { state.sessions.removeValue(forKey: $0) }
+            let failure = state.controllerApplyFailure
+            if failure == nil {
+                if !Self.sameTopology(state.controllers, controllers) { state.epoch &+= 1 }
+                state.controllers = controllers
+            }
             state.lastMouseGranted = wantsMouse
             state.tokenCounter &+= 1
             let token = state.tokenCounter
@@ -380,7 +408,7 @@ final class FakeSatelliteRest {
             let applied = controllers.map { ctrl -> [String: Any] in
                 [
                     "ctrlIdx": ctrl["ctrlIdx"] as? Int ?? 0,
-                    "result": "ok",
+                    "result": failure ?? "ok",
                     "appliedType": ctrl["type"] as? Int ?? 0,
                     "motion": ["sinkSupportedForType": true, "backendOk": true]
                 ]
@@ -416,22 +444,33 @@ final class FakeSatelliteRest {
         return response
     }
 
+    /// Applied topology = the (ctrlIdx → type) map. Caps/touchpadMode
+    /// converge in place with NO epoch bump (`applyDescriptorLocked`'s
+    /// same-family arm); only slot-set and type changes move the epoch.
     private static func sameTopology(_ old: [[String: Any]], _ new: [[String: Any]]) -> Bool {
-        func keyed(_ list: [[String: Any]]) -> [Int: NSDictionary] {
-            var out: [Int: NSDictionary] = [:]
+        func keyed(_ list: [[String: Any]]) -> [Int: Int] {
+            var out: [Int: Int] = [:]
             for ctrl in list {
-                out[ctrl["ctrlIdx"] as? Int ?? 0] = ctrl as NSDictionary
+                out[ctrl["ctrlIdx"] as? Int ?? 0] = ctrl["type"] as? Int ?? 0
             }
             return out
         }
         return keyed(old) == keyed(new)
     }
 
+    /// Real sub-routes 404 once the session is closed (or never opened) —
+    /// `getSessionView`/`applyController`/`removeController` all report
+    /// not-found for a device with no session row.
+    private func notFound() -> FakeSatelliteHttp.Response {
+        FakeSatelliteHttp.json(404, ["error": "connection not found"])
+    }
+
     private func reconcile(_ request: FakeSatelliteHttp.Request, id: String) -> FakeSatelliteHttp.Response {
         let body = FakeSatelliteHttp.parseJSON(request.body)
         if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return FakeSatelliteHttp.json(404, ["error": "unknown connection"]) }
+        guard id == connectionId else { return notFound() }
         return store.with { state -> FakeSatelliteHttp.Response in
+            guard state.activeToken != nil else { return self.notFound() }
             state.reconcileGets.append(id)
             let controllers = state.controllers.map { ctrl -> [String: Any] in
                 var view: [String: Any] = [
@@ -460,16 +499,17 @@ final class FakeSatelliteRest {
     private func closeSession(_ request: FakeSatelliteHttp.Request, id: String) -> FakeSatelliteHttp.Response {
         let body = FakeSatelliteHttp.parseJSON(request.body)
         if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return FakeSatelliteHttp.json(404, ["error": "unknown connection"]) }
-        store.with { state in
+        guard id == connectionId else { return notFound() }
+        return store.with { state -> FakeSatelliteHttp.Response in
+            guard state.activeToken != nil else { return self.notFound() }
             state.sessions.removeAll()
             state.activeToken = nil
             if !state.controllers.isEmpty {
                 state.epoch &+= 1
                 state.controllers = []
             }
+            return FakeSatelliteHttp.json(200, ["ok": true])
         }
-        return FakeSatelliteHttp.json(200, ["ok": true])
     }
 
     // MARK: - Controller sub-resource (contract §Controller)
@@ -477,15 +517,34 @@ final class FakeSatelliteRest {
     private func putSlot(_ request: FakeSatelliteHttp.Request, id: String, idx: Int) -> FakeSatelliteHttp.Response {
         let body = FakeSatelliteHttp.parseJSON(request.body)
         if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return FakeSatelliteHttp.json(404, ["error": "unknown connection"]) }
+        guard id == connectionId else { return notFound() }
         return store.with { state -> FakeSatelliteHttp.Response in
+            guard state.activeToken != nil else { return self.notFound() }
             var descriptor = body
             descriptor["ctrlIdx"] = idx // the path index wins (contract)
+            let existing = state.controllers.firstIndex { ($0["ctrlIdx"] as? Int ?? -1) == idx }
+            if let failure = state.controllerApplyFailure {
+                // replugFailed leaves the previous pad in force; every other
+                // code means the slot is not plugged (contract §Session).
+                let priorType = existing.map { state.controllers[$0]["type"] as? Int ?? 0 }
+                return FakeSatelliteHttp.json(200, [
+                    "epoch": Int(state.epoch),
+                    "controller": [
+                        "ctrlIdx": idx,
+                        "result": failure,
+                        "appliedType": priorType ?? (descriptor["type"] as? Int ?? 0),
+                        "motion": ["sinkSupportedForType": false, "backendOk": false]
+                    ]
+                ])
+            }
             var list = state.controllers
-            if let existing = list.firstIndex(where: { ($0["ctrlIdx"] as? Int ?? -1) == idx }) {
+            if let existing {
+                // Epoch moves only on a TYPE change (replug); caps/mode
+                // converge in place (`applyDescriptorLocked` same-family arm).
+                let typeChanged = (list[existing]["type"] as? Int ?? 0) != (descriptor["type"] as? Int ?? 0)
                 if !(list[existing] as NSDictionary).isEqual(to: descriptor) {
                     list[existing] = descriptor
-                    state.epoch &+= 1
+                    if typeChanged { state.epoch &+= 1 }
                 }
             } else {
                 list.append(descriptor)
@@ -508,8 +567,9 @@ final class FakeSatelliteRest {
     private func deleteSlot(_ request: FakeSatelliteHttp.Request, id: String, idx: Int) -> FakeSatelliteHttp.Response {
         let body = FakeSatelliteHttp.parseJSON(request.body)
         if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return FakeSatelliteHttp.json(404, ["error": "unknown connection"]) }
+        guard id == connectionId else { return notFound() }
         return store.with { state -> FakeSatelliteHttp.Response in
+            guard state.activeToken != nil else { return self.notFound() }
             let before = state.controllers.count
             state.controllers.removeAll { ($0["ctrlIdx"] as? Int ?? -1) == idx }
             if state.controllers.count != before { state.epoch &+= 1 }

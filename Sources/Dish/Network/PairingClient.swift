@@ -139,7 +139,7 @@ final class PairingClient {
 
     /// `POST /api/pair`. Exactly one of `pin` / `clientPin` should be
     /// non-empty (both empty = the probe legacy callers used; the protocol-1
-    /// server answers 400 "pairing required", classified `.authRequired`).
+    /// server answers 200 `{"ok":false,...}`, classified `.authRequired`).
     /// `reachable` is true iff a JSON body arrived — every network-level
     /// failure path returns `reachable = false` so the caller can surface
     /// "Server unreachable — has it moved networks?" instead of trapping the

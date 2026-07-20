@@ -192,8 +192,13 @@ enum FakeSatelliteCrypto {
         be16(msgType) + be16(UInt16(truncatingIfNeeded: payload.count)) + payload
     }
 
+    /// Honors `msgLen` like the real receiver: an inner frame whose declared
+    /// length overruns the plaintext is dropped, and trailing bytes beyond
+    /// `msgLen` are sliced off.
     static func parseInner(_ inner: Data) -> (msgType: UInt16, payload: Data)? {
         guard inner.count >= 4 else { return nil }
-        return (readBE16(inner, at: 0), inner.dropFirst(4))
+        let msgLen = Int(readBE16(inner, at: 2))
+        guard 4 + msgLen <= inner.count else { return nil }
+        return (readBE16(inner, at: 0), inner.dropFirst(4).prefix(msgLen))
     }
 }

@@ -30,6 +30,7 @@ final class ReconcileDriverLiveTests: XCTestCase {
         try super.setUpWithError()
         satellite = try FakeSatellite()
         ports = try satellite.start()
+        try satellite.requireHTTPSTransport()
         defaultsName = "dish.test.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: defaultsName)
         store = ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore())
@@ -121,21 +122,11 @@ final class ReconcileDriverLiveTests: XCTestCase {
         XCTAssertTrue(applied)
         XCTAssertEqual(satellite.sessionPuts.count, 1, "live attach rides the per-slot route")
 
-        // Another actor unplugs our controller behind our back (authed
-        // per-slot DELETE, as the satellite's admin surface would): the
-        // epoch bumps, the bitmap empties, and OUR desired state no longer
-        // matches the applied view.
-        let script = FakeSatelliteRestScriptClient(satellite: satellite)
-        let proof = SessionCrypto.hmacProofHex(
-            pairingKey: Data(repeating: 0x1F, count: 32),
-            deviceId: "meddler"
-        )
-        let reply = try await script.request(
-            "DELETE",
-            "/api/connections/\(satellite.connectionId)/controllers/0",
-            headers: ["X-Device-Id": "meddler", "X-Hmac-Proof": proof]
-        )
-        XCTAssertEqual(reply.status, 200)
+        // The admin surface unplugs our controller behind our back (the
+        // loopback-9877 analogue — client-authed routes reject foreign
+        // deviceIds): the epoch bumps, the bitmap empties, and OUR desired
+        // state no longer matches the applied view.
+        satellite.adminUnplugController(ctrlIdx: 0)
         XCTAssertTrue(satellite.appliedControllers.isEmpty, "the server dropped the slot")
 
         // Drift → GET → applied ≠ desired → full re-PUT through the normal

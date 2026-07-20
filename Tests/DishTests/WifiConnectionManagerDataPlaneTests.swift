@@ -28,6 +28,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         try super.setUpWithError()
         satellite = try FakeSatellite()
         ports = try satellite.start()
+        try satellite.requireHTTPSTransport()
         defaultsName = "dish.test.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: defaultsName)
         store = ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore())
@@ -197,6 +198,9 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
             satellite.awaitHeartbeats(atLeast: heartbeatsBefore + 1, timeout: 4),
             "post-re-key heartbeats must decrypt under the rotated key"
         )
+        // The old token is RETIRED server-side: any client still sealing
+        // under it would land here as unknown-token drops, not acks.
+        XCTAssertEqual(satellite.unknownTokenDrops, 0, "the client must have moved to the new token")
         XCTAssertFalse(conn.state == .stale, "re-key must not bounce the session")
     }
 
@@ -283,5 +287,35 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         let removed = await waitUntil { self.satellite.appliedControllers.isEmpty }
         XCTAssertTrue(removed, "live detach must DELETE the slot; the session lives on")
         XCTAssertEqual(manager.get(server.id)?.state, .live)
+    }
+
+    func testControllerApplyFailureRollsBackBeliefAndSurfacesError() async throws {
+        let conn = try await connectAndAwaitLive()
+        var failedSlots: [String] = []
+        var bag = Set<AnyCancellable>()
+        manager.slotRegistrationFailed
+            .sink { failedSlots.append($0) }
+            .store(in: &bag)
+        var errors: [String] = []
+        manager.events
+            .sink { if case let .error(message) = $0 { errors.append(message) } }
+            .store(in: &bag)
+
+        // Partial success is a 200 (contract §Error model): the slot draws a
+        // per-controller failure code and must NOT count as applied.
+        satellite.controllerApplyFailure = "noSlots"
+        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+
+        let surfaced = await waitUntil { failedSlots == ["slot-a"] }
+        XCTAssertTrue(surfaced, "a failed apply must fire slotRegistrationFailed for the rollback")
+        XCTAssertTrue(errors.contains("Server could not apply the controller"))
+        XCTAssertTrue(satellite.appliedControllers.isEmpty, "the server never plugged the slot")
+        XCTAssertEqual(manager.get(server.id)?.state, .live, "a failed slot is not a failed session")
+
+        // The knob lifted: the next converge applies cleanly.
+        satellite.controllerApplyFailure = nil
+        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        let healed = await waitUntil { self.satellite.appliedControllers.count == 1 }
+        XCTAssertTrue(healed)
     }
 }

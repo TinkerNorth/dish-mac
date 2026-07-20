@@ -16,6 +16,7 @@
 import CryptoKit
 import Foundation
 import Network
+import XCTest
 
 /// Close-notify reasons (contract §UDP messages, opcode 0x000F).
 enum FakeSatelliteCloseReason: UInt8 {
@@ -149,6 +150,8 @@ final class FakeSatelliteStore {
         var heldSessionPuts = 0
         var holdNextPair = false
         var heldPairs = 0
+        var shuttingDown = false
+        var controllerApplyFailure: String?
         var ackEpochOverride: UInt16?
         var ackBitmapOverride: UInt16?
         var ackCountOverride: UInt8?
@@ -318,6 +321,17 @@ final class FakeSatellite {
         rest.transport
     }
 
+    /// The app's REST clients are https-only; on a keychain-refusing runner
+    /// the harness falls back to plain HTTP and every one of their requests
+    /// would fail as a misleading "unreachable". Call from `setUpWithError`
+    /// of suites that drive the app clients — a targeted skip, not a
+    /// vacuous pass.
+    func requireHTTPSTransport() throws {
+        if transport != .https {
+            throw XCTSkip("FakeSatellite has no SecIdentity on this runner (plain-HTTP fallback); the app's https-only clients cannot reach it")
+        }
+    }
+
     var certificateDER: Data {
         identity.certificateDER
     }
@@ -426,6 +440,34 @@ final class FakeSatellite {
     /// increments on every applied change regardless of initiator).
     func bumpEpoch() {
         store.with { $0.epoch &+= 1 }
+    }
+
+    /// contract §hmacProof: "503 means the server is shutting down (retry
+    /// later is acceptable)". Answered on the session PUT before auth, like
+    /// the real `g_appRunning` guard.
+    var shuttingDown: Bool {
+        get { store.with { $0.shuttingDown } }
+        set { store.with { $0.shuttingDown = newValue } }
+    }
+
+    /// Per-controller apply-failure knob: every requested descriptor draws
+    /// this result code (`noSlots`/`pluginFailed`/`replugFailed`/
+    /// `backendUnavailable`/`invalidType`) instead of applying. nil = apply
+    /// normally.
+    var controllerApplyFailure: String? {
+        get { store.with { $0.controllerApplyFailure } }
+        set { store.with { $0.controllerApplyFailure = newValue } }
+    }
+
+    /// The admin surface unplugging a slot behind the client's back (the
+    /// loopback-9877 analogue): the slot drops and the epoch moves, with no
+    /// client-authed HTTP involved.
+    func adminUnplugController(ctrlIdx: Int) {
+        store.with { state in
+            let before = state.controllers.count
+            state.controllers.removeAll { ($0["ctrlIdx"] as? Int ?? -1) == ctrlIdx }
+            if state.controllers.count != before { state.epoch &+= 1 }
+        }
     }
 
     // MARK: - Downlink injection (encrypted with the active session key)

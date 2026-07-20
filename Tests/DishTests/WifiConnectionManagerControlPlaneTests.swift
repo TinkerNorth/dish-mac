@@ -29,6 +29,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         try super.setUpWithError()
         satellite = try FakeSatellite()
         ports = try satellite.start()
+        try satellite.requireHTTPSTransport()
         defaultsName = "dish.test.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: defaultsName)
         keyStore = InMemoryKeyStore()
@@ -173,6 +174,27 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         XCTAssertNotNil(store.sharedKey(for: serverId), "version skew is not trust loss")
         XCTAssertFalse(manager.staleSatelliteIds.contains(serverId))
         XCTAssertEqual(manager.get(serverId)?.state, .idle)
+    }
+
+    // MARK: - 503 shutting down (contract: retry later, never terminal)
+
+    func testShuttingDown503ArmsSilentRetryWithoutTrustLoss() async {
+        prePair()
+        store.remember(server)
+        satellite.shuttingDown = true
+
+        manager.connect(to: server, intent: .autoReconnect)
+
+        let retried = await waitUntil { self.manager.retry[self.serverId] != nil }
+        XCTAssertTrue(retried, "503 must re-enter the backoff curve (retry later)")
+        XCTAssertNotNil(store.sharedKey(for: serverId), "shutting down is not trust loss")
+        XCTAssertFalse(manager.staleSatelliteIds.contains(serverId), "no Needs-pairing park for a 503")
+        XCTAssertEqual(manager.get(serverId)?.state, .idle)
+
+        // The server comes back: the armed silent retry lands the session.
+        satellite.shuttingDown = false
+        let live = await waitUntil(timeout: 10) { self.manager.get(self.serverId)?.state == .live }
+        XCTAssertTrue(live, "the armed retry self-heals once the server is back")
     }
 
     // MARK: - Forget → self-unpair (G16)

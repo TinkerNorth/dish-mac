@@ -23,6 +23,7 @@ final class HTTPClientLiveTests: XCTestCase {
         try super.setUpWithError()
         satellite = try FakeSatellite()
         ports = try satellite.start()
+        try satellite.requireHTTPSTransport()
         client = HTTPClient(pinVerifier: { _, _ in true })
         // Pre-pair without the PIN dance: plant a key, compute the proof the
         // way the manager does (DishCore).
