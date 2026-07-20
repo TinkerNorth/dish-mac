@@ -135,7 +135,7 @@ final class LifecyclePolicyAppTests: XCTestCase {
         model.store.remember(server)
         model.wifi.retry[server.id] = WifiConnectionManager.RetryState(
             attempt: 5,
-            nextRetryAtMs: WifiConnectionManager.nowMs() + 60_000,
+            nextRetryAtMs: WifiConnectionManager.nowMs() + 60000,
             suppressed: false
         )
 

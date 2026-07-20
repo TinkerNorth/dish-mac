@@ -17,10 +17,10 @@ import Network
 
 final class FakeSatelliteRest {
 
-    private let store: FakeSatelliteStore
+    let store: FakeSatelliteStore
     private let identity: FakeSatelliteIdentity
-    private let udp: FakeSatelliteUdp
-    private let operatorPin: String
+    let udp: FakeSatelliteUdp
+    let operatorPin: String
     private let connectionId: String
     private let queue = DispatchQueue(label: "fake-satellite.rest")
     private var listener: NWListener?
@@ -29,9 +29,9 @@ final class FakeSatelliteRest {
     /// Parked (connection, serialized response) slots for the hold knobs:
     /// the request is processed normally, only the response delivery waits
     /// for the matching release call.
-    private let heldLock = NSLock()
+    let heldLock = NSLock()
     private var heldSessionPut: (NWConnection, Data)?
-    private var heldPair: (NWConnection, Data)?
+    var heldPair: (NWConnection, Data)?
     private(set) var transport: FakeSatellite.Transport = .http
     private(set) var port: UInt16 = 0
 
@@ -184,7 +184,7 @@ final class FakeSatelliteRest {
 
     // MARK: - Auth (contract §hmacProof / §Error model)
 
-    private enum AuthOutcome {
+    enum AuthOutcome {
         case ok(deviceId: String)
         case unauthorized(code: String)
     }
@@ -194,7 +194,7 @@ final class FakeSatelliteRest {
     /// draws NOT_PAIRED regardless of proof. A pre-seeded key (the
     /// `pairingKeyHex` knob) has no device row yet, so the first deviceId
     /// that proves key possession is adopted as the paired device.
-    private func authenticate(_ request: FakeSatelliteHttp.Request, body: [String: Any]) -> AuthOutcome {
+    func authenticate(_ request: FakeSatelliteHttp.Request, body: [String: Any]) -> AuthOutcome {
         let suppliedId = request.headers["x-device-id"] ?? body["deviceId"] as? String
         let proof = request.headers["x-hmac-proof"] ?? body["hmacProof"] as? String
         return store.with { state -> AuthOutcome in
@@ -220,149 +220,17 @@ final class FakeSatelliteRest {
         }
     }
 
-    private func unauthorized(_ code: String) -> FakeSatelliteHttp.Response {
+    func unauthorized(_ code: String) -> FakeSatelliteHttp.Response {
         FakeSatelliteHttp.json(401, ["error": "unauthorized", "code": code])
     }
 
     /// contract §Versioning: absent protocolVersion means 1; anything else
     /// (or the reject knob) draws 409 with the supported version.
-    private func versionRejection(_ body: [String: Any]) -> FakeSatelliteHttp.Response? {
+    func versionRejection(_ body: [String: Any]) -> FakeSatelliteHttp.Response? {
         let version = body["protocolVersion"] as? Int ?? 1
         let knob = store.with { $0.protocolVersionReject }
         guard version != 1 || knob else { return nil }
         return FakeSatelliteHttp.json(409, ["error": "protocol version unsupported", "supported": 1])
-    }
-
-    // MARK: - Pairing (contract §Pairing)
-
-    private func pair(_ request: FakeSatelliteHttp.Request, on connection: NWConnection) -> FakeSatelliteHttp.Response? {
-        let response = pairResponse(request)
-        let held = store.with { state -> Bool in
-            guard state.holdNextPair else { return false }
-            state.holdNextPair = false
-            state.heldPairs += 1
-            return true
-        }
-        if held {
-            heldLock.lock()
-            heldPair = (connection, FakeSatelliteHttp.serialize(response))
-            heldLock.unlock()
-            return nil
-        }
-        return response
-    }
-
-    private func pairResponse(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
-        let body = FakeSatelliteHttp.parseJSON(request.body)
-        if let rejection = versionRejection(body) { return rejection }
-        let deviceId = body["deviceId"] as? String ?? ""
-        let deviceName = body["deviceName"] as? String ?? ""
-        if let rotated = rotateIfProofValid(body, deviceId: deviceId, deviceName: deviceName) { return rotated }
-        let pin = body["pin"] as? String ?? ""
-        let clientPin = body["clientPin"] as? String ?? ""
-        if !pin.isEmpty, pin == operatorPin {
-            let minted = FakeSatelliteRandom.hex(32)
-            store.with { state in
-                state.pairingKeyHex = minted
-                state.pairedDeviceId = deviceId
-                state.pairedDeviceName = deviceName
-            }
-            return FakeSatelliteHttp.json(200, [
-                "ok": true,
-                "message": "paired successfully",
-                "sharedKey": minted,
-                "protocolVersion": 1
-            ])
-        }
-        if !clientPin.isEmpty {
-            store.with { state in
-                state.lastClientPin = clientPin
-                state.clientPinDenied = false
-                if state.pairedDeviceId == nil { state.pairedDeviceId = deviceId }
-            }
-            return FakeSatelliteHttp.json(200, ["ok": false, "pending": true, "message": "awaiting approval on the satellite"])
-        }
-        // Wrong AND empty PIN both land on the real route's terminal arm:
-        // 200 `{"ok":false,...}` (routes_client.cpp pairRoute), never 400.
-        return FakeSatelliteHttp.json(200, ["ok": false, "error": "invalid or expired PIN"])
-    }
-
-    /// Key rotation: a valid hmacProof against the CURRENT key re-mints the
-    /// key (closing any live session with reason `replaced` first); a failed
-    /// proof falls through to the PIN paths (contract §Pairing Update).
-    /// Device-scoped like the real route (the row is looked up by deviceId).
-    private func rotateIfProofValid(_ body: [String: Any], deviceId: String, deviceName: String) -> FakeSatelliteHttp.Response? {
-        guard let proof = body["hmacProof"] as? String,
-              let keyHex = store.with({ $0.pairingKeyHex }),
-              let key = FakeSatelliteCrypto.hexToData(keyHex),
-              store.with({ $0.pairedDeviceId }).map({ $0 == deviceId }) ?? true,
-              FakeSatelliteCrypto.verifyHmacProof(pairingKey: key, deviceId: deviceId, proofHex: proof) else
-        {
-            return nil
-        }
-        let minted = FakeSatelliteRandom.hex(32)
-        let closeTarget = store.with { state -> FakeSatelliteSession? in
-            let live = state.activeToken.flatMap { state.sessions[$0] }
-            state.sessions.removeAll()
-            state.activeToken = nil
-            state.pairingKeyHex = minted
-            state.pairedDeviceId = deviceId
-            state.pairedDeviceName = deviceName
-            return live
-        }
-        if let closeTarget { udp.sendClose(.replaced, to: closeTarget) }
-        return FakeSatelliteHttp.json(200, [
-            "ok": true,
-            "message": "key rotated",
-            "sharedKey": minted,
-            "protocolVersion": 1
-        ])
-    }
-
-    /// Path-B poll: pending until `approveClientPin()` stages a key, which is
-    /// then handed back exactly once (single-use staged key, per contract).
-    private func pairStatus(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
-        store.with { state -> FakeSatelliteHttp.Response in
-            state.pairStatusPolls += 1
-            if let staged = state.stagedApprovalKeyHex {
-                state.stagedApprovalKeyHex = nil
-                state.pairingKeyHex = staged
-                state.lastClientPin = nil // request fulfilled; later polls report none
-                if state.pairedDeviceId == nil { state.pairedDeviceId = request.query["deviceId"] }
-                return FakeSatelliteHttp.json(200, ["ok": true, "status": "approved", "sharedKey": staged])
-            }
-            if state.clientPinDenied {
-                return FakeSatelliteHttp.json(200, ["ok": false, "status": "denied"])
-            }
-            if state.lastClientPin != nil {
-                return FakeSatelliteHttp.json(200, ["ok": false, "status": "pending"])
-            }
-            return FakeSatelliteHttp.json(200, ["ok": false, "status": "none"])
-        }
-    }
-
-    /// Client self-unpair; closes any live session with reason `unpaired`
-    /// first (contract §Pairing Delete).
-    private func selfUnpair(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
-        let body = FakeSatelliteHttp.parseJSON(request.body)
-        switch authenticate(request, body: body) {
-        case let .unauthorized(code):
-            return unauthorized(code)
-        case let .ok(deviceId):
-            let closeTarget = store.with { state -> FakeSatelliteSession? in
-                state.unpairCalls.append(deviceId)
-                let live = state.activeToken.flatMap { state.sessions[$0] }
-                state.pairingKeyHex = nil
-                state.pairedDeviceId = nil
-                state.pairedDeviceName = nil
-                state.sessions.removeAll()
-                state.activeToken = nil
-                state.controllers = []
-                return live
-            }
-            if let closeTarget { udp.sendClose(.unpaired, to: closeTarget) }
-            return FakeSatelliteHttp.json(200, ["ok": true])
-        }
     }
 
     // MARK: - Session (contract §Session)

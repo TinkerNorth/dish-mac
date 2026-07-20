@@ -72,9 +72,9 @@ struct ConnectionsView: View {
         }
     }
 
-    // The escape hatch when both discovery paths are dead (Local Network
-    // permission denied, multicast-blocked LAN): a manual address seeds the
-    // normal pair/connect flow via the legacy `wifi:<ip>:<port>` identity.
+    /// The escape hatch when both discovery paths are dead (Local Network
+    /// permission denied, multicast-blocked LAN): a manual address seeds the
+    /// normal pair/connect flow via the legacy `wifi:<ip>:<port>` identity.
     private var addByAddressRow: some View {
         HStack(spacing: 8) {
             TextField("Add by IP — e.g. 192.168.1.50 or 192.168.1.50:9876", text: $manualAddress)

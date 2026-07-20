@@ -74,6 +74,7 @@ final class SatelliteClient {
             return (session.key, session.token, session.counter)
         }
     }
+
     /// Server→client replay guard: highest counter successfully DECRYPTED
     /// (a forged header can't advance it). First packet exempt while 0 (G3).
     let lastRecvCounter = AtomicCounter()

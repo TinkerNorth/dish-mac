@@ -290,7 +290,9 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
                 group.leave()
             }
         }
-        for _ in 0 ..< threads { start.signal() }
+        for _ in 0 ..< threads {
+            start.signal()
+        }
         // Re-key on the SAME endpoint (the live G4 path) while the senders
         // draw.
         for generation in 1 ... 200 {

@@ -328,7 +328,9 @@ final class FakeSatellite {
     /// vacuous pass.
     func requireHTTPSTransport() throws {
         if transport != .https {
-            throw XCTSkip("FakeSatellite has no SecIdentity on this runner (plain-HTTP fallback); the app's https-only clients cannot reach it")
+            throw XCTSkip(
+                "FakeSatellite has no SecIdentity on this runner (plain-HTTP fallback); the app's https-only clients cannot reach it"
+            )
         }
     }
 

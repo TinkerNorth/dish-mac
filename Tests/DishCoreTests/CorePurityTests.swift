@@ -10,7 +10,7 @@ import XCTest
 
 final class CorePurityTests: XCTestCase {
 
-    private static let allowedImports: Set<String> = ["Foundation", "CryptoKit"]
+    private static let allowedImports: Set = ["Foundation", "CryptoKit"]
 
     func testDishCoreImportsOnlyFoundationAndCryptoKit() throws {
         let coreDir = URL(fileURLWithPath: #filePath)
