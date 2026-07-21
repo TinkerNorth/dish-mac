@@ -6,18 +6,31 @@ import Foundation
 /// Decode a lower- or upper-case hex string into bytes. Returns nil if the
 /// input length is odd or contains non-hex characters — callers use this to
 /// validate server-issued tokens and keys before handing them to CryptoKit.
+/// Per-nibble parse — `UInt8(_, radix:)` accepts a leading sign/whitespace.
 func hexToBytes(_ hex: String) -> Data? {
     guard hex.count % 2 == 0 else { return nil }
     var out = Data()
     out.reserveCapacity(hex.count / 2)
-    var idx = hex.startIndex
-    while idx < hex.endIndex {
-        let next = hex.index(idx, offsetBy: 2)
-        guard let byte = UInt8(hex[idx ..< next], radix: 16) else { return nil }
-        out.append(byte)
-        idx = next
+    var high: UInt8?
+    for char in hex.utf8 {
+        guard let nibble = hexNibble(char) else { return nil }
+        if let pending = high {
+            out.append(pending << 4 | nibble)
+            high = nil
+        } else {
+            high = nibble
+        }
     }
     return out
+}
+
+private func hexNibble(_ char: UInt8) -> UInt8? {
+    switch char {
+    case 0x30 ... 0x39: char - 0x30
+    case 0x61 ... 0x66: char - 0x61 + 10
+    case 0x41 ... 0x46: char - 0x41 + 10
+    default: nil
+    }
 }
 
 extension Data {

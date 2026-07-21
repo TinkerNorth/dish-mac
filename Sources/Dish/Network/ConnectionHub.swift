@@ -41,14 +41,10 @@ final class ConnectionHub: ObservableObject {
         // The persistent "Needs pairing" set drives the `.stale` row chip;
         // mutate-on-failed-silent-retry / clear-on-live-session changes
         // happen on the manager and must trigger a summary rebuild. Mirrors
-        // dish-android's `combine(..., staleSatelliteIds, ...)`. `@Published`
-        // fires in `willSet` (before the mutation is visible), so defer one
-        // tick — same pattern as `subscribeToPool` — otherwise the rebuild
-        // sees the *prior* set value and the chip never flips.
+        // dish-android's `combine(..., staleSatelliteIds, ...)`.
         wifi.$staleSatelliteIds
-            .sink { [weak self] _ in
-                DispatchQueue.main.async { self?.rebuild() }
-            }
+            .afterMutationSettles()
+            .sink { [weak self] _ in self?.rebuild() }
             .store(in: &cancellables)
 
         // Roll back local bindings when the server rejects a controller add.
@@ -64,13 +60,15 @@ final class ConnectionHub: ObservableObject {
         }
         // Add subscriptions for new entries.
         for (id, conn) in pool where perConnCancellables[id] == nil {
-            let cancellable = conn.objectWillChange.sink { [weak self] _ in
-                // objectWillChange fires *before* the mutation; defer one tick.
-                DispatchQueue.main.async { self?.rebuild() }
-            }
+            let cancellable = conn.objectWillChange
+                .afterMutationSettles()
+                .sink { [weak self] _ in self?.rebuild() }
             perConnCancellables[id] = cancellable
         }
-        rebuild()
+        // Rebuild from the EMITTED pool: `wifi.connections` is still
+        // pre-mutation while `@Published` delivers (willSet), and a forget of
+        // a resting row produces no later emission to self-correct on.
+        rebuild(pool: pool)
     }
 
     /// Derives `LinkState` from the wire-level `SessionState`, the persistent
@@ -78,8 +76,7 @@ final class ConnectionHub: ObservableObject {
     /// discovery set:
     /// - `.live`      → `.connected`
     /// - `.linking`   → `.connecting`
-    /// - `.faltering` → `.unstable` (not yet reachable; native exposes only
-    ///   the binary alive-poll boolean)
+    /// - `.faltering` → `.unstable`
     /// - `SessionState.stale` → `.unstable` while the silent re-handshake is
     ///   in flight — the row stays on the live-ish chip rather than flicking
     ///   back to `.saved` between the heartbeat drop and the retry landing.
@@ -96,8 +93,8 @@ final class ConnectionHub: ObservableObject {
     ///
     /// Mirrors the Android `staleSatelliteIds` derivation in
     /// `SatelliteConnectionManager.kt`.
-    private func rebuild() {
-        let pool = wifi.connections
+    private func rebuild(pool: [String: WifiConnection]? = nil) {
+        let pool = pool ?? wifi.connections
         let remembered = Dictionary(uniqueKeysWithValues: store.remembered().map { ($0.id, $0) })
         let discoveredIds = Set(wifi.discoveredServers.map(\.id))
         let staleIds = wifi.staleSatelliteIds
@@ -122,7 +119,8 @@ final class ConnectionHub: ObservableObject {
                 label: label,
                 detail: "\(server.ip) • UDP \(server.udpPort)",
                 live: live,
-                boundSlotId: bound
+                boundSlotId: bound,
+                latencyMs: conn?.latencyOneWayMs
             ))
         }
         connections = out.sorted { $0.label < $1.label }
@@ -136,10 +134,11 @@ final class ConnectionHub: ObservableObject {
     ///
     /// `hasMotion` / `hasLight` report whether the bound physical controller
     /// exposes a `GCMotion` IMU / an addressable RGB light; they are forwarded
-    /// into the `MSG_CONTROLLER_ADD` capability word as `CAP_MOTION` /
-    /// `CAP_LIGHTBAR`. The caller (`AppModel`) resolves them from the slot's
-    /// detected `ControllerCapabilities` — `ConnectionHub` has no controller
-    /// handle of its own.
+    /// into the REST controller descriptor's caps word as `capMotion` /
+    /// `capLightbar` (declarative session PUT / per-slot converge). The
+    /// caller (`AppModel`) resolves them from the slot's detected
+    /// `ControllerCapabilities` — `ConnectionHub` has no controller handle
+    /// of its own.
     func bind(slotId: String, connectionId: String, hasMotion: Bool, hasLight: Bool) {
         var current = bindings
         if let priorSlot = current.first(where: { $0.value == connectionId })?.key,
@@ -148,19 +147,18 @@ final class ConnectionHub: ObservableObject {
             current.removeValue(forKey: priorSlot)
             wifi.get(connectionId)?.detachSlot()
         }
+        if let priorConnection = current[slotId], priorConnection != connectionId {
+            wifi.get(priorConnection)?.detachSlot()
+        }
         current[slotId] = connectionId
         bindings = current
         rebuild()
-        if let conn = wifi.get(connectionId) {
-            Task {
-                await conn.attachSlot(
-                    slotId,
-                    controllerType: 0,
-                    hasMotion: hasMotion,
-                    hasLight: hasLight
-                )
-            }
-        }
+        wifi.get(connectionId)?.attachSlot(
+            slotId,
+            controllerType: 0,
+            hasMotion: hasMotion,
+            hasLight: hasLight
+        )
     }
 
     func unbind(slotId: String) {

@@ -1,216 +1,212 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import CryptoKit
 import Darwin
+import DishCore
 import Foundation
 
-/// Encrypt + sendto, heartbeat loop, and ACK receive loop. Factored out of
-/// the main `SatelliteClient` class for readability only — all state still
-/// lives in the single session instance.
+/// Encrypt + sendto, the heartbeat timer and the receive loop. Factored out
+/// of the main `SatelliteClient` class for readability only — all state lives
+/// in the single session instance. Framing/AEAD are pure DishCore
+/// (`PacketCodec` / `SessionCrypto`); this file is the socket shell.
 extension SatelliteClient {
 
     // MARK: - Encrypt + sendto
 
-    func sendEncrypted(msgType: UInt16, payload: [UInt8]) {
-        if sock < 0 { return }
-
-        let payloadLen = UInt16(payload.count)
-        let innerLen = 4 + Int(payloadLen)
-        var inner = [UInt8](repeating: 0, count: innerLen)
-        putBE16(msgType, into: &inner, at: 0)
-        putBE16(payloadLen, into: &inner, at: 2)
-        if payloadLen > 0 {
-            for idx in 0 ..< Int(payloadLen) {
-                inner[4 + idx] = payload[idx]
-            }
-        }
-
-        let ctr = UInt32(counter.incrementAndGet() - 1)
-
-        // Nonce: 12 bytes, big-endian counter left-padded with zeros.
-        var nonceBytes = [UInt8](repeating: 0, count: 12)
-        putBE32(ctr, into: &nonceBytes, at: 8)
-
-        guard let nonce = try? ChaChaPoly.Nonce(data: Data(nonceBytes)) else { return }
-
-        // AAD = raw token; matches libsodium's `chacha20poly1305_ietf_encrypt`
-        // with AAD=token used on Android and the server.
-        guard let sealed = try? ChaChaPoly.seal(
-            Data(inner),
-            using: self.currentKey,
-            nonce: nonce,
-            authenticating: Data(self.token)
+    /// Seal one inner frame and fire it at the satellite:
+    ///
+    ///     token(4 BE) | counter(4 BE) | ChaCha20-Poly1305(inner)
+    ///     inner = msgType(2 BE) | msgLen(2 BE) | payload
+    ///
+    /// nonce = `up(0x00) | 0×7 | counter(4 BE)`, AAD = token — via
+    /// `SessionCrypto.seal` with the per-direction counter starting at 1
+    /// (contract §Crypto; gaps G1/G2). Non-blocking send: a full socket
+    /// buffer under Wi-Fi power-save drops the datagram rather than stalling
+    /// the GameController callback thread — every stream is loss-safe.
+    func sendEncrypted(msgType: UInt16, payload: Data) {
+        guard isOpen else { return }
+        // One lock hold draws key, token and sequence together — a re-key
+        // swapping mid-send can never pair an old key with a fresh counter.
+        let (key, token, sequence) = nextSendMaterial()
+        // A counter can never wrap (contract §Crypto): sealing two plaintexts
+        // under one (key, nonce) would be catastrophic, so past 2^32 − 1 the
+        // session goes SILENT instead and self-heals via re-PUT — in practice
+        // the G4 proactive re-key fires at 0xF0000000, 268M packets earlier.
+        guard sequence <= UInt64(UInt32.max) else { return }
+        let ctr = UInt32(sequence)
+        let inner = PacketCodec.innerFrame(msgType: msgType, payload: payload)
+        guard let box = try? SessionCrypto.seal(
+            inner,
+            key: key,
+            direction: .up,
+            counter: ctr,
+            token: token
         ) else { return }
+        let packet = PacketCodec.frame(token: token, counter: ctr, box: box)
 
-        // Packet: token(4) + counter(4) + ciphertext + 16-byte tag
-        var packet = Data(capacity: 8 + sealed.ciphertext.count + sealed.tag.count)
-        packet.append(contentsOf: self.token)
-        var ctrBE = [UInt8](repeating: 0, count: 4)
-        putBE32(ctr, into: &ctrBE, at: 0)
-        packet.append(contentsOf: ctrBE)
-        packet.append(sealed.ciphertext)
-        packet.append(sealed.tag)
-
-        sendLock.lock()
-        defer { sendLock.unlock() }
-        let sfd = sock
-        if sfd < 0 { return }
-        packet.withUnsafeBytes { raw in
-            var destCopy = self.dest
-            _ = withUnsafePointer(to: &destCopy) { ptr in
-                ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                    Darwin.sendto(
-                        sfd,
-                        raw.baseAddress,
-                        raw.count,
-                        0,
-                        sa,
-                        socklen_t(MemoryLayout<sockaddr_in>.size)
-                    )
+        withSocketLocked { fd, sendDest in
+            guard fd >= 0 else { return }
+            packet.withUnsafeBytes { raw in
+                var destCopy = sendDest
+                _ = withUnsafePointer(to: &destCopy) { ptr in
+                    ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                        Darwin.sendto(
+                            fd,
+                            raw.baseAddress,
+                            raw.count,
+                            MSG_DONTWAIT,
+                            sa,
+                            socklen_t(MemoryLayout<sockaddr_in>.size)
+                        )
+                    }
                 }
             }
         }
     }
 
-    // MARK: - Heartbeat
+    // MARK: - Heartbeat (timer, no busy-wait — gap G19)
 
+    /// Start the 2 s heartbeat timer (contract §Liveness). First beat fires
+    /// immediately so a fresh session proves the data path without waiting a
+    /// full interval.
     func startHeartbeat() {
-        if heartbeatRunning { return }
-        heartbeatRunning = true
+        if heartbeatRunning.get() { return }
+        heartbeatRunning.set(true)
         missedAcks.set(0)
         connectionAlive.set(true)
-        heartbeatQueue.async { [weak self] in self?.heartbeatLoop() }
+        let timer = DispatchSource.makeTimerSource(queue: heartbeatQueue)
+        timer.schedule(
+            deadline: .now(),
+            repeating: .milliseconds(Self.heartbeatIntervalMs),
+            leeway: .milliseconds(100)
+        )
+        timer.setEventHandler { [weak self] in self?.heartbeatTick() }
+        heartbeatTimer = timer
+        timer.resume()
     }
 
     func stopHeartbeat() {
-        heartbeatRunning = false
+        heartbeatRunning.set(false)
+        heartbeatTimer?.cancel()
+        heartbeatTimer = nil
     }
 
-    private func heartbeatLoop() {
-        while heartbeatRunning {
-            sendEncrypted(msgType: 0x0002, payload: [])
-            if missedAcks.incrementAndGet() >= Self.heartbeatMissMax {
-                connectionAlive.set(false)
-            }
-            // Sleep in 100ms chunks so stopHeartbeat kicks in quickly.
-            var slept: UInt32 = 0
-            while heartbeatRunning, slept < Self.heartbeatIntervalMs {
-                usleep(100_000)
-                slept += 100
-            }
+    private func heartbeatTick() {
+        guard heartbeatRunning.get() else { return }
+        sendEncrypted(msgType: ProtocolConstants.msgHeartbeat, payload: Data())
+        // The RTT clock starts on this session's own stamp. armPing keeps an
+        // in-flight ping's clock (overwriting would pair a late ack with the
+        // newer stamp and read artificially low) and reclaims past the 5 s
+        // loss cap — the rule lives in DishCore.LatencyWindow (gap G13).
+        armLatencyPing(nowMs: Self.monotonicNowMs())
+        if missedAcks.incrementAndGet() >= Self.heartbeatMissMax {
+            connectionAlive.set(false)
         }
     }
 
-    // MARK: - ACK receive loop
+    // MARK: - Receive loop
 
     func startReceiveLoop() {
-        if ackRunning { return }
-        ackRunning = true
+        if ackRunning.get() { return }
+        ackRunning.set(true)
+        let drained = receiveDrained
+        drained.enter()
         ackQueue.async { [weak self] in
-            while let self, self.ackRunning {
+            defer { drained.leave() }
+            while let self, self.ackRunning.get() {
                 self.receiveOne()
             }
         }
     }
 
+    /// Stop the loop and JOIN it (bounded by the 500 ms recv timeout) so the
+    /// fd can close without racing a blocked `recvfrom` onto a reused fd.
+    func stopReceiveLoop() {
+        if !ackRunning.get() { return }
+        ackRunning.set(false)
+        _ = receiveDrained.wait(timeout: .now() + 1.0)
+    }
+
     private func receiveOne() {
-        if sock < 0 { return }
-        var buf = [UInt8](repeating: 0, count: 128)
+        let (fd, _) = socketSnapshot()
+        if fd < 0 { return }
+        var buf = [UInt8](repeating: 0, count: 256)
         var from = sockaddr_in()
         var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
         let bytesRead = buf.withUnsafeMutableBufferPointer { bp -> Int in
             withUnsafeMutablePointer(to: &from) { fp in
                 fp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                    Darwin.recvfrom(sock, bp.baseAddress, bp.count, 0, sa, &fl)
+                    Darwin.recvfrom(fd, bp.baseAddress, bp.count, 0, sa, &fl)
                 }
             }
         }
-        if bytesRead < 8 { return }
-        // Token check.
-        for idx in 0 ..< 4 where buf[idx] != token[idx] {
-            return
-        }
-
-        let ctr = (UInt32(buf[4]) << 24) | (UInt32(buf[5]) << 16)
-            | (UInt32(buf[6]) << 8) | UInt32(buf[7])
-        var nonceBytes = [UInt8](repeating: 0, count: 12)
-        putBE32(ctr, into: &nonceBytes, at: 8)
-        guard let nonce = try? ChaChaPoly.Nonce(data: Data(nonceBytes)) else { return }
-
-        let cipherAndTag = Data(buf[8 ..< bytesRead])
-        guard cipherAndTag.count >= 16 else { return }
-        let tag = cipherAndTag.suffix(16)
-        let cipher = cipherAndTag.prefix(cipherAndTag.count - 16)
-        guard let sealed = try? ChaChaPoly.SealedBox(nonce: nonce, ciphertext: cipher, tag: tag),
-              let plain = try? ChaChaPoly.open(
-                  sealed,
-                  using: self.currentKey,
-                  authenticating: Data(self.token)
-              ) else { return }
-
-        guard plain.count >= 4 else { return }
-        dispatchMessage(plain)
+        // <= 0 is the SO_RCVTIMEO tick (or a transient error): loop around and
+        // re-check `ackRunning`.
+        guard bytesRead > 0 else { return }
+        processIncoming(Data(buf[0 ..< bytesRead]))
     }
 
-    /// Decode the inner message type from a decrypted packet and route it.
-    /// Split out of `receiveOne` so the socket-recv path stays inside the
-    /// cyclomatic-complexity budget — this is the per-message-type branch.
-    private func dispatchMessage(_ plain: Data) {
-        let msgType = (UInt16(plain[0]) << 8) | UInt16(plain[1])
-        let msgLen = (UInt16(plain[2]) << 8) | UInt16(plain[3])
+    /// One datagram: header split (PacketCodec) → token filter → replay guard
+    /// (G3) → AEAD open bound to direction/counter/token (G1/G2) → inner
+    /// dispatch. Every failure is a silent drop, like the sibling clients.
+    func processIncoming(_ datagram: Data) {
+        guard let (header, box) = PacketCodec.parse(datagram) else { return }
+        let session = params.get()
+        guard header.token == session.token else { return }
 
-        if msgType == 0x0003 { // MSG_HEARTBEAT_ACK
+        // Replay guard (server→client): drop counter <= last DECRYPTED
+        // counter; first packet exempt while the guard is 0. The guard only
+        // advances after a successful open, so a forged header can't wedge
+        // the stream (mirrors satellite_jni receiveAck).
+        let lastRecv = UInt32(truncatingIfNeeded: lastRecvCounter.current())
+        if lastRecv != 0, header.counter <= lastRecv { return }
+
+        guard let plain = try? SessionCrypto.open(
+            box,
+            key: session.key,
+            direction: .down,
+            counter: header.counter,
+            token: session.token
+        ) else { return }
+        lastRecvCounter.set(UInt64(header.counter))
+
+        guard let inner = PacketCodec.parseInner(plain) else { return }
+        dispatch(inner)
+    }
+
+    /// Route one decrypted inner message. Runs on the receive queue; handlers
+    /// hop threads themselves if they need to.
+    private func dispatch(_ inner: PacketCodec.InnerMessage) {
+        switch inner.msgType {
+        case ProtocolConstants.msgHeartbeatAck:
+            // Pair the ack with the in-flight ping BEFORE the liveness flags
+            // flip, so the RTT window and the alive tick agree on ordering.
+            recordLatencyAck(nowMs: Self.monotonicNowMs())
             missedAcks.set(0)
             connectionAlive.set(true)
-        } else if msgType == 0x0006, msgLen >= 4, plain.count >= 8 {
-            let reqType = (UInt16(plain[4]) << 8) | UInt16(plain[5])
-            let idx = plain[6]
-            let result = plain[7]
-            lastControllerAck = (Int32(reqType) << 16) | (Int32(idx) << 8) | Int32(result)
-        } else if msgType == 0x0007, msgLen >= 2, plain.count >= 6 {
-            vigemAvailable = Int8(plain[4] == 0 ? 0 : 1)
-            activeControllerCount = Int8(bitPattern: plain[5])
-        } else if msgType == Self.msgRumble {
-            // The full inner buffer holds the 4-byte header at [0..3]; the
-            // payload (matching the producer side in
-            // satellite/src/adapters/client_adapter.cpp::sendRumble) starts at
-            // offset 4. parseRumblePayload works on the payload slice for
-            // parity with the unit-test seam.
-            guard plain.count >= 4 else { return }
-            let payload = Array(plain[4 ..< plain.count])
-            guard let rm = SatelliteClient.parseRumblePayload(payload) else { return }
-            if let handler = rumbleHandler {
-                handler(rm)
+            // Enriched ack (backend/count/epoch/bitmap) → snapshot for the
+            // reconcile poll. A short (pre-protocol-1) ack still counts for
+            // liveness above, just not for reconcile (gap G9 parse side).
+            if let ack = HeartbeatAck.parse(inner.payload) {
+                storeHeartbeatAck(ack)
             }
-        } else if msgType == Self.msgLightbar {
-            // MSG_LIGHTBAR (0x000D) — decoupled light-bar return path. The
-            // 4-byte header is stripped; parseLightbarMessage decodes the
-            // ctrlIdx + RGB payload slice.
-            guard plain.count >= 4 else { return }
-            let payload = Array(plain[4 ..< plain.count])
-            guard let lm = SatelliteClient.parseLightbarMessage(payload[...]) else { return }
-            if let handler = lightbarHandler {
-                handler(lm)
-            }
+        case ProtocolConstants.msgRumble:
+            guard let rumble = RumbleCommand.parse(inner.payload) else { return }
+            onRumble?(rumble)
+        case ProtocolConstants.msgLightbar:
+            guard let lightbar = LightbarCommand.parse(inner.payload) else { return }
+            onLightbar?(lightbar)
+        case ProtocolConstants.msgSessionClose:
+            guard let byte = inner.payload.first else { return }
+            // Latch the reason and mark dead NOW: the session is already gone
+            // server-side, so the alive tick doesn't wait out the full
+            // heartbeat death window (gap G10 parse side). Unknown FUTURE
+            // reason bytes degrade to the transient default arm.
+            sessionCloseReason.set(Int(byte))
+            connectionAlive.set(false)
+            onSessionClose?(CloseReason(rawValue: byte) ?? .shutdown)
+        default:
+            break
         }
-    }
-
-    /// Pure decoder for the `MSG_RUMBLE` inner payload (the 4-byte header
-    /// `{type, length}` has already been stripped). Returns `nil` on
-    /// truncation. Public + static so it can be exercised by unit tests
-    /// without driving a live socket.
-    ///
-    /// Wire layout — a fixed 7-byte payload:
-    ///
-    ///     ctrlIdx(1)  strong(2 BE)  weak(2 BE)  durMs(2 BE)
-    static func parseRumblePayload(_ payload: [UInt8]) -> RumbleMessage? {
-        guard payload.count >= 7 else { return nil }
-        return RumbleMessage(
-            controllerIndex: Int(payload[0]),
-            strongMagnitude: (UInt16(payload[1]) << 8) | UInt16(payload[2]),
-            weakMagnitude: (UInt16(payload[3]) << 8) | UInt16(payload[4]),
-            durationMs: (UInt16(payload[5]) << 8) | UInt16(payload[6])
-        )
     }
 }

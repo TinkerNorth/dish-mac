@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import AppKit
 import Combine
+import DishCore
 import Foundation
 
 /// Top-level application state. Owns the network + input layers and stitches
@@ -55,9 +57,11 @@ final class AppModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     init(
-        inhibitor: DisplaySleepInhibitor? = nil
+        inhibitor: DisplaySleepInhibitor? = nil,
+        store: ConnectionStore = ConnectionStore(),
+        notificationCenter: NotificationCenter = .default,
+        workspaceNotificationCenter: NotificationCenter = NSWorkspace.shared.notificationCenter
     ) {
-        let store = ConnectionStore()
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
         let input = GameControllerInput()
@@ -74,6 +78,8 @@ final class AppModel: ObservableObject {
         gate.update(settings.flags)
 
         observe()
+        installFocusLossRelease(notificationCenter)
+        installSleepWakeHandling(workspaceNotificationCenter)
         installReportSender()
         installMotionSender()
         installBatterySender()
@@ -84,12 +90,50 @@ final class AppModel: ObservableObject {
         wifi.autoReconnectAll()
     }
 
+    /// Release-all on focus loss (gap G19): when the app resigns active, the
+    /// GameController callbacks stop delivering to us, so whatever buttons
+    /// were down at the hand-off would stay held server-side — a stuck
+    /// W-in-a-game while the player alt-tabs. Zero every known device and
+    /// send the release reports through the normal routing path. The center
+    /// is injectable so tests can post the notification without an
+    /// NSApplication. Mirrors the sibling clients' focus-loss panic release.
+    private func installFocusLossRelease(_ center: NotificationCenter) {
+        center.publisher(for: NSApplication.didResignActiveNotification)
+            .sink { [weak self] _ in
+                self?.input.processor.zeroAndSendAll()
+            }
+            .store(in: &cancellables)
+    }
+
+    /// Sleep/wake (NSWorkspace notifications — a forced lid-close may never
+    /// deliver `didResignActive`, so a held button would stay latched on the
+    /// virtual pad until heartbeat death): on sleep run the same release-all
+    /// path as focus loss; on wake reconnect NOW instead of waiting out the
+    /// backoff curve (the socket may be dead, the IP may have moved).
+    /// dish-android holds a PARTIAL_WAKE_LOCK for the same class of problem.
+    private func installSleepWakeHandling(_ center: NotificationCenter) {
+        center.publisher(for: NSWorkspace.willSleepNotification)
+            .sink { [weak self] _ in
+                self?.input.processor.zeroAndSendAll()
+            }
+            .store(in: &cancellables)
+        center.publisher(for: NSWorkspace.didWakeNotification)
+            .sink { [weak self] _ in
+                self?.wifi.resumeAfterWake()
+            }
+            .store(in: &cancellables)
+    }
+
     /// Tracks which `WifiConnection` ids we've already attached the rumble
-    /// handler to. WifiConnections live until they're forgotten, so this set
-    /// only ever grows during a session — perfect for an "install once,
-    /// re-install on reconnect via the WifiConnection" pattern.
+    /// handler to ("install once, re-install on reconnect via the
+    /// WifiConnection" pattern). Pruned to the live pool on every pool
+    /// change (gap G19): a forgotten satellite that is later re-added gets a
+    /// FRESH `WifiConnection` under the same id, and a stale membership here
+    /// would skip the install — leaving the new session with no rumble
+    /// return path.
     private var rumbleWiredConnections = Set<String>()
-    /// Same idempotent-install bookkeeping for the light-bar return path.
+    /// Same install-once bookkeeping (and the same prune) for the light-bar
+    /// return path.
     private var lightbarWiredConnections = Set<String>()
 
     // MARK: - Wiring
@@ -132,26 +176,28 @@ final class AppModel: ObservableObject {
             .store(in: &cancellables)
 
         // Make sure every newly-pooled WifiConnection has its rumble + light
-        // bar handlers installed. The pool only grows during a session —
-        // `register` adds entries, `forget` removes — so we re-walk it on
-        // each pool change.
+        // bar handlers installed, and prune the wired-id bookkeeping for
+        // entries `forget` removed. The walk uses the EMITTED pool — the
+        // property itself is still pre-mutation while `@Published` delivers
+        // (willSet), so re-reading `wifi.connections` here would miss the
+        // entry that just registered until the following pool change.
         wifi.$connections
-            .sink { [weak self] _ in
-                self?.installRumbleHandlers()
-                self?.installLightbarHandlers()
+            .sink { [weak self] pool in
+                guard let self else { return }
+                self.pruneReturnPathWiring(to: pool)
+                self.installRumbleHandlers(pool)
+                self.installLightbarHandlers(pool)
             }
             .store(in: &cancellables)
 
         // Mirror every `FeatureSettings` change into the thread-safe gate.
-        // `objectWillChange` fires *before* the property mutates, so we hop
-        // one runloop tick — same deferral `ConnectionHub` uses for its
-        // per-connection `objectWillChange` subscriptions.
+        // The handler re-reads `settings.flags`, so delivery must wait for
+        // the mutation to settle (see `afterMutationSettles`).
         settings.objectWillChange
+            .afterMutationSettles()
             .sink { [weak self] _ in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    self.gate.update(self.settings.flags)
-                }
+                guard let self else { return }
+                self.gate.update(self.settings.flags)
             }
             .store(in: &cancellables)
 
@@ -217,7 +263,15 @@ final class AppModel: ObservableObject {
         self.connections = conns
     }
 
-    /// Install the rumble handler on every WifiConnection in the pool that
+    /// Drop wired-id bookkeeping for connections no longer in the pool
+    /// (gap G19 — the sets were grow-only, which silently disabled the
+    /// return paths for a forget-then-re-add of the same satellite id).
+    private func pruneReturnPathWiring(to pool: [String: WifiConnection]) {
+        rumbleWiredConnections.formIntersection(pool.keys)
+        lightbarWiredConnections.formIntersection(pool.keys)
+    }
+
+    /// Install the rumble handler on every WifiConnection in `pool` that
     /// doesn't already have one. The handler walks the current bindings
     /// (slotId → connectionId), finds the slot bound to *this* connection,
     /// and forwards the `MSG_RUMBLE` payload to `GameControllerInput` for that
@@ -226,11 +280,11 @@ final class AppModel: ObservableObject {
     /// The handler drives vibration only — the light bar is a separate return
     /// path (`installLightbarHandlers`). Vibration is gated on the Rumble
     /// toggle.
-    private func installRumbleHandlers() {
+    private func installRumbleHandlers(_ pool: [String: WifiConnection]? = nil) {
         let input = self.input
         let hub = self.hub
         let gate = self.gate
-        for (id, conn) in wifi.connections {
+        for (id, conn) in pool ?? wifi.connections {
             if rumbleWiredConnections.contains(id) { continue }
             rumbleWiredConnections.insert(id)
             conn.setRumbleHandler { rm in
@@ -300,7 +354,7 @@ final class AppModel: ObservableObject {
     private func installTouchpadSender() {
         let table = routingTable
         let gate = self.gate
-        input.processor.touchpadSender = { deviceId, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn in
+        input.processor.touchpadSender = { deviceId, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn, eventTimeMs in
             guard gate.snapshot().touchpad else { return }
             guard let conn = table.get(deviceId) else { return }
             conn.sendTouchpad(
@@ -312,7 +366,8 @@ final class AppModel: ObservableObject {
                 finger1Id: f1id,
                 finger1X: f1x,
                 finger1Y: f1y,
-                buttonPressed: btn
+                buttonPressed: btn,
+                eventTimeMs: eventTimeMs
             )
         }
     }
@@ -321,11 +376,11 @@ final class AppModel: ObservableObject {
     /// install-once / re-walk-on-pool-change pattern as `installRumbleHandlers`.
     /// The handler resolves the bound slot and applies the host-game colour to
     /// that controller, unless the user set the light bar to "Off".
-    private func installLightbarHandlers() {
+    private func installLightbarHandlers(_ pool: [String: WifiConnection]? = nil) {
         let input = self.input
         let hub = self.hub
         let gate = self.gate
-        for (id, conn) in wifi.connections {
+        for (id, conn) in pool ?? wifi.connections {
             if lightbarWiredConnections.contains(id) { continue }
             lightbarWiredConnections.insert(id)
             conn.setLightbarHandler { lm in
@@ -355,7 +410,7 @@ final class AppModel: ObservableObject {
             // Coerce the raw byte back to the enum at the boundary; default
             // to .unknown if a future firmware ever surfaces a state we
             // haven't seen, so we never crash on malformed input.
-            let status = SatelliteClient.BatteryStatus(rawValue: statusRaw) ?? .unknown
+            let status = BatteryStatus(rawValue: statusRaw) ?? .unknown
             conn.sendBattery(level: level, status: status)
         }
     }
@@ -368,6 +423,15 @@ final class AppModel: ObservableObject {
 
     func connect(_ server: DiscoveredServer) {
         wifi.connect(to: server)
+    }
+
+    /// Manual add-by-address (discovery denied/blocked). False when `input`
+    /// is not a usable `IPv4[:port]` address — the caller surfaces the hint.
+    @discardableResult
+    func connectManual(_ input: String) -> Bool {
+        guard let server = DiscoveredServer.manual(from: input) else { return false }
+        wifi.connect(to: server)
+        return true
     }
 
     func forget(_ id: String) {
@@ -385,8 +449,9 @@ final class AppModel: ObservableObject {
     func bind(slotId: String, connectionId: String) {
         // Resolve whether the bound controller has an IMU / an RGB light bar
         // from its detected capabilities, so `WifiConnection` can advertise
-        // CAP_MOTION / CAP_LIGHTBAR in MSG_CONTROLLER_ADD. Both default to
-        // false for an unknown slot id.
+        // the `capMotion` / `capLightbar` bits in the REST descriptor's caps
+        // word (declarative session PUT / per-slot converge). Both default
+        // to false for an unknown slot id.
         let caps = slots.first { $0.id == slotId }?.capabilities
         hub.bind(
             slotId: slotId,

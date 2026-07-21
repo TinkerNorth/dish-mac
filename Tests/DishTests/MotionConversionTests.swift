@@ -14,7 +14,7 @@ import XCTest
 /// `nextTouchpadTrackingId`) with `GCMotion`-shaped inputs (rad/s gyro, g
 /// gravity+userAccel) and assert the wire output's axis, sign, and scale.
 ///
-/// The wire contract under test (satellite/docs/protocol.md, core/types.h):
+/// The wire contract under test (satellite/docs/contract.md, core/types.h):
 ///   * gyro: deg/s, scale 2000/32767, right-handed +X right / +Y up / +Z
 ///     toward player.
 ///   * accel: g, scale 4/32767, same frame; the wire wants *specific force*

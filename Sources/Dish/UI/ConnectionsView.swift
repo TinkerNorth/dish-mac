@@ -10,6 +10,7 @@ struct ConnectionsView: View {
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var wifi: WifiConnectionManager
     @Environment(\.dismiss) private var dismiss
+    @State private var manualAddress = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -47,6 +48,7 @@ struct ConnectionsView: View {
                             rowView(row)
                         }
                     }
+                    addByAddressRow
                 }
                 .padding(20)
             }
@@ -67,6 +69,30 @@ struct ConnectionsView: View {
             PairingSheet(server: server)
                 .environmentObject(model)
                 .environmentObject(wifi)
+        }
+    }
+
+    /// The escape hatch when both discovery paths are dead (Local Network
+    /// permission denied, multicast-blocked LAN): a manual address seeds the
+    /// normal pair/connect flow via the legacy `wifi:<ip>:<port>` identity.
+    private var addByAddressRow: some View {
+        HStack(spacing: 8) {
+            TextField("Add by IP — e.g. 192.168.1.50 or 192.168.1.50:9876", text: $manualAddress)
+                .textFieldStyle(.roundedBorder)
+                .font(.system(size: 12))
+                .onSubmit { submitManualAddress() }
+            Button(String(localized: "Add")) { submitManualAddress() }
+                .buttonStyle(DishOutlinedButtonStyle())
+                .disabled(manualAddress.trimmingCharacters(in: .whitespaces).isEmpty)
+        }
+        .padding(.top, 4)
+    }
+
+    private func submitManualAddress() {
+        if model.connectManual(manualAddress) {
+            manualAddress = ""
+        } else {
+            model.errorMessage = String(localized: "Enter an IPv4 address like 192.168.1.50 (optionally :port)")
         }
     }
 
@@ -271,7 +297,7 @@ struct ConnectionsView: View {
     /// values the wire layer doesn't know about — to a noun (resting) or
     /// verb-with-ellipsis (transient) per the shared nomenclature.
     private func statusText(for summary: ConnectionSummary) -> String {
-        switch summary.live {
+        let base = switch summary.live {
         case .found: String(localized: "Found")
         case .stale: String(localized: "Needs pairing")
         case .saved: String(localized: "Offline")
@@ -280,6 +306,13 @@ struct ConnectionsView: View {
         case .connected: String(localized: "Online")
         case .unstable: String(localized: "Unsteady")
         }
+        // One-way latency readout beside the live chip (gap G13). Numeric +
+        // SI unit, deliberately unlocalized — same convention as the
+        // "IP • UDP port" detail line above it.
+        if let ms = summary.latencyMs, summary.live == .connected || summary.live == .unstable {
+            return base + String(format: " · %.1f ms", ms)
+        }
+        return base
     }
 
     /// Color map keyed on LinkState. The "Unsteady" amber would ideally be a

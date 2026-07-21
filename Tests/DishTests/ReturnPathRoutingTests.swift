@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import XCTest
 @testable import Dish
 
@@ -9,9 +10,10 @@ import XCTest
 ///   * `ReturnPathRouting` — the pure decision layer that gates `MSG_RUMBLE`
 ///     vibration and `MSG_LIGHTBAR` colour independently, so the Light bar
 ///     setting and the Rumble setting never bleed into each other.
-///   * `WifiConnection.capabilityWord` — the per-controller `MSG_CONTROLLER_ADD`
-///     capability word, advertising `CAP_MOTION` iff the bound controller has
-///     an IMU and `CAP_LIGHTBAR` iff it has an addressable RGB light.
+///   * `WifiConnection.capabilityWord` — the per-controller descriptor `caps`
+///     word (protocol-1: rides the REST descriptor, not a UDP opcode),
+///     advertising `CAP_MOTION` iff the bound controller has an IMU and
+///     `CAP_LIGHTBAR` iff it has an addressable RGB light.
 ///
 /// Both are exercised as pure functions: no socket, no live `GCController`.
 final class ReturnPathRoutingTests: XCTestCase {
@@ -41,14 +43,14 @@ final class ReturnPathRoutingTests: XCTestCase {
     // MARK: - MSG_LIGHTBAR: gated solely on the Light bar setting
 
     func testLightbarMessageAppliedWhenLightbarOn() {
-        let msg = SatelliteClient.LightbarMessage(controllerIndex: 0, r: 0x11, g: 0x22, b: 0x33)
+        let msg = LightbarCommand(controllerIndex: 0, r: 0x11, g: 0x22, b: 0x33)
         XCTAssertTrue(
             ReturnPathRouting.shouldApply(lightbar: msg, flags: flags(rumble: true, lightbar: true))
         )
     }
 
     func testLightbarMessageSuppressedWhenLightbarOff() {
-        let msg = SatelliteClient.LightbarMessage(controllerIndex: 0, r: 0x11, g: 0x22, b: 0x33)
+        let msg = LightbarCommand(controllerIndex: 0, r: 0x11, g: 0x22, b: 0x33)
         XCTAssertFalse(
             ReturnPathRouting.shouldApply(lightbar: msg, flags: flags(rumble: true, lightbar: false))
         )
@@ -57,7 +59,7 @@ final class ReturnPathRoutingTests: XCTestCase {
     func testLightbarMessageIndependentOfRumbleToggle() {
         // The light-bar path does not consult the Rumble toggle: rumble off
         // must not disable MSG_LIGHTBAR.
-        let msg = SatelliteClient.LightbarMessage(controllerIndex: 0, r: 1, g: 2, b: 3)
+        let msg = LightbarCommand(controllerIndex: 0, r: 1, g: 2, b: 3)
         XCTAssertTrue(
             ReturnPathRouting.shouldApply(lightbar: msg, flags: flags(rumble: false, lightbar: true))
         )
@@ -66,12 +68,12 @@ final class ReturnPathRoutingTests: XCTestCase {
         )
     }
 
-    // MARK: - CAP_MOTION / CAP_LIGHTBAR capability word
+    // MARK: - CAP_MOTION / CAP_LIGHTBAR capability word (descriptor caps)
 
     func testCapabilityWordWithLightSetsCapLightbar() {
         let word = WifiConnection.capabilityWord(hasMotion: true, hasLight: true)
         // CAP_LIGHTBAR bit present.
-        XCTAssertEqual(word & WifiConnection.capLightbar, WifiConnection.capLightbar)
+        XCTAssertEqual(word & ProtocolConstants.capLightbar, ProtocolConstants.capLightbar)
         // Exact value: fixed 0x0003 | CAP_MOTION 0x0004 | CAP_LIGHTBAR 0x0008.
         XCTAssertEqual(word, 0x000F)
     }
@@ -79,20 +81,20 @@ final class ReturnPathRoutingTests: XCTestCase {
     func testCapabilityWordWithoutLightOmitsCapLightbar() {
         let word = WifiConnection.capabilityWord(hasMotion: true, hasLight: false)
         // CAP_LIGHTBAR bit absent.
-        XCTAssertEqual(word & WifiConnection.capLightbar, 0)
+        XCTAssertEqual(word & ProtocolConstants.capLightbar, 0)
         // Fixed default + CAP_MOTION only.
         XCTAssertEqual(word, 0x0007)
     }
 
     func testCapabilityWordWithMotionSetsCapMotion() {
         let word = WifiConnection.capabilityWord(hasMotion: true, hasLight: false)
-        XCTAssertEqual(word & WifiConnection.capMotion, WifiConnection.capMotion)
+        XCTAssertEqual(word & ProtocolConstants.capMotion, ProtocolConstants.capMotion)
     }
 
     func testCapabilityWordWithoutMotionOmitsCapMotion() {
         // A controller with no IMU must NOT advertise CAP_MOTION.
         let word = WifiConnection.capabilityWord(hasMotion: false, hasLight: false)
-        XCTAssertEqual(word & WifiConnection.capMotion, 0)
+        XCTAssertEqual(word & ProtocolConstants.capMotion, 0)
         // Exactly the fixed default — no optional bits.
         XCTAssertEqual(word, WifiConnection.defaultCaps)
         XCTAssertEqual(word, 0x0003)
@@ -101,24 +103,19 @@ final class ReturnPathRoutingTests: XCTestCase {
     func testCapabilityWordPreservesFixedBits() {
         // The per-controller CAP_MOTION / CAP_LIGHTBAR bits must be OR'd in
         // *without* disturbing the fixed analog-triggers / rumble bits.
-        let analogTriggers: UInt16 = 0x0001
-        let rumble: UInt16 = 0x0002
         for hasMotion in [true, false] {
             for hasLight in [true, false] {
                 let word = WifiConnection.capabilityWord(
                     hasMotion: hasMotion, hasLight: hasLight
                 )
-                XCTAssertEqual(word & analogTriggers, analogTriggers, "CAP_ANALOG_TRIGGERS lost")
-                XCTAssertEqual(word & rumble, rumble, "CAP_RUMBLE lost")
+                XCTAssertEqual(
+                    word & ProtocolConstants.capAnalogTriggers,
+                    ProtocolConstants.capAnalogTriggers,
+                    "CAP_ANALOG_TRIGGERS lost"
+                )
+                XCTAssertEqual(word & ProtocolConstants.capRumble, ProtocolConstants.capRumble, "CAP_RUMBLE lost")
             }
         }
-    }
-
-    func testCapConstantsPinnedToWireValues() {
-        // Pinned to the protocol values shared by every dish client +
-        // satellite/src/core/types.h. Must not drift.
-        XCTAssertEqual(WifiConnection.capMotion, 0x0004)
-        XCTAssertEqual(WifiConnection.capLightbar, 0x0008)
     }
 
     func testCapabilityWordIsAdvertisedIffControllerHasCapability() {
@@ -128,5 +125,33 @@ final class ReturnPathRoutingTests: XCTestCase {
         XCTAssertFalse((WifiConnection.capabilityWord(hasMotion: false, hasLight: false) & 0x0004) != 0)
         XCTAssertTrue((WifiConnection.capabilityWord(hasMotion: false, hasLight: true) & 0x0008) != 0)
         XCTAssertFalse((WifiConnection.capabilityWord(hasMotion: false, hasLight: false) & 0x0008) != 0)
+    }
+
+    // MARK: - desiredDescriptor (the declarative-PUT seam)
+
+    @MainActor
+    func testDesiredDescriptorNilWithoutBoundSlot() {
+        let conn = WifiConnection(
+            id: "wifi:127.0.0.1:9876",
+            server: DiscoveredServer(name: "S", ip: "127.0.0.1", udpPort: 9876, pairPort: 9443, httpPort: 9443)
+        )
+        XCTAssertNil(conn.desiredDescriptor, "zero-controller session: no descriptor")
+    }
+
+    @MainActor
+    func testDesiredDescriptorReflectsBoundSlotCapabilities() {
+        let conn = WifiConnection(
+            id: "wifi:127.0.0.1:9876",
+            server: DiscoveredServer(name: "S", ip: "127.0.0.1", udpPort: 9876, pairPort: 9443, httpPort: 9443)
+        )
+        conn.attachSlot("slot-a", controllerType: 0, hasMotion: true, hasLight: true)
+        let descriptor = conn.desiredDescriptor
+        XCTAssertEqual(descriptor?.ctrlIdx, 0)
+        XCTAssertEqual(descriptor?.type, ProtocolConstants.controllerTypeXbox)
+        XCTAssertEqual(descriptor?.caps, 0x000F)
+        XCTAssertEqual(descriptor?.touchpadMode, .off)
+
+        conn.detachSlot()
+        XCTAssertNil(conn.desiredDescriptor, "detach empties the desired set")
     }
 }

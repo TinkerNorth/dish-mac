@@ -11,6 +11,16 @@ if [ ! -x "$BIN" ]; then
   exit 1
 fi
 
+# The VERSION file is the single source of truth for the app's self-reported
+# version (mirrors satellite's VERSION gate). A hardcoded plist version here
+# would make every build self-report the same number — fatal for the
+# "update both" protocol-mismatch UX.
+VERSION="$(tr -d '[:space:]' < "$PWD/VERSION")"
+case "$VERSION" in
+  [0-9]*.[0-9]*) ;;
+  *) echo "VERSION file missing or malformed ('$VERSION') — it must hold a semver-ish version." >&2; exit 1 ;;
+esac
+
 APP="$PWD/Dish.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS"
@@ -18,7 +28,7 @@ mkdir -p "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Dish"
 cp "$PWD/Resources/Dish.icns" "$APP/Contents/Resources/Dish.icns"
 
-cat > "$APP/Contents/Info.plist" <<'PLIST'
+cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -26,8 +36,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleName</key>            <string>Dish</string>
     <key>CFBundleDisplayName</key>     <string>Dish</string>
     <key>CFBundleIdentifier</key>      <string>com.tinkernorth.dish.mac</string>
-    <key>CFBundleVersion</key>         <string>1</string>
-    <key>CFBundleShortVersionString</key><string>0.1</string>
+    <key>CFBundleVersion</key>         <string>${VERSION}</string>
+    <key>CFBundleShortVersionString</key><string>${VERSION}</string>
     <key>CFBundleExecutable</key>      <string>Dish</string>
     <key>CFBundleIconFile</key>        <string>Dish</string>
     <key>CFBundlePackageType</key>     <string>APPL</string>

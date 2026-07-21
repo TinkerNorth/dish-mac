@@ -48,6 +48,18 @@ final class BeaconParserTests: XCTestCase {
         XCTAssertNil(LANDiscovery.parseBeacon(json: "{\"name\":", ip: "1.2.3.4"))
     }
 
+    func testParsesMachineIdFromBeacon() {
+        // Protocol-1 beacons carry the stable machineId (see
+        // satellite/src/net/discovery.cpp buildDiscoveryBeacon) — the identity
+        // remembered satellites are keyed on.
+        let json = """
+        {"service":"satellite","name":"Basement","udpPort":9876,"pairPort":9443,"httpPort":9443,"machineId":"m-42"}
+        """
+        let server = LANDiscovery.parseBeacon(json: json, ip: "10.1.1.1")
+        XCTAssertEqual(server?.machineId, "m-42")
+        XCTAssertEqual(server?.id, "mid:m-42")
+    }
+
     func testToleratesUnknownFields() {
         let json = """
         {

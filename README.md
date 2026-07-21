@@ -1,9 +1,11 @@
 # Dish Mac
 
 Native macOS client for the Satellite wireless-gamepad server. Mirrors the
-functionality of the Dish Android client: LAN discovery, PIN pairing,
-encrypted UDP input streaming (ChaCha20-Poly1305), heartbeats, and multiple
-parallel server sessions.
+functionality of the Dish Android and Linux clients: LAN discovery (mDNS +
+legacy beacon), PIN pairing over TOFU-pinned TLS, declarative REST topology,
+encrypted UDP input streaming (ChaCha20-Poly1305 under per-session HKDF
+keys), heartbeats, and multiple parallel server sessions. Speaks
+**protocol 1** — see [Protocol](#protocol).
 
 ## Architecture
 
@@ -13,12 +15,20 @@ SwiftUI (MainView, ConnectionsView)
         ├── ConnectionHub      ── aggregates live + remembered sessions
         ├── WifiConnectionManager
         │     └── WifiConnection (per-server)
-        │           └── SatelliteClient  ── encrypted UDP + heartbeat + ACK loop
-        ├── LANDiscovery       ── UDP broadcast listener on :9879
-        ├── PairingClient      ── TCP pair handshake on :9878
-        ├── HTTPClient         ── POST/DELETE /api/connections on :9877
+        │           └── SatelliteClient  ── encrypted UDP data plane on :9876
+        ├── MdnsBrowser        ── mDNS/Bonjour `_satellite._udp` discovery
+        ├── LANDiscovery       ── legacy UDP beacon listener on :9879 (fallback)
+        ├── PairingClient      ── HTTPS POST /api/pair + path-B status poll on :9443
+        ├── HTTPClient         ── declarative PUT/GET/DELETE /api/connections on :9443
+        │     └── TofuTrustDelegate ── TOFU cert pinning on both HTTPS gateways
         └── GameControllerInput ── GameController.framework push callbacks
               └── GamepadInputProcessor → SatelliteClient.sendReport()
+
+DishCore (SwiftPM library target; Foundation + CryptoKit ONLY —
+          the import allowlist is pinned by CorePurityTests)
+  ── the pure protocol core: wire codecs, session crypto
+     (HKDF/AEAD/proof), protocol constants, policy reducers
+     (reconcile, backoff, close-notify, TOFU verdicts, latency window).
 ```
 
 ## Low-latency strategies (mirrored from Android)
@@ -30,11 +40,13 @@ SwiftUI (MainView, ConnectionsView)
 - **Raw POSIX UDP socket** (not `NWConnection`) so we can set `IP_TOS = 0xB8`
   (DSCP EF class, expedited forwarding) and bypass Network.framework's
   internal queueing.
-- **CryptoKit.ChaChaPoly** produces the exact same wire format as libsodium's
+- **CryptoKit.ChaChaPoly** produces the exact same AEAD bytes as libsodium's
   `crypto_aead_chacha20poly1305_ietf` used by the Android JNI and the
-  Satellite server.
-- **Per-session heartbeat + ACK threads** on dedicated dispatch queues so the
-  hot input path is never contended by book-keeping traffic.
+  Satellite server — same nonce/AAD construction, same HKDF-derived
+  per-session key, pinned byte-for-byte by the cross-repo interop vectors in
+  `Tests/DishCoreTests/SessionCryptoVectorTests.swift`.
+- **Per-session heartbeat timer + receive loop** on dedicated dispatch queues
+  so the hot input path is never contended by book-keeping traffic.
 - **`SO_NOSIGPIPE`** on every socket so a server disconnect can't kill the
   process.
 
@@ -56,9 +68,10 @@ behaviour stays predictable across platforms:
   *"Server unreachable — has it moved networks?"* error instead of trapping
   the user behind an unanswerable PIN prompt. Mirrors dish-android PR #43.
 - **Auto-reconnect fast path.** `WifiConnectionManager.pairAndConnect` skips
-  the TCP pair handshake entirely when a 64-char shared key is already on
-  disk, going straight to `openSession`. A moved server then fails fast in
-  the HTTP layer rather than bouncing through pair → `PairingRequired`.
+  the pair handshake entirely when a 64-char shared key is already stored,
+  going straight to `openSession`'s declarative PUT. A moved server then
+  fails fast in the HTTP layer rather than bouncing through pair →
+  `PairingRequired`.
 - **Per-device deadzones.** `GamepadInputProcessor` carries a per-device
   `Deadzones { stickFlat, triggerFlat }` table; reports are filtered
   (`|v| <= flat → 0`) before they leave the processor. The default profile
@@ -82,10 +95,10 @@ GameController.framework's haptics surface.
 ```
   ┌──────────────────────┐      ┌──────────────────────┐      ┌──────────────────────┐
   │ SatelliteClient      │ ───► │ WifiConnection       │ ───► │ GameControllerInput  │
-  │  • ack receive queue │      │  • per-conn handler  │      │    .applyRumble(...) │
-  │  • parseRumblePayload│      │    (installed by     │      │      └─► RumbleActua-│
-  │  • dispatch to       │      │     AppModel from    │      │           tor.apply  │
-  │    rumbleHandler     │      │     wifi.$connections│      │           (per ctrl) │
+  │  • receive loop +    │      │  • per-conn handler  │      │    .applyRumble(...) │
+  │    AEAD open         │      │    (installed by     │      │      └─► RumbleActua-│
+  │  • RumbleCommand.parse│     │     AppModel from    │      │           tor.apply  │
+  │  • dispatch to onRumble│    │     wifi.$connections│      │           (per ctrl) │
   └──────────────────────┘      └──────────────────────┘      └──────────┬───────────┘
                                                                          │
                                                                          ▼
@@ -98,9 +111,12 @@ The `MSG_RUMBLE` inner payload is a fixed 7 bytes — `ctrlIdx(1) +
 strongMagnitude(2 BE) + weakMagnitude(2 BE) + durationMs(2 BE)`. On the
 dish-mac side:
 
-* **Parser** — `SatelliteClient.parseRumblePayload` is a pure static
-  decoder so unit tests can exercise byte layouts without a live socket
-  (see `Tests/DishTests/SatelliteClientRumbleTests.swift`).
+* **Parser** — `DishCore.RumbleCommand.parse` is a pure decoder so unit
+  tests can pin byte layouts without a live socket
+  (`Tests/DishCoreTests/EncodersTests.swift`); the receive pipeline around
+  it — header parse, replay guard, AEAD open, dispatch — is driven with
+  satellite-sealed datagrams in
+  `Tests/DishTests/SatelliteClientRumbleTests.swift`.
 * **Routing** — `AppModel.installRumbleHandlers` runs on every
   `wifi.$connections` change and attaches a handler that resolves
   `connId → slotId → deviceId` via the `ConnectionHub` bindings, then
@@ -122,8 +138,8 @@ forwards a `MSG_LIGHTBAR = 0x000D` packet, and the dish writes the colour to
 the matching `GCController.light` via GameController.framework.
 
 The `MSG_LIGHTBAR` inner payload is 4 bytes — `ctrlIdx(1) + R(1) + G(1) +
-B(1)` — decoded by `SatelliteClient.parseLightbarMessage` (a pure static
-decoder, unit-tested without a live socket). It routes through the same
+B(1)` — decoded by `DishCore.LightbarCommand.parse` (a pure decoder,
+unit-tested without a live socket). It routes through the same
 `SatelliteClient → WifiConnection → AppModel` chain as rumble, ending at
 `GameControllerInput.applyLightbar`, which sets `GCColor` on the
 `@MainActor`.
@@ -134,8 +150,10 @@ decoder, unit-tested without a live socket). It routes through the same
   light bar (and vice versa).
 * **`CAP_LIGHTBAR` (0x0008).** When a bound controller exposes an
   addressable RGB light (`GCController.light != nil`), the dish OR's
-  `CAP_LIGHTBAR` into the per-controller `MSG_CONTROLLER_ADD` capability
-  word (alongside `CAP_ANALOG_TRIGGERS` / `CAP_RUMBLE` / `CAP_MOTION`).
+  `CAP_LIGHTBAR` into the controller descriptor's capability word
+  (alongside `CAP_ANALOG_TRIGGERS` / `CAP_RUMBLE` / `CAP_MOTION`) — the
+  descriptor rides the declarative session/controller PUT; topology never
+  rides UDP in protocol 1.
 * **`LightbarMode` setting.** `FeatureSettings.lightbarMode` is a
   two-case picker in Settings — *Follow game* (apply the host game's
   colour) or *Off* (leave the LED untouched). Unlike the other features
@@ -173,35 +191,54 @@ swift build -c release
 ```
 dish-mac/
 ├── Package.swift
-└── Sources/Dish/
-    ├── DishApp.swift            # @main SwiftUI entry
-    ├── AppModel.swift           # top-level ObservableObject
-    ├── Models/                  # DiscoveredServer, PairResponse, ...
-    ├── Network/                 # sockets, crypto, discovery, pairing, HTTP
-    ├── Input/                   # GameController bridge + XUSB mapping
-    ├── Util/                    # telemetry, hex
-    └── UI/                      # SwiftUI views + theme
+├── Sources/DishCore/            # pure protocol core (Foundation + CryptoKit only)
+│   ├── ProtocolConstants.swift  # protocol-1 opcodes, caps, sizes, cadences
+│   ├── Wire/                    # SessionCrypto (HKDF/AEAD/proof), PacketCodec, Encoders
+│   └── Reducers/                # reconcile, backoff, close-notify, TOFU, latency, REST outcomes
+├── Sources/Dish/
+│   ├── DishApp.swift            # @main SwiftUI entry
+│   ├── AppModel.swift           # top-level ObservableObject
+│   ├── Models/                  # DiscoveredServer, FeatureSettings, ...
+│   ├── Network/                 # sockets, discovery, pairing, REST, TOFU, stores
+│   ├── Input/                   # GameController bridge + XUSB mapping
+│   ├── Util/                    # telemetry, hex
+│   └── UI/                      # SwiftUI views + theme
+├── Tests/DishCoreTests/         # pinned interop vectors + pure-reducer suites
+├── Tests/DishTests/             # app-target unit + integration suites
+│   └── Support/FakeSatellite/   # in-process protocol-1 satellite for tests
+├── docs/contract.md             # contract pointer + concept→file mapping
+└── scripts/e2e_local.sh         # loopback e2e against the real satellite binary
 ```
 
-## Protocol parity
+## Protocol
 
-All message types, byte layouts, port numbers and JSON shapes match the
-Android client verbatim so both can talk to the same server and appear
-identical to it:
+This client speaks **protocol 1**. The client ↔ server contract — REST
+surface, UDP streams, crypto, liveness, identity — is specified in ONE
+place: [`satellite/docs/contract.md`][contract] in the TinkerNorth/satellite
+repo. Nothing in this README restates it; when in doubt, the contract wins.
+[`docs/contract.md`](docs/contract.md) in this repo maps each contract
+concept to the Swift file that implements it.
 
-| Field            | Value            |
-| ---------------- | ---------------- |
-| Discovery port   | UDP 9879 (listen)|
-| Pairing port     | TCP 9878         |
-| HTTP API port    | TCP 9877         |
-| Streaming port   | UDP 9876         |
-| AEAD             | ChaCha20-Poly1305 IETF |
-| Nonce            | counter, BE, left-padded to 12 bytes |
-| Packet layout    | `token(4) \| counter(4) \| ciphertext+tag` |
-| AAD              | token (4 bytes)  |
-| XUSB report      | 12 bytes, little-endian |
-| Heartbeat period | 2 s              |
-| Miss threshold   | 5 consecutive    |
+The shape, in two lines:
+
+- **Control plane** — HTTPS REST on `:9443` (self-signed TLS, trust is
+  TOFU cert-pinning). PIN pairing mints a per-device 32-byte pairing key;
+  every authenticated route carries `X-Device-Id` + `X-Hmac-Proof`;
+  topology is **declarative** — the client PUTs its complete desired
+  controller set to `/api/connections` and the server converges.
+- **Data plane** — UDP on `:9876`, ChaCha20-Poly1305-IETF under a
+  per-session key: `HKDF-SHA256(pairingKey, sessionSalt, token)`, salt and
+  token minted per session PUT. Streams only (input/heartbeat/motion/
+  battery/touchpad up; heartbeat-ack/rumble/lightbar/close-notify down) —
+  topology never rides UDP.
+
+Discovery is mDNS `_satellite._udp` (primary) plus the legacy UDP `:9879`
+beacon (fallback). The wire bytes are identical across dish-android,
+dish-linux, dish-windows and dish-mac; the shared interop vectors in
+`Tests/DishCoreTests/SessionCryptoVectorTests.swift` are pinned hex-exact
+against the sibling repos' test suites, so any drift fails all of them.
+
+[contract]: https://github.com/TinkerNorth/satellite/blob/main/docs/contract.md
 
 ## Testing
 
@@ -209,16 +246,32 @@ identical to it:
 swift test
 ```
 
-Unit tests cover the hex/byte-packing utilities, the XUSB input mapping (axis
-and trigger scaling, button bitfield, per-device deadzone application,
-zero-on-disconnect fan-out), the lock-free atomic counter under contention,
-the lenient beacon JSON decoder, the persisted-model codable round-trips, the
-`MSG_RUMBLE` / `MSG_LIGHTBAR` return-path decoders and the light-bar wiring
-(rumble vs. light-bar gating, the `CAP_LIGHTBAR` capability word), the
-`PairingClient.classify` outcome arms (success / authRequired / unreachable),
-and the `ScreenWakeController` acquire/release lifecycle via a fake
-`DisplaySleepInhibitor` (so the suite never has to touch IOKit). They run in
-~0.1 s and do not open sockets.
+Three layers, all in the one SwiftPM test run:
+
+- **`Tests/DishCoreTests`** — the pure core: cross-repo pinned interop
+  vectors (HKDF / HMAC proof / AEAD — hex-exact with satellite, dish-linux,
+  dish-android and dish-windows) and exhaustive reducer suites (reconcile,
+  backoff, close-notify, TOFU verdicts, latency window, REST outcomes).
+  No sockets, milliseconds.
+- **`Tests/DishTests` unit suites** — hex/byte-packing, XUSB input mapping
+  (axis/trigger scaling, button bitfield, per-device deadzones,
+  zero-on-disconnect fan-out), the atomic counter under contention, beacon
+  and REST DTO decoding, persisted-model round-trips, the rumble/light-bar
+  return-path pipeline against satellite-sealed datagrams, pairing outcome
+  classification, and the `ScreenWakeController` lifecycle via a fake
+  `DisplaySleepInhibitor`.
+- **`Tests/DishTests` live suites** — `Support/FakeSatellite/` is an
+  in-process protocol-1 satellite (HTTPS pairing + session REST, encrypted
+  UDP with replay guard, enriched acks, close-notify/rumble/lightbar
+  injection, its own independently-implemented CryptoKit crypto asserted
+  against the same pinned vectors). The control-plane, data-plane and
+  `Integration*` end-to-end suites drive the real manager/connection/client
+  stack against it over loopback sockets, synchronized by bounded waiters —
+  no sleeps, but expect the full run to take seconds, not milliseconds.
+
+For an end-to-end check against the **real** satellite server binary (build
+headless, pair, stream, tear down over loopback), see
+[`scripts/e2e_local.sh`](scripts/e2e_local.sh).
 
 ## Development
 

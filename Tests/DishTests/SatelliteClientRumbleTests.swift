@@ -1,88 +1,167 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import XCTest
 @testable import Dish
 
-/// Coverage for `SatelliteClient.parseRumblePayload` — the pure decoder for
-/// the satellite → dish `MSG_RUMBLE` payload. The full I/O path (decrypt +
-/// dispatch on the receive queue) is intentionally out of scope here; it
-/// would require driving the receive loop with a fake socket. The decoder
-/// is the only part of the rumble pipeline with real branching logic worth
-/// pinning down in unit tests, and it's exposed publicly + statically for
-/// exactly that reason.
+/// The protocol-1 rumble return path through the REAL receive pipeline —
+/// `SatelliteClient.processIncoming` is driven directly with datagrams sealed
+/// exactly like the satellite's (`DishCore.SessionCrypto`, direction `down`,
+/// AAD = token), so header parsing, the replay guard (gap G3), AEAD binding
+/// (gaps G1/G2) and dispatch are all exercised without socket timing. The
+/// payload *field* decoding is pinned separately in
+/// `Tests/DishCoreTests/EncodersTests.swift` (`RumbleCommand.parse`).
 final class SatelliteClientRumbleTests: XCTestCase {
 
-    /// Build the fixed 7-byte rumble payload. Mirrors the producer side in
-    /// `satellite/src/adapters/client_adapter.cpp::sendRumble`.
-    private func rumblePayload(
-        ctrlIdx: UInt8,
-        strong: UInt16,
-        weak: UInt16,
-        dur: UInt16
-    ) -> [UInt8] {
-        [
-            ctrlIdx,
-            UInt8(strong >> 8), UInt8(strong & 0xFF),
-            UInt8(weak >> 8), UInt8(weak & 0xFF),
-            UInt8(dur >> 8), UInt8(dur & 0xFF)
-        ]
+    private var client: SatelliteClient!
+    private var received: [RumbleCommand] = []
+    private let receivedLock = NSLock()
+
+    override func setUpWithError() throws {
+        try super.setUpWithError()
+        client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
+        received = []
+        client.onRumble = { [weak self] command in
+            guard let self else { return }
+            self.receivedLock.lock()
+            self.received.append(command)
+            self.receivedLock.unlock()
+        }
     }
 
-    func testDecodesFields() throws {
-        let p = rumblePayload(ctrlIdx: 3, strong: 0xABCD, weak: 0x1234, dur: 500)
-        let rm = try XCTUnwrap(SatelliteClient.parseRumblePayload(p))
-        XCTAssertEqual(rm.controllerIndex, 3)
-        XCTAssertEqual(rm.strongMagnitude, 0xABCD)
-        XCTAssertEqual(rm.weakMagnitude, 0x1234)
-        XCTAssertEqual(rm.durationMs, 500)
+    override func tearDown() {
+        client?.closeSocket()
+        client = nil
+        super.tearDown()
     }
 
-    func testDecodesStopRequest() throws {
-        let p = rumblePayload(ctrlIdx: 0, strong: 0, weak: 0, dur: 0)
-        let rm = try XCTUnwrap(SatelliteClient.parseRumblePayload(p))
-        XCTAssertEqual(rm.strongMagnitude, 0)
-        XCTAssertEqual(rm.weakMagnitude, 0)
-        XCTAssertEqual(rm.durationMs, 0)
+    private var receivedSnapshot: [RumbleCommand] {
+        receivedLock.lock()
+        defer { receivedLock.unlock() }
+        return received
     }
 
-    func testDecodesMaxMagnitudes() throws {
-        let p = rumblePayload(ctrlIdx: 0xFF, strong: 0xFFFF, weak: 0xFFFF, dur: 0xFFFF)
-        let rm = try XCTUnwrap(SatelliteClient.parseRumblePayload(p))
-        XCTAssertEqual(rm.controllerIndex, 0xFF)
-        XCTAssertEqual(rm.strongMagnitude, 0xFFFF)
-        XCTAssertEqual(rm.weakMagnitude, 0xFFFF)
-        XCTAssertEqual(rm.durationMs, 0xFFFF)
+    private func rumbleDatagram(
+        counter: UInt32,
+        ctrlIdx: UInt8 = 0,
+        strong: UInt16 = 0xABCD,
+        weak: UInt16 = 0x1234,
+        durationMs: UInt16 = 500
+    ) -> Data {
+        var payload = Data([ctrlIdx])
+        payload.append(contentsOf: [UInt8(strong >> 8), UInt8(strong & 0xFF)])
+        payload.append(contentsOf: [UInt8(weak >> 8), UInt8(weak & 0xFF)])
+        payload.append(contentsOf: [UInt8(durationMs >> 8), UInt8(durationMs & 0xFF)])
+        return DataPlaneTestHelpers.sealDownlink(
+            msgType: ProtocolConstants.msgRumble,
+            payload: payload,
+            counter: counter
+        )
     }
 
-    func testRejectsTruncatedPayload() {
-        // Anything shorter than 7 bytes is malformed.
-        XCTAssertNil(SatelliteClient.parseRumblePayload([UInt8](repeating: 0, count: 6)))
-        XCTAssertNil(SatelliteClient.parseRumblePayload([]))
+    // MARK: - Decode through the real pipeline
+
+    func testRumbleDatagramDispatchesDecodedCommand() {
+        client.processIncoming(rumbleDatagram(counter: 1, ctrlIdx: 3))
+        let got = receivedSnapshot
+        XCTAssertEqual(got.count, 1)
+        XCTAssertEqual(got.first?.controllerIndex, 3)
+        XCTAssertEqual(got.first?.strongMagnitude, 0xABCD)
+        XCTAssertEqual(got.first?.weakMagnitude, 0x1234)
+        XCTAssertEqual(got.first?.durationMs, 500)
     }
 
-    func testIgnoresExtraTrailingBytes() throws {
-        // Forward-compat: future protocol extensions may append fields.
-        let base = rumblePayload(ctrlIdx: 2, strong: 100, weak: 50, dur: 700)
-        let p = base + [UInt8](repeating: 0xAA, count: 9)
-        let rm = try XCTUnwrap(SatelliteClient.parseRumblePayload(p))
-        XCTAssertEqual(rm.controllerIndex, 2)
-        XCTAssertEqual(rm.strongMagnitude, 100)
-        XCTAssertEqual(rm.weakMagnitude, 50)
-        XCTAssertEqual(rm.durationMs, 700)
+    func testStopRequestZeroMagnitudesDispatch() {
+        client.processIncoming(rumbleDatagram(counter: 1, strong: 0, weak: 0, durationMs: 0))
+        XCTAssertEqual(receivedSnapshot.first?.strongMagnitude, 0)
+        XCTAssertEqual(receivedSnapshot.first?.weakMagnitude, 0)
     }
 
-    func testBigEndianBoundaries() throws {
-        // 0x0100 BE = 256; LE would parse as 1.
-        let p = rumblePayload(ctrlIdx: 0, strong: 0x0100, weak: 0xFF00, dur: 0x00FF)
-        let rm = try XCTUnwrap(SatelliteClient.parseRumblePayload(p))
-        XCTAssertEqual(rm.strongMagnitude, 0x0100)
-        XCTAssertEqual(rm.weakMagnitude, 0xFF00)
-        XCTAssertEqual(rm.durationMs, 0x00FF)
+    // MARK: - Replay guard (gap G3)
+
+    func testReplayedDatagramIsDroppedOnce() {
+        let datagram = rumbleDatagram(counter: 5)
+        client.processIncoming(datagram)
+        client.processIncoming(datagram) // exact replay: counter <= last
+        XCTAssertEqual(receivedSnapshot.count, 1, "replayed counter must be dropped")
     }
 
-    func testProtocolConstant() {
-        // Pinned to wire value 0x0009 to match satellite/src/core/types.h.
-        XCTAssertEqual(SatelliteClient.msgRumble, 0x0009)
+    func testRegressedCounterIsDropped() {
+        client.processIncoming(rumbleDatagram(counter: 8))
+        client.processIncoming(rumbleDatagram(counter: 7))
+        XCTAssertEqual(receivedSnapshot.count, 1, "counter <= last must be dropped")
+        client.processIncoming(rumbleDatagram(counter: 9))
+        XCTAssertEqual(receivedSnapshot.count, 2, "the stream continues past a dropped replay")
+    }
+
+    func testFirstPacketExemptionAcceptsAnyStartingCounter() {
+        // The satellite's down counter may be far along by the time we join
+        // (first packet exempt while the guard is 0).
+        client.processIncoming(rumbleDatagram(counter: 41))
+        XCTAssertEqual(receivedSnapshot.count, 1)
+    }
+
+    func testForgedHeaderCounterDoesNotAdvanceTheGuard() {
+        // An attacker replays a datagram with a REWRITTEN (huge) header
+        // counter: the AEAD open fails (counter is nonce-bound), and the
+        // guard must not advance — the genuine stream keeps flowing.
+        var forged = rumbleDatagram(counter: 1)
+        forged.replaceSubrange(4 ..< 8, with: [0xFF, 0xFF, 0xFF, 0xFF])
+        client.processIncoming(forged)
+        client.processIncoming(rumbleDatagram(counter: 1))
+        XCTAssertEqual(receivedSnapshot.count, 1, "genuine counter 1 must still be accepted")
+    }
+
+    // MARK: - AEAD binding (gaps G1/G2)
+
+    func testWrongTokenIsDropped() {
+        let alien = DataPlaneTestHelpers.sealDownlink(
+            msgType: ProtocolConstants.msgRumble,
+            payload: Data([0, 0, 1, 0, 1, 0, 1]),
+            counter: 1,
+            token: 0xDEAD_BEEF
+        )
+        client.processIncoming(alien)
+        XCTAssertTrue(receivedSnapshot.isEmpty)
+    }
+
+    func testUplinkDirectionSealIsRejectedDownstream() {
+        // Same key/token/counter but sealed with the CLIENT direction byte:
+        // the two directions must never share a nonce, so the downstream
+        // open rejects it.
+        let inner = PacketCodec.innerFrame(
+            msgType: ProtocolConstants.msgRumble,
+            payload: Data([0, 0, 1, 0, 1, 0, 1])
+        )
+        guard let box = try? SessionCrypto.seal(
+            inner,
+            key: DataPlaneTestHelpers.testKey,
+            direction: .up,
+            counter: 1,
+            token: DataPlaneTestHelpers.testToken
+        ) else { return XCTFail("seal failed") }
+        client.processIncoming(
+            PacketCodec.frame(token: DataPlaneTestHelpers.testToken, counter: 1, box: box)
+        )
+        XCTAssertTrue(receivedSnapshot.isEmpty)
+    }
+
+    func testTamperedCiphertextIsDropped() {
+        var datagram = rumbleDatagram(counter: 1)
+        let index = datagram.count - 1
+        datagram[index] ^= 0x01
+        client.processIncoming(datagram)
+        XCTAssertTrue(receivedSnapshot.isEmpty)
+    }
+
+    func testTruncatedRumblePayloadIsDropped() {
+        let short = DataPlaneTestHelpers.sealDownlink(
+            msgType: ProtocolConstants.msgRumble,
+            payload: Data([0, 0, 1]),
+            counter: 1
+        )
+        client.processIncoming(short)
+        XCTAssertTrue(receivedSnapshot.isEmpty, "truncated payload must not dispatch")
     }
 }

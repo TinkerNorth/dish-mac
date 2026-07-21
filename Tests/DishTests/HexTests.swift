@@ -25,6 +25,14 @@ final class HexTests: XCTestCase {
         XCTAssertNil(hexToBytes("12g4"))
     }
 
+    func testHexToBytesRejectsSignAndWhitespacePairs() {
+        // `UInt8(_, radix:)` parses "+5" as 5 — a strict decoder must not.
+        XCTAssertNil(hexToBytes("+5"))
+        XCTAssertNil(hexToBytes("-0"))
+        XCTAssertNil(hexToBytes(" a"))
+        XCTAssertNil(hexToBytes("ab+5"))
+    }
+
     func testHexToBytesEmpty() {
         XCTAssertEqual(hexToBytes(""), Data())
     }

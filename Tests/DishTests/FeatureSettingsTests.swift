@@ -181,7 +181,9 @@ final class ForwardingGateTests: XCTestCase {
 }
 
 /// Touchpad path on the processor — `publishTouchpad` is a pure pass-through
-/// to `touchpadSender` (a touchpad is an absolute surface, no deadzone).
+/// to `touchpadSender` (a touchpad is an absolute surface, no deadzone) plus
+/// the protocol-1 `eventTimeMs` stamp (uptime ms off the injectable `nowNs`
+/// clock — contract §0x000C).
 final class TouchpadProcessorTests: XCTestCase {
 
     private struct Captured: Equatable {
@@ -195,13 +197,12 @@ final class TouchpadProcessorTests: XCTestCase {
         let f1x: Int16
         let f1y: Int16
         let button: Bool
+        let eventMs: UInt32
     }
 
-    func testPublishTouchpadForwardsAllFields() {
-        var captured: Captured?
-        let proc = GamepadInputProcessor()
-        proc.touchpadSender = { id, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn in
-            captured = Captured(
+    private func install(_ proc: GamepadInputProcessor, into captured: @escaping (Captured) -> Void) {
+        proc.touchpadSender = { id, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn, eventMs in
+            captured(Captured(
                 id: id,
                 f0a: f0a,
                 f0id: f0id,
@@ -211,9 +212,16 @@ final class TouchpadProcessorTests: XCTestCase {
                 f1id: f1id,
                 f1x: f1x,
                 f1y: f1y,
-                button: btn
-            )
+                button: btn,
+                eventMs: eventMs
+            ))
         }
+    }
+
+    func testPublishTouchpadForwardsAllFields() {
+        var captured: Captured?
+        let proc = GamepadInputProcessor()
+        install(proc) { captured = $0 }
         proc.publishTouchpad(
             deviceId: "pad",
             finger0Active: true,
@@ -224,7 +232,8 @@ final class TouchpadProcessorTests: XCTestCase {
             finger1Id: 3,
             finger1X: 0,
             finger1Y: 0,
-            buttonPressed: true
+            buttonPressed: true,
+            nowNs: 5_000_000_000
         )
         XCTAssertEqual(
             captured,
@@ -238,7 +247,8 @@ final class TouchpadProcessorTests: XCTestCase {
                 f1id: 3,
                 f1x: 0,
                 f1y: 0,
-                button: true
+                button: true,
+                eventMs: 5000
             )
         )
     }
@@ -263,20 +273,7 @@ final class TouchpadProcessorTests: XCTestCase {
     func testPublishTouchpadCarriesFullInt16Range() {
         var captured: Captured?
         let proc = GamepadInputProcessor()
-        proc.touchpadSender = { id, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn in
-            captured = Captured(
-                id: id,
-                f0a: f0a,
-                f0id: f0id,
-                f0x: f0x,
-                f0y: f0y,
-                f1a: f1a,
-                f1id: f1id,
-                f1x: f1x,
-                f1y: f1y,
-                button: btn
-            )
-        }
+        install(proc) { captured = $0 }
         proc.publishTouchpad(
             deviceId: "pad",
             finger0Active: true,
@@ -293,5 +290,27 @@ final class TouchpadProcessorTests: XCTestCase {
         XCTAssertEqual(captured?.f0y, Int16.min)
         XCTAssertEqual(captured?.f1x, -1)
         XCTAssertEqual(captured?.f1y, 1)
+    }
+
+    func testEventTimeMsTruncatesNanosecondsToMilliseconds() {
+        // The wire stamp is uptime ms as u32 — a >49.7-day uptime wraps by
+        // design (the receiver consumes deltas). 2^32 ms + 1 ms wraps to 1.
+        var captured: Captured?
+        let proc = GamepadInputProcessor()
+        install(proc) { captured = $0 }
+        proc.publishTouchpad(
+            deviceId: "pad",
+            finger0Active: false,
+            finger0Id: 0,
+            finger0X: 0,
+            finger0Y: 0,
+            finger1Active: false,
+            finger1Id: 0,
+            finger1X: 0,
+            finger1Y: 0,
+            buttonPressed: false,
+            nowNs: (UInt64(UInt32.max) + 2) * 1_000_000
+        )
+        XCTAssertEqual(captured?.eventMs, 1)
     }
 }

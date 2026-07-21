@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 import IOKit.ps
 
@@ -38,10 +39,10 @@ enum HostBattery {
     }
 
     /// Wire-ready battery reading: `level` is 0...100 or `0xFF` (unknown);
-    /// `status` is a `SatelliteClient.BatteryStatus` raw value.
+    /// `status` is a `DishCore.BatteryStatus` raw value.
     struct WireReading: Equatable {
         let level: UInt8
-        let status: SatelliteClient.BatteryStatus
+        let status: BatteryStatus
     }
 
     /// Pure mapping from an IOKit-free snapshot to the wire reading. Extracted
@@ -59,7 +60,7 @@ enum HostBattery {
             // is, transitively, mains-powered.
             return WireReading(level: 100, status: .wired)
         }
-        let status: SatelliteClient.BatteryStatus = switch snapshot.state {
+        let status: BatteryStatus = switch snapshot.state {
         case .unknown: .unknown
         case .discharging: .discharging
         case .charging: .charging
