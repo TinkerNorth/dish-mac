@@ -20,6 +20,23 @@ final class AtomicCounter: @unchecked Sendable {
         return current
     }
 
+    /// Current value without advancing — the rekey poll (`needsRekey`)
+    /// compares this against the contract's re-PUT threshold.
+    func current() -> UInt64 {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return value
+    }
+
+    /// Force a specific value. Production code only ever `reset()`s; tests
+    /// use this to place the counter near the exhaustion threshold without
+    /// four billion increments.
+    func set(_ newValue: UInt64) {
+        os_unfair_lock_lock(&lock)
+        value = newValue
+        os_unfair_lock_unlock(&lock)
+    }
+
     func reset() {
         os_unfair_lock_lock(&lock)
         value = 0
@@ -82,5 +99,40 @@ final class AtomicBool: @unchecked Sendable {
         os_unfair_lock_lock(&lock)
         defer { os_unfair_lock_unlock(&lock) }
         return value
+    }
+}
+
+/// Lock-guarded box for any value crossing threads whole — session crypto
+/// params swapped by a re-key while the send/receive paths read them, the
+/// return-path handlers installed from the main actor and invoked on the
+/// receive queue, the enriched-ack snapshot. Same `os_unfair_lock` bridge
+/// family as the atomics above (PLAN D6: no actor rewrite this initiative).
+final class LockedBox<Value>: @unchecked Sendable {
+    private var value: Value
+    private var lock = os_unfair_lock_s()
+
+    init(_ initial: Value) {
+        value = initial
+    }
+
+    func get() -> Value {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return value
+    }
+
+    func set(_ newValue: Value) {
+        os_unfair_lock_lock(&lock)
+        value = newValue
+        os_unfair_lock_unlock(&lock)
+    }
+
+    /// Read-modify-write under one lock hold, returning `body`'s result —
+    /// for values whose fields must never be observed across two holds
+    /// (the session params' key/token/counter draw).
+    func mutate<T>(_ body: (inout Value) -> T) -> T {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return body(&value)
     }
 }

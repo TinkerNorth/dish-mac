@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import Darwin
 import Foundation
 
 // MARK: - Server / protocol DTOs (names match Android Models.kt)
@@ -12,6 +13,9 @@ enum DiscoverySource: String, Codable, Hashable {
     case broadcast
     case mdns
     case both
+    /// Typed in by the user (`DiscoveredServer.manual`) — the escape hatch
+    /// when Local Network permission is denied or the LAN drops multicast.
+    case manual
 
     /// Short human label for the connections list.
     var label: String {
@@ -19,6 +23,7 @@ enum DiscoverySource: String, Codable, Hashable {
         case .broadcast: "UDP broadcast"
         case .mdns: "mDNS"
         case .both: "mDNS + broadcast"
+        case .manual: "added by address"
         }
     }
 }
@@ -32,12 +37,23 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
     /// `pair` and `http` TXT keys.
     var pairPort = 9443
     var httpPort = 9443
+    /// Stable per-install satellite identity from the beacon (`machineId`) /
+    /// mDNS TXT (`mid`). Empty for satellites that predate it. Protocol-1
+    /// keys remembered satellites on this — never on ip/port — see `id`
+    /// (contract §Identity).
+    var machineId = ""
     /// Discovery path this server was heard on. Excluded from `CodingKeys`
     /// (not a wire field); stays `.broadcast` when decoded from a beacon.
     var source: DiscoverySource = .broadcast
 
+    /// The stable identity a dish keys a satellite on. Prefers `machineId`
+    /// (survives DHCP address changes), falls back to ip:udpPort for older
+    /// satellites that don't advertise one. Both discovery paths, the
+    /// connection pool and the remembered store key on this, so one physical
+    /// receiver collapses to a single entry instead of one row per IP.
+    /// Mirrors dish-linux `DiscoveredServer::id()` / dish-android stableKey.
     var id: String {
-        "wifi:\(ip):\(udpPort)"
+        machineId.isEmpty ? "wifi:\(ip):\(udpPort)" : "mid:\(machineId)"
     }
 
     init(
@@ -46,6 +62,7 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         udpPort: Int = 9876,
         pairPort: Int = 9443,
         httpPort: Int = 9443,
+        machineId: String = "",
         source: DiscoverySource = .broadcast
     ) {
         self.name = name
@@ -53,6 +70,7 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         self.udpPort = udpPort
         self.pairPort = pairPort
         self.httpPort = httpPort
+        self.machineId = machineId
         self.source = source
     }
 
@@ -62,7 +80,7 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
     /// one that falls back to each field's default when absent. See
     /// `satellite/src/net/discovery.cpp` for the wire format.
     private enum CodingKeys: String, CodingKey {
-        case name, ip, udpPort, pairPort, httpPort
+        case name, ip, udpPort, pairPort, httpPort, machineId
     }
 
     init(from decoder: Decoder) throws {
@@ -72,26 +90,88 @@ struct DiscoveredServer: Codable, Hashable, Identifiable {
         self.udpPort = try container.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
         self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9443
         self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9443
+        self.machineId = try container.decodeIfPresent(String.self, forKey: .machineId) ?? ""
+    }
+
+    /// Manual "add by address" entry — the escape hatch when discovery is
+    /// dead (Local Network permission denied, multicast-blocked LAN): an
+    /// IPv4 literal with an optional `:udpPort`, seeding the legacy
+    /// `wifi:<ip>:<port>` identity the pool and store already support. Nil
+    /// on anything else — the UDP data plane dials IPv4 literals only
+    /// (`inet_pton`), exactly like the discovery beacon's `ip`.
+    static func manual(from input: String) -> DiscoveredServer? {
+        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: ":", omittingEmptySubsequences: false)
+        let host: String
+        var udpPort = 9876
+        switch parts.count {
+        case 1:
+            host = String(parts[0])
+        case 2:
+            guard let port = Int(parts[1]), (1 ... 65535).contains(port) else { return nil }
+            host = String(parts[0])
+            udpPort = port
+        default:
+            return nil
+        }
+        var addr = in_addr()
+        guard !host.isEmpty, host.withCString({ inet_pton(AF_INET, $0, &addr) }) == 1 else { return nil }
+        return DiscoveredServer(name: "", ip: host, udpPort: udpPort, source: .manual)
     }
 }
 
 struct PairResponse: Codable {
     var ok = false
+    /// Path B: the request is parked awaiting operator approval on the
+    /// satellite; poll `GET /api/pair/status` for the outcome (contract
+    /// §Pairing).
+    var pending = false
     var error: String?
     var sharedKey: String?
+    /// Echoed by the server on every pairing response; absent means 1
+    /// (contract §Versioning).
+    var protocolVersion = 1
+    /// HTTP status of the exchange (0 = the transport never produced a
+    /// response). Client-side, not on the wire — lets the manager spot a 409
+    /// version mismatch without re-reading the body.
+    var httpStatus = 0
     /// True iff we received any JSON body from the server. False for synthesized
     /// failure responses (socket / connect / send errors). Not on the wire — the
     /// server never sends this field; it's set client-side by `PairingClient`.
     var reachable = false
 
-    private enum CodingKeys: String, CodingKey { case ok, error, sharedKey }
+    private enum CodingKeys: String, CodingKey { case ok, pending, error, sharedKey, protocolVersion }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.ok = try container.decodeIfPresent(Bool.self, forKey: .ok) ?? false
+        self.pending = try container.decodeIfPresent(Bool.self, forKey: .pending) ?? false
+        self.error = try container.decodeIfPresent(String.self, forKey: .error)
+        self.sharedKey = try container.decodeIfPresent(String.self, forKey: .sharedKey)
+        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion) ?? 1
+    }
+
+    init(
+        ok: Bool = false,
+        pending: Bool = false,
+        error: String? = nil,
+        sharedKey: String? = nil,
+        protocolVersion: Int = 1,
+        httpStatus: Int = 0,
+        reachable: Bool = false
+    ) {
+        self.ok = ok
+        self.pending = pending
+        self.error = error
+        self.sharedKey = sharedKey
+        self.protocolVersion = protocolVersion
+        self.httpStatus = httpStatus
+        self.reachable = reachable
+    }
 }
 
-struct ConnectResponse: Codable {
-    var connectionId: String?
-    var token: String?
-    var error: String?
-}
+// (Protocol-0's `ConnectResponse` is deleted: the session handshake is the
+// declarative PUT and its `SessionResponse` DTO in Network/RestModels.swift.)
 
 // MARK: - UI-level aggregation (matches ConnectionHub.kt shapes)
 
@@ -111,17 +191,17 @@ struct ConnectResponse: Codable {
 /// | `.ready`    | paired          | seen, no session | "Ready"          |
 /// | `.connecting` | paired        | linking          | "Connecting…"    |
 /// | `.connected`  | paired        | live             | "Online"         |
-/// | `.unstable`   | paired        | faltering        | "Unsteady"       |
+/// | `.unstable`   | paired        | faltering/stale  | "Unsteady"       |
 ///
-/// **`.stale`** is not yet entered: it requires the satellite to return a
-/// `PAIRING_UNKNOWN` error so the client can distinguish "peer forgot us"
-/// from a generic connect failure. Until that protocol change lands, a
-/// server-side forget surfaces as a generic disconnect.
+/// **`.stale`** enters when the satellite revokes trust: a terminal 401
+/// (NOT_PAIRED / BAD_PROOF) on any authed route or an authenticated
+/// close-notify(unpaired) — both funnel through the manager's
+/// `handleTerminalAuth`, which drops only the key and parks the row in the
+/// persistent `staleSatelliteIds` set (gaps G6/G15).
 ///
-/// **`.unstable`** is not yet entered: it requires the native layer to
-/// expose the consecutive-missed-heartbeat count separately from the binary
-/// alive-poll predicate. Today the connection flips `.connected` →
-/// (`.saved` | `.ready`) directly when misses hit the death threshold.
+/// **`.unstable`** enters from `SessionState.faltering` (2 consecutive
+/// missed heartbeat acks — contract §Liveness) and from
+/// `SessionState.stale`, the death→silent-retry backoff window (gap G15).
 enum LinkState { case found, stale, saved, ready, connecting, connected, unstable }
 
 struct ConnectionSummary: Identifiable, Hashable {
@@ -130,6 +210,10 @@ struct ConnectionSummary: Identifiable, Hashable {
     let detail: String
     let live: LinkState
     let boundSlotId: String?
+    /// One-way latency readout (median heartbeat RTT ÷ 2, rounded to
+    /// 0.1 ms), present only while a session is up and has paired at least
+    /// one ack (gap G13).
+    var latencyMs: Double?
 }
 
 // MARK: - Controller capabilities + battery (UX surface)
@@ -145,8 +229,8 @@ struct ControllerCapabilities: Hashable {
     var hasTouchpad = false
     var hasRumble = false
     /// The controller has an addressable RGB light bar (`GCController.light`).
-    /// Drives the "Lightbar" capability chip and the `CAP_LIGHTBAR` bit in
-    /// `MSG_CONTROLLER_ADD`.
+    /// Drives the "Lightbar" capability chip and the `capLightbar` bit in the
+    /// REST controller descriptor's caps word.
     var hasLightbar = false
     var hasBattery = false
 
@@ -188,8 +272,53 @@ struct RememberedWifi: Codable, Hashable, Identifiable {
     var udpPort: Int
     var pairPort: Int
     var httpPort: Int
+    /// Persisted machineId so a remembered satellite that changes IP keeps its
+    /// identity (`id` is already the machineId-preferring stable key). Empty
+    /// for rows persisted before protocol-1 — they still load (see the lenient
+    /// decoder) and are upgraded in place by `ConnectionStore.remember` the
+    /// first time the box is seen with a stable id.
+    var machineId: String
+
+    init(
+        id: String,
+        name: String,
+        ip: String,
+        udpPort: Int,
+        pairPort: Int,
+        httpPort: Int,
+        machineId: String = ""
+    ) {
+        self.id = id
+        self.name = name
+        self.ip = ip
+        self.udpPort = udpPort
+        self.pairPort = pairPort
+        self.httpPort = httpPort
+        self.machineId = machineId
+    }
+
+    /// Rows persisted before protocol-1 lack `machineId`; the synthesized
+    /// decoder would reject them wholesale, silently forgetting every saved
+    /// satellite on upgrade. Fall back to "" instead.
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decode(String.self, forKey: .id)
+        self.name = try container.decode(String.self, forKey: .name)
+        self.ip = try container.decode(String.self, forKey: .ip)
+        self.udpPort = try container.decode(Int.self, forKey: .udpPort)
+        self.pairPort = try container.decode(Int.self, forKey: .pairPort)
+        self.httpPort = try container.decode(Int.self, forKey: .httpPort)
+        self.machineId = try container.decodeIfPresent(String.self, forKey: .machineId) ?? ""
+    }
 
     func toDiscovered() -> DiscoveredServer {
-        DiscoveredServer(name: name, ip: ip, udpPort: udpPort, pairPort: pairPort, httpPort: httpPort)
+        DiscoveredServer(
+            name: name,
+            ip: ip,
+            udpPort: udpPort,
+            pairPort: pairPort,
+            httpPort: httpPort,
+            machineId: machineId
+        )
     }
 }

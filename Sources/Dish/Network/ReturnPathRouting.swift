@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 
 /// Pure routing decisions for the satellite → dish *return path* (`MSG_RUMBLE`
@@ -14,9 +15,9 @@ import Foundation
 /// a `ForwardingFlags` snapshot.
 ///
 /// That decision is factored out here so it can be unit-tested without driving
-/// a socket or a real controller — the same "pure seam" pattern as
-/// `SatelliteClient.parseRumblePayload` / `parseLightbarMessage` on the decode
-/// side. `AppModel`'s handlers call straight into these functions.
+/// a socket or a real controller — the same "pure seam" pattern as the
+/// `DishCore` payload decoders (`RumbleCommand.parse` / `LightbarCommand.parse`)
+/// on the decode side. `AppModel`'s handlers call straight into these functions.
 enum ReturnPathRouting {
 
     /// Whether a decoded `MSG_RUMBLE` should drive the haptics. Gated solely
@@ -27,7 +28,7 @@ enum ReturnPathRouting {
 
     /// Whether a decoded `MSG_LIGHTBAR` colour should reach the controller.
     /// Gated solely on the Light bar setting.
-    static func shouldApply(lightbar _: SatelliteClient.LightbarMessage, flags: ForwardingFlags) -> Bool {
+    static func shouldApply(lightbar _: LightbarCommand, flags: ForwardingFlags) -> Bool {
         flags.lightbar
     }
 }

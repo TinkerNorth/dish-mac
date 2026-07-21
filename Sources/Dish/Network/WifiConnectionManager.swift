@@ -2,12 +2,38 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import CryptoKit
+import DishCore
 import Foundation
 import os
 
 enum ConnectionEvent {
     case pairingRequired(DiscoveredServer)
     case error(String)
+}
+
+/// Thread-safe breadcrumb log of hosts whose presented TLS cert mismatched
+/// the stored TOFU pin. The `PinVerifier` (URLSession delegate queue) records;
+/// the manager's failure paths consume so a mismatch abort surfaces as the
+/// honest "identity changed" message instead of a generic "unreachable" —
+/// mirrors dish-android's IDENTITY_CHANGED_MSG UX.
+final class PinMismatchLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var hosts: Set<String> = []
+
+    func record(_ host: String) {
+        lock.lock()
+        defer { lock.unlock() }
+        hosts.insert(host)
+    }
+
+    /// True (and clears the breadcrumb) when `host` mismatched since the
+    /// last consume.
+    func consume(_ host: String) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        return hosts.remove(host) != nil
+    }
 }
 
 /// Why a connect attempt was initiated. The same connect path is shared
@@ -38,7 +64,8 @@ final class WifiConnectionManager: ObservableObject {
     /// IDs currently in the pair-and-handshake flow. The connections page
     /// uses this to render a spinner per row.
     @Published private(set) var pairingInFlight: Set<String> = []
-    /// True while any pooled connection is awaiting `MSG_CONTROLLER_ACK`.
+    /// True while any pooled connection is still converging its bound slot
+    /// over the per-slot REST routes (descriptor PUT/DELETE while live).
     /// Aggregated from each `WifiConnection.isRegisteringController`.
     @Published private(set) var anyControllerRegistering = false
     /// Persistent "Needs pairing" markers — the server has forgotten this
@@ -50,11 +77,12 @@ final class WifiConnectionManager: ObservableObject {
     /// session is established (or the user forgets the satellite). Mirrors
     /// `staleSatelliteIds` in `dish-android/SatelliteConnectionManager.kt`.
     ///
-    /// Keyed by `DiscoveredServer.id` (the `wifi:<ip>:<port>` string the
-    /// rest of this layer already uses for `connections[...]` and the store)
-    /// — no separate typed `SatelliteId` exists on the Mac client, and
-    /// matching the connection-pool key avoids a parallel id space the UI
-    /// would have to reconcile.
+    /// Keyed by `DiscoveredServer.id` (`mid:<machineId>`, or the legacy
+    /// `wifi:<ip>:<port>` fallback for satellites with no machineId — the
+    /// same key `connections[...]` and the store use) — no separate typed
+    /// `SatelliteId` exists on the Mac client, and matching the
+    /// connection-pool key avoids a parallel id space the UI would have to
+    /// reconcile.
     @Published private(set) var staleSatelliteIds: Set<String> = []
     let events = PassthroughSubject<ConnectionEvent, Never>()
     /// Forwarded from per-connection `slotRegistrationFailed` so
@@ -68,13 +96,84 @@ final class WifiConnectionManager: ObservableObject {
         subsystem: "com.tinkernorth.dish", category: "discovery"
     )
 
-    private let store: ConnectionStore
-    private lazy var deviceId = store.getOrCreateDeviceId()
-    private let deviceName = Host.current().localizedName ?? "Mac"
+    // The stored properties below are `internal` (not `private`) because the
+    // pairing flows live in `WifiConnectionManager+Pairing.swift` — Swift
+    // scopes `private` to the file, and weakening the lint limits instead of
+    // splitting the file is not an option.
+
+    let store: ConnectionStore
+    lazy var deviceId = store.getOrCreateDeviceId()
+    let deviceName = Host.current().localizedName ?? "Mac"
     private var perConnCancellables: [String: Set<AnyCancellable>] = [:]
+    /// TOFU mismatch breadcrumbs recorded by the pin verifier (see
+    /// `PinMismatchLog`).
+    let pinMismatches = PinMismatchLog()
+    /// Pairing gateway with the TOFU delegate installed. Lazy: the verifier
+    /// composition needs `store`.
+    lazy var pairing = PairingClient(pinVerifier: makePinVerifier())
+    /// Authenticated REST gateway (sessions/controllers/unpair), same TOFU
+    /// delegate composition.
+    lazy var http = HTTPClient(pinVerifier: makePinVerifier())
+    /// In-flight path-B approval polls, keyed by connection id, so a
+    /// re-issued request supersedes the prior poll and forget/disconnect can
+    /// cancel it.
+    var approvalPolls: [String: Task<Void, Never>] = [:]
+    /// Per-connection reconnect throttle on the `DishCore.backoffDelayMs`
+    /// curve (gap G14). Mutated only by the `+Lifecycle` split
+    /// (`scheduleRetry` / `suppressRetry` / `clearRetry`); user action clears
+    /// everything. `internal` for the split + the lifecycle tests.
+    var retry: [String: RetryState] = [:]
+    /// The armed one-shot retry task per connection (fires
+    /// `connect(intent: .retryAfterDeath)` when the backoff delay elapses).
+    /// Superseded on re-schedule, cancelled by `clearRetry`/`suppressRetry`.
+    var retryTasks: [String: Task<Void, Never>] = [:]
 
     init(store: ConnectionStore) {
         self.store = store
+    }
+
+    /// `pairingInFlight` mutation helpers for the `+Pairing` split (the
+    /// published set keeps its `private(set)`). Depth-counted: a superseded
+    /// approval flow unwinding after cancellation must not clear the marker
+    /// its successor holds under the same id.
+    private var pairingDepth: [String: Int] = [:]
+
+    func beginPairing(_ id: String) {
+        pairingDepth[id, default: 0] += 1
+        pairingInFlight.insert(id)
+    }
+
+    func endPairing(_ id: String) {
+        let depth = (pairingDepth[id] ?? 1) - 1
+        if depth > 0 {
+            pairingDepth[id] = depth
+        } else {
+            pairingDepth.removeValue(forKey: id)
+            pairingInFlight.remove(id)
+        }
+    }
+
+    /// TOFU (gap G7): first contact pins the cert's SHA-256 DER fingerprint
+    /// for this host; any later cert that differs is rejected (anti-MITM) and
+    /// the mismatch is breadcrumbed for the honest error message. The store's
+    /// pin accessors are lock-guarded because this runs on URLSession's
+    /// delegate queue. Composes DishCore's pure verdict ladder.
+    func makePinVerifier() -> PinVerifier {
+        let store = store
+        let mismatches = pinMismatches
+        return { host, der in
+            let presented = sha256FingerprintHex(der)
+            switch tofuVerdict(pinned: store.certPin(host: host), presented: presented) {
+            case .trustFirstUse:
+                store.setCertPin(host: host, fingerprintHex: presented)
+                return true
+            case .match:
+                return true
+            case .mismatch:
+                mismatches.record(host)
+                return false
+            }
+        }
     }
 
     func get(_ id: String) -> WifiConnection? {
@@ -82,9 +181,12 @@ final class WifiConnectionManager: ObservableObject {
     }
 
     /// Insert `conn` into the pool and start forwarding its per-connection
-    /// signals (controller-ack errors + slot-registration-failed) into the
-    /// manager-level event streams.
-    private func register(_ conn: WifiConnection) {
+    /// signals (slot apply errors + slot-registration-failed) into the
+    /// manager-level event streams, plus install the data-plane hooks: slot
+    /// changes converge over the per-slot REST routes, and the send counter
+    /// approaching exhaustion triggers a proactive re-PUT (gap G4).
+    /// (Internal for the `+Pairing` split.)
+    func register(_ conn: WifiConnection) {
         connections[conn.id] = conn
         var bag = Set<AnyCancellable>()
         conn.errorMessages
@@ -96,6 +198,14 @@ final class WifiConnectionManager: ObservableObject {
         conn.$isRegisteringController
             .sink { [weak self] _ in self?.recomputeAnyRegistering() }
             .store(in: &bag)
+        conn.onTopologyChanged = { [weak self, weak conn] in
+            guard let self, let conn else { return }
+            Task { await self.syncBoundSlot(conn) }
+        }
+        conn.onRekeyNeeded = { [weak self, weak conn] in
+            guard let self, let conn else { return }
+            Task { await self.rekeySession(conn) }
+        }
         perConnCancellables[conn.id] = bag
     }
 
@@ -149,6 +259,17 @@ final class WifiConnectionManager: ObservableObject {
                 guard let self else { return }
                 self.discoveredServers = merged
                 self.isScanning = false
+                // Re-home remembered satellites whose machineId matched under
+                // a new address (DHCP move): the store refreshes rows in
+                // place, and any idle pool entry re-points so the next
+                // connect targets the current endpoint (gap G11; mirrors
+                // dish-linux startDiscovery).
+                self.store.refreshFromDiscovery(merged)
+                let pool = self.connections
+                for server in merged {
+                    guard let conn = pool[server.id], conn.state == .idle else { continue }
+                    conn.updateServer(server)
+                }
                 if merged.isEmpty {
                     self.events.send(.error("No servers found — check your network"))
                 }
@@ -189,8 +310,13 @@ final class WifiConnectionManager: ObservableObject {
     /// fire a banner the user didn't ask for.
     func connect(to server: DiscoveredServer, intent: ConnectIntent = .userInitiated) {
         let id = WifiConnection.idFor(server)
+        // A user action resets the backoff curve AND lifts the
+        // replaced-session suppression — the user outranks both (gap G14).
+        if intent == .userInitiated { clearRetry(id) }
         if let existing = connections[id] {
-            if existing.state == .live || existing.state == .linking {
+            // Faltering is still a live session — reconnecting over it would
+            // kick a link that's mid-recovery (dish-linux connectTo).
+            if existing.state == .live || existing.state == .linking || existing.state == .faltering {
                 existing.updateServer(server)
                 return
             }
@@ -205,213 +331,116 @@ final class WifiConnectionManager: ObservableObject {
         Task { await pairAndConnect(conn: conn, server: server, intent: intent) }
     }
 
-    private func pairAndConnect(
-        conn: WifiConnection,
-        server: DiscoveredServer,
-        intent: ConnectIntent
-    ) async {
-        let id = WifiConnection.idFor(server)
-        // Auto-reconnect fast path: if we already have a shared key saved for
-        // this server, skip the TCP pair handshake entirely and go straight
-        // to `openSession`. A moved/offline server then fails fast in the
-        // HTTP layer instead of bouncing through pair → PairingRequired and
-        // trapping the user behind a PIN prompt that can't be satisfied.
-        // Mirrors dish-android PR #43.
-        if let saved = store.sharedKey(for: id), saved.count == 64 {
-            await openSession(conn: conn, server: server, intent: intent)
-            return
-        }
-        // Snapshot main-actor state so the detached task doesn't need to hop.
-        let did = deviceId, dname = deviceName
-        pairingInFlight.insert(conn.id)
-        defer { pairingInFlight.remove(conn.id) }
-        // Empty PIN is the "already-paired, re-use saved shared key" path.
-        let pair = await Task.detached(priority: .userInitiated) {
-            PairingClient.pair(
-                ip: server.ip,
-                port: server.pairPort,
-                deviceId: did,
-                deviceName: dname,
-                pin: ""
-            )
-        }.value
-        switch PairingClient.classify(pair) {
-        case let .success(sharedKey):
-            store.setSharedKey(sharedKey, for: id)
-            await openSession(conn: conn, server: server, intent: intent)
-        case .authRequired:
-            conn.markDisconnected()
-            // Only pop the PIN dialog if the user just tapped Connect. A
-            // background auto-reconnect that lands here means the server
-            // forgot our pairing; surface it silently — the row chip flips
-            // to `.stale` ("Needs pairing") via the persistent
-            // `staleSatelliteIds` set so the user knows the next tap will
-            // prompt for a fresh PIN, rather than the chip flicking back to
-            // `.saved` / `.ready` and hiding the broken pairing.
-            if intent == .userInitiated {
-                events.send(.pairingRequired(server))
-            } else {
-                markStale(id)
-            }
-        case let .unreachable(msg):
-            conn.markDisconnected()
-            emitErrorIfUserInitiated(
-                intent,
-                "Server unreachable — has it moved networks? (\(msg))"
-            )
-        }
-    }
-
     /// Emit a `ConnectionEvent.error` only when the user has a recent mental
     /// model for "I asked for this". Background auto-reconnects + silent
     /// retries after a heartbeat death already have all the feedback the
     /// user needs in the row chip; a banner on top would be noise.
-    private func emitErrorIfUserInitiated(_ intent: ConnectIntent, _ message: String) {
+    /// (Internal for the `+Pairing` split.)
+    func emitErrorIfUserInitiated(_ intent: ConnectIntent, _ message: String) {
         if intent == .userInitiated {
             events.send(.error(message))
         }
     }
 
-    /// Finish pairing with a user-supplied PIN.
-    func pairWithPin(_ server: DiscoveredServer, pin: String) {
-        let id = WifiConnection.idFor(server)
-        let conn = connections[id] ?? {
-            let newConn = WifiConnection(id: id, server: server)
-            register(newConn)
-            return newConn
-        }()
-        conn.markConnecting()
-        let did = deviceId, dname = deviceName
-        Task {
-            pairingInFlight.insert(conn.id)
-            defer { pairingInFlight.remove(conn.id) }
-            let pair = await Task.detached(priority: .userInitiated) {
-                PairingClient.pair(
-                    ip: server.ip,
-                    port: server.pairPort,
-                    deviceId: did,
-                    deviceName: dname,
-                    pin: pin
-                )
-            }.value
-            switch PairingClient.classify(pair) {
-            case let .success(sharedKey):
-                store.setSharedKey(sharedKey, for: id)
-                await openSession(conn: conn, server: server, intent: .userInitiated)
-            case .authRequired:
-                conn.markDisconnected()
-                events.send(.error(pair.error ?? "Pairing failed"))
-            case let .unreachable(msg):
-                conn.markDisconnected()
-                events.send(.error("Server unreachable — has it moved networks? (\(msg))"))
-            }
-        }
-    }
+    // `openSession` (the declarative session PUT + HKDF key handoff), the
+    // proactive re-key and the per-slot converge live in
+    // `WifiConnectionManager+Session.swift` — the same file split the
+    // pairing flows use.
 
-    private func openSession(
-        conn: WifiConnection,
-        server: DiscoveredServer,
-        intent: ConnectIntent
-    ) async {
-        let id = WifiConnection.idFor(server)
-        guard let keyHex = store.sharedKey(for: id),
-              keyHex.count == 64,
-              let keyData = hexToBytes(keyHex), keyData.count == 32 else
-        {
-            conn.markDisconnected()
-            // Silent retry / cold-launch reconnect with no usable key on
-            // disk: the only useful next step is a fresh user-initiated
-            // pair, so mark the row "Needs pairing" until that happens.
-            // User-initiated callers already get the explicit banner.
-            if intent != .userInitiated {
-                markStale(id)
-            }
-            emitErrorIfUserInitiated(intent, "No shared key — re-pair needed")
-            return
-        }
-        let resp = await HTTPClient.connect(
-            ip: server.ip,
-            port: server.httpPort,
-            deviceId: deviceId
-        )
-        guard let connId = resp.connectionId,
-              let tokenHex = resp.token,
-              let tokenData = hexToBytes(tokenHex), tokenData.count == 4 else
-        {
-            conn.markDisconnected()
-            emitErrorIfUserInitiated(intent, "Error: \(resp.error ?? "connection failed")")
-            return
-        }
-        let client = SatelliteClient()
-        guard client.openSocket(ip: server.ip, port: server.udpPort) else {
-            conn.markDisconnected()
-            return
-        }
-        client.setConnectionParams(token: tokenData, key: keyData)
-        store.remember(server)
-        // Successful authenticated session: any "Needs pairing" marker we
-        // set on a prior failed silent retry no longer applies. Clearing
-        // here (rather than in the caller) covers all three intents —
-        // userInitiated, autoReconnect, retryAfterDeath — uniformly.
-        clearStale(id)
-        conn.markConnected(client: client, connectionId: connId) { [weak self] in
-            // Heartbeats stopped. The alive-poll already flipped the wire
-            // state to `.stale` before invoking us; tear down the dead
-            // session and kick a short-backoff silent reconnect attempt
-            // using the saved shared key. If the satellite is just
-            // momentarily unreachable (Wi-Fi roam, brief drop) the chip
-            // glides Online → Connecting… → Online without a banner. If
-            // the outage persists, the silent retry fails and the chip
-            // lands on `.saved` / `.ready` — still no banner, because the
-            // user didn't ask for this attempt. Ports
-            // `SatelliteConnectionManager.kt` AUTO_RETRY_BACKOFF_MS.
-            guard let self else { return }
-            let staleServer = server
-            self.disconnect(id: conn.id)
-            Task { [weak self] in
-                try? await Task.sleep(nanoseconds: Self.autoRetryBackoffNs)
-                guard let self else { return }
-                if self.connections[conn.id]?.state == .idle {
-                    self.connect(to: staleServer, intent: .retryAfterDeath)
-                }
-            }
-        }
-    }
-
-    /// Delay before the alive-poll's onDead path attempts a silent reconnect.
-    /// Short enough that a momentary Wi-Fi drop self-heals before the user
-    /// navigates away in frustration; long enough that a real outage doesn't
-    /// burn the satellite's TCP/UDP buffers with back-to-back retries. The
-    /// retry path uses `.retryAfterDeath` so it's silent on failure.
-    private static let autoRetryBackoffNs: UInt64 = 1_500_000_000
-
+    /// Graceful close: `DELETE /api/connections/{id}` (authed; no notify —
+    /// the closer already knows).
     func disconnect(id: String) {
         guard let conn = connections[id] else { return }
+        cancelApprovalPoll(id)
         let server = conn.server
         let cid = conn.connectionId
         let did = deviceId
+        let proof = proofFor(id)
         conn.markDisconnected()
+        // An explicit disconnect parks the row — no scheduled silent retry
+        // should resurrect a session the user just closed.
+        clearRetry(id)
         if let cid {
+            let http = http
             Task.detached(priority: .utility) {
-                _ = await HTTPClient.disconnect(
+                await http.deleteSession(
                     ip: server.ip,
                     port: server.httpPort,
                     connectionId: cid,
-                    deviceId: did
+                    deviceId: did,
+                    hmacProof: proof
                 )
             }
         }
     }
 
+    /// Forget also self-unpairs server-side (`DELETE /api/pair`,
+    /// best-effort): the satellite drops this deviceId so its operator list
+    /// stays truthful (contract §Pairing Delete; gap G16). Needs the proof,
+    /// so it must run BEFORE the key is deleted.
     func forget(id: String) {
+        cancelApprovalPoll(id)
+        let endpoint: (ip: String, httpPort: Int)? =
+            connections[id].map { ($0.server.ip, $0.server.httpPort) }
+                ?? store.remembered().first { $0.id == id }.map { ($0.ip, $0.httpPort) }
+        let proof = proofFor(id)
+        if let endpoint, !proof.isEmpty {
+            let did = deviceId
+            let http = http
+            Task.detached(priority: .utility) {
+                await http.unpair(
+                    ip: endpoint.ip,
+                    port: endpoint.httpPort,
+                    deviceId: did,
+                    hmacProof: proof
+                )
+            }
+        }
         disconnect(id: id)
         store.forget(id)
         connections.removeValue(forKey: id)
         perConnCancellables.removeValue(forKey: id)
-        // The satellite is gone from the saved list — any stale marker for
-        // it would dangle on a row that no longer exists.
+        // The satellite is gone from the saved list — any stale marker or
+        // armed retry for it would dangle on (or resurrect) a row that no
+        // longer exists.
         clearStale(id)
+        clearRetry(id)
         recomputeAnyRegistering()
+    }
+
+    // MARK: - Auth material (contract §hmacProof)
+
+    /// The stored pairing key as raw bytes, or nil when absent/malformed.
+    /// (Internal for the `+Session` split.)
+    func pairingKeyData(for id: String) -> Data? {
+        guard let hex = store.sharedKey(for: id), hex.count == 64,
+              let data = hexToBytes(hex), data.count == 32 else { return nil }
+        return data
+    }
+
+    /// `hex(HMAC-SHA256(pairingKey, "satellite-proof:" + deviceId))` for the
+    /// `X-Hmac-Proof` header; empty when no key is stored.
+    func proofFor(_ id: String) -> String {
+        guard let key = pairingKeyData(for: id) else { return "" }
+        return SessionCrypto.hmacProofHex(pairingKey: key, deviceId: deviceId)
+    }
+
+    /// Terminal auth (401 NOT_PAIRED / BAD_PROOF on any authed route, and
+    /// close-notify(unpaired) via `handleClose`): the satellite revoked our
+    /// trust. The ONE funnel for every trust-revocation path — drops ONLY the
+    /// key (the remembered row survives and parks on the persistent "Needs
+    /// pairing" marker instead of silently deleting the satellite), tears the
+    /// session, and STOPS the retry curve — re-pairing needs the user, so
+    /// silent retries would just hammer a server that already said no.
+    /// Loud only when the user has context for the failure (gaps G6/G15).
+    func handleTerminalAuth(_ id: String, loud: Bool) {
+        store.forgetKey(for: id)
+        markStale(id)
+        clearRetry(id)
+        connections[id]?.markDisconnected()
+        if loud {
+            events.send(.error(Self.repairNeededMessage))
+        }
     }
 
     /// Reconnect every remembered server that isn't already live. Safe to call
@@ -421,13 +450,32 @@ final class WifiConnectionManager: ObservableObject {
     /// silently (the row chip carries the feedback). A banner here would
     /// fire on every launch where a remembered satellite is offline, which
     /// is noise the user didn't ask for.
+    ///
+    /// Respects the per-connection backoff curve and the replaced-session
+    /// suppression (gap G14): a row whose armed retry hasn't come due — or
+    /// that close-notify(replaced) parked until the user acts — is skipped.
     func autoReconnectAll() {
+        let now = Self.nowMs()
         for remembered in store.remembered() {
             let existing = connections[remembered.id]
-            if existing?.state != .live {
-                connect(to: remembered.toDiscovered(), intent: .autoReconnect)
+            let resting = existing == nil || existing?.state == .idle || existing?.state == .stale
+            guard resting else { continue }
+            if let throttle = retry[remembered.id], throttle.suppressed || now < throttle.nextRetryAtMs {
+                continue
             }
+            connect(to: remembered.toDiscovered(), intent: .autoReconnect)
         }
+    }
+
+    /// Wake-from-sleep: sockets may be dead and the IP may have moved, so
+    /// resting rows reconnect NOW instead of waiting out the backoff curve.
+    /// Suppressed rows (close-notify `replaced`) stay parked — only the user
+    /// lifts those.
+    func resumeAfterWake() {
+        for (id, state) in retry where !state.suppressed {
+            clearRetry(id)
+        }
+        autoReconnectAll()
     }
 
     func remembered() -> [RememberedWifi] {

@@ -307,7 +307,7 @@ final class GameControllerInput: ObservableObject {
     /// IDs aren't surfaced either, so we use the stable slot indices 0 / 1.
     ///
     /// The MSG_TOUCHPAD wire frame is centre-origin with `+y` pointing *down*
-    /// (see satellite/docs/protocol.md). GameController's direction-pad y-axis
+    /// (see satellite/docs/contract.md). GameController's direction-pad y-axis
     /// points up, so the y-axis is negated here — the same flip the thumbstick
     /// path applies — keeping the macOS sender consistent with the SDL senders.
     private nonisolated func pushTouchpad(
@@ -393,7 +393,7 @@ final class GameControllerInput: ObservableObject {
     ///    (0, 0, -1)." So `gravity` is the gravitational *load* vector (points
     ///    toward the ground) and the axes are right-handed with `+X` = right,
     ///    `+Y` = up, `+Z` = toward the player — the same right-handed DSU frame
-    ///    `satellite/docs/protocol.md` §0x000A specifies. The axes map 1:1, so
+    ///    `satellite/docs/contract.md` §0x000A specifies. The axes map 1:1, so
     ///    no per-axis rotation is applied; `gcMotionToWire` documents the rest
     ///    (including why accel is `userAcceleration - gravity`, not their sum).
     ///

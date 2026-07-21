@@ -146,18 +146,27 @@ rate and must never block. If you're modifying `GameControllerInput`,
 ## Touching the wire protocol
 
 The macOS, Android, and Linux clients all talk to the same `satellite`
-server and must produce byte-identical traffic:
+server and must produce byte-identical traffic. The contract (protocol 1)
+is specified in ONE place — `satellite/docs/contract.md`; this repo's
+[`docs/contract.md`](docs/contract.md) maps each concept to the Swift file
+implementing it. Never restate contract facts in code comments — link them.
 
-- AEAD: ChaCha20-Poly1305 IETF, 12-byte big-endian nonce derived from a
-  monotonic counter.
-- Packet layout: `token(4) | counter(4) | ciphertext+tag`, with the
-  4-byte token as AAD.
-- XUSB report: 12 bytes, little-endian.
-- Ports: discovery UDP 9879, pairing TCP 9878, HTTP TCP 9877,
-  streaming UDP 9876.
+Ground rules when changing anything wire-adjacent:
 
-Any change here must be coordinated with `dish-android`, `dish-linux`,
-and `satellite` in the same PR / release cycle.
+- All protocol logic that can be pure lives in the `DishCore` target
+  (Foundation + CryptoKit only). Wire bytes are pinned by the cross-repo
+  interop vectors in `Tests/DishCoreTests/SessionCryptoVectorTests.swift` —
+  the same hex as the satellite / dish-linux / dish-android / dish-windows
+  suites. If a vector test fails, you broke the protocol, not the test.
+- AEAD: ChaCha20-Poly1305 IETF under the per-session HKDF key; nonce =
+  `dir(1) | 0x00×7 | counter(4 BE)`; AAD = token; counters start at 1 per
+  direction and never wrap.
+- Topology is REST-only (declarative `PUT /api/connections` on `:9443`).
+  The deleted protocol-0 topology opcodes must stay deleted — a stray
+  reference should fail to compile.
+- Any change here must be coordinated with `dish-android`, `dish-linux`,
+  `dish-windows`, and `satellite` in the same PR / release cycle, vectors
+  updated in lockstep on every end.
 
 ## Reporting bugs
 

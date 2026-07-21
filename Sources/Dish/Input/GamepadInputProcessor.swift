@@ -67,12 +67,14 @@ final class GamepadInputProcessor {
     /// Invoked on every touchpad sample. Coordinates are pre-scaled int16.
     /// `fingerNId` is a monotonic per-finger tracking id, bumped by the bridge
     /// on each fresh contact (the protocol's per-finger id; GameController
-    /// surfaces no native one).
+    /// surfaces no native one). `eventTimeMs` is the sender-side sample
+    /// uptime stamp (ms) the protocol-1 16-byte payload carries at offset 12.
     typealias TouchpadSender = (
         _ deviceId: DeviceId,
         _ finger0Active: Bool, _ finger0Id: UInt8, _ finger0X: Int16, _ finger0Y: Int16,
         _ finger1Active: Bool, _ finger1Id: UInt8, _ finger1X: Int16, _ finger1Y: Int16,
-        _ buttonPressed: Bool
+        _ buttonPressed: Bool,
+        _ eventTimeMs: UInt32
     ) -> Void
 
     var reportSender: ReportSender?
@@ -206,7 +208,7 @@ final class GamepadInputProcessor {
     }
 
     /// Forward a battery snapshot. `level` is 0..100 inclusive or `0xFF`
-    /// (unknown). `statusRaw` is one of the `SatelliteClient.BatteryStatus`
+    /// (unknown). `statusRaw` is one of the `DishCore.BatteryStatus`
     /// raw values; the bridge resolves the enum before calling.
     func publishBattery(deviceId: DeviceId, level: UInt8, statusRaw: UInt8) {
         batterySender?(deviceId, level, statusRaw)
@@ -215,19 +217,25 @@ final class GamepadInputProcessor {
     // `publishTouchpad` takes one argument per wire field (the protocol's
     // §0x000C layout). Bundling them into a struct purely to satisfy the
     // parameter-count rule would add an indirection the flat wire-mapping
-    // doesn't benefit from — same rationale as
-    // `SatelliteClient.encodeTouchpadPayload`.
+    // doesn't benefit from — same rationale as `DishCore.Encoders`'
+    // touchpad encoder.
     // swiftlint:disable function_parameter_count
 
     /// Forward a touchpad sample. Coordinates are already scaled to int16 by
     /// the bridge, and the per-finger tracking ids are already resolved by it.
     /// No deadzone / filtering is applied — a touchpad is an absolute pointing
     /// surface, not a self-centring stick.
+    ///
+    /// `nowNs` stamps the wire's `eventTimeMs` (sender-side uptime, ms —
+    /// contract §0x000C). GameController surfaces no per-event timestamp, so
+    /// the publish instant is the closest stamp to the sample; the default is
+    /// overridable for tests, same seam as `publishMotion`.
     func publishTouchpad(
         deviceId: DeviceId,
         finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
         finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool
+        buttonPressed: Bool,
+        nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
     ) {
         touchpadSender?(
             deviceId,
@@ -239,7 +247,8 @@ final class GamepadInputProcessor {
             finger1Id,
             finger1X,
             finger1Y,
-            buttonPressed
+            buttonPressed,
+            UInt32(truncatingIfNeeded: nowNs / 1_000_000)
         )
     }
 
@@ -338,12 +347,13 @@ func gcMotionToWire(
 
 /// Advance a finger's monotonic touchpad tracking id across one sample.
 ///
-/// The MSG_TOUCHPAD protocol wants a per-finger id that increments on each
-/// **new contact** so the receiver can tell "finger lifted then a new finger
-/// touched" from "the same finger kept sliding". GameController exposes no
-/// native id, so the bridge derives one from the active-edge: a `false → true`
-/// transition (a fresh touch-down) bumps the id; every other case keeps it.
-/// `UInt8` wraps freely — the protocol says ids "wrap freely".
+/// Per-finger wire id: increments on each **new contact** so the receiver
+/// can tell "finger lifted then a new finger touched" from "the same finger
+/// kept sliding" (the same up→down edge rule the satellite's own DS4
+/// tracking-id derivation uses). GameController exposes no native id, so the
+/// bridge derives one from the active-edge: a `false → true` transition (a
+/// fresh touch-down) bumps the id; every other case keeps it. `UInt8` wrap
+/// is harmless — only the edge carries information.
 ///
 /// Pure so the edge logic can be unit-tested without a live touchpad.
 @inline(__always)
@@ -353,8 +363,9 @@ func nextTouchpadTrackingId(wasActive: Bool, isActive: Bool, current: UInt8) -> 
 
 /// Convert GameController's centre-origin `-1..1` touchpad axes into the
 /// MSG_TOUCHPAD wire frame: centre-origin int16 with `+x` right and `+y`
-/// *down*. GameController's direction-pad `+y` is up, so y is negated — the
-/// flip §0x000C of `satellite/docs/protocol.md` requires of the macOS sender.
+/// *down* (the wire convention pinned in
+/// `satellite/src/core/touchpad_codec.h`). GameController's direction-pad
+/// `+y` is up, so y is negated.
 /// Pure so the negation can be unit-tested without a live touchpad.
 @inline(__always)
 func gcTouchpadAxisToWire(x: Float, y: Float) -> (x: Int16, y: Int16) {

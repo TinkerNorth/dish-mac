@@ -10,12 +10,28 @@ import XCTest
 /// from trapping the user behind an unanswerable PIN prompt.
 final class PairingClientClassifyTests: XCTestCase {
 
-    func testSuccessRequiresOkAndSharedKey() {
+    func testSuccessRequiresOkAndFullHexSharedKey() {
         var r = PairResponse()
         r.ok = true
-        r.sharedKey = "abcd"
+        r.sharedKey = String(repeating: "ab", count: 32)
         r.reachable = true
-        XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: "abcd"))
+        XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: String(repeating: "ab", count: 32)))
+    }
+
+    func testOkWithMalformedSharedKeyIsNotSuccess() {
+        // Path A rides the same 64-hex gate as the path-B poll: a short or
+        // non-hex key must never be persisted as trust material.
+        var short = PairResponse()
+        short.ok = true
+        short.sharedKey = "abcd"
+        short.reachable = true
+        XCTAssertEqual(PairingClient.classify(short), .authRequired)
+
+        var nonHex = PairResponse()
+        nonHex.ok = true
+        nonHex.sharedKey = String(repeating: "zz", count: 32)
+        nonHex.reachable = true
+        XCTAssertEqual(PairingClient.classify(nonHex), .authRequired)
     }
 
     func testReachableButNotOkIsAuthRequired() {
@@ -65,6 +81,87 @@ final class PairingClientClassifyTests: XCTestCase {
         r.sharedKey = ""
         r.reachable = true
         XCTAssertEqual(PairingClient.classify(r), .authRequired)
+    }
+
+    // MARK: - Protocol-1 arms (G5 / G16)
+
+    func testConflictStatusIsVersionMismatchEvenWhenReachable() {
+        // 409 must win over the generic reachable→authRequired fallthrough:
+        // popping a PIN prompt for a protocol skew traps the user in a dance
+        // that can never succeed (contract §Versioning).
+        var r = PairResponse()
+        r.ok = false
+        r.reachable = true
+        r.httpStatus = 409
+        r.error = "protocol version unsupported"
+        XCTAssertEqual(PairingClient.classify(r), .versionMismatch)
+    }
+
+    func testPendingResponseIsPendingApproval() {
+        var r = PairResponse()
+        r.ok = false
+        r.pending = true
+        r.reachable = true
+        XCTAssertEqual(PairingClient.classify(r), .pendingApproval)
+    }
+
+    func testSuccessWinsOverPendingFlag() {
+        // A key in hand is a key in hand, whatever else the body says.
+        var r = PairResponse()
+        r.ok = true
+        r.pending = true
+        r.sharedKey = String(repeating: "ab", count: 32)
+        r.reachable = true
+        XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: String(repeating: "ab", count: 32)))
+    }
+
+    // MARK: - Path-B status poll classification (ports dish-android PairingApproval)
+
+    private func status(_ status: String, key: String? = nil) -> PairStatusResponse {
+        var r = PairStatusResponse()
+        r.ok = status == "approved"
+        r.status = status
+        r.sharedKey = key
+        r.reachable = true
+        return r
+    }
+
+    func testApprovedWithFullHexKeyIsApproved() {
+        let key = String(repeating: "ab", count: 32)
+        XCTAssertEqual(
+            PairingClient.classifyStatus(status("approved", key: key)),
+            .approved(sharedKeyHex: key)
+        )
+    }
+
+    func testApprovedWithoutUsableKeyIsDeclined() {
+        // Approved-but-malformed must never be mistaken for a usable key.
+        XCTAssertEqual(PairingClient.classifyStatus(status("approved")), .declined)
+        XCTAssertEqual(PairingClient.classifyStatus(status("approved", key: "abcd")), .declined)
+        let nonHex = String(repeating: "zz", count: 32)
+        XCTAssertEqual(PairingClient.classifyStatus(status("approved", key: nonHex)), .declined)
+    }
+
+    func testPendingKeepsPolling() {
+        XCTAssertEqual(PairingClient.classifyStatus(status("pending")), .pending)
+    }
+
+    func testDeniedNoneAndUnknownStopPolling() {
+        XCTAssertEqual(PairingClient.classifyStatus(status("denied")), .declined)
+        XCTAssertEqual(PairingClient.classifyStatus(status("none")), .declined)
+        XCTAssertEqual(PairingClient.classifyStatus(status("")), .declined)
+        XCTAssertEqual(PairingClient.classifyStatus(status("future-state")), .declined)
+    }
+
+    // MARK: - Client PIN shape
+
+    func testGeneratedClientPinIsFourDigits() {
+        var generator = SystemRandomNumberGenerator()
+        for _ in 0 ..< 32 {
+            let pin = PairingClient.generateClientPin(using: &generator)
+            XCTAssertEqual(pin.count, 4)
+            XCTAssertTrue(pin.allSatisfy(\.isNumber), "non-digit in client PIN \(pin)")
+        }
     }
 
     // MARK: - Decoded responses default to reachable=false

@@ -37,6 +37,51 @@ final class AtomicCounterTests: XCTestCase {
         // Post-increment of final call equals total number of increments.
         XCTAssertEqual(counter.incrementAndGet(), UInt64(threads * iters + 1))
     }
+
+    // MARK: - current()/set() — the G4 re-key poll accessors
+
+    func testCurrentReadsWithoutAdvancing() {
+        let counter = AtomicCounter()
+        XCTAssertEqual(counter.current(), 0)
+        _ = counter.incrementAndGet()
+        _ = counter.incrementAndGet()
+        XCTAssertEqual(counter.current(), 2)
+        XCTAssertEqual(counter.current(), 2, "current() must not advance the sequence")
+        XCTAssertEqual(counter.incrementAndGet(), 3)
+    }
+
+    func testSetPlacesTheSequenceExactly() {
+        // The re-key tests use set() to park the counter just under the
+        // 0xF0000000 re-PUT threshold without four billion increments.
+        let counter = AtomicCounter()
+        counter.set(0xF000_0000)
+        XCTAssertEqual(counter.current(), 0xF000_0000)
+        XCTAssertEqual(counter.incrementAndGet(), 0xF000_0001)
+        counter.reset()
+        XCTAssertEqual(counter.current(), 0)
+    }
+
+    func testConcurrentCurrentReadsDoNotDisturbIncrements() {
+        let counter = AtomicCounter()
+        let iters = 10000
+        let group = DispatchGroup()
+        for _ in 0 ..< 4 {
+            DispatchQueue.global().async(group: group) {
+                for _ in 0 ..< iters {
+                    _ = counter.incrementAndGet()
+                }
+            }
+        }
+        for _ in 0 ..< 4 {
+            DispatchQueue.global().async(group: group) {
+                for _ in 0 ..< iters {
+                    _ = counter.current()
+                }
+            }
+        }
+        group.wait()
+        XCTAssertEqual(counter.current(), UInt64(4 * iters), "reads must not lose increments")
+    }
 }
 
 /// Coverage for `AtomicInt` / `AtomicBool` — the lock-guarded primitives the
