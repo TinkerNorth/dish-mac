@@ -170,6 +170,9 @@ extension WifiConnectionManager {
         if slotLiveInPut {
             conn.markSlotApplied()
         }
+        // Warm the catalog before going live so a bind defaults to the
+        // satellite's first offered type instead of the legacy fallback.
+        await fetchCatalog(id: id, server: server)
         conn.markConnected(
             client: client,
             connectionId: connId,

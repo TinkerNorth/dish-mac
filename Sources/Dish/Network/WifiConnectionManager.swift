@@ -180,6 +180,35 @@ final class WifiConnectionManager: ObservableObject {
         connections[id]
     }
 
+    // MARK: - Client catalog (contract §ServerInfo & Catalog)
+
+    /// Per-server client catalog (`GET /api/catalog`), keyed by connection id.
+    /// Populated at session open; an older / unreachable satellite simply has
+    /// no entry and the bound-slot type falls back.
+    private var catalogs: [String: CatalogDTO] = [:]
+
+    /// GET the (unauthenticated) catalog and cache it under `id`. Best-effort:
+    /// an empty result (unreachable / pre-catalog satellite) is not cached, so
+    /// the bound-slot default stays on the legacy type.
+    func fetchCatalog(id: String, server: DiscoveredServer) async {
+        await cacheCatalog(http.getCatalog(ip: server.ip, port: server.httpPort), for: id)
+    }
+
+    /// Cache a fetched catalog; an empty one is ignored so the fallback holds.
+    /// `internal` so the default-selection tests can seed one without the
+    /// network — the same seam pattern `markStale` / `markSlotApplied` use.
+    func cacheCatalog(_ catalog: CatalogDTO, for id: String) {
+        guard !catalog.controllerTypes.isEmpty else { return }
+        catalogs[id] = catalog
+    }
+
+    /// The controller type a freshly-bound slot defaults to: the first type
+    /// the satellite's catalog advertises. Falls back to the legacy Xbox
+    /// default when no catalog has been fetched so a bind never regresses.
+    func defaultControllerType(for id: String) -> Int {
+        catalogs[id]?.controllerTypes.first?.id ?? Int(ProtocolConstants.controllerTypeXbox)
+    }
+
     /// Insert `conn` into the pool and start forwarding its per-connection
     /// signals (slot apply errors + slot-registration-failed) into the
     /// manager-level event streams, plus install the data-plane hooks: slot
@@ -400,6 +429,7 @@ final class WifiConnectionManager: ObservableObject {
         store.forget(id)
         connections.removeValue(forKey: id)
         perConnCancellables.removeValue(forKey: id)
+        catalogs.removeValue(forKey: id)
         // The satellite is gone from the saved list — any stale marker or
         // armed retry for it would dangle on (or resurrect) a row that no
         // longer exists.
