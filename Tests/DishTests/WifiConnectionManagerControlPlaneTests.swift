@@ -214,6 +214,21 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         XCTAssertNil(manager.get(serverId))
     }
 
+    // MARK: - Catalog fetch on session open (contract §ServerInfo & Catalog)
+
+    func testConnectFetchesAndCachesCatalog() async {
+        prePair()
+        manager.connect(to: server)
+        let live = await waitUntil { self.manager.get(self.serverId)?.state == .live }
+        XCTAssertTrue(live)
+        // openSession warmed the catalog: the fetch landed and the bound-slot
+        // default now reads the fixture's first offered type (xbox360, id 0)
+        // from the cache rather than the hardcoded fallback. (ds4-first
+        // selection is pinned by the decoupled ConnectionHub tests.)
+        XCTAssertGreaterThanOrEqual(satellite.catalogRequests, 1)
+        XCTAssertEqual(manager.defaultControllerType(for: serverId), 0)
+    }
+
     // MARK: - Path B end-to-end (G16)
 
     func testClientPinApprovalFlowLandsKeyAndSession() async {

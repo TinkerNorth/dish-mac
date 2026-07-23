@@ -293,7 +293,7 @@ final class FakeSatelliteRestSelfTests: XCTestCase {
         XCTAssertEqual(catalog.status, 200)
         XCTAssertEqual(catalog.headers["etag"], "\"1.6.0+en\"")
         XCTAssertEqual(catalog.string("locale"), "en")
-        XCTAssertEqual(catalog.array("controllerTypes")?.count, 2)
+        XCTAssertEqual(catalog.array("controllerTypes")?.count, 4)
         let cached = try await rest.request("GET", "/api/catalog", headers: ["If-None-Match": "\"1.6.0+en\""])
         XCTAssertEqual(cached.status, 304)
         XCTAssertTrue(cached.body.isEmpty)

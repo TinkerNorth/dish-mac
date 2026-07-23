@@ -240,6 +240,147 @@ struct PairStatusResponse: Decodable {
     }
 }
 
+// MARK: - Catalog (contract §ServerInfo & Catalog)
+
+/// `GET /api/catalog` — the virtual controller types a satellite offers
+/// (unauthenticated). Clients derive the bound-slot default from
+/// `controllerTypes.first` rather than hardcoding a type; the rest is modeled
+/// for the deferred Emulate picker. Lenient like the other DTOs here. A soon-
+/// to-land per-type `emulates` object (`{sdlType,usb}`) is intentionally NOT
+/// modeled — unknown keys are ignored, so it is tolerated present or absent
+/// and consumed by nothing yet (a future physical-pad matcher owns it).
+struct CatalogDTO: Decodable, Equatable {
+    var locale = ""
+    var protocolVersion = ProtocolConstants.protocolVersion
+    var serverVersion = ""
+    var controllerTypes: [CatalogControllerType] = []
+    var hostFeatures = CatalogHostFeatures()
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case locale, protocolVersion, serverVersion, controllerTypes, hostFeatures
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.locale = try container.decodeIfPresent(String.self, forKey: .locale) ?? ""
+        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
+            ?? ProtocolConstants.protocolVersion
+        self.serverVersion = try container.decodeIfPresent(String.self, forKey: .serverVersion) ?? ""
+        self.controllerTypes = try container.decodeIfPresent(
+            [CatalogControllerType].self, forKey: .controllerTypes
+        ) ?? []
+        self.hostFeatures = try container.decodeIfPresent(CatalogHostFeatures.self, forKey: .hostFeatures)
+            ?? CatalogHostFeatures()
+    }
+}
+
+/// One offered virtual controller type. `id` is the descriptor `type` byte.
+struct CatalogControllerType: Decodable, Equatable {
+    var id = Int(ProtocolConstants.controllerTypeXbox)
+    var slug = ""
+    var name = ""
+    var shortName = ""
+    var description = ""
+    var features = CatalogFeatures()
+    var image = CatalogImage()
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case id, slug, name, shortName, description, features, image
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try container.decodeIfPresent(Int.self, forKey: .id)
+            ?? Int(ProtocolConstants.controllerTypeXbox)
+        self.slug = try container.decodeIfPresent(String.self, forKey: .slug) ?? ""
+        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        self.shortName = try container.decodeIfPresent(String.self, forKey: .shortName) ?? ""
+        self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        self.features = try container.decodeIfPresent(CatalogFeatures.self, forKey: .features) ?? CatalogFeatures()
+        self.image = try container.decodeIfPresent(CatalogImage.self, forKey: .image) ?? CatalogImage()
+    }
+}
+
+/// Per-type feature flags (each `{"supported":Bool,...}`; extra fields such as
+/// touchpad `modes` are ignored — not consumed yet).
+struct CatalogFeatures: Decodable, Equatable {
+    var rumble = CatalogFeature()
+    var analogTriggers = CatalogFeature()
+    var motion = CatalogFeature()
+    var lightbar = CatalogFeature()
+    var touchpad = CatalogFeature()
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey {
+        case rumble, analogTriggers, motion, lightbar, touchpad
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.rumble = try container.decodeIfPresent(CatalogFeature.self, forKey: .rumble) ?? CatalogFeature()
+        self.analogTriggers = try container.decodeIfPresent(CatalogFeature.self, forKey: .analogTriggers)
+            ?? CatalogFeature()
+        self.motion = try container.decodeIfPresent(CatalogFeature.self, forKey: .motion) ?? CatalogFeature()
+        self.lightbar = try container.decodeIfPresent(CatalogFeature.self, forKey: .lightbar) ?? CatalogFeature()
+        self.touchpad = try container.decodeIfPresent(CatalogFeature.self, forKey: .touchpad) ?? CatalogFeature()
+    }
+}
+
+/// A single `{"supported":Bool}` capability flag.
+struct CatalogFeature: Decodable, Equatable {
+    var supported = false
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey { case supported }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
+    }
+}
+
+/// A type's artwork reference (`{href,etag}`); rendered by the deferred picker.
+struct CatalogImage: Decodable, Equatable {
+    var href = ""
+    var etag = ""
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey { case href, etag }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.href = try container.decodeIfPresent(String.self, forKey: .href) ?? ""
+        self.etag = try container.decodeIfPresent(String.self, forKey: .etag) ?? ""
+    }
+}
+
+/// Host-level catalog features (`{supported}` shape — distinct from the
+/// session response's grant shape). Modeled for fidelity; unused for now.
+struct CatalogHostFeatures: Decodable, Equatable {
+    var mouseControl = CatalogFeature()
+    var keyboardControl = CatalogFeature()
+    var rumble = CatalogFeature()
+
+    init() {}
+
+    private enum CodingKeys: String, CodingKey { case mouseControl, keyboardControl, rumble }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.mouseControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .mouseControl) ?? CatalogFeature()
+        self.keyboardControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .keyboardControl)
+            ?? CatalogFeature()
+        self.rumble = try container.decodeIfPresent(CatalogFeature.self, forKey: .rumble) ?? CatalogFeature()
+    }
+}
+
 // MARK: - Request bodies
 
 /// Declarative per-controller desired state sent in the session/controller

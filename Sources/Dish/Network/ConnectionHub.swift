@@ -155,7 +155,7 @@ final class ConnectionHub: ObservableObject {
         rebuild()
         wifi.get(connectionId)?.attachSlot(
             slotId,
-            controllerType: 0,
+            controllerType: wifi.defaultControllerType(for: connectionId),
             hasMotion: hasMotion,
             hasLight: hasLight
         )

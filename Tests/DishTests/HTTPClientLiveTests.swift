@@ -263,6 +263,30 @@ final class HTTPClientLiveTests: XCTestCase {
         XCTAssertEqual(classifyRest(reply), .unauthorized)
     }
 
+    // MARK: - GET /api/catalog (unauthenticated)
+
+    func testGetCatalogDecodesOfferedTypesWithoutAuth() async {
+        // The catalog route takes no proof: drop the pre-planted key and it
+        // still answers with the full offered-type list.
+        satellite.pairingKeyHex = nil
+        let catalog = await client.getCatalog(ip: "127.0.0.1", port: Int(ports.rest))
+        XCTAssertEqual(catalog.locale, "en")
+        XCTAssertEqual(catalog.serverVersion, "1.6.0")
+        XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3])
+        XCTAssertEqual(catalog.controllerTypes.map(\.slug), ["xbox360", "ds4", "dualsense", "switchpro"])
+        let ds4 = catalog.controllerTypes[1]
+        XCTAssertTrue(ds4.features.motion.supported)
+        XCTAssertTrue(ds4.features.touchpad.supported)
+        XCTAssertEqual(ds4.image.href, "/api/catalog/images/ds4")
+        XCTAssertEqual(satellite.catalogRequests, 1)
+    }
+
+    func testGetCatalogUnreachableYieldsEmptyDTO() async {
+        satellite.stop()
+        let catalog = await client.getCatalog(ip: "127.0.0.1", port: Int(ports.rest))
+        XCTAssertTrue(catalog.controllerTypes.isEmpty)
+    }
+
     // MARK: - Transport failure
 
     func testStoppedSatelliteIsUnreachable() async {

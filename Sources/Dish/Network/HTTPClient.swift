@@ -193,6 +193,24 @@ final class HTTPClient {
         return ack(raw)
     }
 
+    /// `GET /api/catalog` — the satellite's offered controller-type catalog
+    /// (contract §ServerInfo & Catalog). UNAUTHENTICATED: empty device id /
+    /// proof mean `perform` attaches no `X-Device-Id` / `X-Hmac-Proof`. An
+    /// unreachable satellite or unparseable body yields a default (empty) DTO,
+    /// which the caller reads as "no catalog" and falls back to the legacy type.
+    func getCatalog(ip: String, port: Int) async -> CatalogDTO {
+        let raw = await perform(
+            path: "/api/catalog",
+            ip: ip,
+            port: port,
+            method: "GET",
+            body: nil,
+            deviceId: "",
+            hmacProof: ""
+        )
+        return decode(CatalogDTO.self, from: raw) ?? CatalogDTO()
+    }
+
     // MARK: - Plumbing
 
     /// One exchange's raw result, before route-specific DTO parsing.
