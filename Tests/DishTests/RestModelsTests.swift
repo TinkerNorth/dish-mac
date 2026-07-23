@@ -200,4 +200,75 @@ final class RestModelsTests: XCTestCase {
         XCTAssertEqual(resp.controllers[0].appliedType, 2)
         XCTAssertTrue(resp.controllers[0].ok)
     }
+
+    // MARK: - CatalogDTO (contract §ServerInfo & Catalog)
+
+    func testCatalogParsesTheFakeSatelliteFixture() throws {
+        // Pin the DTO to the exact wire the harness (and the real satellite)
+        // emit — the four offered types, their slugs, features and artwork.
+        let catalog = try JSONDecoder().decode(
+            CatalogDTO.self, from: Data(FakeSatelliteRest.catalogJSON.utf8)
+        )
+        XCTAssertEqual(catalog.locale, "en")
+        XCTAssertEqual(catalog.protocolVersion, 1)
+        XCTAssertEqual(catalog.serverVersion, "1.6.0")
+        XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3])
+        XCTAssertEqual(catalog.controllerTypes.map(\.slug), ["xbox360", "ds4", "dualsense", "switchpro"])
+        let ds4 = catalog.controllerTypes[1]
+        XCTAssertEqual(ds4.name, "DualShock 4")
+        XCTAssertEqual(ds4.shortName, "PlayStation")
+        XCTAssertTrue(ds4.features.rumble.supported)
+        XCTAssertTrue(ds4.features.analogTriggers.supported)
+        XCTAssertTrue(ds4.features.motion.supported)
+        XCTAssertTrue(ds4.features.lightbar.supported)
+        XCTAssertTrue(ds4.features.touchpad.supported)
+        XCTAssertEqual(ds4.image.href, "/api/catalog/images/ds4")
+        XCTAssertEqual(ds4.image.etag, "\"1.6.0\"")
+        let xbox = catalog.controllerTypes[0]
+        XCTAssertFalse(xbox.features.motion.supported)
+        XCTAssertFalse(xbox.features.lightbar.supported)
+        XCTAssertFalse(xbox.features.touchpad.supported)
+        XCTAssertTrue(catalog.hostFeatures.mouseControl.supported)
+        XCTAssertFalse(catalog.hostFeatures.keyboardControl.supported)
+    }
+
+    func testCatalogToleratesEmulatesBlockAndUnknownKeys() throws {
+        // The soon-to-land per-type `emulates` object — and any other key we
+        // don't model — must not break decoding; it is simply ignored.
+        let json = """
+        {"locale":"en","protocolVersion":1,"serverVersion":"1.7.0","futureTop":42,
+         "controllerTypes":[
+           {"id":1,"slug":"ds4","name":"DualShock 4","shortName":"PS",
+            "description":"d","image":{"href":"/x","etag":"e"},
+            "features":{"rumble":{"supported":true},"motion":{"supported":true}},
+            "emulates":{"sdlType":"ps4","usb":[{"vid":1356,"pid":2508}]}}]}
+        """
+        let catalog = try JSONDecoder().decode(CatalogDTO.self, from: Data(json.utf8))
+        XCTAssertEqual(catalog.serverVersion, "1.7.0")
+        XCTAssertEqual(catalog.controllerTypes.count, 1)
+        XCTAssertEqual(catalog.controllerTypes[0].id, 1)
+        XCTAssertEqual(catalog.controllerTypes[0].slug, "ds4")
+        XCTAssertTrue(catalog.controllerTypes[0].features.motion.supported)
+        XCTAssertFalse(catalog.controllerTypes[0].features.lightbar.supported)
+    }
+
+    func testCatalogDefaultsMissingOptionalFields() throws {
+        // A type carrying only its id still decodes; everything else defaults.
+        let catalog = try JSONDecoder().decode(
+            CatalogDTO.self, from: Data(#"{"controllerTypes":[{"id":2}]}"#.utf8)
+        )
+        XCTAssertEqual(catalog.locale, "")
+        XCTAssertEqual(catalog.protocolVersion, 1)
+        XCTAssertEqual(catalog.controllerTypes.count, 1)
+        XCTAssertEqual(catalog.controllerTypes[0].id, 2)
+        XCTAssertEqual(catalog.controllerTypes[0].slug, "")
+        XCTAssertEqual(catalog.controllerTypes[0].image.href, "")
+        XCTAssertFalse(catalog.controllerTypes[0].features.rumble.supported)
+    }
+
+    func testCatalogEmptyBodyYieldsNoTypes() throws {
+        let catalog = try JSONDecoder().decode(CatalogDTO.self, from: Data("{}".utf8))
+        XCTAssertTrue(catalog.controllerTypes.isEmpty)
+        XCTAssertEqual(catalog.protocolVersion, 1)
+    }
 }

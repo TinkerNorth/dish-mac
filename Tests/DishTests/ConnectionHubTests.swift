@@ -111,4 +111,61 @@ final class ConnectionHubTests: XCTestCase {
             "the slot's prior connection must be detached on rebind"
         )
     }
+
+    // MARK: - Bound-slot type defaults to the catalog's first offered type
+
+    private func catalog(firstId: Int, slug: String) throws -> CatalogDTO {
+        let json = """
+        {"controllerTypes":[{"id":\(firstId),"slug":"\(slug)",
+          "features":{"rumble":{"supported":true}}}]}
+        """
+        return try JSONDecoder().decode(CatalogDTO.self, from: Data(json.utf8))
+    }
+
+    func testBindDefaultsToCatalogFirstType() throws {
+        let sat = server("30")
+        let conn = WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max)
+        wifi.register(conn)
+        try wifi.cacheCatalog(catalog(firstId: 1, slug: "ds4"), for: sat.id)
+
+        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+
+        // A ds4-first satellite (e.g. a Mac host) → the bound descriptor
+        // carries type 1, not the legacy hardcoded 0.
+        XCTAssertEqual(conn.desiredDescriptor?.type, 1)
+    }
+
+    func testBindHonoursCatalogFirstTypeWhenXbox() throws {
+        let sat = server("31")
+        let conn = WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max)
+        wifi.register(conn)
+        try wifi.cacheCatalog(catalog(firstId: 0, slug: "xbox360"), for: sat.id)
+
+        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+
+        XCTAssertEqual(conn.desiredDescriptor?.type, 0)
+    }
+
+    func testBindFallsBackToTypeZeroWithoutCatalog() {
+        let sat = server("32")
+        let conn = WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max)
+        wifi.register(conn)
+
+        // No catalog fetched (older / unreachable satellite): the prior
+        // behavior — type 0 — stands so nothing regresses.
+        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+
+        XCTAssertEqual(conn.desiredDescriptor?.type, 0)
+    }
+
+    func testEmptyCatalogIsIgnoredAndFallsBack() {
+        let sat = server("33")
+        let conn = WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max)
+        wifi.register(conn)
+        wifi.cacheCatalog(CatalogDTO(), for: sat.id) // empty → not cached
+
+        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+
+        XCTAssertEqual(conn.desiredDescriptor?.type, 0)
+    }
 }
