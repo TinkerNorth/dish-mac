@@ -183,4 +183,21 @@ final class RestModelsTests: XCTestCase {
         XCTAssertEqual(caps["analogTriggers"], true)
         XCTAssertEqual(caps["lightbar"], false)
     }
+
+    func testDualSenseDescriptorRoundTripsAppliedType() throws {
+        // id 2 rides the same type/appliedType path as xbox/playstation — it is
+        // wire-representable even though mac still binds type 0 (picker deferred).
+        var descriptor = ControllerDescriptor()
+        descriptor.type = ProtocolConstants.controllerTypeDualSense
+        let data = try JSONEncoder().encode(descriptor)
+        let obj = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(obj["type"] as? Int, 2)
+
+        let resp = try JSONDecoder().decode(
+            SessionResponse.self,
+            from: Data(#"{"controllers":[{"ctrlIdx":0,"result":"ok","appliedType":2}]}"#.utf8)
+        )
+        XCTAssertEqual(resp.controllers[0].appliedType, 2)
+        XCTAssertTrue(resp.controllers[0].ok)
+    }
 }

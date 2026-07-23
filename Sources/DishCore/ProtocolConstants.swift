@@ -114,6 +114,8 @@ public enum ProtocolConstants {
 
     public static let controllerTypeXbox: UInt8 = 0
     public static let controllerTypePlayStation: UInt8 = 1
+    public static let controllerTypeDualSense: UInt8 = 2
+    public static let controllerTypeSwitchPro: UInt8 = 3
 
     /// A session carries at most 16 controller slots (also the enriched-ack
     /// bitmap breadth).
