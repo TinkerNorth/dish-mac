@@ -18,6 +18,12 @@ The pre-commit hook runs `swiftformat` (autofix, re-stages) and
 tools aren't installed — CI re-runs both in strict mode, so anything that
 slips locally fails the PR.
 
+CI runs SwiftFormat 0.61.1 and SwiftLint 0.65.0, pinned by version and
+SHA-256 in `macos-ci.yml` (release binaries, not Homebrew's latest). Homebrew
+may hand you newer ones with extra rules; the tree is formatted for the pinned
+versions, so a rule the pins do not know is not a CI failure, and bumping the
+pins is a deliberate commit that reformats the tree with them.
+
 ## License headers
 
 Every source file (`*.swift`) starts with:

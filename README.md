@@ -275,7 +275,8 @@ headless, pair, stream, tear down over loopback), see
 
 ## Development
 
-Install the tooling once:
+Install the tooling once (CI pins SwiftFormat 0.61.1 and SwiftLint 0.65.0
+by SHA-256 in `macos-ci.yml`; see CONTRIBUTING.md):
 ```bash
 brew install swiftlint swiftformat
 ```
