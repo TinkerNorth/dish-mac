@@ -38,8 +38,31 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      - name: Install SwiftLint + SwiftFormat
-        run: brew install swiftlint swiftformat
+      # Release binaries at pinned versions, not `brew install`: Homebrew
+      # tracks its latest, and SwiftFormat 0.63.0 (a new wrapIfStatementBodies
+      # rule) turned this check red on 2026-09-04 without a Swift file
+      # changing. These are the versions the tree is formatted and linted
+      # with; a bump is a deliberate commit that reformats alongside it.
+      - name: Install SwiftFormat + SwiftLint (pinned)
+        env:
+          SWIFTFORMAT_VERSION: 0.61.1
+          SWIFTFORMAT_SHA256: b990400779aceb7d7020796eb9ba814d4480543f671d38fc0ff48cb72f04c584
+          SWIFTLINT_VERSION: 0.65.0
+          SWIFTLINT_SHA256: d6cb0aa7a2f5f1ef306fc9e37bcb54dc9a26facc8f7784ac0c3dd3eccf5c6ba6
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/swift-tools"
+          mkdir -p "$tools"
+          curl -fsSL --retry 3 -o "$tools/swiftformat.zip"             "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat.zip"
+          echo "${SWIFTFORMAT_SHA256}  $tools/swiftformat.zip" | shasum -a 256 -c -
+          unzip -q -o "$tools/swiftformat.zip" -d "$tools"
+          curl -fsSL --retry 3 -o "$tools/swiftlint.zip"             "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          echo "${SWIFTLINT_SHA256}  $tools/swiftlint.zip" | shasum -a 256 -c -
+          unzip -q -o "$tools/swiftlint.zip" -d "$tools"
+          chmod +x "$tools/swiftformat" "$tools/swiftlint"
+          echo "$tools" >> "$GITHUB_PATH"
+          "$tools/swiftformat" --version
+          "$tools/swiftlint" --version
 
       - name: SwiftFormat (check only)
         run: swiftformat --lint .
