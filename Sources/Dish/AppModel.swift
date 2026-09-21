@@ -354,21 +354,10 @@ final class AppModel: ObservableObject {
     private func installTouchpadSender() {
         let table = routingTable
         let gate = self.gate
-        input.processor.touchpadSender = { deviceId, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn, eventTimeMs in
+        input.processor.touchpadSender = { deviceId, sample, eventTimeMs in
             guard gate.snapshot().touchpad else { return }
             guard let conn = table.get(deviceId) else { return }
-            conn.sendTouchpad(
-                finger0Active: f0a,
-                finger0Id: f0id,
-                finger0X: f0x,
-                finger0Y: f0y,
-                finger1Active: f1a,
-                finger1Id: f1id,
-                finger1X: f1x,
-                finger1Y: f1y,
-                buttonPressed: btn,
-                eventTimeMs: eventTimeMs
-            )
+            conn.sendTouchpad(sample: sample, eventTimeMs: eventTimeMs)
         }
     }
 

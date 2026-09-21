@@ -188,33 +188,18 @@ final class TouchpadProcessorTests: XCTestCase {
 
     private struct Captured: Equatable {
         let id: String
-        let f0a: Bool
-        let f0id: UInt8
-        let f0x: Int16
-        let f0y: Int16
-        let f1a: Bool
-        let f1id: UInt8
-        let f1x: Int16
-        let f1y: Int16
-        let button: Bool
+        let sample: TouchpadSample
         let eventMs: UInt32
+
+        var f0x: Int16 { sample.finger0.x }
+        var f0y: Int16 { sample.finger0.y }
+        var f1x: Int16 { sample.finger1.x }
+        var f1y: Int16 { sample.finger1.y }
     }
 
     private func install(_ proc: GamepadInputProcessor, into captured: @escaping (Captured) -> Void) {
-        proc.touchpadSender = { id, f0a, f0id, f0x, f0y, f1a, f1id, f1x, f1y, btn, eventMs in
-            captured(Captured(
-                id: id,
-                f0a: f0a,
-                f0id: f0id,
-                f0x: f0x,
-                f0y: f0y,
-                f1a: f1a,
-                f1id: f1id,
-                f1x: f1x,
-                f1y: f1y,
-                button: btn,
-                eventMs: eventMs
-            ))
+        proc.touchpadSender = { id, sample, eventMs in
+            captured(Captured(id: id, sample: sample, eventMs: eventMs))
         }
     }
 
@@ -222,35 +207,13 @@ final class TouchpadProcessorTests: XCTestCase {
         var captured: Captured?
         let proc = GamepadInputProcessor()
         install(proc) { captured = $0 }
-        proc.publishTouchpad(
-            deviceId: "pad",
-            finger0Active: true,
-            finger0Id: 7,
-            finger0X: 1234,
-            finger0Y: -567,
-            finger1Active: false,
-            finger1Id: 3,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: true,
-            nowNs: 5_000_000_000
+        let sample = TouchpadSample(
+            finger0: TouchpadFinger(active: true, id: 7, x: 1234, y: -567),
+            finger1: TouchpadFinger(active: false, id: 3, x: 0, y: 0),
+            buttonPressed: true
         )
-        XCTAssertEqual(
-            captured,
-            Captured(
-                id: "pad",
-                f0a: true,
-                f0id: 7,
-                f0x: 1234,
-                f0y: -567,
-                f1a: false,
-                f1id: 3,
-                f1x: 0,
-                f1y: 0,
-                button: true,
-                eventMs: 5000
-            )
-        )
+        proc.publishTouchpad(deviceId: "pad", sample: sample, nowNs: 5_000_000_000)
+        XCTAssertEqual(captured, Captured(id: "pad", sample: sample, eventMs: 5000))
     }
 
     func testPublishTouchpadNoSenderIsNoOp() {
@@ -258,15 +221,7 @@ final class TouchpadProcessorTests: XCTestCase {
         let proc = GamepadInputProcessor()
         proc.publishTouchpad(
             deviceId: "pad",
-            finger0Active: false,
-            finger0Id: 0,
-            finger0X: 0,
-            finger0Y: 0,
-            finger1Active: false,
-            finger1Id: 0,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: false
+            sample: TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false)
         )
     }
 
@@ -276,15 +231,11 @@ final class TouchpadProcessorTests: XCTestCase {
         install(proc) { captured = $0 }
         proc.publishTouchpad(
             deviceId: "pad",
-            finger0Active: true,
-            finger0Id: 0,
-            finger0X: Int16.max,
-            finger0Y: Int16.min,
-            finger1Active: true,
-            finger1Id: 1,
-            finger1X: -1,
-            finger1Y: 1,
-            buttonPressed: false
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 0, x: Int16.max, y: Int16.min),
+                finger1: TouchpadFinger(active: true, id: 1, x: -1, y: 1),
+                buttonPressed: false
+            )
         )
         XCTAssertEqual(captured?.f0x, Int16.max)
         XCTAssertEqual(captured?.f0y, Int16.min)
@@ -300,15 +251,7 @@ final class TouchpadProcessorTests: XCTestCase {
         install(proc) { captured = $0 }
         proc.publishTouchpad(
             deviceId: "pad",
-            finger0Active: false,
-            finger0Id: 0,
-            finger0X: 0,
-            finger0Y: 0,
-            finger1Active: false,
-            finger1Id: 0,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: false,
+            sample: TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false),
             nowNs: (UInt64(UInt32.max) + 2) * 1_000_000
         )
         XCTAssertEqual(captured?.eventMs, 1)
