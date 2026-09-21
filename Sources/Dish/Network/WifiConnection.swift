@@ -507,12 +507,6 @@ final class WifiConnection: ObservableObject, Identifiable {
         )
     }
 
-    // `sendTouchpad` takes one argument per wire field — it is a thin
-    // pass-through to `SatelliteClient.sendTouchpad`; a struct wrapper would
-    // only add an indirection, so the parameter-count rule is suppressed as it
-    // is there.
-    // swiftlint:disable function_parameter_count
-
     /// Forward a touchpad sample. Same threading discipline as `sendReport` —
     /// called from a GameController touchpad callback thread.
     ///
@@ -520,29 +514,10 @@ final class WifiConnection: ObservableObject, Identifiable {
     /// by `GameControllerInput.pushTouchpad`; `eventTimeMs` is the
     /// sender-side sample uptime stamp the 16-byte protocol-1 payload carries
     /// at offset 12 (contract §0x000C).
-    nonisolated func sendTouchpad(
-        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
-        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool,
-        eventTimeMs: UInt32
-    ) {
+    nonisolated func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
         guard let live = clientRef.get() else { return }
-        live.sendTouchpad(
-            controllerIndex: Self.defaultCtrlIndex,
-            finger0Active: finger0Active,
-            finger0Id: finger0Id,
-            finger0X: finger0X,
-            finger0Y: finger0Y,
-            finger1Active: finger1Active,
-            finger1Id: finger1Id,
-            finger1X: finger1X,
-            finger1Y: finger1Y,
-            buttonPressed: buttonPressed,
-            eventTimeMs: eventTimeMs
-        )
+        live.sendTouchpad(controllerIndex: Self.defaultCtrlIndex, sample: sample, eventTimeMs: eventTimeMs)
     }
-
-    // swiftlint:enable function_parameter_count
 
     /// Install (or replace) the rumble handler. Called from the AppModel
     /// during composition; we cache it on the WifiConnection so that

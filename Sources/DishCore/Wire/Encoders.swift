@@ -78,12 +78,6 @@ public enum Encoders {
         Data([controllerIndex, level, status.rawValue])
     }
 
-    // The touchpad encoder takes one argument per wire field (11). Bundling
-    // them into a struct purely to satisfy the parameter-count rule would add
-    // an indirection the flat wire mapping doesn't benefit from — same
-    // precedent as the SatelliteClient touchpad senders.
-    // swiftlint:disable function_parameter_count
-
     /// MSG_TOUCHPAD (0x000C): `ctrlIdx(1) + flags(1) + f0(id1 + x2 + y2) +
     /// f1(id1 + x2 + y2) + eventTimeMs(u32 LE @ offset 12)` = 16 bytes.
     ///
@@ -95,29 +89,25 @@ public enum Encoders {
     /// (mouse-mode timing depends on the timestamp).
     public static func touchpadPayload(
         controllerIndex: UInt8,
-        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
-        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool,
+        sample: TouchpadSample,
         eventTimeMs: UInt32
     ) -> Data {
         var out = [UInt8](repeating: 0, count: 1 + ProtocolConstants.touchpadPayloadBytes)
         out[0] = controllerIndex
         var flags: UInt8 = 0
-        if finger0Active { flags |= 0x01 }
-        if finger1Active { flags |= 0x02 }
-        if buttonPressed { flags |= 0x04 }
+        if sample.finger0.active { flags |= 0x01 }
+        if sample.finger1.active { flags |= 0x02 }
+        if sample.buttonPressed { flags |= 0x04 }
         out[1] = flags
-        out[2] = finger0Id
-        storeLE16(finger0X, into: &out, at: 3)
-        storeLE16(finger0Y, into: &out, at: 5)
-        out[7] = finger1Id
-        storeLE16(finger1X, into: &out, at: 8)
-        storeLE16(finger1Y, into: &out, at: 10)
+        out[2] = sample.finger0.id
+        storeLE16(sample.finger0.x, into: &out, at: 3)
+        storeLE16(sample.finger0.y, into: &out, at: 5)
+        out[7] = sample.finger1.id
+        storeLE16(sample.finger1.x, into: &out, at: 8)
+        storeLE16(sample.finger1.y, into: &out, at: 10)
         storeLE32(eventTimeMs, into: &out, at: 12)
         return Data(out)
     }
-
-    // swiftlint:enable function_parameter_count
 
     // MARK: - Private little-endian stores (zero-based [UInt8] offsets)
 

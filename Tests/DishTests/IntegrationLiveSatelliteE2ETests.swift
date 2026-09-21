@@ -192,15 +192,11 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
             )
         }
         conn.sendTouchpad(
-            finger0Active: true,
-            finger0Id: 1,
-            finger0X: 320,
-            finger0Y: -240,
-            finger1Active: false,
-            finger1Id: 0,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: false,
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 1, x: 320, y: -240),
+                finger1: .none,
+                buttonPressed: false
+            ),
             eventTimeMs: 12345
         )
 
