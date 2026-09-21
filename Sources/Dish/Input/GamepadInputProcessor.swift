@@ -71,9 +71,7 @@ final class GamepadInputProcessor {
     /// uptime stamp (ms) the protocol-1 16-byte payload carries at offset 12.
     typealias TouchpadSender = (
         _ deviceId: DeviceId,
-        _ finger0Active: Bool, _ finger0Id: UInt8, _ finger0X: Int16, _ finger0Y: Int16,
-        _ finger1Active: Bool, _ finger1Id: UInt8, _ finger1X: Int16, _ finger1Y: Int16,
-        _ buttonPressed: Bool,
+        _ sample: TouchpadSample,
         _ eventTimeMs: UInt32
     ) -> Void
 
@@ -219,8 +217,6 @@ final class GamepadInputProcessor {
     // parameter-count rule would add an indirection the flat wire-mapping
     // doesn't benefit from — same rationale as `DishCore.Encoders`'
     // touchpad encoder.
-    // swiftlint:disable function_parameter_count
-
     /// Forward a touchpad sample. Coordinates are already scaled to int16 by
     /// the bridge, and the per-finger tracking ids are already resolved by it.
     /// No deadzone / filtering is applied — a touchpad is an absolute pointing
@@ -232,27 +228,11 @@ final class GamepadInputProcessor {
     /// overridable for tests, same seam as `publishMotion`.
     func publishTouchpad(
         deviceId: DeviceId,
-        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
-        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool,
+        sample: TouchpadSample,
         nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
     ) {
-        touchpadSender?(
-            deviceId,
-            finger0Active,
-            finger0Id,
-            finger0X,
-            finger0Y,
-            finger1Active,
-            finger1Id,
-            finger1X,
-            finger1Y,
-            buttonPressed,
-            UInt32(truncatingIfNeeded: nowNs / 1_000_000)
-        )
+        touchpadSender?(deviceId, sample, UInt32(truncatingIfNeeded: nowNs / 1_000_000))
     }
-
-    // swiftlint:enable function_parameter_count
 }
 
 // MARK: - Pure helpers (easily testable)
@@ -323,25 +303,28 @@ struct WireMotionSample: Equatable {
 ///   * at rest, +Y up: userAccel 0, gravity -1 up → wire `0 - (-1) = +1 g` up.
 ///   * accelerating up at 1 g: userAccel +1, gravity -1 up → `+1 - (-1) = +2 g`.
 ///
-/// One argument per IMU axis — the three rad/s gyro components, three g
-/// gravity components, three g userAccel components. A struct wrapper would
-/// only relocate the nine fields without removing them, so the parameter-count
-/// rule is suppressed here the way the touchpad wire encoders do.
+/// One IMU reading on three axes, in the unit its source reports (rad/s for
+/// rotation, g for gravity and user acceleration).
+struct MotionAxes: Equatable {
+    var x: Double
+    var y: Double
+    var z: Double
+
+    static let zero = MotionAxes(x: 0, y: 0, z: 0)
+}
+
+/// The three IMU vectors GCMotion reports, mapped to the wire's gyro (deg/s)
+/// and specific-force accel (`userAccel - gravity`) scales.
 @inline(__always)
-// swiftlint:disable:next function_parameter_count
-func gcMotionToWire(
-    rotationRateRadX: Double, rotationRateRadY: Double, rotationRateRadZ: Double,
-    gravityX: Double, gravityY: Double, gravityZ: Double,
-    userAccelX: Double, userAccelY: Double, userAccelZ: Double
-) -> WireMotionSample {
+func gcMotionToWire(rotationRateRad: MotionAxes, gravity: MotionAxes, userAccel: MotionAxes) -> WireMotionSample {
     let radToDeg = 180.0 / Double.pi
     return WireMotionSample(
-        gyroX: scaleGyro(rotationRateRadX * radToDeg),
-        gyroY: scaleGyro(rotationRateRadY * radToDeg),
-        gyroZ: scaleGyro(rotationRateRadZ * radToDeg),
-        accelX: scaleAccel(userAccelX - gravityX),
-        accelY: scaleAccel(userAccelY - gravityY),
-        accelZ: scaleAccel(userAccelZ - gravityZ)
+        gyroX: scaleGyro(rotationRateRad.x * radToDeg),
+        gyroY: scaleGyro(rotationRateRad.y * radToDeg),
+        gyroZ: scaleGyro(rotationRateRad.z * radToDeg),
+        accelX: scaleAccel(userAccel.x - gravity.x),
+        accelY: scaleAccel(userAccel.y - gravity.y),
+        accelZ: scaleAccel(userAccel.z - gravity.z)
     )
 }
 

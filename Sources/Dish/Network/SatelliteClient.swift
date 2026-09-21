@@ -377,39 +377,20 @@ final class SatelliteClient {
 
     // MARK: - Touchpad
 
-    // One argument per wire field (contract §0x000C); a struct wrapper would
-    // only add an indirection — same precedent as the sibling senders.
-    // swiftlint:disable function_parameter_count
-
     /// Forward a touchpad sample (MSG_TOUCHPAD 0x000C) — the 16-byte
     /// protocol-1 payload incl. the trailing `eventTimeMs` (sender-side
     /// sample uptime, ms; u32 LE at offset 12). The server drops legacy
     /// 12-byte bodies (gap G12). Coordinates are normalised int16; the caller
     /// scales. Hot path: GameController touchpad callback thread.
-    func sendTouchpad(
-        controllerIndex: Int,
-        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
-        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool,
-        eventTimeMs: UInt32
-    ) {
+    func sendTouchpad(controllerIndex: Int, sample: TouchpadSample, eventTimeMs: UInt32) {
         sendEncrypted(
             msgType: ProtocolConstants.msgTouchpad,
             payload: Encoders.touchpadPayload(
                 controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-                finger0Active: finger0Active,
-                finger0Id: finger0Id,
-                finger0X: finger0X,
-                finger0Y: finger0Y,
-                finger1Active: finger1Active,
-                finger1Id: finger1Id,
-                finger1X: finger1X,
-                finger1Y: finger1Y,
-                buttonPressed: buttonPressed,
+                sample: sample,
                 eventTimeMs: eventTimeMs
             )
         )
     }
 
-    // swiftlint:enable function_parameter_count
 }
