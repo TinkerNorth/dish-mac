@@ -70,6 +70,8 @@ swift build --configuration debug
 
 log "swift build --build-tests"
 swift build --build-tests
+log "compile the String Catalog where SwiftPM copied it verbatim"
+find .build -type d -name 'Dish_Dish.bundle' -exec ./scripts/compile-catalog.sh {} \;
 
 if [ "$RUN_TESTS" -eq 1 ]; then
     log "swift test"

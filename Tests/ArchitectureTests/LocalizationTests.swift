@@ -195,9 +195,19 @@ final class LocalizationTests: XCTestCase {
         }
     }
 
-    func testTheBundleScriptShipsTheCatalog() throws {
+    func testTheBundleScriptShipsTheCatalogAsTables() throws {
         let script = try RepoFiles.read("bundle.sh")
         XCTAssertTrue(script.contains("Dish_Dish.bundle"), "bundle.sh must copy the SwiftPM resource bundle")
         XCTAssertTrue(script.contains("Contents/Resources"), "the resource bundle goes where Bundle.module looks")
+        XCTAssertTrue(script.contains("scripts/compile-catalog.sh"), "a verbatim catalog is one nothing reads; the app ships tables")
+    }
+
+    /// The CI toolchain's SwiftPM copies the catalog verbatim, so the tests
+    /// there read tables only because CI compiles them first.
+    func testCICompilesTheCatalogBeforeTheTestsRun() throws {
+        let workflow = try RepoFiles.read(".github/workflows/macos-ci.yml")
+        let compile = try XCTUnwrap(workflow.range(of: "compile-catalog.sh"), "CI must compile the catalog")
+        let tests = try XCTUnwrap(workflow.range(of: "swift test"), "CI must run the tests")
+        XCTAssertLessThan(compile.lowerBound, tests.lowerBound, "the tables must exist before the tests read them")
     }
 }

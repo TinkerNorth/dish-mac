@@ -64,7 +64,10 @@ the repos share a version number.
 - **Translations are shown.** Views looked strings up in the main bundle,
   which never holds the compiled catalog, so every language saw English.
   `L10n` reads the resource bundle, and a test reads every entry back from
-  the compiled tables in every language.
+  the compiled tables in every language. A build made with SwiftPM's native
+  build system copied the catalog verbatim, which no macOS reads at run
+  time; `bundle.sh` now compiles it into tables, so the shipped app speaks
+  every language whichever toolchain built it.
 - **Counts inflect.** "1 active connections" is gone; the dashboard counts
   carry plural forms per language.
 - **The PIN field takes ASCII digits only.** A fullwidth or Arabic-Indic digit

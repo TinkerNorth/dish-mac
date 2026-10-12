@@ -26,7 +26,7 @@ mkdir -p "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Dish"
 cp "$PWD/Resources/Dish.icns" "$APP/Contents/Resources/Dish.icns"
 
-# SwiftPM compiles the String Catalog into this resource bundle, and the
+# SwiftPM puts the String Catalog into this resource bundle, and the
 # generated `Bundle.module` accessor looks for it in Contents/Resources.
 RESOURCE_BUNDLE="$(dirname "$BIN")/Dish_Dish.bundle"
 if [ ! -d "$RESOURCE_BUNDLE" ]; then
@@ -34,6 +34,9 @@ if [ ! -d "$RESOURCE_BUNDLE" ]; then
   exit 1
 fi
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/Dish_Dish.bundle"
+
+# Whichever build system ran, the app ships per-language tables.
+"$PWD/scripts/compile-catalog.sh" "$APP/Contents/Resources/Dish_Dish.bundle"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

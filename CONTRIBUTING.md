@@ -81,8 +81,12 @@ tested in `Tests/DishTests`, never an expression inside a `body`.
 ## Translations
 
 Six languages (en, bs, de, es, fr, pt-BR) live in one String Catalog,
-`Sources/Dish/Resources/Localizable.xcstrings`; SwiftPM compiles it into the
-resource bundle `bundle.sh` ships. A new user-facing string needs its catalog
+`Sources/Dish/Resources/Localizable.xcstrings`. Xcode's build system compiles
+it into per-language tables inside the resource bundle; SwiftPM's native build
+system copies it verbatim, and nothing reads a verbatim catalog at run time, so
+`scripts/compile-catalog.sh` compiles it wherever it landed: `bundle.sh` runs it
+on the app, CI runs it before the tests, and `L10nTests` fails when a table is
+missing. A new user-facing string needs its catalog
 entry and all five translations in the same commit: `LocalizationTests` fails
 on a key `L10n` uses that the catalog lacks, on a catalog entry no code uses,
 and on any language missing a translation, because a missing translation is
