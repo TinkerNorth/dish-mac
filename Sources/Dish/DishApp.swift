@@ -31,7 +31,7 @@ struct DishApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Dish") {
+        WindowGroup(L10n.app.appName) {
             MainView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)

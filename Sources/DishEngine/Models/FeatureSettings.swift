@@ -18,13 +18,6 @@ package enum LightbarMode: String, CaseIterable, Identifiable, Codable {
     package var id: String {
         rawValue
     }
-
-    package var label: String {
-        switch self {
-        case .followGame: "Follow game"
-        case .off: "Off"
-        }
-    }
 }
 
 /// User-facing on/off switches for each forwarded controller feature.
@@ -93,7 +86,7 @@ package final class FeatureSettings: ObservableObject {
 
     /// Plain-value snapshot for the thread-safe `ForwardingGate`. `lightbar`
     /// gates whether the host game's `MSG_LIGHTBAR` colour is applied.
-    var flags: ForwardingFlags {
+    package var flags: ForwardingFlags {
         ForwardingFlags(
             motion: motionEnabled,
             touchpad: touchpadEnabled,
@@ -105,11 +98,18 @@ package final class FeatureSettings: ObservableObject {
 
 /// Plain-value snapshot of the forwarding toggles. `Sendable` so it can cross
 /// from the main actor into `ForwardingGate` and be read on the hot path.
-struct ForwardingFlags: Equatable {
-    var motion = true
-    var touchpad = true
-    var rumble = true
-    var lightbar = true
+package struct ForwardingFlags: Equatable {
+    package var motion = true
+    package var touchpad = true
+    package var rumble = true
+    package var lightbar = true
+
+    package init(motion: Bool = true, touchpad: Bool = true, rumble: Bool = true, lightbar: Bool = true) {
+        self.motion = motion
+        self.touchpad = touchpad
+        self.rumble = rumble
+        self.lightbar = lightbar
+    }
 }
 
 /// Thread-safe holder for the forwarding toggles.

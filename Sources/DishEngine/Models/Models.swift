@@ -16,16 +16,6 @@ package enum DiscoverySource: String, Codable, Hashable {
     /// Typed in by the user (`DiscoveredServer.manual`) — the escape hatch
     /// when Local Network permission is denied or the LAN drops multicast.
     case manual
-
-    /// Short human label for the connections list.
-    package var label: String {
-        switch self {
-        case .broadcast: "UDP broadcast"
-        case .mdns: "mDNS"
-        case .both: "mDNS + broadcast"
-        case .manual: "added by address"
-        }
-    }
 }
 
 package struct DiscoveredServer: Codable, Hashable, Identifiable {
@@ -214,6 +204,15 @@ package struct ConnectionSummary: Identifiable, Hashable {
     /// 0.1 ms), present only while a session is up and has paired at least
     /// one ack (gap G13).
     package var latencyMs: Double?
+
+    package init(id: String, label: String, detail: String, live: LinkState, boundSlotId: String?, latencyMs: Double? = nil) {
+        self.id = id
+        self.label = label
+        self.detail = detail
+        self.live = live
+        self.boundSlotId = boundSlotId
+        self.latencyMs = latencyMs
+    }
 }
 
 // MARK: - Controller capabilities + battery (UX surface)
@@ -234,6 +233,20 @@ package struct ControllerCapabilities: Hashable {
     package var hasLightbar = false
     package var hasBattery = false
 
+    package init(
+        hasMotion: Bool = false,
+        hasTouchpad: Bool = false,
+        hasRumble: Bool = false,
+        hasLightbar: Bool = false,
+        hasBattery: Bool = false
+    ) {
+        self.hasMotion = hasMotion
+        self.hasTouchpad = hasTouchpad
+        self.hasRumble = hasRumble
+        self.hasLightbar = hasLightbar
+        self.hasBattery = hasBattery
+    }
+
     package static let none = ControllerCapabilities()
 }
 
@@ -248,6 +261,11 @@ package enum BatteryChargeState: Hashable {
 package struct BatteryReading: Hashable {
     package var level: Int?
     package var state: BatteryChargeState = .unknown
+
+    package init(level: Int? = nil, state: BatteryChargeState = .unknown) {
+        self.level = level
+        self.state = state
+    }
 }
 
 // MARK: - Controller slots (matches MainUiState.kt)
@@ -261,6 +279,22 @@ package struct ControllerSlot: Identifiable, Hashable {
     package var capabilities: ControllerCapabilities = .none
     /// Most recent battery reading, nil until the first sample arrives.
     package var battery: BatteryReading?
+
+    package init(
+        id: String,
+        name: String,
+        boundConnectionId: String? = nil,
+        boundStatus: ConnectionSummary? = nil,
+        capabilities: ControllerCapabilities = .none,
+        battery: BatteryReading? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.boundConnectionId = boundConnectionId
+        self.boundStatus = boundStatus
+        self.capabilities = capabilities
+        self.battery = battery
+    }
 }
 
 // MARK: - Persisted remembered connection (matches RememberedWifi)

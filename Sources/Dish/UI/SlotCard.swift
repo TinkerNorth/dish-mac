@@ -4,9 +4,8 @@
 import DishEngine
 import SwiftUI
 
-/// One row in the controllers list. Shows the slot, its detected hardware
-/// capabilities, the bound connection (if any) and a Bind/Unbind control.
-/// Mirrors `row_controller.xml`.
+/// One row in the controllers list: the slot, its detected hardware
+/// capabilities, the bound connection, and a Bind or Unbind control.
 struct SlotCard: View {
 
     @EnvironmentObject var model: AppModel
@@ -15,123 +14,58 @@ struct SlotCard: View {
 
     @State private var expanded = false
 
+    private let words = L10n.app
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 10) {
-                // v6 brand connection-target glyph that mirrors the row this
-                // slot is bound to over on ConnectionsView. Satellite-server
-                // binding -> satellite glyph; an unbound slot falls back to
-                // the default (idle) variant so the silhouette still reads
-                // as "this slot routes to a satellite". The StatusDot stays
-                // in the lower-right as the secondary tonal cue.
-                ZStack(alignment: .bottomTrailing) {
-                    BrandIcon.satellite(for: slot.boundStatus?.live ?? .saved, size: 28)
-                    StatusDot(color: dotColor)
-                }
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(slot.name)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundColor(DishTheme.onSurface)
-                    Text(subtitle)
-                        .font(.system(size: 11))
-                        .foregroundColor(DishTheme.muted)
-                }
-                Spacer()
-                if slot.boundConnectionId != nil {
-                    Button("Unbind") { model.unbind(slotId: slot.id) }
-                        .buttonStyle(DishOutlinedButtonStyle())
-                } else {
-                    Button(expanded ? "Close" : "Bind") { expanded.toggle() }
-                        .buttonStyle(DishOutlinedButtonStyle())
-                        .disabled(availableConnections.isEmpty)
-                }
-            }
-
+            titleRow
             capabilityRow
-
             if expanded, slot.boundConnectionId == nil {
-                VStack(spacing: 4) {
-                    ForEach(availableConnections) { conn in
-                        Button {
-                            model.bind(slotId: slot.id, connectionId: conn.id)
-                            expanded = false
-                        } label: {
-                            HStack {
-                                // Each pickable row is a satellite server —
-                                // mirror the ConnectionsView row silhouette
-                                // here too so the bind picker reads as the
-                                // same surface.
-                                ZStack(alignment: .bottomTrailing) {
-                                    BrandIcon.satellite(for: conn.live, size: 22)
-                                    StatusDot(color: dotColorFor(conn))
-                                }
-                                VStack(alignment: .leading, spacing: 1) {
-                                    Text(conn.label)
-                                        .font(.system(size: 12, weight: .medium))
-                                        .foregroundColor(DishTheme.onSurface)
-                                    Text(conn.detail)
-                                        .font(.system(size: 10))
-                                        .foregroundColor(DishTheme.muted)
-                                }
-                                Spacer()
-                            }
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 8)
-                            .background(DishTheme.surfaceDim)
-                            .clipShape(RoundedRectangle(cornerRadius: 6))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                    if availableConnections.isEmpty {
-                        Text("No connections — add one from Manage")
-                            .font(.system(size: 11))
-                            .foregroundColor(DishTheme.muted)
-                            .padding(.vertical, 6)
-                    }
-                }
+                bindPicker
             }
         }
         .padding(12)
         .background(DishTheme.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8).stroke(DishTheme.cardStroke, lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DishTheme.cardStroke, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    // MARK: - Capability row
+    private var bindable: [ConnectionSummary] {
+        bindableConnections(for: slot, in: model.connections)
+    }
 
-    /// Chips for each hardware feature, plus a battery pill. A chip's colour
-    /// means "the feature is on/off in Settings". This is the "gyro detected"
-    /// feedback DS4Windows / Steam Input surface — the player can tell apart
-    /// "my pad has no gyro" from "gyro is switched off".
-    ///
-    /// Motion is *always* shown: a controller with an IMU gets a "Gyro" chip
-    /// (on/off by Settings), one without gets an explicit dashed "No gyro"
-    /// chip. Touchpad/rumble/lightbar only appear when present. The battery
-    /// pill shows for *every* controller — a pad without its own battery falls
-    /// back to the host Mac's — so it appears as soon as the first reading lands.
-    @ViewBuilder
-    private var capabilityRow: some View {
-        let caps = slot.capabilities
-        HStack(spacing: 6) {
-            if caps.hasMotion {
-                CapabilityChip(label: "Gyro", on: settings.motionEnabled, feature: "Motion")
+    private var titleRow: some View {
+        HStack(spacing: 10) {
+            ZStack(alignment: .bottomTrailing) {
+                BrandIcon(kind: .satellite, state: slotIconState(slot), size: 28)
+                StatusDot(color: slotDotColor(slot))
+            }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(slot.name)
+                    .font(DishFont.body)
+                    .foregroundColor(DishTheme.onSurface)
+                Text(slotSubtitle(slot))
+                    .font(DishFont.caption)
+                    .foregroundColor(DishTheme.muted)
+            }
+            Spacer()
+            if slot.boundConnectionId != nil {
+                Button(words.unbind) { model.unbind(slotId: slot.id) }
+                    .buttonStyle(DishOutlinedButtonStyle())
             } else {
-                CapabilityChip(label: "No gyro", on: false, feature: "Motion", available: false)
+                Button(bindButtonTitle(expanded: expanded)) { expanded.toggle() }
+                    .buttonStyle(DishOutlinedButtonStyle())
+                    .disabled(bindable.isEmpty)
             }
-            if caps.hasTouchpad {
-                CapabilityChip(label: "Touchpad", on: settings.touchpadEnabled, feature: "Touchpad")
-            }
-            if caps.hasRumble {
-                CapabilityChip(label: "Rumble", on: settings.rumbleEnabled, feature: "Rumble")
-            }
-            if caps.hasLightbar {
-                CapabilityChip(
-                    label: "Lightbar",
-                    on: settings.lightbarMode == .followGame,
-                    feature: "Light bar"
-                )
+        }
+    }
+
+    /// Chips for each hardware feature, plus the battery pill once the first
+    /// reading lands.
+    private var capabilityRow: some View {
+        HStack(spacing: 6) {
+            ForEach(capabilityChips(slot.capabilities, settings.flags), id: \.label) { chip in
+                CapabilityChipView(chip: chip)
             }
             Spacer(minLength: 0)
             if let battery = slot.battery {
@@ -140,144 +74,89 @@ struct SlotCard: View {
         }
     }
 
-    // MARK: - Derived
-
-    private var availableConnections: [ConnectionSummary] {
-        // Offer every connection that isn't already bound to a different slot.
-        model.connections.filter { $0.boundSlotId == nil || $0.boundSlotId == slot.id }
-    }
-
-    private var subtitle: String {
-        "Gamepad • \(bindLabel)"
-    }
-
-    private var bindLabel: String {
-        guard let status = slot.boundStatus else { return "unbound" }
-        switch status.live {
-        case .connected: return "→ \(status.label)"
-        case .unstable: return "→ \(status.label) (unsteady)"
-        case .connecting: return "→ \(status.label) (connecting…)"
-        case .ready: return "→ \(status.label) (ready)"
-        case .saved, .found, .stale: return "→ \(status.label) (offline)"
+    private var bindPicker: some View {
+        VStack(spacing: 4) {
+            ForEach(bindable) { conn in
+                Button {
+                    model.bind(slotId: slot.id, connectionId: conn.id)
+                    expanded = false
+                } label: {
+                    bindOption(conn)
+                }
+                .buttonStyle(.plain)
+            }
+            if bindable.isEmpty {
+                Text(words.noConnectionsAddOne)
+                    .font(DishFont.caption)
+                    .foregroundColor(DishTheme.muted)
+                    .padding(.vertical, 6)
+            }
         }
     }
 
-    private var dotColor: Color {
-        guard let status = slot.boundStatus else { return DishTheme.muted }
-        return dotColorFor(status)
-    }
-
-    private func dotColorFor(_ status: ConnectionSummary) -> Color {
-        switch status.live {
-        case .connected: DishTheme.success
-        case .connecting, .unstable: DishTheme.primary
-        case .found, .stale, .saved, .ready: DishTheme.muted
+    private func bindOption(_ conn: ConnectionSummary) -> some View {
+        HStack {
+            ZStack(alignment: .bottomTrailing) {
+                BrandIcon.satellite(for: conn.live, size: 22)
+                StatusDot(color: linkDotColor(conn.live))
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(conn.label)
+                    .font(DishFont.control)
+                    .foregroundColor(DishTheme.onSurface)
+                Text(conn.detail)
+                    .font(DishFont.microRegular)
+                    .foregroundColor(DishTheme.muted)
+            }
+            Spacer()
         }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .background(DishTheme.surfaceDim)
+        .clipShape(RoundedRectangle(cornerRadius: 6))
     }
 }
 
-/// A small pill for one controller capability. Three visually distinct states,
-/// so the player can never confuse them:
-///   • available + on  — full-colour fill ("detected, forwarding on")
-///   • available + off — muted, solid outline ("detected, off in Settings")
-///   • not available   — muted, *dashed* outline ("controller has no such hw")
-/// The `.help` tooltip spells the state out in words as a second channel.
-private struct CapabilityChip: View {
+/// One capability pill. Available and on fills; available and off outlines;
+/// absent hardware outlines dashed, so "not available" never reads as "off".
+/// The tooltip spells the state out as a second channel.
+private struct CapabilityChipView: View {
 
-    let label: String
-    let on: Bool
-    /// Human name of the matching feature, for the tooltip.
-    let feature: String
-    /// False when the controller lacks the hardware entirely. Rendered with a
-    /// dashed outline so "not available" never reads the same as "off".
-    var available = true
+    let chip: CapabilityChipModel
 
     var body: some View {
-        Text(label)
-            .font(.system(size: 10, weight: .medium))
-            .foregroundColor(on ? DishTheme.primary : DishTheme.muted)
-            .opacity(available ? 1.0 : 0.7)
+        Text(chip.label)
+            .font(DishFont.micro)
+            .foregroundColor(chip.on ? DishTheme.primary : DishTheme.muted)
+            .opacity(chip.available ? 1.0 : 0.7)
             .padding(.vertical, 3)
             .padding(.horizontal, 7)
-            .background(
-                RoundedRectangle(cornerRadius: 5)
-                    .fill(on ? DishTheme.primary.opacity(0.14) : Color.clear)
-            )
+            .background(RoundedRectangle(cornerRadius: 5).fill(chip.on ? DishTheme.chipFill : Color.clear))
             .overlay(
                 RoundedRectangle(cornerRadius: 5)
                     .stroke(
-                        on ? Color.clear : DishTheme.outline,
-                        style: StrokeStyle(lineWidth: 1, dash: available ? [] : [3])
+                        chip.on ? Color.clear : DishTheme.outline,
+                        style: StrokeStyle(lineWidth: 1, dash: chip.available ? [] : [3])
                     )
             )
-            .help(helpText)
-    }
-
-    private var helpText: String {
-        if !available {
-            return "\(feature) not available — this controller has no "
-                + (feature == "Motion" ? "gyroscope or accelerometer." : "hardware for it.")
-        }
-        return on
-            ? "\(feature) detected — forwarding to the host is on"
-            : "\(feature) detected — turned off in Settings"
+            .help(chip.help)
     }
 }
 
-/// Battery level pill shown when the controller reports a charge level. The
-/// SF Symbol steps with the level; a bolt overlays while charging.
+/// The battery pill: a glyph that steps with the level, a bolt while
+/// charging, and the percentage.
 private struct BatteryPill: View {
 
     let reading: BatteryReading
 
     var body: some View {
         HStack(spacing: 3) {
-            Image(systemName: symbol)
-                .font(.system(size: 10))
-            Text(levelText)
-                .font(.system(size: 10, weight: .medium))
+            Image(systemName: batterySymbol(reading))
+                .font(DishFont.microRegular)
+            Text(batteryLevelText(reading))
+                .font(DishFont.micro)
         }
-        .foregroundColor(tint)
-        .help(helpText)
-    }
-
-    private var charging: Bool {
-        reading.state == .charging || reading.state == .full
-    }
-
-    private var symbol: String {
-        if charging { return "battery.100.bolt" }
-        switch reading.level ?? -1 {
-        case 0 ..< 13: return "battery.0"
-        case 13 ..< 38: return "battery.25"
-        case 38 ..< 63: return "battery.50"
-        case 63 ..< 88: return "battery.75"
-        case 88 ... 100: return "battery.100"
-        default: return "battery.50" // unknown level
-        }
-    }
-
-    private var levelText: String {
-        guard let level = reading.level else { return "—" }
-        return "\(level)%"
-    }
-
-    private var tint: Color {
-        if charging { return DishTheme.success }
-        switch reading.level ?? 100 {
-        case 0 ..< 15: return DishTheme.error
-        case 15 ..< 30: return DishTheme.warning
-        default: return DishTheme.muted
-        }
-    }
-
-    private var helpText: String {
-        let pct = reading.level.map { "\($0)%" } ?? "unknown level"
-        switch reading.state {
-        case .charging: return "Battery \(pct) — charging"
-        case .full: return "Battery full"
-        case .discharging: return "Battery \(pct)"
-        case .unknown: return "Battery \(pct)"
-        }
+        .foregroundColor(batteryTint(reading))
+        .help(batteryHelp(reading))
     }
 }

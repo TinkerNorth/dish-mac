@@ -1,266 +1,3394 @@
 {
   "sourceLanguage" : "en",
-  "version" : "1.0",
   "strings" : {
-    "Connections" : {
-      "comment" : "Title of the connections-management sheet. Maps to Android `title_connections`.",
+    "%@ detected — forwarding to the host is on" : {
+      "comment" : "Chip tooltip; the argument is the feature name.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Veze" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbindungen" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conexiones" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexions" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conexões" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ otkriven — prosljeđivanje hostu je uključeno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ erkannt — Weiterleitung an den Host ist an"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ detectado — el reenvío al host está activado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ détecté — la transmission vers l'hôte est activée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ detectado — o encaminhamento para o host está ligado"
+          }
+        }
+      }
+    },
+    "%@ detected — turned off in Settings" : {
+      "comment" : "Chip tooltip; the argument is the feature name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ otkriven — isključeno u Podešavanjima"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ erkannt — in den Einstellungen ausgeschaltet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ detectado — desactivado en Ajustes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ détecté — désactivé dans les Paramètres"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ detectado — desligado nas Configurações"
+          }
+        }
+      }
+    },
+    "%lld active connections" : {
+      "comment" : "Dashboard headline when two or more servers are live.",
+      "localizations" : {
+        "bs" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld aktivne veze"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld aktivna veza"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld aktivnih veza"
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld aktive Verbindung"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld aktive Verbindungen"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld active connection"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld active connections"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conexión activa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conexiones activas"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld connexion active"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld connexions actives"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conexão ativa"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld conexões ativas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld of %lld online" : {
+      "comment" : "Dashboard summary: live servers of paired servers.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld od %lld na vezi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld von %lld online"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld de %lld en línea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld sur %lld en ligne"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld de %lld on-line"
+          }
+        }
+      }
+    },
+    "%lld paired" : {
+      "comment" : "Dashboard headline and summary when servers are paired but none is live.",
+      "localizations" : {
+        "bs" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld uparena"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld uparen"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld uparenih"
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld gekoppelt"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld gekoppelt"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld paired"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld paired"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld emparejado"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld emparejados"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld appairé"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld appairés"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pareado"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld pareados"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld%%" : {
+      "comment" : "Battery pill percentage.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %%"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %%"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %%"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %%"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld %%"
+          }
+        }
+      }
+    },
+    "Add" : {
+      "comment" : "Adds the typed address as a server.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hinzufügen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar"
+          }
+        }
+      }
+    },
+    "Add by IP — e.g. 192.168.1.50 or 192.168.1.50:9876" : {
+      "comment" : "Placeholder of the manual-address field.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj po IP adresi — npr. 192.168.1.50 ili 192.168.1.50:9876"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per IP hinzufügen — z. B. 192.168.1.50 oder 192.168.1.50:9876"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir por IP — p. ej. 192.168.1.50 o 192.168.1.50:9876"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter par IP — p. ex. 192.168.1.50 ou 192.168.1.50:9876"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar por IP — ex.: 192.168.1.50 ou 192.168.1.50:9876"
+          }
+        }
+      }
+    },
+    "Bad token from server" : {
+      "comment" : "Failure: the session material did not parse.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neispravan token sa servera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ungültiges Token vom Server"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token no válido del servidor"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeton invalide reçu du serveur"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Token inválido do servidor"
+          }
+        }
+      }
+    },
+    "Battery %lld%%" : {
+      "comment" : "Battery tooltip with a level.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baterija %lld %%"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akku %lld %%"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batería %lld %%"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batterie %lld %%"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bateria %lld %%"
+          }
+        }
+      }
+    },
+    "Battery %lld%% — charging" : {
+      "comment" : "Battery tooltip, charging with a level.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baterija %lld %% — puni se"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akku %lld %% — lädt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batería %lld %% — cargando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batterie %lld %% — en charge"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bateria %lld %% — carregando"
+          }
+        }
+      }
+    },
+    "Battery charging" : {
+      "comment" : "Battery tooltip, charging without a level.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baterija se puni"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akku lädt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batería cargando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batterie en charge"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bateria carregando"
+          }
+        }
+      }
+    },
+    "Battery full" : {
+      "comment" : "Battery tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baterija puna"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akku voll"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batería llena"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batterie pleine"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bateria cheia"
+          }
+        }
+      }
+    },
+    "Battery level unknown" : {
+      "comment" : "Battery tooltip when the pad reports no level.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nivo baterije nepoznat"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akkustand unbekannt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nivel de batería desconocido"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niveau de batterie inconnu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nível da bateria desconhecido"
+          }
+        }
+      }
+    },
+    "Bind" : {
+      "comment" : "Opens the bind picker.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poveži"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuordnen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincular"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lier"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincular"
+          }
+        }
       }
     },
     "CONTROLLERS" : {
       "comment" : "Dashboard section header for the controller list. Maps to Android `section_controllers`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "KONTROLERI" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "CONTROLLER" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "MANDOS" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "MANETTES" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "CONTROLES" } }
-      }
-    },
-    "WI-FI SERVERS" : {
-      "comment" : "Section header on the Connections sheet. Mac-specific surface (Android uses SATELLITES); marked new for localization.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
-        "de" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
-        "es" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
-        "fr" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } },
-        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "WI-FI SERVERS" } }
-      }
-    },
-    "Manage" : {
-      "comment" : "Dashboard action button — opens the connections sheet. Maps to Android `action_manage`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Upravljanje" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verwalten" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Gestionar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Gérer" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Gerenciar" } }
-      }
-    },
-    "Scan" : {
-      "comment" : "Trigger LAN scan. Maps to Android `action_scan`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Skeniraj" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Suchen" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Buscar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Scanner" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Buscar" } }
-      }
-    },
-    "Scanning…" : {
-      "comment" : "In-flight label for the Scan button. Maps to Android `action_scanning`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Skeniranje…" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Suche läuft…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Buscando…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Recherche…" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Buscando…" } }
-      }
-    },
-    "Connect" : {
-      "comment" : "Per-row connect button. Maps to Android `action_connect`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Poveži" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbinden" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conectar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connecter" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conectar" } }
-      }
-    },
-    "Disconnect" : {
-      "comment" : "Per-row disconnect button. Maps to Android `action_disconnect`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Prekini vezu" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Trennen" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desconectar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Déconnecter" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Desconectar" } }
-      }
-    },
-    "Connecting…" : {
-      "comment" : "Status / button label while a session is opening. Maps to Android `chip_status_connecting`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Povezivanje…" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Verbindet…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Conectando…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Connexion…" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Conectando…" } }
-      }
-    },
-    "Pairing…" : {
-      "comment" : "In-flight pairing chip / button label. Maps to Android `pair_dialog_pairing` (Pairing in progress).",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Uparivanje…" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Koppelt…" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Emparejando…" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Appairage…" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Pareando…" } }
-      }
-    },
-    "Forget" : {
-      "comment" : "Per-row forget action. Maps to Android `action_forget_short`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Zaboravi" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Entfernen" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Olvidar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Oublier" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Esquecer" } }
-      }
-    },
-    "Done" : {
-      "comment" : "Dismiss-the-sheet button. No direct Android equivalent — left for translators.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
-        "de" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
-        "es" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
-        "fr" : { "stringUnit" : { "state" : "new", "value" : "Done" } },
-        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Done" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "KONTROLERI"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CONTROLLER"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MANDOS"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MANETTES"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "CONTROLES"
+          }
+        }
       }
     },
     "Cancel" : {
       "comment" : "Generic cancel action. Maps to Android `action_cancel`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Otkaži" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Abbrechen" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Annuler" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Cancelar" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otkaži"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abbrechen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Annuler"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cancelar"
+          }
+        }
       }
     },
-    "Pair" : {
-      "comment" : "Submit-pairing button in the PIN sheet. Maps to Android `pair_dialog_submit` (uppercase on Android but the case is a per-locale choice).",
+    "Close" : {
+      "comment" : "Collapses the bind picker.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Upari" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Koppeln" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Emparejar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Appairer" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Parear" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zatvori"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechar"
+          }
+        }
       }
     },
-    "PIN" : {
-      "comment" : "PIN field placeholder. Maps to Android `pair_dialog_pin_hint`.",
+    "Connect" : {
+      "comment" : "Per-row connect button. Maps to Android `action_connect`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "PIN" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poveži"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecter"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectar"
+          }
+        }
       }
     },
-    "Settings" : {
-      "comment" : "Tooltip / title for the settings gear button + sheet. No direct Android equivalent — left for translators.",
+    "Connecting…" : {
+      "comment" : "Status / button label while a session is opening. Maps to Android `chip_status_connecting`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
-        "de" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
-        "es" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
-        "fr" : { "stringUnit" : { "state" : "new", "value" : "Settings" } },
-        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Settings" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Povezivanje…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindet…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectando…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conectando…"
+          }
+        }
       }
     },
-    "No connections yet" : {
-      "comment" : "Dashboard empty-state. Maps to Android `dashboard_connections_empty`.",
+    "Connections" : {
+      "comment" : "Title of the connections-management sheet. Maps to Android `title_connections`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Još nema veza" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Noch keine Verbindungen" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Aún no hay conexiones" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Aucune connexion pour l'instant" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Nenhuma conexão ainda" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veze"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindungen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conexiones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexions"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conexões"
+          }
+        }
       }
     },
-    "No controllers connected" : {
-      "comment" : "Slot list empty-state. Mac-specific copy — marked new.",
+    "Disconnect" : {
+      "comment" : "Per-row disconnect button. Maps to Android `action_disconnect`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
-        "de" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
-        "es" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
-        "fr" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } },
-        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "No controllers connected" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prekini vezu"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trennen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Déconnecter"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectar"
+          }
+        }
       }
     },
-    "Press Scan to look for servers on your LAN" : {
-      "comment" : "Connections sheet empty-state hint. Mac-specific copy.",
+    "Dismiss" : {
+      "comment" : "Tooltip of a toast's close cross.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
-        "de" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
-        "es" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
-        "fr" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } },
-        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Press Scan to look for servers on your LAN" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odbaci"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Descartar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dispensar"
+          }
+        }
       }
     },
-    "Tap Manage to add one" : {
-      "comment" : "Dashboard summary hint when no connections exist. Maps to Android `status_tap_manage`.",
+    "Done" : {
+      "comment" : "Dismiss-the-sheet button. No direct Android equivalent — left for translators.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Dodirnite Upravljanje da dodate jednu" } },
-        "de" : { "stringUnit" : { "state" : "new", "value" : "Tap Manage to add one" } },
-        "es" : { "stringUnit" : { "state" : "new", "value" : "Tap Manage to add one" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Touchez Gérer pour en ajouter une" } },
-        "pt-BR" : { "stringUnit" : { "state" : "new", "value" : "Tap Manage to add one" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Done"
+          }
+        }
+      }
+    },
+    "Enter an IPv4 address like 192.168.1.50 (optionally :port)" : {
+      "comment" : "Inline error when the typed address is not an IPv4 literal.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unesite IPv4 adresu poput 192.168.1.50 (opcionalno :port)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib eine IPv4-Adresse wie 192.168.1.50 ein (optional :Port)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introduce una dirección IPv4 como 192.168.1.50 (opcionalmente :puerto)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez une adresse IPv4 comme 192.168.1.50 (avec :port en option)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite um endereço IPv4 como 192.168.1.50 (opcionalmente :porta)"
+          }
+        }
+      }
+    },
+    "Enter the 4-digit PIN shown on the Satellite server." : {
+      "comment" : "Pairing sheet instruction. The satellite rotates four-digit PINs.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unesite četverocifreni PIN prikazan na Satellite serveru."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib den 4-stelligen PIN ein, der auf dem Satellite-Server angezeigt wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introduce el PIN de 4 dígitos que aparece en el servidor Satellite."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez le PIN à 4 chiffres affiché sur le serveur Satellite."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite o PIN de 4 dígitos exibido no servidor Satellite."
+          }
+        }
+      }
+    },
+    "Error: %@" : {
+      "comment" : "Failure: the session PUT was refused; the argument is the server's detail or \"connection failed\".",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Greška: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fehler: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Error: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erreur : %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erro: %@"
+          }
+        }
+      }
+    },
+    "FORWARDED FEATURES" : {
+      "comment" : "Settings section eyebrow, uppercase.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROSLIJEĐENE FUNKCIJE"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WEITERGELEITETE FUNKTIONEN"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FUNCIONES REENVIADAS"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FONCTIONS TRANSMISES"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RECURSOS ENCAMINHADOS"
+          }
+        }
+      }
+    },
+    "Features only apply when your controller's hardware supports them — the controller list shows what was detected." : {
+      "comment" : "Settings footnote.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funkcije važe samo ako ih hardver kontrolera podržava — lista kontrolera pokazuje šta je otkriveno."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funktionen gelten nur, wenn die Hardware deines Controllers sie unterstützt — die Controller-Liste zeigt, was erkannt wurde."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las funciones solo se aplican si el hardware de tu mando las admite — la lista de mandos muestra lo detectado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fonctions ne s'appliquent que si le matériel de votre manette les prend en charge — la liste des manettes indique ce qui a été détecté."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os recursos só valem quando o hardware do seu controle os suporta — a lista de controles mostra o que foi detectado."
+          }
+        }
+      }
+    },
+    "Follow game" : {
+      "comment" : "Light-bar mode: apply the host game's colour.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prati igru"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spiel folgen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir el juego"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivre le jeu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir o jogo"
+          }
+        }
+      }
+    },
+    "Follow game: the controller LED matches the host game. Off: leave the LED untouched." : {
+      "comment" : "Settings light-bar detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prati igru: LED kontrolera prati igru na hostu. Isključeno: LED ostaje netaknut."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spiel folgen: die Controller-LED folgt dem Host-Spiel. Aus: die LED bleibt unverändert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir el juego: el LED del mando sigue al juego del host. Apagado: el LED no se toca."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivre le jeu : la LED de la manette suit le jeu de l'hôte. Désactivé : la LED reste inchangée."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir o jogo: o LED do controle acompanha o jogo do host. Desligado: o LED fica como está."
+          }
+        }
+      }
+    },
+    "Forget" : {
+      "comment" : "Per-row forget action. Maps to Android `action_forget_short`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaboravi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entfernen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Olvidar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oublier"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esquecer"
+          }
+        }
+      }
+    },
+    "Forward gyroscope and accelerometer to the host — used for motion aiming in games that support it." : {
+      "comment" : "Settings toggle detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proslijedi žiroskop i akcelerometar hostu — za nišanjenje pokretom u igrama koje to podržavaju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gyroskop und Beschleunigungssensor an den Host weiterleiten — für Bewegungssteuerung in Spielen, die sie unterstützen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reenviar giroscopio y acelerómetro al host — se usa para apuntar con movimiento en los juegos que lo admiten."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmettre le gyroscope et l'accéléromètre à l'hôte — pour la visée gyroscopique dans les jeux compatibles."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encaminhar giroscópio e acelerômetro para o host — usado para mirar com movimento nos jogos que oferecem suporte."
+          }
+        }
+      }
+    },
+    "Forward the DualSense / DualShock 4 touchpad. Controllers without a touchpad ignore this." : {
+      "comment" : "Settings toggle detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Proslijedi dodirnu ploču DualSense / DualShock 4 kontrolera. Kontroleri bez dodirne ploče ovo ignorišu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Touchpad von DualSense / DualShock 4 weiterleiten. Controller ohne Touchpad ignorieren dies."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reenviar el panel táctil de DualSense / DualShock 4. Los mandos sin panel táctil lo ignoran."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmettre le pavé tactile DualSense / DualShock 4. Les manettes sans pavé tactile l'ignorent."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encaminhar o touchpad do DualSense / DualShock 4. Controles sem touchpad ignoram isto."
+          }
+        }
       }
     },
     "Found" : {
       "comment" : "LinkState chip — discovered but unpaired. Maps to Android `chip_status_found`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Pronađen" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Gefunden" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Encontrado" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Trouvée" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Encontrado" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pronađen"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gefunden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encontrado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trouvée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encontrado"
+          }
+        }
+      }
+    },
+    "Found · %@" : {
+      "comment" : "Status chip of a discovered, unpaired server; the argument is the discovery path.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pronađen · %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gefunden · %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encontrado · %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trouvé · %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encontrado · %@"
+          }
+        }
+      }
+    },
+    "Gamepad • %@" : {
+      "comment" : "Slot subtitle; the argument is where the input goes.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamepad • %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamepad • %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mando • %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manette • %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controle • %@"
+          }
+        }
+      }
+    },
+    "Gyro" : {
+      "comment" : "Capability chip: the pad has an IMU.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Žiro"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gyro"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gyro"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giroscópio"
+          }
+        }
+      }
+    },
+    "Light bar" : {
+      "comment" : "Settings row title and feature name in the lightbar chip's tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svjetlosna traka"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lichtleiste"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra de luz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barre lumineuse"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra de luz"
+          }
+        }
+      }
+    },
+    "Lightbar" : {
+      "comment" : "Capability chip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svjetlosna traka"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lichtleiste"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra de luz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barre lumineuse"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Barra de luz"
+          }
+        }
+      }
+    },
+    "Loading" : {
+      "comment" : "Accessibility label of the spinner and the bar.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Učitavanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lädt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cargando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carregando"
+          }
+        }
+      }
+    },
+    "Manage" : {
+      "comment" : "Dashboard action button — opens the connections sheet. Maps to Android `action_manage`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upravljanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerenciar"
+          }
+        }
+      }
+    },
+    "Motion" : {
+      "comment" : "Feature name in the gyro chip's tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento"
+          }
+        }
+      }
+    },
+    "Motion (gyro)" : {
+      "comment" : "Settings toggle title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret (žiro)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung (Gyro)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento (giro)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement (gyro)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento (giroscópio)"
+          }
+        }
+      }
+    },
+    "Motion not available — this controller has no gyroscope or accelerometer." : {
+      "comment" : "Tooltip of the \"No gyro\" chip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret nije dostupan — ovaj kontroler nema žiroskop ni akcelerometar."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung nicht verfügbar — dieser Controller hat kein Gyroskop und keinen Beschleunigungssensor."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento no disponible — este mando no tiene giroscopio ni acelerómetro."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement indisponible — cette manette n'a ni gyroscope ni accéléromètre."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento indisponível — este controle não tem giroscópio nem acelerômetro."
+          }
+        }
       }
     },
     "Needs pairing" : {
       "comment" : "LinkState chip — server forgot us. Maps to Android `chip_status_needs_pairing`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Potrebno uparivanje" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Kopplung nötig" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Emparejar" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Appairage requis" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Parear novamente" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Potrebno uparivanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopplung nötig"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairage requis"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parear novamente"
+          }
+        }
+      }
+    },
+    "No connections yet" : {
+      "comment" : "Dashboard empty-state. Maps to Android `dashboard_connections_empty`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još nema veza"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Verbindungen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay conexiones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune connexion pour l'instant"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma conexão ainda"
+          }
+        }
+      }
+    },
+    "No connections — add one from Manage" : {
+      "comment" : "Bind picker empty state.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema veza — dodajte jednu u Upravljanju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Verbindungen — füge eine unter Verwalten hinzu"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin conexiones — añade una desde Gestionar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune connexion — ajoutez-en une via Gérer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma conexão — adicione uma em Gerenciar"
+          }
+        }
+      }
+    },
+    "No controllers connected" : {
+      "comment" : "Slot list empty-state. Mac-specific copy — marked new.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No controllers connected"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No controllers connected"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No controllers connected"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No controllers connected"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No controllers connected"
+          }
+        }
+      }
+    },
+    "No gyro" : {
+      "comment" : "Capability chip: the pad has no IMU.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema žira"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Gyro"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin giro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans gyro"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem giroscópio"
+          }
+        }
+      }
+    },
+    "No response from the satellite. The pairing request timed out." : {
+      "comment" : "Failure: approval poll timed out.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satelit ne odgovara. Zahtjev za uparivanje je istekao."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Antwort vom Satelliten. Die Kopplungsanfrage ist abgelaufen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El satélite no respondió. La solicitud de emparejamiento caducó."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune réponse du satellite. La demande d'appairage a expiré."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem resposta do satélite. O pedido de pareamento expirou."
+          }
+        }
+      }
+    },
+    "No servers found — check your network" : {
+      "comment" : "Failure: a scan ended with nothing heard.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema pronađenih servera — provjerite mrežu"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Server gefunden — prüfe dein Netzwerk"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontraron servidores — revisa tu red"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun serveur trouvé — vérifiez votre réseau"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum servidor encontrado — verifique sua rede"
+          }
+        }
+      }
+    },
+    "No shared key — re-pair needed" : {
+      "comment" : "Failure: a session was requested with no pairing key stored.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema zajedničkog ključa — potrebno je ponovo uparivanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein gemeinsamer Schlüssel — erneute Kopplung nötig"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay clave compartida — hay que volver a emparejar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune clé partagée — un nouvel appairage est nécessaire"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem chave compartilhada — é preciso parear de novo"
+          }
+        }
+      }
+    },
+    "Off" : {
+      "comment" : "Light-bar mode: leave the LED alone.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isključeno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apagado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desligado"
+          }
+        }
       }
     },
     "Offline" : {
       "comment" : "LinkState chip — paired but not seen. Maps to Android `chip_status_offline`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Van veze" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Offline" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Desconectado" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Hors ligne" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Off-line" } }
-      }
-    },
-    "Ready" : {
-      "comment" : "LinkState chip — paired and seen, no live session. Maps to Android `chip_status_ready`.",
-      "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Spreman" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Bereit" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Listo" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Prête" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Pronto" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Van veze"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Offline"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desconectado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hors ligne"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Off-line"
+          }
+        }
       }
     },
     "Online" : {
       "comment" : "LinkState chip — live session. Maps to Android `chip_status_online`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Na vezi" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Online" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "En línea" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "En ligne" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "On-line" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na vezi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Online"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En línea"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En ligne"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "On-line"
+          }
+        }
+      }
+    },
+    "PIN" : {
+      "comment" : "PIN field placeholder. Maps to Android `pair_dialog_pin_hint`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN"
+          }
+        }
+      }
+    },
+    "Pair" : {
+      "comment" : "Submit-pairing button in the PIN sheet. Maps to Android `pair_dialog_submit` (uppercase on Android but the case is a per-locale choice).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upari"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppeln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parear"
+          }
+        }
+      }
+    },
+    "Pair with %@" : {
+      "comment" : "Pairing sheet headline; the argument is the server's name or address.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upari sa %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit %@ koppeln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejar con %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairer avec %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parear com %@"
+          }
+        }
+      }
+    },
+    "Pairing failed" : {
+      "comment" : "Failure: pairing rejected without a detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uparivanje nije uspjelo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopplung fehlgeschlagen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El emparejamiento falló"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'appairage a échoué"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O pareamento falhou"
+          }
+        }
+      }
+    },
+    "Pairing…" : {
+      "comment" : "In-flight pairing chip / button label. Maps to Android `pair_dialog_pairing` (Pairing in progress).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uparivanje…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppelt…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejando…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairage…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pareando…"
+          }
+        }
+      }
+    },
+    "Play vibration the host game sends back on your controller." : {
+      "comment" : "Settings toggle detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reproduciraj na kontroleru vibraciju koju igra na hostu šalje nazad."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration, die das Host-Spiel zurücksendet, auf deinem Controller abspielen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reproducir en tu mando la vibración que devuelve el juego del host."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jouer sur votre manette la vibration renvoyée par le jeu de l'hôte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reproduzir no seu controle a vibração que o jogo do host envia de volta."
+          }
+        }
+      }
+    },
+    "Press Scan to look for servers on your LAN" : {
+      "comment" : "Connections sheet empty-state hint. Mac-specific copy.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press Scan to look for servers on your LAN"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press Scan to look for servers on your LAN"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press Scan to look for servers on your LAN"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press Scan to look for servers on your LAN"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Press Scan to look for servers on your LAN"
+          }
+        }
+      }
+    },
+    "Ready" : {
+      "comment" : "LinkState chip — paired and seen, no live session. Maps to Android `chip_status_ready`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spreman"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prête"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pronto"
+          }
+        }
+      }
+    },
+    "Rumble" : {
+      "comment" : "Capability chip and Settings toggle title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibracija"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibração"
+          }
+        }
+      }
+    },
+    "Scan" : {
+      "comment" : "Trigger LAN scan. Maps to Android `action_scan`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skeniraj"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Scanner"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar"
+          }
+        }
+      }
+    },
+    "Scanning…" : {
+      "comment" : "In-flight label for the Scan button. Maps to Android `action_scanning`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skeniranje…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche läuft…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando…"
+          }
+        }
+      }
+    },
+    "Server could not apply the controller" : {
+      "comment" : "Failure: a slot descriptor was rejected by the backend.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server nije mogao primijeniti kontroler"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Server konnte den Controller nicht anwenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El servidor no pudo aplicar el mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le serveur n'a pas pu appliquer la manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O servidor não conseguiu aplicar o controle"
+          }
+        }
+      }
+    },
+    "Server unreachable — has it moved networks? (%@)" : {
+      "comment" : "Failure: no HTTP response; the argument is the transport detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server nedostupan — je li promijenio mrežu? (%@)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Server nicht erreichbar — hat er das Netzwerk gewechselt? (%@)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Servidor inaccesible — ¿ha cambiado de red? (%@)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Serveur injoignable — a-t-il changé de réseau ? (%@)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Servidor inacessível — ele mudou de rede? (%@)"
+          }
+        }
+      }
+    },
+    "Settings" : {
+      "comment" : "Tooltip / title for the settings gear button + sheet. No direct Android equivalent — left for translators.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Settings"
+          }
+        }
+      }
+    },
+    "Tap Manage to add one" : {
+      "comment" : "Dashboard summary hint when no connections exist. Maps to Android `status_tap_manage`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodirnite Upravljanje da dodate jednu"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Manage to add one"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Manage to add one"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchez Gérer pour en ajouter une"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tap Manage to add one"
+          }
+        }
+      }
+    },
+    "The satellite accepted, but the controller link would not open. Try again." : {
+      "comment" : "Failure: the UDP socket could not be set up.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satelit je prihvatio, ali veza kontrolera se nije mogla otvoriti. Pokušajte ponovo."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Satellit hat zugestimmt, aber die Controller-Verbindung ließ sich nicht öffnen. Versuche es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El satélite aceptó, pero el enlace del mando no se pudo abrir. Vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le satellite a accepté, mais la liaison de la manette n'a pas pu s'ouvrir. Réessayez."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O satélite aceitou, mas o link do controle não abriu. Tente novamente."
+          }
+        }
+      }
+    },
+    "The satellite declined the pairing request." : {
+      "comment" : "Failure: operator declined.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satelit je odbio zahtjev za uparivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Satellit hat die Kopplungsanfrage abgelehnt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El satélite rechazó la solicitud de emparejamiento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le satellite a refusé la demande d'appairage."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O satélite recusou o pedido de pareamento."
+          }
+        }
+      }
+    },
+    "This app and the satellite speak different protocol versions. Update both to the latest version." : {
+      "comment" : "Failure: 409 protocol mismatch.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ova aplikacija i satelit govore različite verzije protokola. Ažurirajte oboje na najnoviju verziju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese App und der Satellit sprechen unterschiedliche Protokollversionen. Aktualisiere beide auf die neueste Version."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta app y el satélite hablan versiones distintas del protocolo. Actualiza ambos a la última versión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette application et le satellite parlent des versions de protocole différentes. Mettez les deux à jour vers la dernière version."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este app e o satélite falam versões diferentes do protocolo. Atualize ambos para a versão mais recente."
+          }
+        }
+      }
+    },
+    "This satellite no longer recognizes this device. Re-pair needed." : {
+      "comment" : "Failure: terminal 401.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovaj satelit više ne prepoznaje ovaj uređaj. Potrebno je ponovo uparivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Satellit erkennt dieses Gerät nicht mehr. Eine erneute Kopplung ist nötig."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este satélite ya no reconoce este dispositivo. Hay que volver a emparejarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce satellite ne reconnaît plus cet appareil. Un nouvel appairage est nécessaire."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este satélite não reconhece mais este dispositivo. É preciso parear de novo."
+          }
+        }
+      }
+    },
+    "This satellite's security identity changed. If it was reinstalled, forget it here and pair again." : {
+      "comment" : "Failure: TOFU pin mismatch.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sigurnosni identitet ovog satelita se promijenio. Ako je ponovo instaliran, zaboravite ga ovdje i uparite ponovo."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Sicherheitsidentität dieses Satelliten hat sich geändert. Falls er neu installiert wurde, entferne ihn hier und koppele erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La identidad de seguridad de este satélite cambió. Si se reinstaló, olvídalo aquí y vuelve a emparejarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'identité de sécurité de ce satellite a changé. S'il a été réinstallé, oubliez-le ici et appairez-le de nouveau."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A identidade de segurança deste satélite mudou. Se ele foi reinstalado, esqueça-o aqui e pareie de novo."
+          }
+        }
+      }
+    },
+    "Touchpad" : {
+      "comment" : "Capability chip and Settings toggle title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodirna ploča"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchpad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Panel táctil"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pavé tactile"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchpad"
+          }
+        }
+      }
+    },
+    "UDP broadcast" : {
+      "comment" : "Discovery path: the legacy UDP beacon.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UDP emitovanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UDP-Broadcast"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Difusión UDP"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diffusion UDP"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmissão UDP"
+          }
+        }
+      }
+    },
+    "Unbind" : {
+      "comment" : "Releases a slot from its server.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odveži"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trennen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desenlazar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Délier"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desvincular"
+          }
+        }
       }
     },
     "Unsteady" : {
       "comment" : "LinkState chip — live but faltering. Maps to Android `chip_status_unstable`.",
       "localizations" : {
-        "bs" : { "stringUnit" : { "state" : "translated", "value" : "Nestabilan" } },
-        "de" : { "stringUnit" : { "state" : "translated", "value" : "Instabil" } },
-        "es" : { "stringUnit" : { "state" : "translated", "value" : "Inestable" } },
-        "fr" : { "stringUnit" : { "state" : "translated", "value" : "Instable" } },
-        "pt-BR" : { "stringUnit" : { "state" : "translated", "value" : "Instável" } }
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nestabilan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instabil"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inestable"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instable"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Instável"
+          }
+        }
+      }
+    },
+    "WI-FI SERVERS" : {
+      "comment" : "Section header on the Connections sheet. Mac-specific surface (Android uses SATELLITES); marked new for localization.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WI-FI SERVERS"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WI-FI SERVERS"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WI-FI SERVERS"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WI-FI SERVERS"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "WI-FI SERVERS"
+          }
+        }
+      }
+    },
+    "Working" : {
+      "comment" : "Accessibility label of the pulsing dots.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arbeitet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trabajando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En cours"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Processando"
+          }
+        }
+      }
+    },
+    "added by address" : {
+      "comment" : "Discovery path: typed in by the user. Lowercase, it follows \"Found ·\".",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dodan po adresi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "per Adresse hinzugefügt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "añadido por dirección"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ajouté par adresse"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "adicionado por endereço"
+          }
+        }
+      }
+    },
+    "connection failed" : {
+      "comment" : "The detail behind \"Error:\" when the server gave none.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "veza nije uspjela"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung fehlgeschlagen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "la conexión falló"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "la connexion a échoué"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "a conexão falhou"
+          }
+        }
+      }
+    },
+    "mDNS" : {
+      "comment" : "Discovery path: Bonjour.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS"
+          }
+        }
+      }
+    },
+    "mDNS + broadcast" : {
+      "comment" : "Discovery path: heard on both.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS + emitovanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS + Broadcast"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS + difusión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS + diffusion"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "mDNS + transmissão"
+          }
+        }
+      }
+    },
+    "unbound" : {
+      "comment" : "Slot subtitle when no server is bound. Lowercase, it follows \"Gamepad •\".",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nije povezano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nicht verknüpft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin enlazar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "non liée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sem vínculo"
+          }
+        }
+      }
+    },
+    "→ %@" : {
+      "comment" : "Slot binding, server live.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@"
+          }
+        }
+      }
+    },
+    "→ %@ (connecting…)" : {
+      "comment" : "Slot binding, session opening.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (povezivanje…)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (verbindet…)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (conectando…)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (connexion…)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (conectando…)"
+          }
+        }
+      }
+    },
+    "→ %@ (offline)" : {
+      "comment" : "Slot binding, server out of reach.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (van veze)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (offline)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (desconectado)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (hors ligne)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (off-line)"
+          }
+        }
+      }
+    },
+    "→ %@ (ready)" : {
+      "comment" : "Slot binding, server seen but no session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (spreman)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (bereit)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (listo)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (prête)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (pronto)"
+          }
+        }
+      }
+    },
+    "→ %@ (unsteady)" : {
+      "comment" : "Slot binding, server faltering.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (nestabilno)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (instabil)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (inestable)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (instable)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "→ %@ (instável)"
+          }
+        }
       }
     }
-  }
+  },
+  "version" : "1.0"
 }

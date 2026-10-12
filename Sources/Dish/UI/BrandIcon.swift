@@ -29,13 +29,8 @@ enum BrandIconState {
     case off
 }
 
-/// Native SwiftUI rendering of the v6 brand iconography from
-/// `dish-mac/../bluetooth-assets`, `dish-assets`, `satellite-assets`.
-///
-/// Implemented with `Path` rather than bundled SVG because dish-mac targets
-/// macOS 13 (Asset Catalog SVG rendering only landed in macOS 14) and
-/// adding a resource pipeline would mean rewriting Package.swift. Path-
-/// drawing keeps the glyphs crisp at every size for free.
+/// The brand iconography drawn with `Path` on a 64-unit canvas, crisp at
+/// every size. The colours are the theme's brand tokens.
 struct BrandIcon: View {
     let kind: BrandIconKind
     let state: BrandIconState
@@ -58,25 +53,16 @@ struct BrandIcon: View {
         .accessibilityHidden(true)
     }
 
-    // MARK: - Palette (mirrors the v6 brand book)
+    // MARK: - Palette (the brand book's glyph colours, from the theme)
 
-    private var primary: Color {
-        Color(red: 143 / 255, green: 207 / 255, blue: 227 / 255)
-    } // #8FCFE3
-    private var overlay: Color {
-        Color.white.opacity(0.55)
+    /// The glyph fill, dimmed in the "off" state.
+    private var glyph: Color {
+        state == .off ? DishTheme.brandGlyphOff : DishTheme.brandGlyph
     }
 
-    private var slashCut: Color {
-        Color(red: 15 / 255, green: 22 / 255, blue: 32 / 255)
-    } // #0F1620
-
-    private var primaryAlpha: Double {
-        state == .off ? 0.4 : 1.0
-    }
-
-    private var overlayAlpha: Double {
-        state == .off ? 0.22 : 0.55
+    /// The white highlight, dimmed in the "off" state.
+    private var highlight: Color {
+        state == .off ? DishTheme.brandGlyphHighlightOff : DishTheme.brandGlyphHighlight
     }
 
     // MARK: - Dish
@@ -89,7 +75,7 @@ struct BrandIcon: View {
 
     /// Base plate and pole.
     private func drawDishStand(in ctx: inout GraphicsContext) {
-        let p = primary.opacity(primaryAlpha)
+        let p = glyph
         let s = scale
         ctx.fill(
             Path(roundedRect: CGRect(x: 14 * s, y: 56 * s, width: 36 * s, height: 4 * s), cornerRadius: 1 * s),
@@ -101,8 +87,8 @@ struct BrandIcon: View {
     /// Reflector, highlight, feed horn and mast, rotated around the pivot and
     /// rotated back so later drawing stays in canvas coordinates.
     private func drawDishReflector(in ctx: inout GraphicsContext) {
-        let p = primary.opacity(primaryAlpha)
-        let o = Color.white.opacity(overlayAlpha)
+        let p = glyph
+        let o = highlight
         let s = scale
         let pivot = CGPoint(x: 32 * s, y: 28 * s)
         ctx.translateBy(x: pivot.x, y: pivot.y)
@@ -123,10 +109,10 @@ struct BrandIcon: View {
     private func drawDishIndicators(in ctx: inout GraphicsContext) {
         let s = scale
         if state == .connected {
-            ctx.fill(Path(ellipseIn: CGRect(x: 45 * s, y: 11 * s, width: 6 * s, height: 6 * s)), with: .color(primary))
+            ctx.fill(Path(ellipseIn: CGRect(x: 45 * s, y: 11 * s, width: 6 * s, height: 6 * s)), with: .color(DishTheme.brandGlyph))
             ctx.fill(
                 Path(ellipseIn: CGRect(x: 46.5 * s, y: 12.5 * s, width: 3 * s, height: 3 * s)),
-                with: .color(.white.opacity(0.55))
+                with: .color(DishTheme.brandGlyphHighlight)
             )
         }
         if state == .off {
@@ -145,8 +131,8 @@ struct BrandIcon: View {
 
     /// Two panels with their slats and the connectors to the body.
     private func drawSolarPanels(in ctx: inout GraphicsContext) {
-        let p = primary.opacity(primaryAlpha)
-        let o = Color.white.opacity(overlayAlpha)
+        let p = glyph
+        let o = highlight
         let s = scale
         for x in [2, 42] {
             ctx.fill(
@@ -163,8 +149,8 @@ struct BrandIcon: View {
     }
 
     private func drawSatelliteBody(in ctx: inout GraphicsContext) {
-        let p = primary.opacity(primaryAlpha)
-        let o = Color.white.opacity(overlayAlpha)
+        let p = glyph
+        let o = highlight
         let s = scale
         ctx.fill(
             Path(roundedRect: CGRect(x: 26 * s, y: 22 * s, width: 12 * s, height: 20 * s), cornerRadius: 2 * s),
@@ -178,7 +164,7 @@ struct BrandIcon: View {
 
     /// Mast plus the antenna's chevron.
     private func drawAntenna(in ctx: inout GraphicsContext) {
-        let p = primary.opacity(primaryAlpha)
+        let p = glyph
         let s = scale
         ctx.fill(Path(CGRect(x: 31 * s, y: 10 * s, width: 2 * s, height: 12 * s)), with: .color(p))
         var chevron = Path()
@@ -193,7 +179,10 @@ struct BrandIcon: View {
     private func drawSatelliteIndicators(in ctx: inout GraphicsContext) {
         let s = scale
         if state == .connected {
-            ctx.fill(Path(ellipseIn: CGRect(x: 29.5 * s, y: -0.5 * s, width: 5 * s, height: 5 * s)), with: .color(primary))
+            ctx.fill(
+                Path(ellipseIn: CGRect(x: 29.5 * s, y: -0.5 * s, width: 5 * s, height: 5 * s)),
+                with: .color(DishTheme.brandGlyph)
+            )
         }
         if state == .off {
             strokeSlash(in: &ctx)
@@ -209,8 +198,7 @@ struct BrandIcon: View {
 
     private func drawBluetoothRune(in ctx: inout GraphicsContext) {
         let s = scale
-        let runeAlpha: Double = state == .off ? 0.45 : 1.0
-        let stroke = primary.opacity(runeAlpha)
+        let stroke = state == .off ? DishTheme.brandRuneOff : DishTheme.brandGlyph
         var rune = Path()
         let points: [(CGFloat, CGFloat)] = [(18, 18), (46, 46), (32, 58), (32, 6), (46, 18), (18, 46)]
         rune.move(to: CGPoint(x: points[0].0 * s, y: points[0].1 * s))
@@ -227,12 +215,12 @@ struct BrandIcon: View {
             ctx.fill(
                 Path(ellipseIn:
                     CGRect(x: 3 * s, y: 29 * s, width: 6 * s, height: 6 * s)),
-                with: .color(primary)
+                with: .color(DishTheme.brandGlyph)
             )
             ctx.fill(
                 Path(ellipseIn:
                     CGRect(x: 55 * s, y: 29 * s, width: 6 * s, height: 6 * s)),
-                with: .color(primary)
+                with: .color(DishTheme.brandGlyph)
             )
         case .searching:
             var arc = Path()
@@ -245,7 +233,7 @@ struct BrandIcon: View {
             )
             ctx.stroke(
                 arc,
-                with: .color(primary),
+                with: .color(DishTheme.brandGlyph),
                 style: StrokeStyle(lineWidth: 4 * s, lineCap: .round)
             )
         case .off:
@@ -264,32 +252,22 @@ struct BrandIcon: View {
         line.addLine(to: CGPoint(x: 54 * s, y: 10 * s))
         ctx.stroke(
             line,
-            with: .color(slashCut),
+            with: .color(DishTheme.brandSlashCut),
             style: StrokeStyle(lineWidth: 8 * s, lineCap: .round)
         )
         ctx.stroke(
             line,
-            with: .color(primary),
+            with: .color(DishTheme.brandGlyph),
             style: StrokeStyle(lineWidth: 4 * s, lineCap: .round)
         )
     }
 }
 
 extension BrandIcon {
-    /// Convenience builder that maps a Wi-Fi-server row's `LinkState` onto
-    /// the right glyph state. Each row IS a satellite server the phone /
-    /// laptop is reaching out to, so the satellite glyph is the correct
-    /// silhouette — using the dish glyph here would read as the *sender*
-    /// rather than the *target*. Mirrors the Android
-    /// `rowGlyphRes(SATELLITE, …)` mapping and the Qt
-    /// `brandIconResource(Satellite, …)` mapping.
+    /// The glyph for a Wi-Fi-server row. Each row is a satellite the Mac is
+    /// reaching out to, so the satellite silhouette is the right one; the
+    /// dish glyph would read as the sender.
     static func satellite(for state: LinkState, size: CGFloat = 28) -> BrandIcon {
-        let bs: BrandIconState =
-            switch state {
-            case .connected: .connected
-            case .saved, .stale: .off
-            default: .default
-            }
-        return BrandIcon(kind: .satellite, state: bs, size: size)
+        BrandIcon(kind: .satellite, state: brandIconState(for: state), size: size)
     }
 }

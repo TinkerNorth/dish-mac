@@ -4,18 +4,10 @@
 import XCTest
 @testable import DishEngine
 
-/// Tests for the Task 1.6 mDNS discovery surface: the `DiscoverySource`
-/// labelling, the `source` field's exclusion from the wire format, and the
-/// two-path discovery merge (`WifiConnectionManager.mergeDiscovered`).
+/// The mDNS discovery surface: the `source` field's exclusion from the wire
+/// format, and the two-path discovery merge (`mergeDiscovered`). The words a
+/// source is shown as belong to the app layer (`discoverySourceText`).
 final class MdnsDiscoveryTests: XCTestCase {
-
-    // MARK: - DiscoverySource
-
-    func testDiscoverySourceLabels() {
-        XCTAssertEqual(DiscoverySource.broadcast.label, "UDP broadcast")
-        XCTAssertEqual(DiscoverySource.mdns.label, "mDNS")
-        XCTAssertEqual(DiscoverySource.both.label, "mDNS + broadcast")
-    }
 
     // MARK: - DiscoveredServer.source vs the wire format
 
