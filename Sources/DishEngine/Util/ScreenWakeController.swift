@@ -1,68 +1,61 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import Combine
+import DishKernel
 import Foundation
 
-/// Owns the "are we streaming?" boolean and drives a `DisplaySleepInhibitor`
-/// off it. Mirrors `dish-android :: WakeStateController` — there
-/// `streamingSlotCount` is derived from `hub.bindings × hub.connections`;
-/// here the AppModel feeds the same derived signal in via `update(...)`.
-///
-/// Pure logic — no IOKit, no Combine subscription. The AppModel decides when
-/// to call `update`, and the controller only flips the inhibitor when the
-/// boolean crosses zero. Lets tests pin the transition contract directly.
-final class ScreenWakeController {
+/// Holds a `DisplaySleepInhibitor` while any bound slot streams. The
+/// upstream is the count of bound, connected slots; the assertion flips only
+/// when the count crosses zero.
+final class ScreenWakeController: Controller<Int> {
 
     private let inhibitor: DisplaySleepInhibitor
     private let reason: String
     private(set) var streamingSlotCount = 0
 
     init(
+        upstream: AnyPublisher<Int, Never>,
         inhibitor: DisplaySleepInhibitor,
         reason: String = "Dish is streaming gamepad input to Satellite"
     ) {
         self.inhibitor = inhibitor
         self.reason = reason
+        super.init(upstream: upstream)
     }
 
-    /// Pure helper that derives the count of bound + connected slots from the
-    /// current binding table and the per-connection state. Extracted so unit
-    /// tests can pin the arithmetic without instantiating a controller.
-    ///
-    /// `.unstable` (faltering session) still counts as streaming — packets
-    /// are still flowing, just with heartbeat wobble — so an unsteady slot
-    /// must not drop the wake lock.
-    static func streamingCount(
-        bindings: [String: String],
-        connectionStates: [String: LinkState]
-    ) -> Int {
-        var count = 0
-        for (_, cid) in bindings {
-            switch connectionStates[cid] {
-            case .connected, .unstable: count += 1
-            default: break
-            }
-        }
-        return count
+    /// Bound slots whose connection is online or unsteady; an unsteady link
+    /// still carries packets and must not drop the assertion.
+    static func streamingCount(bindings: [String: String], connectionStates: [String: LinkState]) -> Int {
+        bindings.values.filter { connectionId in
+            let state = connectionStates[connectionId]
+            return state == .connected || state == .unstable
+        }.count
     }
 
-    /// Feed the controller a fresh streaming count. Acquires the inhibitor on
-    /// the 0 → positive transition; releases on positive → 0. Same value
-    /// twice in a row is a no-op so callers can spam updates without thrash.
-    func update(streamingSlotCount: Int) {
-        let was = self.streamingSlotCount
-        self.streamingSlotCount = streamingSlotCount
-        if was == 0, streamingSlotCount > 0 {
+    override func apply(_ count: Int) {
+        let was = streamingSlotCount
+        streamingSlotCount = count
+        let startedStreaming = was == 0 && count > 0
+        let stoppedStreaming = was > 0 && count == 0
+        if startedStreaming {
             inhibitor.acquire(reason: reason)
-        } else if was > 0, streamingSlotCount == 0 {
+        }
+        if stoppedStreaming {
             inhibitor.release()
         }
     }
 
-    /// Backgrounding / window-close path. Drops the inhibitor unconditionally
-    /// and resets the count so the next `update` re-establishes from scratch.
+    /// Drop the assertion whatever the count; the next `apply` starts over.
     func reset() {
         streamingSlotCount = 0
         inhibitor.release()
     }
+}
+
+/// The streaming-slot count from the hub's bindings and summaries, for the
+/// composer that feeds the wake controller.
+func streamingSlotCount(bindings: [String: String], summaries: [ConnectionSummary]) -> Int {
+    let states = Dictionary(uniqueKeysWithValues: summaries.map { ($0.id, $0.live) })
+    return ScreenWakeController.streamingCount(bindings: bindings, connectionStates: states)
 }

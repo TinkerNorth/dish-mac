@@ -15,7 +15,7 @@ let package = Package(
     targets: [
         // The pure protocol core: wire codecs, crypto, protocol constants and
         // policy reducers. Foundation + CryptoKit only; the import allowlist is
-        // pinned by CorePurityTests.
+        // pinned by ImportBoundariesTests.
         .target(
             name: "DishCore",
             path: "Sources/DishCore",

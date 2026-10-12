@@ -11,10 +11,8 @@ if [ ! -x "$BIN" ]; then
   exit 1
 fi
 
-# The VERSION file is the single source of truth for the app's self-reported
-# version (mirrors satellite's VERSION gate). A hardcoded plist version here
-# would make every build self-report the same number — fatal for the
-# "update both" protocol-mismatch UX.
+# VERSION is the one source of the app's self-reported version; a hardcoded
+# plist value would make every build report the same number.
 VERSION="$(tr -d '[:space:]' < "$PWD/VERSION")"
 case "$VERSION" in
   [0-9]*.[0-9]*) ;;
@@ -27,6 +25,15 @@ mkdir -p "$APP/Contents/MacOS"
 mkdir -p "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Dish"
 cp "$PWD/Resources/Dish.icns" "$APP/Contents/Resources/Dish.icns"
+
+# SwiftPM compiles the String Catalog into this resource bundle, and the
+# generated `Bundle.module` accessor looks for it in Contents/Resources.
+RESOURCE_BUNDLE="$(dirname "$BIN")/Dish_Dish.bundle"
+if [ ! -d "$RESOURCE_BUNDLE" ]; then
+  echo "Resource bundle not found at $RESOURCE_BUNDLE — run 'swift build' first." >&2
+  exit 1
+fi
+cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/Dish_Dish.bundle"
 
 cat > "$APP/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>

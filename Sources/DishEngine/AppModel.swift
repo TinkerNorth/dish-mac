@@ -3,6 +3,7 @@
 
 import Combine
 import DishCore
+import DishKernel
 import Foundation
 
 /// The composition root: owns the network and input layers, derives the slot
@@ -31,6 +32,8 @@ package final class AppModel: ObservableObject {
     private let gate = ForwardingGate()
     private let routing: InputRouting
     private let returnPaths: ReturnPathRouter
+    /// Bound slots whose connection streams; the wake controller follows it.
+    private let streamingCount: Composer<Int>
     private var cancellables = Set<AnyCancellable>()
 
     /// The app's entry point: production stores, the host's lifecycle signals.
@@ -47,14 +50,16 @@ package final class AppModel: ObservableObject {
         self.hub = hub
         self.input = input
         settings = FeatureSettings()
-        wake = ScreenWakeController(inhibitor: inhibitor ?? IOKitDisplaySleepInhibitor())
+        let streamingCount = Composer(hub.$bindings, hub.$connections, initial: 0, transform: streamingSlotCount)
+        self.streamingCount = streamingCount
+        wake = ScreenWakeController(upstream: streamingCount.statePublisher, inhibitor: inhibitor ?? IOKitDisplaySleepInhibitor())
         routing = InputRouting(gate: gate)
         returnPaths = ReturnPathRouter(input: input, gate: gate, bindings: hub.currentBindings)
         gate.update(settings.flags)
         routing.install(on: input.processor)
         observeSlots()
         observeRoutingTable()
-        observeStreamingCount()
+        wake.start()
         observeReturnPathWiring()
         observeSettings()
         observeEvents()
@@ -76,18 +81,6 @@ package final class AppModel: ObservableObject {
         Publishers.CombineLatest(hub.$bindings, wifi.$connections)
             .sink { [weak self] bindings, pool in
                 self?.routing.table.set(routeSnapshot(bindings: bindings, pool: pool))
-            }
-            .store(in: &cancellables)
-    }
-
-    /// The display-sleep assertion follows the count of bound, connected
-    /// slots; same-count emissions are no-ops inside the controller.
-    private func observeStreamingCount() {
-        Publishers.CombineLatest(hub.$bindings, hub.$connections)
-            .sink { [weak self] bindings, connections in
-                let states = Dictionary(uniqueKeysWithValues: connections.map { ($0.id, $0.live) })
-                let count = ScreenWakeController.streamingCount(bindings: bindings, connectionStates: states)
-                self?.wake.update(streamingSlotCount: count)
             }
             .store(in: &cancellables)
     }

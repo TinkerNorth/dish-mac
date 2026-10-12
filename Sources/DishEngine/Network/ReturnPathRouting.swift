@@ -4,20 +4,10 @@
 import DishCore
 import Foundation
 
-/// Pure routing decisions for the satellite → dish *return path* (`MSG_RUMBLE`
-/// and `MSG_LIGHTBAR`).
-///
-/// Rumble and the light bar are independent return paths, each gated by its
-/// own `FeatureSettings` toggle. The actual fan-out lives in
-/// `AppModel.installRumbleHandlers` / `installLightbarHandlers`, wrapped in a
-/// main-actor hop and a binding lookup that need a live `GameControllerInput`.
-/// The *decision* of whether a sink fires, though, is pure: it depends only on
-/// a `ForwardingFlags` snapshot.
-///
-/// That decision is factored out here so it can be unit-tested without driving
-/// a socket or a real controller — the same "pure seam" pattern as the
-/// `DishCore` payload decoders (`RumbleCommand.parse` / `LightbarCommand.parse`)
-/// on the decode side. `AppModel`'s handlers call straight into these functions.
+/// The pure decisions of the satellite → dish return path (`MSG_RUMBLE` and
+/// `MSG_LIGHTBAR`): whether a decoded command reaches the pad, from a
+/// `ForwardingFlags` snapshot alone. `ReturnPathRouter` does the fan-out;
+/// the two paths are independent, each behind its own switch.
 enum ReturnPathRouting {
 
     /// Whether a decoded `MSG_RUMBLE` should drive the haptics. Gated solely

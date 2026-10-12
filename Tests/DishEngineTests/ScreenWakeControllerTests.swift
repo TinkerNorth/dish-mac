@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishKernel
 import XCTest
 @testable import DishEngine
 
-/// Pins the `ScreenWakeController` contract — the macOS sibling of Android's
-/// `WakeStateControllerTest`. The IOKit-backed implementation can't run on a
-/// CI host that has no display, so a fake inhibitor stands in.
+/// The wake controller against a fake inhibitor: the IOKit one needs a
+/// display the CI host has not got.
 final class ScreenWakeControllerTests: XCTestCase {
 
     final class FakeInhibitor: DisplaySleepInhibitor {
@@ -31,54 +31,61 @@ final class ScreenWakeControllerTests: XCTestCase {
         }
     }
 
-    // MARK: - streamingCount (pure derivation)
+    private var count: StateSource<Int>!
+    private var fake: FakeInhibitor!
+    private var controller: ScreenWakeController!
+
+    override func setUp() {
+        super.setUp()
+        count = StateSource(initial: 0)
+        fake = FakeInhibitor()
+        controller = ScreenWakeController(upstream: count.statePublisher, inhibitor: fake, reason: "test reason")
+        controller.start()
+    }
+
+    // MARK: - The pure count
 
     func testStreamingCountZeroWhenNothingBound() {
-        let count = ScreenWakeController.streamingCount(
-            bindings: [:],
-            connectionStates: ["a": .connected]
-        )
-        XCTAssertEqual(count, 0)
+        XCTAssertEqual(ScreenWakeController.streamingCount(bindings: [:], connectionStates: ["a": .connected]), 0)
     }
 
     func testStreamingCountIgnoresBindingsToOfflineOrConnectingConnections() {
         let count = ScreenWakeController.streamingCount(
             bindings: ["slot-a": "conn-1", "slot-b": "conn-2", "slot-c": "conn-3"],
-            connectionStates: [
-                "conn-1": .saved,
-                "conn-2": .connecting,
-                "conn-3": .connected
-            ]
+            connectionStates: ["conn-1": .saved, "conn-2": .connecting, "conn-3": .connected]
         )
         XCTAssertEqual(count, 1)
     }
 
-    func testStreamingCountReflectsMultipleConnectedSlots() {
+    func testStreamingCountCountsUnsteadyLinksAsStreaming() {
         let count = ScreenWakeController.streamingCount(
-            bindings: ["a": "c1", "b": "c2", "c": "c3"],
-            connectionStates: [
-                "c1": .connected,
-                "c2": .connected,
-                "c3": .saved
-            ]
+            bindings: ["a": "c1", "b": "c2"],
+            connectionStates: ["c1": .unstable, "c2": .connected]
         )
         XCTAssertEqual(count, 2)
     }
 
     func testStreamingCountIgnoresUnknownConnection() {
-        let count = ScreenWakeController.streamingCount(
-            bindings: ["a": "missing"],
-            connectionStates: [:]
-        )
-        XCTAssertEqual(count, 0)
+        XCTAssertEqual(ScreenWakeController.streamingCount(bindings: ["a": "missing"], connectionStates: [:]), 0)
     }
 
-    // MARK: - update() drives the inhibitor
+    func testStreamingSlotCountFromSummaries() {
+        let summaries = [
+            ConnectionSummary(id: "c1", label: "", detail: "", live: .connected, boundSlotId: "a"),
+            ConnectionSummary(id: "c2", label: "", detail: "", live: .saved, boundSlotId: "b")
+        ]
+        XCTAssertEqual(streamingSlotCount(bindings: ["a": "c1", "b": "c2"], summaries: summaries), 1)
+    }
 
-    func testFirstStreamAcquiresInhibitor() {
-        let fake = FakeInhibitor()
-        let c = ScreenWakeController(inhibitor: fake, reason: "test reason")
-        c.update(streamingSlotCount: 1)
+    // MARK: - The inhibitor follows the count
+
+    func testStartingWithNothingStreamingHoldsNothing() {
+        XCTAssertEqual(fake.acquires, 0)
+        XCTAssertFalse(fake.isHeld)
+    }
+
+    func testFirstStreamAcquiresTheInhibitorWithTheReason() {
+        count.setState(1)
         XCTAssertEqual(fake.acquires, 1)
         XCTAssertEqual(fake.releases, 0)
         XCTAssertEqual(fake.lastReason, "test reason")
@@ -86,50 +93,39 @@ final class ScreenWakeControllerTests: XCTestCase {
     }
 
     func testGoingFromOneToTwoSlotsDoesNotReacquire() {
-        let fake = FakeInhibitor()
-        let c = ScreenWakeController(inhibitor: fake)
-        c.update(streamingSlotCount: 1)
-        c.update(streamingSlotCount: 2)
+        count.setState(1)
+        count.setState(2)
         XCTAssertEqual(fake.acquires, 1)
     }
 
     func testDroppingToZeroReleases() {
-        let fake = FakeInhibitor()
-        let c = ScreenWakeController(inhibitor: fake)
-        c.update(streamingSlotCount: 2)
-        c.update(streamingSlotCount: 0)
+        count.setState(2)
+        count.setState(0)
         XCTAssertEqual(fake.acquires, 1)
         XCTAssertEqual(fake.releases, 1)
         XCTAssertFalse(fake.isHeld)
     }
 
-    func testStayingAtZeroIsIdempotent() {
-        let fake = FakeInhibitor()
-        let c = ScreenWakeController(inhibitor: fake)
-        c.update(streamingSlotCount: 0)
-        c.update(streamingSlotCount: 0)
-        XCTAssertEqual(fake.acquires, 0)
-        XCTAssertEqual(fake.releases, 0)
-    }
-
-    func testReacquiresAfterDrop() {
-        let fake = FakeInhibitor()
-        let c = ScreenWakeController(inhibitor: fake)
-        c.update(streamingSlotCount: 1)
-        c.update(streamingSlotCount: 0)
-        c.update(streamingSlotCount: 1)
+    func testReacquiresAfterADrop() {
+        count.setState(1)
+        count.setState(0)
+        count.setState(1)
         XCTAssertEqual(fake.acquires, 2)
         XCTAssertEqual(fake.releases, 1)
         XCTAssertTrue(fake.isHeld)
     }
 
-    func testResetReleasesAndZerosCount() {
-        let fake = FakeInhibitor()
-        let c = ScreenWakeController(inhibitor: fake)
-        c.update(streamingSlotCount: 3)
-        c.reset()
-        XCTAssertEqual(c.streamingSlotCount, 0)
+    func testResetReleasesAndZerosTheCount() {
+        count.setState(3)
+        controller.reset()
+        XCTAssertEqual(controller.streamingSlotCount, 0)
         XCTAssertEqual(fake.releases, 1)
         XCTAssertFalse(fake.isHeld)
+    }
+
+    func testAStoppedControllerIgnoresTheCount() {
+        controller.stop()
+        count.setState(1)
+        XCTAssertEqual(fake.acquires, 0)
     }
 }
