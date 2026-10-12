@@ -42,15 +42,9 @@ final class MotionConversionTests: XCTestCase {
     /// vector points toward the ground). The wire must read ≈ +1 g on +Y.
     func testAccelAtRestScreenUpReadsPlusOneGUp() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: 0,
-            gravityY: -1,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: 0, y: -1, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         assertNear(wire.accelX, 0, "X must be ~0 at rest")
         assertNear(wire.accelY, Int16(accelLsbPerG.rounded()), "Y must be ~+1 g (specific force up)")
@@ -63,15 +57,9 @@ final class MotionConversionTests: XCTestCase {
     /// this and the at-rest case; `-(gravity + userAccel)` reads 0 here.
     func testAccelAcceleratingUpAtOneGReadsPlusTwoGUp() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: 0,
-            gravityY: -1,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 1,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: 0, y: -1, z: 0),
+            userAccel: MotionAxes(x: 0, y: 1, z: 0)
         )
         assertNear(
             wire.accelY,
@@ -86,15 +74,9 @@ final class MotionConversionTests: XCTestCase {
     /// the linear-acceleration term, which is exactly the C2 bug.
     func testAccelLinearTermSurvivesGravityDecomposition() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: 0,
-            gravityY: -1,
-            gravityZ: 0,
-            userAccelX: 0.5,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: 0, y: -1, z: 0),
+            userAccel: MotionAxes(x: 0.5, y: 0, z: 0)
         )
         assertNear(wire.accelX, Int16((0.5 * accelLsbPerG).rounded()), "X must carry the +0.5 g thrust")
         assertNear(wire.accelY, Int16(accelLsbPerG.rounded()), "Y must still read +1 g up")
@@ -106,15 +88,9 @@ final class MotionConversionTests: XCTestCase {
         // Gravity purely on +X (controller on its side) → wire accelX ≈ -1 g
         // (specific force points opposite the gravity load).
         let onX = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: 1,
-            gravityY: 0,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: 1, y: 0, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         assertNear(onX.accelX, Int16((-accelLsbPerG).rounded()))
         assertNear(onX.accelY, 0)
@@ -122,15 +98,9 @@ final class MotionConversionTests: XCTestCase {
 
         // Gravity purely on -Z → wire accelZ ≈ +1 g.
         let onZ = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: 0,
-            gravityY: 0,
-            gravityZ: -1,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: 0, y: 0, z: -1),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         assertNear(onZ.accelZ, Int16(accelLsbPerG.rounded()))
         assertNear(onZ.accelX, 0)
@@ -139,15 +109,9 @@ final class MotionConversionTests: XCTestCase {
 
     func testAccelClampsBeyondFourG() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: -10,
-            gravityY: 10,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: -10, y: 10, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         XCTAssertEqual(wire.accelX, Int16.max) // -(-10) = +10 g → clamp +max
         XCTAssertEqual(wire.accelY, Int16.min) // -(10) = -10 g → clamp -min
@@ -157,15 +121,9 @@ final class MotionConversionTests: XCTestCase {
 
     func testGyroZeroIsZero() {
         let wire = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: 0,
-            gravityY: 0,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: 0, y: 0, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         XCTAssertEqual(wire.gyroX, 0)
         XCTAssertEqual(wire.gyroY, 0)
@@ -178,15 +136,9 @@ final class MotionConversionTests: XCTestCase {
     func testGyroRadiansToDegreesPerAxis() {
         let halfPi = Double.pi / 2.0 // 90 deg/s
         let wire = gcMotionToWire(
-            rotationRateRadX: halfPi,
-            rotationRateRadY: -halfPi,
-            rotationRateRadZ: Double.pi,
-            gravityX: 0,
-            gravityY: 0,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: halfPi, y: -halfPi, z: Double.pi),
+            gravity: MotionAxes(x: 0, y: 0, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         assertNear(wire.gyroX, Int16((90.0 * gyroLsbPerDegPerSec).rounded()), "X: +π/2 rad/s → +90 deg/s")
         assertNear(wire.gyroY, Int16((-90.0 * gyroLsbPerDegPerSec).rounded()), "Y: -π/2 rad/s → -90 deg/s")
@@ -198,15 +150,9 @@ final class MotionConversionTests: XCTestCase {
     func testGyroFullScaleHitsInt16Limit() {
         let twoThousandDegInRad = 2000.0 * Double.pi / 180.0
         let wire = gcMotionToWire(
-            rotationRateRadX: twoThousandDegInRad,
-            rotationRateRadY: -twoThousandDegInRad,
-            rotationRateRadZ: 0,
-            gravityX: 0,
-            gravityY: 0,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: twoThousandDegInRad, y: -twoThousandDegInRad, z: 0),
+            gravity: MotionAxes(x: 0, y: 0, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         assertNear(wire.gyroX, Int16.max)
         assertNear(wire.gyroY, Int16.min)
@@ -215,15 +161,9 @@ final class MotionConversionTests: XCTestCase {
     func testGyroClampsBeyondTwoThousandDegPerSec() {
         let fourThousandDegInRad = 4000.0 * Double.pi / 180.0
         let wire = gcMotionToWire(
-            rotationRateRadX: fourThousandDegInRad,
-            rotationRateRadY: -fourThousandDegInRad,
-            rotationRateRadZ: 0,
-            gravityX: 0,
-            gravityY: 0,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: fourThousandDegInRad, y: -fourThousandDegInRad, z: 0),
+            gravity: MotionAxes(x: 0, y: 0, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         XCTAssertEqual(wire.gyroX, Int16.max)
         XCTAssertEqual(wire.gyroY, Int16.min)
@@ -233,30 +173,18 @@ final class MotionConversionTests: XCTestCase {
     /// leak into the accel axes and vice versa.
     func testGyroAndAccelDoNotCrossContaminate() {
         let pureSpin = gcMotionToWire(
-            rotationRateRadX: 1,
-            rotationRateRadY: 2,
-            rotationRateRadZ: 3,
-            gravityX: 0,
-            gravityY: 0,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 1, y: 2, z: 3),
+            gravity: MotionAxes(x: 0, y: 0, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         XCTAssertEqual(pureSpin.accelX, 0)
         XCTAssertEqual(pureSpin.accelY, 0)
         XCTAssertEqual(pureSpin.accelZ, 0)
 
         let pureAccel = gcMotionToWire(
-            rotationRateRadX: 0,
-            rotationRateRadY: 0,
-            rotationRateRadZ: 0,
-            gravityX: 1,
-            gravityY: 0,
-            gravityZ: 0,
-            userAccelX: 0,
-            userAccelY: 0,
-            userAccelZ: 0
+            rotationRateRad: MotionAxes(x: 0, y: 0, z: 0),
+            gravity: MotionAxes(x: 1, y: 0, z: 0),
+            userAccel: MotionAxes(x: 0, y: 0, z: 0)
         )
         XCTAssertEqual(pureAccel.gyroX, 0)
         XCTAssertEqual(pureAccel.gyroY, 0)

@@ -92,15 +92,11 @@ final class EncodersTests: XCTestCase {
     func testTouchpadPayloadPinsTheSixteenByteLayoutWithTrailingEventTime() {
         let payload = Encoders.touchpadPayload(
             controllerIndex: 5,
-            finger0Active: true,
-            finger0Id: 7,
-            finger0X: 0x1234,
-            finger0Y: -2,
-            finger1Active: false,
-            finger1Id: 9,
-            finger1X: 100,
-            finger1Y: -100,
-            buttonPressed: true,
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 7, x: 0x1234, y: -2),
+                finger1: TouchpadFinger(active: false, id: 9, x: 100, y: -100),
+                buttonPressed: true
+            ),
             eventTimeMs: 0x0102_0304
         )
         XCTAssertEqual(payload.count, 1 + ProtocolConstants.touchpadPayloadBytes)
@@ -125,15 +121,11 @@ final class EncodersTests: XCTestCase {
         func flags(_ f0: Bool, _ f1: Bool, _ button: Bool) -> UInt8 {
             let payload = Encoders.touchpadPayload(
                 controllerIndex: 0,
-                finger0Active: f0,
-                finger0Id: 0,
-                finger0X: 0,
-                finger0Y: 0,
-                finger1Active: f1,
-                finger1Id: 0,
-                finger1X: 0,
-                finger1Y: 0,
-                buttonPressed: button,
+                sample: TouchpadSample(
+                    finger0: TouchpadFinger(active: f0, id: 0, x: 0, y: 0),
+                    finger1: TouchpadFinger(active: f1, id: 0, x: 0, y: 0),
+                    buttonPressed: button
+                ),
                 eventTimeMs: 0
             )
             return payload[1]
@@ -148,15 +140,7 @@ final class EncodersTests: XCTestCase {
     func testTouchpadEventTimeRidesAtOffsetTwelveLittleEndian() {
         let payload = Encoders.touchpadPayload(
             controllerIndex: 0,
-            finger0Active: false,
-            finger0Id: 0,
-            finger0X: 0,
-            finger0Y: 0,
-            finger1Active: false,
-            finger1Id: 0,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: false,
+            sample: TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false),
             eventTimeMs: 0xDEAD_BEEF
         )
         // Length gate BEFORE the subscript: a short-encoder regression must

@@ -20,6 +20,6 @@
 - [ ] I have performed a self-review of my code
 - [ ] I have commented my code in hard-to-understand areas
 - [ ] I have made corresponding changes to documentation
-- [ ] My changes generate no new warnings
+- [ ] `swift build` and `swift test` are warning-free (every target treats warnings as errors)
 - [ ] I have added tests that prove my fix is effective or that my feature works
 - [ ] New and existing unit tests pass locally with my changes

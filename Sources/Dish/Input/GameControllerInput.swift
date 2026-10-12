@@ -3,6 +3,7 @@
 
 import Combine
 import CoreHaptics
+import DishCore
 import Foundation
 import GameController
 import os
@@ -54,7 +55,7 @@ final class GameControllerInput: ObservableObject {
     /// `GameControllerInput+ReturnPath.swift` can refresh a slot's pill.
     @Published var slots: [Slot] = []
 
-    let processor = GamepadInputProcessor()
+    nonisolated let processor = GamepadInputProcessor()
 
     /// Per-device, per-finger monotonic touchpad tracking ids. `pushTouchpad`
     /// runs on a GC callback thread, so this is lock-guarded.
@@ -331,15 +332,11 @@ final class GameControllerInput: ObservableObject {
         )
         processor.publishTouchpad(
             deviceId: id,
-            finger0Active: p0Active,
-            finger0Id: ids.finger0,
-            finger0X: f0.x,
-            finger0Y: f0.y,
-            finger1Active: p1Active,
-            finger1Id: ids.finger1,
-            finger1X: f1.x,
-            finger1Y: f1.y,
-            buttonPressed: button.isPressed
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: p0Active, id: ids.finger0, x: f0.x, y: f0.y),
+                finger1: TouchpadFinger(active: p1Active, id: ids.finger1, x: f1.x, y: f1.y),
+                buttonPressed: button.isPressed
+            )
         )
     }
 
@@ -411,15 +408,9 @@ final class GameControllerInput: ObservableObject {
         let gravity = motion.gravity
         let userAccel = motion.userAcceleration
         let wire = gcMotionToWire(
-            rotationRateRadX: haveGyro ? rate.x : 0,
-            rotationRateRadY: haveGyro ? rate.y : 0,
-            rotationRateRadZ: haveGyro ? rate.z : 0,
-            gravityX: haveAccel ? gravity.x : 0,
-            gravityY: haveAccel ? gravity.y : 0,
-            gravityZ: haveAccel ? gravity.z : 0,
-            userAccelX: haveAccel ? userAccel.x : 0,
-            userAccelY: haveAccel ? userAccel.y : 0,
-            userAccelZ: haveAccel ? userAccel.z : 0
+            rotationRateRad: haveGyro ? MotionAxes(x: rate.x, y: rate.y, z: rate.z) : .zero,
+            gravity: haveAccel ? MotionAxes(x: gravity.x, y: gravity.y, z: gravity.z) : .zero,
+            userAccel: haveAccel ? MotionAxes(x: userAccel.x, y: userAccel.y, z: userAccel.z) : .zero
         )
 
         processor.publishMotion(

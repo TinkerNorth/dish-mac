@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 
 /// Converts raw gamepad values into the XUSB report format the Satellite
@@ -10,7 +11,7 @@ import Foundation
 /// bridge (see `GameControllerInput.swift`) updates the per-device state
 /// whenever a value changes and calls `trySend(deviceId:)`, which hands the
 /// packed report to the registered `ReportSender`.
-final class GamepadInputProcessor {
+final class GamepadInputProcessor: @unchecked Sendable {
 
     // MARK: - XUSB button bits (identical to dish-android BUTTON_MAP).
 
@@ -71,16 +72,37 @@ final class GamepadInputProcessor {
     /// uptime stamp (ms) the protocol-1 16-byte payload carries at offset 12.
     typealias TouchpadSender = (
         _ deviceId: DeviceId,
-        _ finger0Active: Bool, _ finger0Id: UInt8, _ finger0X: Int16, _ finger0Y: Int16,
-        _ finger1Active: Bool, _ finger1Id: UInt8, _ finger1X: Int16, _ finger1Y: Int16,
-        _ buttonPressed: Bool,
+        _ sample: TouchpadSample,
         _ eventTimeMs: UInt32
     ) -> Void
 
-    var reportSender: ReportSender?
-    var motionSender: MotionSender?
-    var batterySender: BatterySender?
-    var touchpadSender: TouchpadSender?
+    /// The senders are installed by the composition root and read on the
+    /// GameController callback threads; a lock-guarded hand-off keeps that
+    /// race-free without a main-actor hop on the hot path.
+    private let reportSenderBox = LockedBox<ReportSender?>(nil)
+    private let motionSenderBox = LockedBox<MotionSender?>(nil)
+    private let batterySenderBox = LockedBox<BatterySender?>(nil)
+    private let touchpadSenderBox = LockedBox<TouchpadSender?>(nil)
+
+    var reportSender: ReportSender? {
+        get { reportSenderBox.get() }
+        set { reportSenderBox.set(newValue) }
+    }
+
+    var motionSender: MotionSender? {
+        get { motionSenderBox.get() }
+        set { motionSenderBox.set(newValue) }
+    }
+
+    var batterySender: BatterySender? {
+        get { batterySenderBox.get() }
+        set { batterySenderBox.set(newValue) }
+    }
+
+    var touchpadSender: TouchpadSender? {
+        get { touchpadSenderBox.get() }
+        set { touchpadSenderBox.set(newValue) }
+    }
 
     /// Per-device state. Small struct, map lookups on every event — same
     /// design as the Android processor.
@@ -214,13 +236,11 @@ final class GamepadInputProcessor {
         batterySender?(deviceId, level, statusRaw)
     }
 
-    // `publishTouchpad` takes one argument per wire field (the protocol's
-    // §0x000C layout). Bundling them into a struct purely to satisfy the
-    // parameter-count rule would add an indirection the flat wire-mapping
-    // doesn't benefit from — same rationale as `DishCore.Encoders`'
-    // touchpad encoder.
-    // swiftlint:disable function_parameter_count
-
+    /// `publishTouchpad` takes one argument per wire field (the protocol's
+    /// §0x000C layout). Bundling them into a struct purely to satisfy the
+    /// parameter-count rule would add an indirection the flat wire-mapping
+    /// doesn't benefit from — same rationale as `DishCore.Encoders`'
+    /// touchpad encoder.
     /// Forward a touchpad sample. Coordinates are already scaled to int16 by
     /// the bridge, and the per-finger tracking ids are already resolved by it.
     /// No deadzone / filtering is applied — a touchpad is an absolute pointing
@@ -232,27 +252,11 @@ final class GamepadInputProcessor {
     /// overridable for tests, same seam as `publishMotion`.
     func publishTouchpad(
         deviceId: DeviceId,
-        finger0Active: Bool, finger0Id: UInt8, finger0X: Int16, finger0Y: Int16,
-        finger1Active: Bool, finger1Id: UInt8, finger1X: Int16, finger1Y: Int16,
-        buttonPressed: Bool,
+        sample: TouchpadSample,
         nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
     ) {
-        touchpadSender?(
-            deviceId,
-            finger0Active,
-            finger0Id,
-            finger0X,
-            finger0Y,
-            finger1Active,
-            finger1Id,
-            finger1X,
-            finger1Y,
-            buttonPressed,
-            UInt32(truncatingIfNeeded: nowNs / 1_000_000)
-        )
+        touchpadSender?(deviceId, sample, UInt32(truncatingIfNeeded: nowNs / 1_000_000))
     }
-
-    // swiftlint:enable function_parameter_count
 }
 
 // MARK: - Pure helpers (easily testable)
@@ -323,25 +327,28 @@ struct WireMotionSample: Equatable {
 ///   * at rest, +Y up: userAccel 0, gravity -1 up → wire `0 - (-1) = +1 g` up.
 ///   * accelerating up at 1 g: userAccel +1, gravity -1 up → `+1 - (-1) = +2 g`.
 ///
-/// One argument per IMU axis — the three rad/s gyro components, three g
-/// gravity components, three g userAccel components. A struct wrapper would
-/// only relocate the nine fields without removing them, so the parameter-count
-/// rule is suppressed here the way the touchpad wire encoders do.
+/// One IMU reading on three axes, in the unit its source reports (rad/s for
+/// rotation, g for gravity and user acceleration).
+struct MotionAxes: Equatable {
+    var x: Double
+    var y: Double
+    var z: Double
+
+    static let zero = MotionAxes(x: 0, y: 0, z: 0)
+}
+
+/// The three IMU vectors GCMotion reports, mapped to the wire's gyro (deg/s)
+/// and specific-force accel (`userAccel - gravity`) scales.
 @inline(__always)
-// swiftlint:disable:next function_parameter_count
-func gcMotionToWire(
-    rotationRateRadX: Double, rotationRateRadY: Double, rotationRateRadZ: Double,
-    gravityX: Double, gravityY: Double, gravityZ: Double,
-    userAccelX: Double, userAccelY: Double, userAccelZ: Double
-) -> WireMotionSample {
+func gcMotionToWire(rotationRateRad: MotionAxes, gravity: MotionAxes, userAccel: MotionAxes) -> WireMotionSample {
     let radToDeg = 180.0 / Double.pi
     return WireMotionSample(
-        gyroX: scaleGyro(rotationRateRadX * radToDeg),
-        gyroY: scaleGyro(rotationRateRadY * radToDeg),
-        gyroZ: scaleGyro(rotationRateRadZ * radToDeg),
-        accelX: scaleAccel(userAccelX - gravityX),
-        accelY: scaleAccel(userAccelY - gravityY),
-        accelZ: scaleAccel(userAccelZ - gravityZ)
+        gyroX: scaleGyro(rotationRateRad.x * radToDeg),
+        gyroY: scaleGyro(rotationRateRad.y * radToDeg),
+        gyroZ: scaleGyro(rotationRateRad.z * radToDeg),
+        accelX: scaleAccel(userAccel.x - gravity.x),
+        accelY: scaleAccel(userAccel.y - gravity.y),
+        accelZ: scaleAccel(userAccel.z - gravity.z)
     )
 }
 
