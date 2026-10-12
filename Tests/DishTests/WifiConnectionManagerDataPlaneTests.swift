@@ -101,15 +101,11 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
     func testTouchpadUplinkArrivesAsSixteenByteFrameServerSide() async throws {
         let conn = try await connectAndAwaitLive()
         conn.sendTouchpad(
-            finger0Active: true,
-            finger0Id: 4,
-            finger0X: 100,
-            finger0Y: -100,
-            finger1Active: false,
-            finger1Id: 0,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: false,
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 4, x: 100, y: -100),
+                finger1: TouchpadFinger(active: false, id: 0, x: 0, y: 0),
+                buttonPressed: false
+            ),
             eventTimeMs: 0x1234_5678
         )
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))

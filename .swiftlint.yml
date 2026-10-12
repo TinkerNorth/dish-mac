@@ -52,7 +52,8 @@ identifier_name:
     error: 60
   # Single-letter names are idiomatic in bit-packing / HID report code and
   # in short-lived loop indices; wire layout constants use compact naming.
-  # r/g/b: lightbar RGB color components. c: short-lived loop var in tests.
+  # x/y/z: axis components (sticks, touchpad, IMU). r/g/b: lightbar RGB
+  # color components. c: short-lived loop var in tests.
   # p: protocol payload byte buffer in parser tests.
   # i: short loop index. o/s: SVG rendering aliases (overlay color / scale).
   excluded:
@@ -60,6 +61,7 @@ identifier_name:
     - ip
     - x
     - y
+    - z
     - X
     - Y
     - r

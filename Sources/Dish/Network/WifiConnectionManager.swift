@@ -92,7 +92,7 @@ final class WifiConnectionManager: ObservableObject {
 
     /// Per-path discovery logging so the broadcast vs mDNS hit-rate can be
     /// compared in the field (Task 1.6).
-    private static let discoveryLog = Logger(
+    private nonisolated static let discoveryLog = Logger(
         subsystem: "com.tinkernorth.dish", category: "discovery"
     )
 

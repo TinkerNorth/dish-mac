@@ -90,7 +90,7 @@ jobs:
   release:
     name: Build + sign Dish.app
     needs: [gates, required-secrets]
-    runs-on: macos-14
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
