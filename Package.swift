@@ -70,6 +70,14 @@ let package = Package(
             path: "Tests/DishTests",
             swiftSettings: warningsAreErrors
         ),
+        // The rules of the repository, read from the tree: import boundaries,
+        // the dependency graph, license headers, the version mirrors, the lint
+        // thresholds, and the absence of suppressions and mutable statics.
+        .testTarget(
+            name: "ArchitectureTests",
+            path: "Tests/ArchitectureTests",
+            swiftSettings: warningsAreErrors
+        ),
         .testTarget(
             name: "DishCoreTests",
             dependencies: ["DishCore"],

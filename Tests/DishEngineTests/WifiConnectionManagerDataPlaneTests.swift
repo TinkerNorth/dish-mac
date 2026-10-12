@@ -87,7 +87,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         // The first heartbeat fires immediately on session start.
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "uplink heartbeat must decrypt server-side")
 
-        conn.sendReport(buttons: 0x1000, lt: 9, rt: 0, lx: 5, ly: -5, rx: 0, ry: 0)
+        conn.sendReport(GamepadReport(buttons: 0x1000, lt: 9, rt: 0, lx: 5, ly: -5, rx: 0, ry: 0))
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
         guard case let .input(ctrlIdx, report) = frame.detail else {
             return XCTFail("input frame must parse as .input, got \(frame.detail)")
@@ -292,9 +292,9 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         manager.slotRegistrationFailed
             .sink { failedSlots.append($0) }
             .store(in: &bag)
-        var errors: [String] = []
+        var errors: [ConnectionFailure] = []
         manager.events
-            .sink { if case let .error(message) = $0 { errors.append(message) } }
+            .sink { if case let .failure(failure) = $0 { errors.append(failure) } }
             .store(in: &bag)
 
         // Partial success is a 200 (contract §Error model): the slot draws a
@@ -304,7 +304,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
 
         let surfaced = await waitUntil { failedSlots == ["slot-a"] }
         XCTAssertTrue(surfaced, "a failed apply must fire slotRegistrationFailed for the rollback")
-        XCTAssertTrue(errors.contains("Server could not apply the controller"))
+        XCTAssertTrue(errors.contains(.controllerNotApplied))
         XCTAssertTrue(satellite.appliedControllers.isEmpty, "the server never plugged the slot")
         XCTAssertEqual(manager.get(server.id)?.state, .live, "a failed slot is not a failed session")
 

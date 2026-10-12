@@ -12,6 +12,7 @@ struct ConnectionsView: View {
     @EnvironmentObject var wifi: WifiConnectionManager
     @Environment(\.dismiss) private var dismiss
     @State private var manualAddress = ""
+    @State private var manualAddressError: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -53,8 +54,13 @@ struct ConnectionsView: View {
                 }
                 .padding(20)
             }
-            if let msg = model.errorMessage {
-                ErrorBanner(message: msg) { model.errorMessage = nil }
+            if let failure = model.lastFailure {
+                ErrorBanner(message: failureText(failure)) { model.clearFailure() }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 12)
+            }
+            if let manualAddressError {
+                ErrorBanner(message: manualAddressError) { self.manualAddressError = nil }
                     .padding(.horizontal, 20)
                     .padding(.bottom, 12)
             }
@@ -93,7 +99,7 @@ struct ConnectionsView: View {
         if model.connectManual(manualAddress) {
             manualAddress = ""
         } else {
-            model.errorMessage = String(localized: "Enter an IPv4 address like 192.168.1.50 (optionally :port)")
+            manualAddressError = String(localized: "Enter an IPv4 address like 192.168.1.50 (optionally :port)")
         }
     }
 

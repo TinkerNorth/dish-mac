@@ -66,7 +66,7 @@ final class TouchpadLightbarTests: XCTestCase {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
         defer { client.closeSocket() }
 
-        client.sendReport(controllerIndex: 0, buttons: 1, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0)
+        client.sendReport(controllerIndex: 0, report: GamepadReport(buttons: 1, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0))
         client.sendBattery(controllerIndex: 0, level: 80, status: .discharging)
         client.sendTouchpad(
             controllerIndex: 0,

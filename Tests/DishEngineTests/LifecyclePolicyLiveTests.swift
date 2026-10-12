@@ -67,9 +67,9 @@ final class LifecyclePolicyLiveTests: XCTestCase {
         )
     }
 
-    private var errorMessages: [String] {
+    private var failures: [ConnectionFailure] {
         events.compactMap {
-            if case let .error(message) = $0 { return message }
+            if case let .failure(failure) = $0 { return failure }
             return nil
         }
     }
@@ -126,7 +126,7 @@ final class LifecyclePolicyLiveTests: XCTestCase {
         let stillUnstable = await waitUntil(timeout: 2) { self.hub.summary(self.server.id)?.live == .unstable }
         XCTAssertTrue(stillUnstable)
         XCTAssertFalse(
-            errorMessages.contains { $0.hasPrefix("Error:") },
+            failures.contains { $0.isSessionRefused },
             "death retries are silent — no banner the user didn't ask for"
         )
     }
@@ -160,7 +160,7 @@ final class LifecyclePolicyLiveTests: XCTestCase {
         let healed = await waitUntil { self.satellite.sessionPuts.count >= 2 && conn.state == .live }
         XCTAssertTrue(healed, "the backoff retry must re-establish the session")
         XCTAssertFalse(
-            errorMessages.contains { $0.hasPrefix("Error:") },
+            failures.contains { $0.isSessionRefused },
             "the kicked→retry cycle is silent"
         )
     }
@@ -208,7 +208,7 @@ final class LifecyclePolicyLiveTests: XCTestCase {
         )
         // The satellite actively kicked this device out — that is loud.
         let surfaced = await waitUntil(timeout: 2) {
-            self.errorMessages.contains(WifiConnectionManager.repairNeededMessage)
+            self.failures.contains(.repairNeeded)
         }
         XCTAssertTrue(surfaced)
         // And the hub chip parks on "Needs pairing".

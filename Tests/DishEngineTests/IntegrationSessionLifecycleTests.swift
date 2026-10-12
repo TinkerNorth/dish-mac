@@ -31,7 +31,6 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
     private var manager: WifiConnectionManager!
     private var events: [ConnectionEvent] = []
     private var bag = Set<AnyCancellable>()
-    private var savedPollInterval = 0
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -41,16 +40,17 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         defaultsName = "dish.test.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: defaultsName)
         store = ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore())
-        manager = WifiConnectionManager(store: store)
+        manager = WifiConnectionManager(
+            store: store,
+            approvalPolling: WifiConnectionManager.ApprovalPolling(intervalMs: 50, timeoutMs: 120_000)
+        )
         events = []
         manager.events
             .sink { [weak self] event in self?.events.append(event) }
             .store(in: &bag)
-        savedPollInterval = WifiConnectionManager.approvalPollIntervalMs
     }
 
     override func tearDown() {
-        WifiConnectionManager.approvalPollIntervalMs = savedPollInterval
         for id in manager.connections.keys {
             manager.disconnect(id: id)
         }
@@ -75,9 +75,9 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         server(for: satellite, ports: ports)
     }
 
-    private var errorMessages: [String] {
+    private var failures: [ConnectionFailure] {
         events.compactMap {
-            if case let .error(message) = $0 { return message }
+            if case let .failure(failure) = $0 { return failure }
             return nil
         }
     }
@@ -98,33 +98,50 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
 
     func testFullJourneyOperatorPinPathA() async throws {
         let id = server.id
+        await refuseAWrongPin(id: id)
+        let conn = boundConnection(id: id)
+        try await pairWithTheRealPin(id: id)
+        try assertTheFirstPutCarriedTheWholeSlot()
+        var closeReasons: [CloseReason] = []
+        conn.onSessionClose = { closeReasons.append($0) }
+        try assertEncryptedInputRoundTrips(conn)
+        try assertTouchpadFrameRoundTrips(conn)
+        try await assertAckAndLatencySeed(conn)
+        await assertGracefulCloseDeletesTheSession(id: id, conn: conn)
+        XCTAssertTrue(closeReasons.isEmpty, "a graceful close must never ride a close-notify")
+    }
 
-        // A wrong PIN first: the satellite refuses, the failure surfaces,
-        // and no trust is minted.
+    /// A wrong PIN: the satellite refuses, the failure surfaces, no trust is minted.
+    private func refuseAWrongPin(id: String) async {
         manager.pairWithPin(server, pin: "0000")
-        let refused = await waitUntil { !self.errorMessages.isEmpty }
+        let refused = await waitUntil { !self.failures.isEmpty }
         XCTAssertTrue(refused, "a wrong PIN must surface a pairing error")
         XCTAssertNil(store.sharedKey(for: id), "a refused PIN must not store a key")
         XCTAssertNil(satellite.pairingKeyHex, "the satellite must not mint trust for a wrong PIN")
+    }
 
-        // Bind the slot BEFORE pairing so the descriptor rides the very
-        // first declarative PUT (not a follow-up converge).
+    /// The slot is bound before pairing so the descriptor rides the very
+    /// first declarative PUT rather than a follow-up converge.
+    private func boundConnection(id: String) -> WifiConnection {
         let conn = manager.get(id) ?? {
             let fresh = WifiConnection(id: id, server: server)
             manager.register(fresh)
             return fresh
         }()
         conn.attachSlot("journey-slot", controllerType: 0, hasMotion: true, hasLight: true)
+        return conn
+    }
 
-        // The real PIN: pair → key → declarative PUT → live.
+    private func pairWithTheRealPin(id: String) async throws {
         manager.pairWithPin(server, pin: satellite.operatorPin)
         let keyed = await waitUntil { self.store.sharedKey(for: id) != nil }
         XCTAssertTrue(keyed, "path A must land the shared key")
         XCTAssertEqual(store.sharedKey(for: id), satellite.pairingKeyHex, "both ends hold the SAME key")
         let live = await waitUntil { self.manager.get(id)?.state == .live }
         XCTAssertTrue(live, "pairing must flow straight into the live session")
+    }
 
-        // The PUT was declarative and versioned, and carried the whole slot.
+    private func assertTheFirstPutCarriedTheWholeSlot() throws {
         XCTAssertEqual(satellite.sessionPuts.count, 1)
         let put = try XCTUnwrap(satellite.sessionPuts.first)
         XCTAssertEqual(put["protocolVersion"] as? Int, 1)
@@ -135,15 +152,13 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertEqual(caps["motion"] as? Bool, true)
         XCTAssertEqual(caps["lightbar"] as? Bool, true)
         XCTAssertEqual(satellite.appliedControllers.count, 1, "the harness applied the slot")
+    }
 
-        // Track close-notify from here: a graceful journey must never see one.
-        var closeReasons: [CloseReason] = []
-        conn.onSessionClose = { closeReasons.append($0) }
-
-        // Encrypted input: the harness decrypts with its INDEPENDENT crypto
-        // and records the exact XUSB bytes (layout pinned in DishCore).
+    /// The harness decrypts with its independent crypto and records the exact
+    /// XUSB bytes.
+    private func assertEncryptedInputRoundTrips(_ conn: WifiConnection) throws {
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "uplink heartbeat must decrypt")
-        conn.sendReport(buttons: 0x0405, lt: 7, rt: 9, lx: 1000, ly: -2, rx: 3, ry: -4)
+        conn.sendReport(GamepadReport(buttons: 0x0405, lt: 7, rt: 9, lx: 1000, ly: -2, rx: 3, ry: -4))
         let inputFrame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
         guard case let .input(ctrlIdx, report) = inputFrame.detail else {
             return XCTFail("input frame must parse as .input, got \(inputFrame.detail)")
@@ -154,8 +169,9 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
             [0x05, 0x04, 0x07, 0x09, 0xE8, 0x03, 0xFE, 0xFF, 0x03, 0x00, 0xFC, 0xFF],
             "the decrypted XUSB report must match byte-for-byte"
         )
+    }
 
-        // 16-byte touchpad with the trailing eventTimeMs (contract §0x000C).
+    private func assertTouchpadFrameRoundTrips(_ conn: WifiConnection) throws {
         conn.sendTouchpad(
             sample: TouchpadSample(
                 finger0: TouchpadFinger(active: true, id: 2, x: -100, y: 200),
@@ -171,8 +187,9 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertEqual(pad.eventTimeMs, 0xCAFE_F00D)
         XCTAssertEqual(pad.flags, 0b111, "f0 active | f1 active | button")
         XCTAssertEqual(pad.finger1X, 400)
+    }
 
-        // Enriched-ack snapshot + latency seeding ride the alive tick.
+    private func assertAckAndLatencySeed(_ conn: WifiConnection) async throws {
         let acked = await waitUntil { conn.lastHeartbeatAck != nil }
         XCTAssertTrue(acked, "the enriched ack must surface through the tick")
         let ack = try XCTUnwrap(conn.lastHeartbeatAck)
@@ -183,10 +200,11 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         let p50 = try XCTUnwrap(conn.client?.latencySnapshot().p50OneWayMs)
         XCTAssertGreaterThanOrEqual(p50, 0)
         XCTAssertLessThan(p50, 2500)
+    }
 
-        // Graceful teardown: DELETE /api/connections/{id} — the satellite
-        // drops the session (token gone, slots unplugged, epoch bumped) and
-        // no close-notify is sent (the closer already knows).
+    /// `DELETE /api/connections/{id}`: the satellite drops the session, slots
+    /// unplug, the epoch bumps, and the pairing survives.
+    private func assertGracefulCloseDeletesTheSession(id: String, conn: WifiConnection) async {
         let epochBeforeClose = satellite.epoch
         manager.disconnect(id: id)
         let deleted = await waitUntil { self.satellite.lastTokenHex == nil }
@@ -194,14 +212,12 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertTrue(satellite.appliedControllers.isEmpty, "teardown unplugs the applied slot")
         XCTAssertEqual(satellite.epoch, epochBeforeClose &+ 1, "unplugging bumps the epoch")
         XCTAssertEqual(manager.get(id)?.state, .idle)
-        XCTAssertTrue(closeReasons.isEmpty, "a graceful close must never ride a close-notify")
         XCTAssertNotNil(store.sharedKey(for: id), "disconnect keeps the pairing")
     }
 
     // MARK: - Journey: client PIN (path B)
 
     func testFullJourneyClientPinPathB() async {
-        WifiConnectionManager.approvalPollIntervalMs = 50
         let id = server.id
         satellite.pairingKeyHex = nil
 
@@ -262,7 +278,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         // imposter, and the abort costs no trust.
         let imposterServer = server(for: imposter, ports: imposterPorts)
         manager.connect(to: imposterServer)
-        let failed = await waitUntil { self.manager.get(id)?.state == .idle && !self.errorMessages.isEmpty }
+        let failed = await waitUntil { self.manager.get(id)?.state == .idle && !self.failures.isEmpty }
         XCTAssertTrue(failed, "the keyed connect against the imposter must fail loudly")
         XCTAssertTrue(imposter.sessionPuts.isEmpty, "no request bytes may reach the imposter")
         XCTAssertTrue(imposter.frames.isEmpty)
@@ -275,7 +291,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         // mismatch breadcrumb), never a PIN prompt or a bare "unreachable".
         manager.pairWithPin(imposterServer, pin: satellite.operatorPin)
         let surfaced = await waitUntil {
-            self.errorMessages.contains(WifiConnectionManager.identityChangedMessage)
+            self.failures.contains(.identityChanged)
         }
         XCTAssertTrue(surfaced, "a pin mismatch must read as an identity change")
         XCTAssertNil(imposter.pairedDeviceId, "the imposter must never see a pair request either")
@@ -312,11 +328,11 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         // identity change, never the generic transport failure.
         manager.connect(to: imposterServer)
         let surfaced = await waitUntil {
-            self.errorMessages.contains(WifiConnectionManager.identityChangedMessage)
+            self.failures.contains(.identityChanged)
         }
         XCTAssertTrue(surfaced, "the keyed path must surface the identity-changed message")
         XCTAssertFalse(
-            errorMessages.contains { $0.contains("connection failed") },
+            failures.contains { $0.isSessionRefused },
             "the generic transport error must not stand in for an identity problem"
         )
         XCTAssertTrue(imposter.sessionPuts.isEmpty, "zero request bytes may reach the imposter")
@@ -326,12 +342,12 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         // SILENT keyed retry (auto paths): still no banner — and, unlike a
         // plain outage, NO armed backoff retry either: the row parks until
         // the user acts (android parity, retry = false).
-        let messagesBefore = errorMessages.count
+        let messagesBefore = failures.count
         manager.connect(to: imposterServer, intent: .autoReconnect)
         XCTAssertEqual(manager.get(id)?.state, .linking, "connect flips to linking synchronously")
         let parked = await waitUntil { self.manager.get(id)?.state == .idle }
         XCTAssertTrue(parked, "the silent attempt must abort back to idle")
-        XCTAssertEqual(errorMessages.count, messagesBefore, "silent intents stay silent")
+        XCTAssertEqual(failures.count, messagesBefore, "silent intents stay silent")
         XCTAssertNil(manager.retry[id], "an identity mismatch must not enter the backoff curve")
         XCTAssertNil(manager.retryTasks[id], "no one-shot retry may be armed against an imposter")
         XCTAssertFalse(manager.staleSatelliteIds.contains(id), "no 'Needs pairing' for an imposter")
@@ -346,7 +362,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         manager.pairWithPin(server, pin: satellite.operatorPin)
 
         let surfaced = await waitUntil {
-            self.errorMessages.contains(WifiConnectionManager.protocolMismatchMessage)
+            self.failures.contains(.protocolMismatch)
         }
         XCTAssertTrue(surfaced, "a pair-time 409 must surface the version-mismatch UX")
         XCTAssertNil(store.sharedKey(for: id), "a 409'd pair must not mint trust")

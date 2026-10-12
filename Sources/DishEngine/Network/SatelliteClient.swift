@@ -303,57 +303,22 @@ final class SatelliteClient {
 
     // MARK: - Encrypted send: input (hot path)
 
-    /// Called directly from the GCController callback thread for minimum
-    /// latency. One `sendto` per report, no buffering. MSG_INPUT (0x0001):
-    /// full-state snapshot per packet — never delta-encoded.
-    func sendReport(
-        controllerIndex: Int,
-        buttons: UInt16,
-        lt: UInt8,
-        rt: UInt8,
-        lx: Int16,
-        ly: Int16,
-        rx: Int16,
-        ry: Int16
-    ) {
+    /// One `sendto` per report, on the caller's thread, no buffering.
+    func sendReport(controllerIndex: Int, report: GamepadReport) {
         sendEncrypted(
             msgType: ProtocolConstants.msgInput,
-            payload: Encoders.inputPayload(
-                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-                buttons: buttons,
-                lt: lt,
-                rt: rt,
-                lx: lx,
-                ly: ly,
-                rx: rx,
-                ry: ry
-            )
+            payload: Encoders.inputPayload(controllerIndex: UInt8(truncatingIfNeeded: controllerIndex), report: report)
         )
     }
 
     // MARK: - Motion (IMU)
 
-    /// Forward a single IMU sample (MSG_MOTION 0x000A). Scale: gyro ±2000
-    /// deg/s, accel ±4 g over int16; right-handed frame, +X right, +Y up,
-    /// +Z toward player — senders apply the rotation, receivers do not.
-    /// `timestampDeltaUs` is µs since the previous motion packet for the same
-    /// controller (0 on the first). Hot path: GCMotion callback thread.
-    func sendMotion(
-        controllerIndex: Int,
-        gyroX: Int16, gyroY: Int16, gyroZ: Int16,
-        accelX: Int16, accelY: Int16, accelZ: Int16,
-        timestampDeltaUs: UInt32
-    ) {
+    func sendMotion(controllerIndex: Int, sample: MotionSample, timestampDeltaUs: UInt32) {
         sendEncrypted(
             msgType: ProtocolConstants.msgMotion,
             payload: Encoders.motionPayload(
                 controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-                gyroX: gyroX,
-                gyroY: gyroY,
-                gyroZ: gyroZ,
-                accelX: accelX,
-                accelY: accelY,
-                accelZ: accelZ,
+                sample: sample,
                 timestampDeltaUs: timestampDeltaUs
             )
         )

@@ -15,23 +15,6 @@ import XCTest
 /// FakeSatellite-driven manager tests instead.
 final class SatelliteClientDataPlaneTests: XCTestCase {
 
-    private func ackDatagram(
-        counter: UInt32,
-        backend: Bool = true,
-        count: UInt8 = 1,
-        epoch: UInt16 = 3,
-        bitmap: UInt16 = 0b1
-    ) -> Data {
-        var payload = Data([backend ? 1 : 0, count])
-        payload.append(contentsOf: [UInt8(epoch >> 8), UInt8(epoch & 0xFF)])
-        payload.append(contentsOf: [UInt8(bitmap >> 8), UInt8(bitmap & 0xFF)])
-        return DataPlaneTestHelpers.sealDownlink(
-            msgType: ProtocolConstants.msgHeartbeatAck,
-            payload: payload,
-            counter: counter
-        )
-    }
-
     // MARK: - Enriched heartbeat ack (gap G9 parse side)
 
     func testAckSnapshotNilBeforeFirstAck() throws {
@@ -43,7 +26,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
     func testAckSnapshotReflectsParsedEnrichedFields() throws {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
         defer { client.closeSocket() }
-        client.processIncoming(ackDatagram(counter: 1, backend: false, count: 2, epoch: 77, bitmap: 0b101))
+        client.processIncoming(DataPlaneTestHelpers.ackDatagram(counter: 1, backend: false, count: 2, epoch: 77, bitmap: 0b101))
         let snapshot = try XCTUnwrap(client.heartbeatAckSnapshot())
         XCTAssertFalse(snapshot.backendAvailable)
         XCTAssertEqual(snapshot.activeCount, 2)
@@ -56,7 +39,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         defer { client.closeSocket() }
         client.missedAcks.set(4)
         client.connectionAlive.set(false)
-        client.processIncoming(ackDatagram(counter: 1))
+        client.processIncoming(DataPlaneTestHelpers.ackDatagram(counter: 1))
         XCTAssertEqual(client.missedAcks.get(), 0)
         XCTAssertTrue(client.connectionAlive.get())
     }
@@ -158,7 +141,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         XCTAssertEqual(client.latencySnapshot().samples, 0)
 
         client.armLatencyPing(nowMs: SatelliteClient.monotonicNowMs())
-        client.processIncoming(ackDatagram(counter: 1))
+        client.processIncoming(DataPlaneTestHelpers.ackDatagram(counter: 1))
 
         let snapshot = client.latencySnapshot()
         XCTAssertEqual(snapshot.samples, 1)
@@ -171,8 +154,8 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
         defer { client.closeSocket() }
         client.armLatencyPing(nowMs: SatelliteClient.monotonicNowMs())
-        client.processIncoming(ackDatagram(counter: 1))
-        client.processIncoming(ackDatagram(counter: 2))
+        client.processIncoming(DataPlaneTestHelpers.ackDatagram(counter: 1))
+        client.processIncoming(DataPlaneTestHelpers.ackDatagram(counter: 2))
         XCTAssertEqual(client.latencySnapshot().samples, 1, "the ping clock is consumed once")
     }
 
@@ -184,144 +167,12 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
         defer { client.closeSocket() }
         XCTAssertEqual(client.sendCounter, 0)
-        client.sendReport(controllerIndex: 0, buttons: 0, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0)
+        client.sendReport(controllerIndex: 0, report: GamepadReport(buttons: 0, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0))
         client.sendBattery(controllerIndex: 0, level: 50, status: .charging)
         XCTAssertEqual(client.sendCounter, 2)
         XCTAssertFalse(counterNeedsRepush(client.sendCounter))
         client.params.mutate { $0.counter = UInt64(ProtocolConstants.counterRepushThreshold) }
         XCTAssertTrue(counterNeedsRepush(client.sendCounter), "the G4 poll sees the exposed counter")
-    }
-
-    func testRekeyRestartsCountersReplayGuardAndSnapshots() throws {
-        let (fd, port) = try XCTUnwrap(DataPlaneTestHelpers.bindLoopbackSocket())
-        defer { close(fd) }
-        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
-        defer { client.closeSocket() }
-
-        // Session 1 traffic: uplink counter advances, downlink guard latches,
-        // snapshot + close latch populate.
-        client.sendReport(controllerIndex: 0, buttons: 1, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0)
-        _ = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
-        client.processIncoming(ackDatagram(counter: 9))
-        client.processIncoming(DataPlaneTestHelpers.sealDownlink(
-            msgType: ProtocolConstants.msgSessionClose,
-            payload: Data([CloseReason.replaced.rawValue]),
-            counter: 10
-        ))
-        XCTAssertNotNil(client.heartbeatAckSnapshot())
-        XCTAssertEqual(client.sessionCloseReason.get(), Int(CloseReason.replaced.rawValue))
-
-        // Re-key on the SAME endpoint (the G4 path): fresh token + key.
-        let key2 = SymmetricKey(data: Data(repeating: 0x77, count: 32))
-        let token2: UInt32 = 0x0007_A1B3
-        XCTAssertTrue(client.setConnectionParams(
-            host: "127.0.0.1",
-            udpPort: port,
-            token: token2,
-            sessionKey: key2
-        ))
-
-        // Every per-session mirror restarted.
-        XCTAssertEqual(client.sendCounter, 0)
-        XCTAssertNil(client.heartbeatAckSnapshot())
-        XCTAssertEqual(client.sessionCloseReason.get(), -1)
-        XCTAssertTrue(client.connectionAlive.get())
-        XCTAssertEqual(client.latencySnapshot().samples, 0)
-
-        // Uplink seals with the NEW material and counters restart at 1.
-        client.sendReport(controllerIndex: 0, buttons: 2, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0)
-        let datagram = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
-        let (counter, inner) = try XCTUnwrap(
-            DataPlaneTestHelpers.openUplink(datagram, key: key2, token: token2)
-        )
-        XCTAssertEqual(counter, 1, "counters restart at 1 — no keystream reuse across sessions")
-        XCTAssertEqual(inner.msgType, ProtocolConstants.msgInput)
-
-        // Replay guard reset: a downlink at counter 1 (old guard was 10) is
-        // accepted again under the new key.
-        var fired = false
-        client.onRumble = { _ in fired = true }
-        client.processIncoming(DataPlaneTestHelpers.sealDownlink(
-            msgType: ProtocolConstants.msgRumble,
-            payload: Data([0, 0, 1, 0, 1, 0, 1]),
-            counter: 1,
-            key: key2,
-            token: token2
-        ))
-        XCTAssertTrue(fired, "the fresh session's guard starts at 0")
-
-        // And the OLD session's material is dead: same datagram sealed with
-        // session-1 params is dropped (token filter).
-        fired = false
-        client.processIncoming(DataPlaneTestHelpers.sealDownlink(
-            msgType: ProtocolConstants.msgRumble,
-            payload: Data([0, 0, 1, 0, 1, 0, 1]),
-            counter: 2
-        ))
-        XCTAssertFalse(fired, "old-token datagrams no longer decrypt after the re-key")
-    }
-
-    func testRekeySwapNeverYieldsAReusedCounterOrACarriedOneAcrossGenerations() throws {
-        // `nextSendMaterial` is what every uplink seal draws from. Under
-        // concurrent re-key swaps the drawn (token, sequence) pairs must
-        // uphold the nonce invariant: no pair repeats within a generation,
-        // and every generation's sequences run contiguously from 1 — a swap
-        // can neither reset the counter under the old key (nonce reuse) nor
-        // leak the old generation's high counter into the new one.
-        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
-        defer { client.closeSocket() }
-
-        let drawsPerThread = 4000
-        let threads = 4
-        let collected = LockedBox<[(UInt32, UInt64)]>([])
-        let group = DispatchGroup()
-        let start = DispatchSemaphore(value: 0)
-        for _ in 0 ..< threads {
-            group.enter()
-            DispatchQueue.global().async {
-                start.wait()
-                var local: [(UInt32, UInt64)] = []
-                local.reserveCapacity(drawsPerThread)
-                for _ in 0 ..< drawsPerThread {
-                    let material = client.nextSendMaterial()
-                    local.append((material.token, material.sequence))
-                }
-                collected.mutate { $0.append(contentsOf: local) }
-                group.leave()
-            }
-        }
-        for _ in 0 ..< threads {
-            start.signal()
-        }
-        // Re-key on the SAME endpoint (the live G4 path) while the senders
-        // draw.
-        for generation in 1 ... 200 {
-            XCTAssertTrue(client.setConnectionParams(
-                host: "127.0.0.1",
-                udpPort: 9,
-                token: UInt32(generation),
-                sessionKey: SymmetricKey(data: Data(repeating: UInt8(generation % 251), count: 32))
-            ))
-        }
-        XCTAssertEqual(group.wait(timeout: .now() + 30), .success)
-
-        var byGeneration: [UInt32: [UInt64]] = [:]
-        for (token, sequence) in collected.get() {
-            byGeneration[token, default: []].append(sequence)
-        }
-        for (token, sequences) in byGeneration {
-            let unique = Set(sequences)
-            XCTAssertEqual(
-                unique.count,
-                sequences.count,
-                "token \(token): a (generation, counter) pair was drawn twice — nonce reuse"
-            )
-            XCTAssertEqual(
-                unique,
-                Set(1 ... UInt64(sequences.count)),
-                "token \(token): sequences must run contiguously from 1"
-            )
-        }
     }
 
     func testExhaustedCounterGoesSilentInsteadOfWrapping() throws {
@@ -392,7 +243,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
     func testClosedClientDropsSendsWithoutTrapping() throws {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
         client.closeSocket()
-        client.sendReport(controllerIndex: 0, buttons: 0, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0)
+        client.sendReport(controllerIndex: 0, report: GamepadReport(buttons: 0, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0))
         XCTAssertEqual(client.sendCounter, 0, "sends on a closed client are dropped before sealing")
     }
 }

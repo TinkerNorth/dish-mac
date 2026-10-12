@@ -104,8 +104,17 @@ final class MotionBatteryProcessorTests: XCTestCase {
         _ sink: @escaping (CapturedMotion) -> Void
     ) -> GamepadInputProcessor {
         let proc = GamepadInputProcessor()
-        proc.motionSender = { id, gx, gy, gz, ax, ay, az, dt in
-            sink(CapturedMotion(id: id, gx: gx, gy: gy, gz: gz, ax: ax, ay: ay, az: az, dtUs: dt))
+        proc.motionSender = { id, sample, dt in
+            sink(CapturedMotion(
+                id: id,
+                gx: sample.gyroX,
+                gy: sample.gyroY,
+                gz: sample.gyroZ,
+                ax: sample.accelX,
+                ay: sample.accelY,
+                az: sample.accelZ,
+                dtUs: dt
+            ))
         }
         return proc
     }
@@ -115,12 +124,7 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { captured = $0 }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 100,
-            gyroY: 200,
-            gyroZ: 300,
-            accelX: 400,
-            accelY: 500,
-            accelZ: 600,
+            sample: MotionSample(gyroX: 100, gyroY: 200, gyroZ: 300, accelX: 400, accelY: 500, accelZ: 600),
             nowNs: 1_000_000_000
         )
         XCTAssertNotNil(captured)
@@ -132,23 +136,13 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { samples.append($0) }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_000_000_000
         )
         // 5 ms later — 5_000_000 ns = 5_000 µs.
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_005_000_000
         )
         XCTAssertEqual(samples.count, 2)
@@ -162,23 +156,13 @@ final class MotionBatteryProcessorTests: XCTestCase {
         // First sample — always forwarded.
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 1,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 1, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_000_000_000
         )
         // +2 ms (500 Hz) — inside the 4 ms / 250 Hz gate → dropped.
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 2,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 2, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_002_000_000
         )
         // +4 ms after the *first* sample. The dropped one must not have
@@ -186,12 +170,7 @@ final class MotionBatteryProcessorTests: XCTestCase {
         // the first emitted packet (4000 µs), not from the dropped attempt.
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 3,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 3, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_004_000_000
         )
         XCTAssertEqual(samples.count, 2)
@@ -205,33 +184,18 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { samples.append($0) }
         proc.publishMotion(
             deviceId: "padA",
-            gyroX: 0,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_000_000_000
         )
         proc.publishMotion(
             deviceId: "padB",
-            gyroX: 0,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_010_000_000
         )
         // padA's second sample should compute delta off padA's t0, not padB's.
         proc.publishMotion(
             deviceId: "padA",
-            gyroX: 0,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_020_000_000
         )
         XCTAssertEqual(samples.count, 3)
@@ -245,12 +209,7 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { samples.append($0) }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 1_000_000_000
         )
         proc.remove(deviceId: "pad")
@@ -258,12 +217,7 @@ final class MotionBatteryProcessorTests: XCTestCase {
         // (delta 0), not a 5-second-stale delta.
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 0,
-            gyroY: 0,
-            gyroZ: 0,
-            accelX: 0,
-            accelY: 0,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0),
             nowNs: 6_000_000_000
         )
         XCTAssertEqual(samples.count, 2)
@@ -275,12 +229,7 @@ final class MotionBatteryProcessorTests: XCTestCase {
         let proc = makeProcessorWithMotionCapture { captured = $0 }
         proc.publishMotion(
             deviceId: "pad",
-            gyroX: 1234,
-            gyroY: -567,
-            gyroZ: 89,
-            accelX: 100,
-            accelY: -200,
-            accelZ: 16384,
+            sample: MotionSample(gyroX: 1234, gyroY: -567, gyroZ: 89, accelX: 100, accelY: -200, accelZ: 16384),
             nowNs: 1_000_000_000
         )
         XCTAssertEqual(captured?.gx, 1234)

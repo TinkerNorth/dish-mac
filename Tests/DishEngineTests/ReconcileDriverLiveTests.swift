@@ -159,7 +159,7 @@ final class ReconcileDriverLiveTests: XCTestCase {
         XCTAssertTrue(reaped)
         XCTAssertNil(manager.retry[server.id], "terminal auth stops the retry curve")
         let quiet = !events.contains {
-            if case let .error(message) = $0 { return message == WifiConnectionManager.repairNeededMessage }
+            if case let .failure(failure) = $0 { return failure == .repairNeeded }
             return false
         }
         XCTAssertTrue(quiet, "nobody asked for the reconcile — the funnel stays quiet")

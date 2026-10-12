@@ -72,9 +72,9 @@ final class IntegrationReconcilePolicyTests: XCTestCase {
         )
     }
 
-    private var errorMessages: [String] {
+    private var failures: [ConnectionFailure] {
         events.compactMap {
-            if case let .error(message) = $0 { return message }
+            if case let .failure(failure) = $0 { return failure }
             return nil
         }
     }
@@ -100,7 +100,7 @@ final class IntegrationReconcilePolicyTests: XCTestCase {
         }
         manager.connect(to: server)
         let live = await waitUntil { self.manager.get(self.server.id)?.state == .live }
-        XCTAssertTrue(live, "keyed connect must reach .live: \(errorMessages)")
+        XCTAssertTrue(live, "keyed connect must reach .live: \(failures)")
         let conn = try XCTUnwrap(manager.get(server.id))
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "reply path must be learned")
         return conn
@@ -178,7 +178,7 @@ final class IntegrationReconcilePolicyTests: XCTestCase {
         XCTAssertTrue(dropped, "unpaired is trust revocation: the key must drop")
         XCTAssertTrue(manager.staleSatelliteIds.contains(server.id), "row parks on Needs pairing")
         let loud = await waitUntil {
-            self.errorMessages.contains(WifiConnectionManager.repairNeededMessage)
+            self.failures.contains(.repairNeeded)
         }
         XCTAssertTrue(loud, "an active server-side unpair is loud")
         XCTAssertEqual(manager.get(server.id)?.state, .idle)
@@ -240,7 +240,7 @@ final class IntegrationReconcilePolicyTests: XCTestCase {
         XCTAssertTrue(liveAgain, "the session recovers on the retry curve")
         XCTAssertNil(manager.retry[server.id], "session success resets the backoff curve")
         XCTAssertFalse(
-            errorMessages.contains(WifiConnectionManager.repairNeededMessage),
+            failures.contains(.repairNeeded),
             "a transient shutdown close is never loud"
         )
         XCTAssertNotNil(store.sharedKey(for: server.id))

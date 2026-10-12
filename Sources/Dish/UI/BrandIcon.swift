@@ -82,67 +82,50 @@ struct BrandIcon: View {
     // MARK: - Dish
 
     private func drawDish(in ctx: inout GraphicsContext) {
+        drawDishStand(in: &ctx)
+        drawDishReflector(in: &ctx)
+        drawDishIndicators(in: &ctx)
+    }
+
+    /// Base plate and pole.
+    private func drawDishStand(in ctx: inout GraphicsContext) {
+        let p = primary.opacity(primaryAlpha)
+        let s = scale
+        ctx.fill(
+            Path(roundedRect: CGRect(x: 14 * s, y: 56 * s, width: 36 * s, height: 4 * s), cornerRadius: 1 * s),
+            with: .color(p)
+        )
+        ctx.fill(Path(CGRect(x: 30 * s, y: 42 * s, width: 4 * s, height: 14 * s)), with: .color(p))
+    }
+
+    /// Reflector, highlight, feed horn and mast, rotated around the pivot and
+    /// rotated back so later drawing stays in canvas coordinates.
+    private func drawDishReflector(in ctx: inout GraphicsContext) {
         let p = primary.opacity(primaryAlpha)
         let o = Color.white.opacity(overlayAlpha)
         let s = scale
-
-        // base plate (rect 14,56 36x4 rx 1)
-        ctx.fill(Path(
-            roundedRect:
-            CGRect(x: 14 * s, y: 56 * s, width: 36 * s, height: 4 * s),
-            cornerRadius: 1 * s
-        ), with: .color(p))
-        // pole (rect 30,42 4x14)
-        ctx.fill(
-            Path(CGRect(x: 30 * s, y: 42 * s, width: 4 * s, height: 14 * s)),
-            with: .color(p)
-        )
-
-        // reflector — rotate -28° around (32,28)
         let pivot = CGPoint(x: 32 * s, y: 28 * s)
         ctx.translateBy(x: pivot.x, y: pivot.y)
-        ctx.rotate(by: .degrees(-28))
+        ctx.rotate(by: .degrees(Self.reflectorTiltDegrees))
         ctx.translateBy(x: -pivot.x, y: -pivot.y)
-
-        // outer dish (ellipse cx=32 cy=28 rx=24 ry=8)
-        ctx.fill(
-            Path(ellipseIn:
-                CGRect(x: 8 * s, y: 20 * s, width: 48 * s, height: 16 * s)),
-            with: .color(p)
-        )
-        // overlay (rx=18 ry=4)
-        ctx.fill(
-            Path(ellipseIn:
-                CGRect(x: 14 * s, y: 24 * s, width: 36 * s, height: 8 * s)),
-            with: .color(o)
-        )
-        // feed horn (circle r=3)
-        ctx.fill(
-            Path(ellipseIn:
-                CGRect(x: 29 * s, y: 25 * s, width: 6 * s, height: 6 * s)),
-            with: .color(p)
-        )
-        // mast (rect 30,14 4x14)
-        ctx.fill(
-            Path(CGRect(x: 30 * s, y: 14 * s, width: 4 * s, height: 14 * s)),
-            with: .color(p)
-        )
-
-        // Reset rotation before adding overlays in canvas coords.
+        ctx.fill(Path(ellipseIn: CGRect(x: 8 * s, y: 20 * s, width: 48 * s, height: 16 * s)), with: .color(p))
+        ctx.fill(Path(ellipseIn: CGRect(x: 14 * s, y: 24 * s, width: 36 * s, height: 8 * s)), with: .color(o))
+        ctx.fill(Path(ellipseIn: CGRect(x: 29 * s, y: 25 * s, width: 6 * s, height: 6 * s)), with: .color(p))
+        ctx.fill(Path(CGRect(x: 30 * s, y: 14 * s, width: 4 * s, height: 14 * s)), with: .color(p))
         ctx.translateBy(x: pivot.x, y: pivot.y)
-        ctx.rotate(by: .degrees(28))
+        ctx.rotate(by: .degrees(-Self.reflectorTiltDegrees))
         ctx.translateBy(x: -pivot.x, y: -pivot.y)
+    }
 
+    /// The reflector's tilt in the 64-unit glyph.
+    private static let reflectorTiltDegrees: Double = -28
+
+    private func drawDishIndicators(in ctx: inout GraphicsContext) {
+        let s = scale
         if state == .connected {
-            // lock-on indicator at (48,14)
+            ctx.fill(Path(ellipseIn: CGRect(x: 45 * s, y: 11 * s, width: 6 * s, height: 6 * s)), with: .color(primary))
             ctx.fill(
-                Path(ellipseIn:
-                    CGRect(x: 45 * s, y: 11 * s, width: 6 * s, height: 6 * s)),
-                with: .color(primary)
-            )
-            ctx.fill(
-                Path(ellipseIn:
-                    CGRect(x: 46.5 * s, y: 12.5 * s, width: 3 * s, height: 3 * s)),
+                Path(ellipseIn: CGRect(x: 46.5 * s, y: 12.5 * s, width: 3 * s, height: 3 * s)),
                 with: .color(.white.opacity(0.55))
             )
         }
@@ -154,93 +137,63 @@ struct BrandIcon: View {
     // MARK: - Satellite
 
     private func drawSatellite(in ctx: inout GraphicsContext) {
+        drawSolarPanels(in: &ctx)
+        drawSatelliteBody(in: &ctx)
+        drawAntenna(in: &ctx)
+        drawSatelliteIndicators(in: &ctx)
+    }
+
+    /// Two panels with their slats and the connectors to the body.
+    private func drawSolarPanels(in ctx: inout GraphicsContext) {
         let p = primary.opacity(primaryAlpha)
         let o = Color.white.opacity(overlayAlpha)
         let s = scale
-
-        // Left + right solar panels
-        ctx.fill(
-            Path(
-                roundedRect:
-                CGRect(x: 2 * s, y: 28 * s, width: 20 * s, height: 10 * s),
-                cornerRadius: 1 * s
-            ),
-            with: .color(p)
-        )
-        ctx.fill(
-            Path(
-                roundedRect:
-                CGRect(x: 42 * s, y: 28 * s, width: 20 * s, height: 10 * s),
-                cornerRadius: 1 * s
-            ),
-            with: .color(p)
-        )
-        // Slats
-        for x in [6, 10, 14, 18, 46, 50, 54, 58] {
+        for x in [2, 42] {
             ctx.fill(
-                Path(CGRect(
-                    x: CGFloat(x) * s,
-                    y: 29 * s,
-                    width: 1 * s,
-                    height: 8 * s
-                )),
-                with: .color(o)
+                Path(roundedRect: CGRect(x: CGFloat(x) * s, y: 28 * s, width: 20 * s, height: 10 * s), cornerRadius: 1 * s),
+                with: .color(p)
             )
         }
-        // Connectors
+        for x in [6, 10, 14, 18, 46, 50, 54, 58] {
+            ctx.fill(Path(CGRect(x: CGFloat(x) * s, y: 29 * s, width: 1 * s, height: 8 * s)), with: .color(o))
+        }
+        for x in [22, 38] {
+            ctx.fill(Path(CGRect(x: CGFloat(x) * s, y: 31 * s, width: 4 * s, height: 4 * s)), with: .color(p))
+        }
+    }
+
+    private func drawSatelliteBody(in ctx: inout GraphicsContext) {
+        let p = primary.opacity(primaryAlpha)
+        let o = Color.white.opacity(overlayAlpha)
+        let s = scale
         ctx.fill(
-            Path(CGRect(x: 22 * s, y: 31 * s, width: 4 * s, height: 4 * s)),
+            Path(roundedRect: CGRect(x: 26 * s, y: 22 * s, width: 12 * s, height: 20 * s), cornerRadius: 2 * s),
             with: .color(p)
         )
         ctx.fill(
-            Path(CGRect(x: 38 * s, y: 31 * s, width: 4 * s, height: 4 * s)),
-            with: .color(p)
-        )
-        // Body
-        ctx.fill(
-            Path(
-                roundedRect:
-                CGRect(x: 26 * s, y: 22 * s, width: 12 * s, height: 20 * s),
-                cornerRadius: 2 * s
-            ),
-            with: .color(p)
-        )
-        // Window
-        ctx.fill(
-            Path(
-                roundedRect:
-                CGRect(x: 28 * s, y: 25 * s, width: 8 * s, height: 4 * s),
-                cornerRadius: 1 * s
-            ),
+            Path(roundedRect: CGRect(x: 28 * s, y: 25 * s, width: 8 * s, height: 4 * s), cornerRadius: 1 * s),
             with: .color(o)
         )
-        // Antenna mast
-        ctx.fill(
-            Path(CGRect(x: 31 * s, y: 10 * s, width: 2 * s, height: 12 * s)),
-            with: .color(p)
-        )
-        // Antenna dish (approximate chevron)
-        var chev = Path()
-        chev.move(to: CGPoint(x: 27 * s, y: 8 * s))
-        chev.addQuadCurve(
-            to: CGPoint(x: 37 * s, y: 8 * s),
-            control: CGPoint(x: 32 * s, y: 2 * s)
-        )
-        chev.addLine(to: CGPoint(x: 34 * s, y: 10 * s))
-        chev.addQuadCurve(
-            to: CGPoint(x: 30 * s, y: 10 * s),
-            control: CGPoint(x: 32 * s, y: 5 * s)
-        )
-        chev.closeSubpath()
-        ctx.fill(chev, with: .color(p))
+    }
 
+    /// Mast plus the antenna's chevron.
+    private func drawAntenna(in ctx: inout GraphicsContext) {
+        let p = primary.opacity(primaryAlpha)
+        let s = scale
+        ctx.fill(Path(CGRect(x: 31 * s, y: 10 * s, width: 2 * s, height: 12 * s)), with: .color(p))
+        var chevron = Path()
+        chevron.move(to: CGPoint(x: 27 * s, y: 8 * s))
+        chevron.addQuadCurve(to: CGPoint(x: 37 * s, y: 8 * s), control: CGPoint(x: 32 * s, y: 2 * s))
+        chevron.addLine(to: CGPoint(x: 34 * s, y: 10 * s))
+        chevron.addQuadCurve(to: CGPoint(x: 30 * s, y: 10 * s), control: CGPoint(x: 32 * s, y: 5 * s))
+        chevron.closeSubpath()
+        ctx.fill(chevron, with: .color(p))
+    }
+
+    private func drawSatelliteIndicators(in ctx: inout GraphicsContext) {
+        let s = scale
         if state == .connected {
-            // uplink dot
-            ctx.fill(
-                Path(ellipseIn:
-                    CGRect(x: 29.5 * s, y: -0.5 * s, width: 5 * s, height: 5 * s)),
-                with: .color(primary)
-            )
+            ctx.fill(Path(ellipseIn: CGRect(x: 29.5 * s, y: -0.5 * s, width: 5 * s, height: 5 * s)), with: .color(primary))
         }
         if state == .off {
             strokeSlash(in: &ctx)
@@ -250,24 +203,25 @@ struct BrandIcon: View {
     // MARK: - Bluetooth
 
     private func drawBluetooth(in ctx: inout GraphicsContext) {
+        drawBluetoothRune(in: &ctx)
+        drawBluetoothIndicators(in: &ctx)
+    }
+
+    private func drawBluetoothRune(in ctx: inout GraphicsContext) {
         let s = scale
         let runeAlpha: Double = state == .off ? 0.45 : 1.0
         let stroke = primary.opacity(runeAlpha)
-
         var rune = Path()
-        let pts: [(CGFloat, CGFloat)] = [
-            (18, 18), (46, 46), (32, 58), (32, 6), (46, 18), (18, 46)
-        ]
-        rune.move(to: CGPoint(x: pts[0].0 * s, y: pts[0].1 * s))
-        for p in pts.dropFirst() {
-            rune.addLine(to: CGPoint(x: p.0 * s, y: p.1 * s))
+        let points: [(CGFloat, CGFloat)] = [(18, 18), (46, 46), (32, 58), (32, 6), (46, 18), (18, 46)]
+        rune.move(to: CGPoint(x: points[0].0 * s, y: points[0].1 * s))
+        for point in points.dropFirst() {
+            rune.addLine(to: CGPoint(x: point.0 * s, y: point.1 * s))
         }
-        ctx.stroke(
-            rune,
-            with: .color(stroke),
-            style: StrokeStyle(lineWidth: 6 * s, lineCap: .round, lineJoin: .round)
-        )
+        ctx.stroke(rune, with: .color(stroke), style: StrokeStyle(lineWidth: 6 * s, lineCap: .round, lineJoin: .round))
+    }
 
+    private func drawBluetoothIndicators(in ctx: inout GraphicsContext) {
+        let s = scale
         switch state {
         case .connected:
             ctx.fill(

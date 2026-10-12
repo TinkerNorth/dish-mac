@@ -22,8 +22,6 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
     private var manager: WifiConnectionManager!
     private var events: [ConnectionEvent] = []
     private var bag = Set<AnyCancellable>()
-    private var savedPollInterval = 0
-    private var savedPollTimeout = 0
 
     override func setUpWithError() throws {
         try super.setUpWithError()
@@ -39,13 +37,9 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         manager.events
             .sink { [weak self] event in self?.events.append(event) }
             .store(in: &bag)
-        savedPollInterval = WifiConnectionManager.approvalPollIntervalMs
-        savedPollTimeout = WifiConnectionManager.approvalTimeoutMs
     }
 
     override func tearDown() {
-        WifiConnectionManager.approvalPollIntervalMs = savedPollInterval
-        WifiConnectionManager.approvalTimeoutMs = savedPollTimeout
         for id in manager.connections.keys {
             manager.disconnect(id: id)
         }
@@ -90,9 +84,9 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         return predicate()
     }
 
-    private var errorMessages: [String] {
+    private var failures: [ConnectionFailure] {
         events.compactMap {
-            if case let .error(message) = $0 { return message }
+            if case let .failure(failure) = $0 { return failure }
             return nil
         }
     }
@@ -137,7 +131,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
             "the remembered row must SURVIVE a terminal 401"
         )
         let surfaced = await waitUntil {
-            self.errorMessages.contains(WifiConnectionManager.repairNeededMessage)
+            self.failures.contains(.repairNeeded)
         }
         XCTAssertTrue(surfaced, "user-initiated terminal auth is loud")
         XCTAssertEqual(manager.get(serverId)?.state, .idle)
@@ -154,7 +148,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         XCTAssertTrue(dropped)
         XCTAssertTrue(manager.staleSatelliteIds.contains(serverId))
         XCTAssertFalse(
-            errorMessages.contains(WifiConnectionManager.repairNeededMessage),
+            failures.contains(.repairNeeded),
             "background intents never banner"
         )
     }
@@ -168,7 +162,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         manager.connect(to: server)
 
         let surfaced = await waitUntil {
-            self.errorMessages.contains(WifiConnectionManager.protocolMismatchMessage)
+            self.failures.contains(.protocolMismatch)
         }
         XCTAssertTrue(surfaced)
         XCTAssertNotNil(store.sharedKey(for: serverId), "version skew is not trust loss")
@@ -232,7 +226,6 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
     // MARK: - Path B end-to-end (G16)
 
     func testClientPinApprovalFlowLandsKeyAndSession() async {
-        WifiConnectionManager.approvalPollIntervalMs = 50
         satellite.pairingKeyHex = nil
 
         manager.pairWithClientPin(server, clientPin: "1234")
@@ -249,7 +242,6 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
     }
 
     func testClientPinDeclineSurfacesDeclinedMessage() async {
-        WifiConnectionManager.approvalPollIntervalMs = 50
         satellite.pairingKeyHex = nil
 
         manager.pairWithClientPin(server, clientPin: "9911")
@@ -258,7 +250,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         satellite.denyClientPin()
 
         let declined = await waitUntil {
-            self.errorMessages.contains(WifiConnectionManager.approvalDeclinedMessage)
+            self.failures.contains(.approvalDeclined)
         }
         XCTAssertTrue(declined)
         XCTAssertNil(store.sharedKey(for: serverId))
@@ -266,7 +258,6 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
     }
 
     func testSupersededApprovalFlowRunsNoVisibleSideEffects() async {
-        WifiConnectionManager.approvalPollIntervalMs = 50
         satellite.pairingKeyHex = nil
 
         // Park flow 1 INSIDE its submit await; the supersede then cancels it
@@ -284,7 +275,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         // no banner, no .linking -> .idle knock, and the shared
         // pairingInFlight marker still belongs to flow 2.
         try? await Task.sleep(nanoseconds: 300_000_000)
-        XCTAssertEqual(errorMessages, [], "a superseded flow must not surface a banner")
+        XCTAssertEqual(failures, [], "a superseded flow must not surface a banner")
         XCTAssertEqual(manager.get(serverId)?.state, .linking, "flow 2's handshake must not be knocked idle")
         XCTAssertTrue(
             manager.pairingInFlight.contains(serverId),
@@ -300,7 +291,6 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
     }
 
     func testDisconnectCancelsInFlightApprovalPoll() async {
-        WifiConnectionManager.approvalPollIntervalMs = 50
         satellite.pairingKeyHex = nil
 
         manager.pairWithClientPin(server, clientPin: "3333")

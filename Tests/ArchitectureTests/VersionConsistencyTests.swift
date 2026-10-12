@@ -12,10 +12,7 @@ import XCTest
 final class VersionConsistencyTests: XCTestCase {
 
     private var repoRoot: URL {
-        URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent() // Tests/DishTests
-            .deletingLastPathComponent() // Tests
-            .deletingLastPathComponent() // repo root
+        RepoFiles.root
     }
 
     func testVersionFileExistsAndIsSemverShaped() throws {

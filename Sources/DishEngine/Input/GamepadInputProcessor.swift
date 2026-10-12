@@ -4,17 +4,13 @@
 import DishCore
 import Foundation
 
-/// Converts raw gamepad values into the XUSB report format the Satellite
-/// server expects. Mirrors `GamepadInputProcessor.kt` on Android.
-///
-/// Pure logic: no framework imports, no network calls. The GameController
-/// bridge (see `GameControllerInput.swift`) updates the per-device state
-/// whenever a value changes and calls `trySend(deviceId:)`, which hands the
-/// packed report to the registered `ReportSender`.
+/// Turns raw controller values into the wire's report, applies the per-device
+/// dead zones and hands each report to the installed sender on the calling
+/// thread. No framework imports and no sockets: the controller bridge builds
+/// the full state on every change and the router owns the socket.
 final class GamepadInputProcessor: @unchecked Sendable {
 
-    // MARK: - XUSB button bits (identical to dish-android BUTTON_MAP).
-
+    /// The XUSB button bits, identical across every Dish client.
     enum Buttons {
         static let dpadUp: UInt16 = 0x0001
         static let dpadDown: UInt16 = 0x0002
@@ -33,56 +29,41 @@ final class GamepadInputProcessor: @unchecked Sendable {
     }
 
     typealias DeviceId = String
+    typealias DeviceState = GamepadReport
 
-    /// Invoked every time a report is emitted. Called on the caller's thread
-    /// (typically the GameController callback thread) for lowest latency.
-    typealias ReportSender = (
-        _ deviceId: DeviceId,
-        _ wButtons: UInt16,
-        _ lt: UInt8,
-        _ rt: UInt8,
-        _ lx: Int16,
-        _ ly: Int16,
-        _ rx: Int16,
-        _ ry: Int16
-    ) -> Void
+    /// Called on the caller's thread for every emitted report.
+    typealias ReportSender = (_ deviceId: DeviceId, _ report: GamepadReport) -> Void
+    /// Called on the caller's thread for every motion sample that passed the
+    /// rate limit, with the delta since this device's previous emitted sample.
+    typealias MotionSender = (_ deviceId: DeviceId, _ sample: MotionSample, _ timestampDeltaUs: UInt32) -> Void
+    /// Called on the main actor for every battery snapshot.
+    typealias BatterySender = (_ deviceId: DeviceId, _ level: UInt8, _ statusRaw: UInt8) -> Void
+    /// Called on the caller's thread for every touchpad sample, with the
+    /// sender-side uptime stamp the frame carries.
+    typealias TouchpadSender = (_ deviceId: DeviceId, _ sample: TouchpadSample, _ eventTimeMs: UInt32) -> Void
 
-    /// Invoked on every motion (IMU) sample. Same threading discipline as
-    /// `ReportSender` — typically called from the `GCMotion` callback thread.
-    /// Values are pre-scaled; see `scaleGyro` / `scaleAccel`.
-    typealias MotionSender = (
-        _ deviceId: DeviceId,
-        _ gyroX: Int16, _ gyroY: Int16, _ gyroZ: Int16,
-        _ accelX: Int16, _ accelY: Int16, _ accelZ: Int16,
-        _ timestampDeltaUs: UInt32
-    ) -> Void
+    /// Per-axis dead zones: a stick at or below `stickFlat` and a trigger at
+    /// or below `triggerFlat` read as zero.
+    struct Deadzones: Equatable {
+        var stickFlat: Int16 = 0
+        var triggerFlat: UInt8 = 0
+    }
 
-    /// Invoked on every battery snapshot — connect, periodic 30 s tick,
-    /// and on charging-state transitions. Called on the main actor.
-    typealias BatterySender = (
-        _ deviceId: DeviceId,
-        _ level: UInt8,
-        _ statusRaw: UInt8
-    ) -> Void
+    /// The wire holds motion at or under this rate; a faster sensor is thinned.
+    static let motionRateLimitHz: UInt64 = 250
+    private static let motionMinIntervalNs: UInt64 = 1_000_000_000 / motionRateLimitHz
 
-    /// Invoked on every touchpad sample. Coordinates are pre-scaled int16.
-    /// `fingerNId` is a monotonic per-finger tracking id, bumped by the bridge
-    /// on each fresh contact (the protocol's per-finger id; GameController
-    /// surfaces no native one). `eventTimeMs` is the sender-side sample
-    /// uptime stamp (ms) the protocol-1 16-byte payload carries at offset 12.
-    typealias TouchpadSender = (
-        _ deviceId: DeviceId,
-        _ sample: TouchpadSample,
-        _ eventTimeMs: UInt32
-    ) -> Void
-
-    /// The senders are installed by the composition root and read on the
-    /// GameController callback threads; a lock-guarded hand-off keeps that
-    /// race-free without a main-actor hop on the hot path.
+    // The senders are installed by the composition root and read on the
+    // controller callback threads; the boxes make that hand-off race-free.
     private let reportSenderBox = LockedBox<ReportSender?>(nil)
     private let motionSenderBox = LockedBox<MotionSender?>(nil)
     private let batterySenderBox = LockedBox<BatterySender?>(nil)
     private let touchpadSenderBox = LockedBox<TouchpadSender?>(nil)
+
+    private var states: [DeviceId: GamepadReport] = [:]
+    private var deadzones: [DeviceId: Deadzones] = [:]
+    private var lastMotionTimestampNs: [DeviceId: UInt64] = [:]
+    private let lock = NSLock()
 
     var reportSender: ReportSender? {
         get { reportSenderBox.get() }
@@ -104,88 +85,39 @@ final class GamepadInputProcessor: @unchecked Sendable {
         set { touchpadSenderBox.set(newValue) }
     }
 
-    /// Per-device state. Small struct, map lookups on every event — same
-    /// design as the Android processor.
-    struct DeviceState {
-        var wButtons: UInt16 = 0
-        var lt: UInt8 = 0
-        var rt: UInt8 = 0
-        var lx: Int16 = 0
-        var ly: Int16 = 0
-        var rx: Int16 = 0
-        var ry: Int16 = 0
-    }
+    // MARK: - Reports
 
-    /// Per-axis deadzone thresholds. Values whose absolute magnitude is at or
-    /// below the flat are zeroed before the report leaves the processor —
-    /// mirrors the per-device flat values Android pulls out of
-    /// `InputDevice.getMotionRange(axis).getFlat()`. macOS and Linux don't
-    /// surface an OS-level equivalent, so the bridge installs a sensible
-    /// default per controller and can override per-device when GC exposes
-    /// `GCAxisInput.deadband` (macOS 14+).
-    struct Deadzones: Equatable {
-        var stickFlat: Int16 = 0
-        var triggerFlat: UInt8 = 0
-    }
-
-    private var states: [DeviceId: DeviceState] = [:]
-    private var deadzones: [DeviceId: Deadzones] = [:]
-    private var lastMotionTimestampNs: [DeviceId: UInt64] = [:]
-    private let lock = NSLock()
-
-    /// Per-controller motion rate-limit cap. The wire protocol requires senders
-    /// to hold MSG_MOTION at ≤ 250 Hz by default; GCMotion can fire at
-    /// 500–1000 Hz on a wired DualSense, so `publishMotion` gates on this.
-    static let motionRateLimitHz: UInt64 = 250
-    private static let motionMinIntervalNs: UInt64 = 1_000_000_000 / motionRateLimitHz
-
-    // MARK: - Mutators (called from GC callback thread)
-
-    /// Push the per-axis deadzone thresholds for a device. Safe to call at any
-    /// time; future `publish` calls for that device will apply the new values.
-    func setDeadzones(deviceId: DeviceId, _ dz: Deadzones) {
+    func setDeadzones(deviceId: DeviceId, _ zones: Deadzones) {
         lock.lock()
-        deadzones[deviceId] = dz
+        deadzones[deviceId] = zones
         lock.unlock()
     }
 
-    /// Apply a fully-computed state + send. The caller (GameController bridge)
-    /// reads every axis/button every time GCController fires and builds the
-    /// complete `DeviceState` — that mirrors how Android's MotionEvent batch
-    /// recomputes from scratch on every report.
-    func publish(deviceId: DeviceId, state: DeviceState) {
+    /// Filter a full-state report through the device's dead zones, remember
+    /// it, and send it.
+    func publish(deviceId: DeviceId, state: GamepadReport) {
         lock.lock()
-        let dz = deadzones[deviceId] ?? Deadzones()
-        let filtered = applyDeadzones(state, dz)
+        let zones = deadzones[deviceId] ?? Deadzones()
+        let filtered = applyDeadzones(state, zones)
         states[deviceId] = filtered
         lock.unlock()
-        reportSender?(
-            deviceId,
-            filtered.wButtons,
-            filtered.lt,
-            filtered.rt,
-            filtered.lx,
-            filtered.ly,
-            filtered.rx,
-            filtered.ry
-        )
+        reportSender?(deviceId, filtered)
     }
 
-    /// Emit a release-all report for every known device. Used on app
-    /// deactivate / window-focus-lost so no button stays held server-side.
+    /// Send a released report for every known device, so nothing stays held
+    /// on the host when this process stops receiving events.
     func zeroAndSendAll() {
         lock.lock()
         let ids = Array(states.keys)
         for id in ids {
-            states[id] = DeviceState()
+            states[id] = .released
         }
         lock.unlock()
         for id in ids {
-            reportSender?(id, 0, 0, 0, 0, 0, 0, 0)
+            reportSender?(id, .released)
         }
     }
 
-    /// Drop a device's state when the controller disconnects.
     func remove(deviceId: DeviceId) {
         lock.lock()
         defer { lock.unlock() }
@@ -194,141 +126,75 @@ final class GamepadInputProcessor: @unchecked Sendable {
         lastMotionTimestampNs.removeValue(forKey: deviceId)
     }
 
-    /// Forward a pre-scaled IMU sample. The caller (`GameControllerInput`)
-    /// reads `GCMotion.gravity / userAcceleration / rotationRate` and converts
-    /// to the wire-scale ints via `scaleGyro` / `scaleAccel`. We compute the
-    /// inter-sample timestamp delta here so the GC bridge stays free of the
-    /// per-device state.
-    func publishMotion(
-        deviceId: DeviceId,
-        gyroX: Int16, gyroY: Int16, gyroZ: Int16,
-        accelX: Int16, accelY: Int16, accelZ: Int16,
-        nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
-    ) {
-        // Per-controller 250 Hz rate-limit gate. A sample inside the gate
-        // window is dropped *without* advancing `lastMotionTimestampNs`, so
-        // the gate always measures from the last *emitted* packet and a hot
-        // 1 kHz stream of drops can't push the deadline forward indefinitely.
-        let deltaUs: UInt32
-        do {
-            lock.lock()
-            defer { lock.unlock() }
-            if let prev = lastMotionTimestampNs[deviceId] {
-                guard nowNs > prev else { return } // same/backward clock — drop
-                let elapsedNs = nowNs - prev
-                if elapsedNs < Self.motionMinIntervalNs { return } // inside the gate
-                // Saturating cast — a delta over UInt32.max µs (~71 minutes)
-                // is not physically meaningful and the receiver tolerates 0.
-                deltaUs = UInt32(clamping: elapsedNs / 1000)
-            } else {
-                deltaUs = 0 // first sample for this controller
-            }
-            lastMotionTimestampNs[deviceId] = nowNs
-        }
+    // MARK: - Motion
 
-        motionSender?(deviceId, gyroX, gyroY, gyroZ, accelX, accelY, accelZ, deltaUs)
+    /// Forward a wire-scaled sample, thinned to the rate limit. The limit is
+    /// measured from the last emitted sample, so a stream of drops never
+    /// pushes the deadline forward.
+    func publishMotion(deviceId: DeviceId, sample: MotionSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
+        guard let deltaUs = admitMotion(deviceId: deviceId, nowNs: nowNs) else { return }
+        motionSender?(deviceId, sample, deltaUs)
     }
 
-    /// Forward a battery snapshot. `level` is 0..100 inclusive or `0xFF`
-    /// (unknown). `statusRaw` is one of the `DishCore.BatteryStatus`
-    /// raw values; the bridge resolves the enum before calling.
+    /// The delta to stamp on this sample, or nil when it falls inside the
+    /// rate-limit window or the clock did not advance.
+    private func admitMotion(deviceId: DeviceId, nowNs: UInt64) -> UInt32? {
+        lock.lock()
+        defer { lock.unlock() }
+        guard let previous = lastMotionTimestampNs[deviceId] else {
+            lastMotionTimestampNs[deviceId] = nowNs
+            return 0
+        }
+        guard nowNs > previous else { return nil }
+        let elapsedNs = nowNs - previous
+        let insideTheWindow = elapsedNs < Self.motionMinIntervalNs
+        if insideTheWindow { return nil }
+        lastMotionTimestampNs[deviceId] = nowNs
+        return UInt32(clamping: elapsedNs / 1000)
+    }
+
+    // MARK: - Battery and touchpad
+
     func publishBattery(deviceId: DeviceId, level: UInt8, statusRaw: UInt8) {
         batterySender?(deviceId, level, statusRaw)
     }
 
-    /// `publishTouchpad` takes one argument per wire field (the protocol's
-    /// §0x000C layout). Bundling them into a struct purely to satisfy the
-    /// parameter-count rule would add an indirection the flat wire-mapping
-    /// doesn't benefit from — same rationale as `DishCore.Encoders`'
-    /// touchpad encoder.
-    /// Forward a touchpad sample. Coordinates are already scaled to int16 by
-    /// the bridge, and the per-finger tracking ids are already resolved by it.
-    /// No deadzone / filtering is applied — a touchpad is an absolute pointing
-    /// surface, not a self-centring stick.
-    ///
-    /// `nowNs` stamps the wire's `eventTimeMs` (sender-side uptime, ms —
-    /// contract §0x000C). GameController surfaces no per-event timestamp, so
-    /// the publish instant is the closest stamp to the sample; the default is
-    /// overridable for tests, same seam as `publishMotion`.
-    func publishTouchpad(
-        deviceId: DeviceId,
-        sample: TouchpadSample,
-        nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
-    ) {
+    /// Forward a touchpad sample stamped with the publish instant: the
+    /// framework surfaces no per-event timestamp.
+    func publishTouchpad(deviceId: DeviceId, sample: TouchpadSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         touchpadSender?(deviceId, sample, UInt32(truncatingIfNeeded: nowNs / 1_000_000))
     }
 }
 
-// MARK: - Pure helpers (easily testable)
+// MARK: - Pure conversions
 
-/// Scale a -1..1 axis float into a clamped 16-bit signed integer.
+/// Scale a -1...1 axis into a clamped 16-bit signed integer.
 @inline(__always)
 func scaleAxis(_ value: Float, max: Float) -> Int16 {
     Int16(clamping: Int(value * max))
 }
 
-/// Scale a 0..1 trigger float into a clamped 8-bit unsigned integer.
+/// Scale a 0...1 trigger into a clamped 8-bit unsigned integer.
 @inline(__always)
 func scaleTrigger(_ value: Float) -> UInt8 {
     UInt8(clamping: Int((value * 255.0).rounded()))
 }
 
-/// Scale a deg/s gyro reading into the wire int16. Full scale ±2000 deg/s →
-/// ±32767, matching the `MOTION_GYRO_SCALE_DEG_S` constant on the receiver.
-/// Values beyond ±2000 deg/s clamp to the int16 limits.
+/// deg/s to the wire's int16 at ±2000 deg/s full scale, clamped.
 @inline(__always)
 func scaleGyro(_ degPerSec: Double) -> Int16 {
     let scaled = (degPerSec / 2000.0) * 32767.0
     return Int16(clamping: Int(scaled.rounded()))
 }
 
-/// Scale a g-units acceleration reading into the wire int16. Full scale ±4 g
-/// → ±32767, matching `MOTION_ACCEL_SCALE_G` on the receiver. Values beyond
-/// ±4 g clamp.
+/// g to the wire's int16 at ±4 g full scale, clamped.
 @inline(__always)
 func scaleAccel(_ gValue: Double) -> Int16 {
     let scaled = (gValue / 4.0) * 32767.0
     return Int16(clamping: Int(scaled.rounded()))
 }
 
-/// Wire-ready IMU sample — six signed int16 in the protocol's scale/frame.
-/// The output of `gcMotionToWire`; consumed by `GamepadInputProcessor.publishMotion`.
-struct WireMotionSample: Equatable {
-    var gyroX: Int16
-    var gyroY: Int16
-    var gyroZ: Int16
-    var accelX: Int16
-    var accelY: Int16
-    var accelZ: Int16
-}
-
-/// Convert a `GCMotion`-shaped IMU reading into the MSG_MOTION wire frame.
-/// Pure (no GameController import) so the GCMotion→wire mapping — the part the
-/// receiver's de-scaling depends on — can be pinned by unit tests.
-///
-/// Inputs are exactly what `GCMotion` vends:
-///   * `rotationRate` — rad/s, right-hand-rule signs on all three axes
-///     (`GCRotationRate` doc comment in `GameController/GCMotion.h`).
-///   * `gravity` / `userAcceleration` — g, in the controller reference frame;
-///     `GCAcceleration`'s doc states a controller at rest with an axis pointing
-///     up ("aligned with the azimuth (0,0,1)") reads `gravity` of `-1` on that
-///     axis — i.e. `gravity` is the gravitational *load* vector (points down).
-///
-/// Axis frame: GameController's motion frame and the wire frame are both
-/// right-handed with `+X` = right, `+Y` = up, `+Z` = toward the player, so the
-/// axes map 1:1 with no per-axis rotation. See `pushMotion` for the citation.
-///
-/// Accel semantics: the wire wants *specific force* (proper acceleration) — a
-/// pad at rest reads ≈ `+1 g` on the up axis. Specific force is
-/// `userAcceleration - gravity` (NOT `gravity + userAcceleration`, which is the
-/// raw accelerometer total that reads `-1 g` up at rest). Negating only the
-/// gravity term flips the gravitational load into specific force while leaving
-/// the linear-acceleration term intact:
-///   * at rest, +Y up: userAccel 0, gravity -1 up → wire `0 - (-1) = +1 g` up.
-///   * accelerating up at 1 g: userAccel +1, gravity -1 up → `+1 - (-1) = +2 g`.
-///
-/// One IMU reading on three axes, in the unit its source reports (rad/s for
-/// rotation, g for gravity and user acceleration).
+/// One IMU vector on three axes, in the unit its source reports.
 struct MotionAxes: Equatable {
     var x: Double
     var y: Double
@@ -337,12 +203,14 @@ struct MotionAxes: Equatable {
     static let zero = MotionAxes(x: 0, y: 0, z: 0)
 }
 
-/// The three IMU vectors GCMotion reports, mapped to the wire's gyro (deg/s)
-/// and specific-force accel (`userAccel - gravity`) scales.
+/// Convert a GCMotion-shaped reading to the wire frame. GameController's
+/// `rotationRate` is rad/s with right-hand-rule signs and its `gravity` is
+/// the gravitational load vector (a pad at rest reads -1 g up), so the wire's
+/// specific force is `userAcceleration - gravity` and the axes map 1:1.
 @inline(__always)
-func gcMotionToWire(rotationRateRad: MotionAxes, gravity: MotionAxes, userAccel: MotionAxes) -> WireMotionSample {
+func gcMotionToWire(rotationRateRad: MotionAxes, gravity: MotionAxes, userAccel: MotionAxes) -> MotionSample {
     let radToDeg = 180.0 / Double.pi
-    return WireMotionSample(
+    return MotionSample(
         gyroX: scaleGyro(rotationRateRad.x * radToDeg),
         gyroY: scaleGyro(rotationRateRad.y * radToDeg),
         gyroZ: scaleGyro(rotationRateRad.z * radToDeg),
@@ -352,48 +220,33 @@ func gcMotionToWire(rotationRateRad: MotionAxes, gravity: MotionAxes, userAccel:
     )
 }
 
-/// Advance a finger's monotonic touchpad tracking id across one sample.
-///
-/// Per-finger wire id: increments on each **new contact** so the receiver
-/// can tell "finger lifted then a new finger touched" from "the same finger
-/// kept sliding" (the same up→down edge rule the satellite's own DS4
-/// tracking-id derivation uses). GameController exposes no native id, so the
-/// bridge derives one from the active-edge: a `false → true` transition (a
-/// fresh touch-down) bumps the id; every other case keeps it. `UInt8` wrap
-/// is harmless — only the edge carries information.
-///
-/// Pure so the edge logic can be unit-tested without a live touchpad.
+/// A finger's wire tracking id bumps on each fresh contact (an up-to-down
+/// edge) and holds otherwise; the wrap of a `UInt8` is harmless because only
+/// the edge carries information.
 @inline(__always)
 func nextTouchpadTrackingId(wasActive: Bool, isActive: Bool, current: UInt8) -> UInt8 {
-    (!wasActive && isActive) ? current &+ 1 : current
+    let freshContact = !wasActive && isActive
+    return freshContact ? current &+ 1 : current
 }
 
-/// Convert GameController's centre-origin `-1..1` touchpad axes into the
-/// MSG_TOUCHPAD wire frame: centre-origin int16 with `+x` right and `+y`
-/// *down* (the wire convention pinned in
-/// `satellite/src/core/touchpad_codec.h`). GameController's direction-pad
-/// `+y` is up, so y is negated.
-/// Pure so the negation can be unit-tested without a live touchpad.
+/// GameController's centre-origin -1...1 touchpad axes to the wire's
+/// centre-origin int16 with +y down, so y is negated.
 @inline(__always)
 func gcTouchpadAxisToWire(x: Float, y: Float) -> (x: Int16, y: Int16) {
     (x: scaleAxis(x, max: 32767), y: scaleAxis(-y, max: 32767))
 }
 
-/// Apply the per-axis deadzone thresholds in-place. Sticks: `|v| <= flat → 0`.
-/// Triggers: `v <= flat → 0`. Buttons are passed through. Pure — extracted so
-/// tests can pin the exact arithmetic without spinning up the processor.
+/// Sticks at or below the flat read zero; triggers at or below theirs read
+/// zero; buttons pass through.
 @inline(__always)
-func applyDeadzones(
-    _ state: GamepadInputProcessor.DeviceState,
-    _ dz: GamepadInputProcessor.Deadzones
-) -> GamepadInputProcessor.DeviceState {
-    var out = state
-    let stickFlat = Int32(dz.stickFlat)
+func applyDeadzones(_ report: GamepadReport, _ zones: GamepadInputProcessor.Deadzones) -> GamepadReport {
+    var out = report
+    let stickFlat = Int32(zones.stickFlat)
     if abs(Int32(out.lx)) <= stickFlat { out.lx = 0 }
     if abs(Int32(out.ly)) <= stickFlat { out.ly = 0 }
     if abs(Int32(out.rx)) <= stickFlat { out.rx = 0 }
     if abs(Int32(out.ry)) <= stickFlat { out.ry = 0 }
-    if out.lt <= dz.triggerFlat { out.lt = 0 }
-    if out.rt <= dz.triggerFlat { out.rt = 0 }
+    if out.lt <= zones.triggerFlat { out.lt = 0 }
+    if out.rt <= zones.triggerFlat { out.rt = 0 }
     return out
 }

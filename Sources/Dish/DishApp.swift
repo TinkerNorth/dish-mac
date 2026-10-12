@@ -19,6 +19,7 @@ struct DishApp: App {
     /// publish via `center.add(...)`; the `NotificationOverlay` at the
     /// bottom of the window reads `visible` and renders the stack.
     @StateObject private var notifications = DishNotificationCenter()
+    @StateObject private var failureNotifier = FailureNotifier()
 
     init() {
         // `swift run` launches us as a bare Mach-O binary with no .app bundle,
@@ -48,7 +49,7 @@ struct DishApp: App {
                         .environmentObject(notifications)
                 }
                 .onAppear {
-                    model.bindNotifications(notifications)
+                    failureNotifier.bind(model: model, center: notifications)
                 }
         }
         .windowResizability(.contentMinSize)

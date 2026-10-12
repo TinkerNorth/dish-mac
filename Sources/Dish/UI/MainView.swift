@@ -20,8 +20,8 @@ struct MainView: View {
             Divider().background(DishTheme.outline)
             slotSection
             Spacer(minLength: 0)
-            if let msg = model.errorMessage {
-                ErrorBanner(message: msg) { model.errorMessage = nil }
+            if let failure = model.lastFailure {
+                ErrorBanner(message: failureText(failure)) { model.clearFailure() }
             }
         }
         .padding(20)

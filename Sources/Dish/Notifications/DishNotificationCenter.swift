@@ -23,11 +23,9 @@ import Foundation
 /// itself out after the timer fires. `durationPersistent` opts out;
 /// callers retract those by id when the underlying state clears.
 @MainActor
-package final class DishNotificationCenter: ObservableObject {
+final class DishNotificationCenter: ObservableObject {
 
-    @Published package private(set) var visible: [DishNotification] = []
-
-    package init() {}
+    @Published private(set) var visible: [DishNotification] = []
 
     /// Monotonic id source. `Int64` so we can't realistically wrap during
     /// any one app session even at one post per microsecond.
@@ -47,7 +45,7 @@ package final class DishNotificationCenter: ObservableObject {
     /// before the auto-dismiss fires). Posts with the same non-nil `key`
     /// replace prior posts with that key.
     @discardableResult
-    package func add(
+    func add(
         severity: DishNotification.Severity = .info,
         title: String,
         body: String? = nil,
@@ -95,7 +93,7 @@ package final class DishNotificationCenter: ObservableObject {
 
     /// Convenience: post an error banner. Default `durationLong`.
     @discardableResult
-    package func error(
+    func error(
         title: String,
         body: String? = nil,
         action: DishNotification.Action? = nil,
@@ -106,7 +104,7 @@ package final class DishNotificationCenter: ObservableObject {
 
     /// Convenience: post a warning banner.
     @discardableResult
-    package func warn(
+    func warn(
         title: String,
         body: String? = nil,
         action: DishNotification.Action? = nil,
@@ -117,7 +115,7 @@ package final class DishNotificationCenter: ObservableObject {
 
     /// Convenience: post an info banner.
     @discardableResult
-    package func info(
+    func info(
         title: String,
         body: String? = nil,
         action: DishNotification.Action? = nil,
@@ -128,7 +126,7 @@ package final class DishNotificationCenter: ObservableObject {
 
     /// Convenience: post a success banner.
     @discardableResult
-    package func success(
+    func success(
         title: String,
         body: String? = nil,
         action: DishNotification.Action? = nil,
@@ -140,14 +138,14 @@ package final class DishNotificationCenter: ObservableObject {
     // MARK: - Dismiss
 
     /// Dismiss a previously-added notification by id. No-op if already gone.
-    package func dismiss(id: Int64) {
+    func dismiss(id: Int64) {
         cancelDismissTask(id: id)
         visible.removeAll { $0.id == id }
     }
 
     /// Dismiss every banner currently on the queue. Used by the host on
     /// teardown.
-    package func dismissAll() {
+    func dismissAll() {
         for (_, task) in pendingDismissals {
             task.cancel()
         }

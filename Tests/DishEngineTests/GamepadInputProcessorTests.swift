@@ -79,20 +79,20 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testPublishForwardsStateToReportSender() {
         let proc = GamepadInputProcessor()
         var captured: CapturedReport?
-        proc.reportSender = { id, buttons, lt, rt, lx, ly, rx, ry in
+        proc.reportSender = { id, report in
             captured = CapturedReport(
                 id: id,
-                buttons: buttons,
-                lt: lt,
-                rt: rt,
-                lx: lx,
-                ly: ly,
-                rx: rx,
-                ry: ry
+                buttons: report.buttons,
+                lt: report.lt,
+                rt: report.rt,
+                lx: report.lx,
+                ly: report.ly,
+                rx: report.rx,
+                ry: report.ry
             )
         }
         let state = GamepadInputProcessor.DeviceState(
-            wButtons: 0x1234,
+            buttons: 0x1234,
             lt: 10,
             rt: 20,
             lx: 100,
@@ -117,20 +117,20 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testZeroAndSendAllEmitsReleasedReportPerDevice() {
         let proc = GamepadInputProcessor()
         var emitted: [CapturedReport] = []
-        proc.reportSender = { id, buttons, lt, rt, lx, ly, rx, ry in
+        proc.reportSender = { id, report in
             emitted.append(CapturedReport(
                 id: id,
-                buttons: buttons,
-                lt: lt,
-                rt: rt,
-                lx: lx,
-                ly: ly,
-                rx: rx,
-                ry: ry
+                buttons: report.buttons,
+                lt: report.lt,
+                rt: report.rt,
+                lx: report.lx,
+                ly: report.ly,
+                rx: report.rx,
+                ry: report.ry
             ))
         }
         proc.publish(deviceId: "a", state: .init(
-            wButtons: 1,
+            buttons: 1,
             lt: 5,
             rt: 6,
             lx: 7,
@@ -139,7 +139,7 @@ final class GamepadInputProcessorTests: XCTestCase {
             ry: 10
         ))
         proc.publish(deviceId: "b", state: .init(
-            wButtons: 2,
+            buttons: 2,
             lt: 11,
             rt: 12,
             lx: 13,
@@ -166,7 +166,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testRemoveDropsDevice() {
         let proc = GamepadInputProcessor()
         var emitted: [String] = []
-        proc.reportSender = { id, _, _, _, _, _, _, _ in emitted.append(id) }
+        proc.reportSender = { id, _ in emitted.append(id) }
         proc.publish(deviceId: "a", state: .init())
         proc.publish(deviceId: "b", state: .init())
         emitted.removeAll()
@@ -181,7 +181,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testApplyDeadzonesZerosSticksBelowThreshold() {
         let dz = GamepadInputProcessor.Deadzones(stickFlat: 3277, triggerFlat: 13)
         let state = GamepadInputProcessor.DeviceState(
-            wButtons: 0,
+            buttons: 0,
             lt: 0,
             rt: 0,
             lx: 1500,
@@ -199,7 +199,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testApplyDeadzonesPassesSticksAboveThreshold() {
         let dz = GamepadInputProcessor.Deadzones(stickFlat: 3277, triggerFlat: 13)
         let state = GamepadInputProcessor.DeviceState(
-            wButtons: 0,
+            buttons: 0,
             lt: 0,
             rt: 0,
             lx: 3278,
@@ -217,7 +217,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testApplyDeadzonesZerosTriggersAtOrBelowThreshold() {
         let dz = GamepadInputProcessor.Deadzones(stickFlat: 0, triggerFlat: 13)
         let state = GamepadInputProcessor.DeviceState(
-            wButtons: 0,
+            buttons: 0,
             lt: 5,
             rt: 13,
             lx: 0,
@@ -233,7 +233,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testApplyDeadzonesPassesTriggersAboveThreshold() {
         let dz = GamepadInputProcessor.Deadzones(stickFlat: 0, triggerFlat: 13)
         let state = GamepadInputProcessor.DeviceState(
-            wButtons: 0,
+            buttons: 0,
             lt: 14,
             rt: 255,
             lx: 0,
@@ -249,7 +249,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testApplyDeadzonesNeverTouchesButtons() {
         let dz = GamepadInputProcessor.Deadzones(stickFlat: 32767, triggerFlat: 255)
         let state = GamepadInputProcessor.DeviceState(
-            wButtons: 0xABCD,
+            buttons: 0xABCD,
             lt: 0,
             rt: 0,
             lx: 0,
@@ -258,14 +258,14 @@ final class GamepadInputProcessorTests: XCTestCase {
             ry: 0
         )
         let out = applyDeadzones(state, dz)
-        XCTAssertEqual(out.wButtons, 0xABCD)
+        XCTAssertEqual(out.buttons, 0xABCD)
     }
 
     func testPublishUsesPerDeviceDeadzones() {
         let proc = GamepadInputProcessor()
         var captured: (Int16, Int16, UInt8, UInt8)?
-        proc.reportSender = { _, _, lt, rt, lx, ly, _, _ in
-            captured = (lx, ly, lt, rt)
+        proc.reportSender = { _, report in
+            captured = (report.lx, report.ly, report.lt, report.rt)
         }
         proc.setDeadzones(
             deviceId: "pad-1",
@@ -273,7 +273,7 @@ final class GamepadInputProcessorTests: XCTestCase {
         )
         proc.publish(
             deviceId: "pad-1",
-            state: .init(wButtons: 0, lt: 18, rt: 21, lx: 4999, ly: 5001, rx: 0, ry: 0)
+            state: .init(buttons: 0, lt: 18, rt: 21, lx: 4999, ly: 5001, rx: 0, ry: 0)
         )
         XCTAssertEqual(captured?.0, 0) // lx below flat → zeroed
         XCTAssertEqual(captured?.1, 5001) // ly above flat → passed
@@ -284,7 +284,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testPublishAppliesDifferentDeadzonesPerDevice() {
         let proc = GamepadInputProcessor()
         var byId: [String: Int16] = [:]
-        proc.reportSender = { id, _, _, _, lx, _, _, _ in byId[id] = lx }
+        proc.reportSender = { id, report in byId[id] = report.lx }
         proc.setDeadzones(deviceId: "lax", .init(stickFlat: 0, triggerFlat: 0))
         proc.setDeadzones(deviceId: "strict", .init(stickFlat: 10000, triggerFlat: 0))
         proc.publish(deviceId: "lax", state: .init(lx: 500))
@@ -296,7 +296,7 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testRemoveClearsDeadzonesToo() {
         let proc = GamepadInputProcessor()
         var lastLx: Int16 = -1
-        proc.reportSender = { _, _, _, _, lx, _, _, _ in lastLx = lx }
+        proc.reportSender = { _, report in lastLx = report.lx }
         proc.setDeadzones(deviceId: "pad", .init(stickFlat: 5000, triggerFlat: 0))
         proc.remove(deviceId: "pad")
         // Fresh publish without re-setting deadzones should now pass through

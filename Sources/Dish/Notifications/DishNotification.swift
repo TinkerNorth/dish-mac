@@ -32,21 +32,21 @@ import Foundation
 ///     ("wifi is off" must never queue twice).
 ///   - `dismissible` controls whether the close button is rendered.
 ///   - `durationMs` is in ms; `0` means persistent (stay until dismissed).
-package struct DishNotification: Identifiable, Equatable {
+struct DishNotification: Identifiable, Equatable {
     /// Monotonic id assigned by `DishNotificationCenter.add`. Use this
     /// handle to call `dismiss(id:)` if the underlying state clears before
     /// the auto-dismiss timer fires.
-    package let id: Int64
-    package let severity: Severity
-    package let title: String
-    package let body: String?
-    package let glyph: String?
-    package let action: Action?
-    package let key: String?
-    package let dismissible: Bool
-    package let durationMs: Int
+    let id: Int64
+    let severity: Severity
+    let title: String
+    let body: String?
+    let glyph: String?
+    let action: Action?
+    let key: String?
+    let dismissible: Bool
+    let durationMs: Int
 
-    package enum Severity: String, Equatable, CaseIterable {
+    enum Severity: String, Equatable, CaseIterable {
         case info, success, warn, error
     }
 
@@ -55,16 +55,16 @@ package struct DishNotification: Identifiable, Equatable {
     /// notification auto-dismisses after the tap. The handler should be
     /// idempotent — a fast double-tap can fire it twice before dismissal
     /// lands.
-    package struct Action: Equatable {
-        package let label: String
-        package let handler: () -> Void
+    struct Action: Equatable {
+        let label: String
+        let handler: () -> Void
 
-        package init(label: String, handler: @escaping () -> Void) {
+        init(label: String, handler: @escaping () -> Void) {
             self.label = label
             self.handler = handler
         }
 
-        package static func == (lhs: Action, rhs: Action) -> Bool {
+        static func == (lhs: Action, rhs: Action) -> Bool {
             // Closure identity isn't comparable; compare the only visible
             // field. Two actions with the same label on different posts
             // are functionally equivalent for `Equatable` use sites
@@ -75,10 +75,10 @@ package struct DishNotification: Identifiable, Equatable {
     }
 
     /// Roughly Toast.LENGTH_SHORT equivalent — matches Android's 3.5 s.
-    package static let durationShort = 3500
+    static let durationShort = 3500
     /// Roughly Toast.LENGTH_LONG equivalent — matches Android's 6 s.
-    package static let durationLong = 6000
+    static let durationLong = 6000
     /// Stays up until `DishNotificationCenter.dismiss(id:)` or a same-key
     /// replacement.
-    package static let durationPersistent = 0
+    static let durationPersistent = 0
 }

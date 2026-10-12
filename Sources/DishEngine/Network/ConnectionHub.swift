@@ -130,6 +130,12 @@ final class ConnectionHub: ObservableObject {
         connections.first { $0.id == id }
     }
 
+    /// The binding table as it stands, for routers that resolve a connection
+    /// back to its slot.
+    func currentBindings() -> [String: String] {
+        bindings
+    }
+
     /// Bind `slotId` to `connectionId`. Evicts any prior owner on either side.
     ///
     /// `hasMotion` / `hasLight` report whether the bound physical controller

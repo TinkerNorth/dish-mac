@@ -5,58 +5,45 @@ import CoreHaptics
 import Foundation
 import GameController
 
-/// Return-path + battery surfaces of `GameControllerInput`, split out of
-/// `GameControllerInput.swift` to keep each file under the lint length budget.
-/// These are all driven *into* the controller (light bar, rumble) or polled
-/// from it (battery), as opposed to the input-forwarding hot path that stays
-/// in the primary file. Behaviour is unchanged — this is purely an extension.
+/// The return paths (light bar, rumble) and the battery poll of
+/// `GameControllerInput`.
 extension GameControllerInput {
 
-    // MARK: - Lightbar (return path)
+    // MARK: - Light bar
 
-    /// Apply a host-game-driven light bar colour to the physical controller.
-    /// Called from the `SatelliteClient` receive thread via the AppModel
-    /// lightbar handler. No-op on controllers without a light (Xbox pads);
-    /// the gate on `FeatureSettings.lightbarMode` happens upstream in
-    /// `AppModel` so this method stays a pure "apply" with no policy.
-    ///
-    /// The actual `GCColor` write is serialised + coalesced through
-    /// `lightbarApplier` rather than a fresh per-packet `Task`.
+    /// Queue a host-driven colour for the controller's light. The gate on
+    /// the Light bar setting sits upstream; a pad without a light ignores it.
     func applyLightbar(deviceId: String, r: UInt8, g: UInt8, b: UInt8) {
-        lightbarApplier.submit(
+        lightbarApplier.submit(deviceId: deviceId, value: LightbarColor(r: r, g: g, b: b))
+    }
+
+    func writeLightbar(deviceId: String, color: LightbarColor) {
+        guard let light = controllersById[deviceId]?.light else { return }
+        light.color = GCColor(red: Float(color.r) / 255.0, green: Float(color.g) / 255.0, blue: Float(color.b) / 255.0)
+    }
+
+    // MARK: - Rumble
+
+    /// Queue a rumble command; a 60 Hz stream collapses to the newest command
+    /// per controller, in order.
+    func applyRumble(deviceId: String, strongMagnitude: UInt16, weakMagnitude: UInt16, durationMs: UInt16) {
+        rumbleApplier.submit(
             deviceId: deviceId,
-            value: LightbarColor(r: r, g: g, b: b)
+            value: RumbleCommand(strong: strongMagnitude, weak: weakMagnitude, durationMs: durationMs)
         )
     }
 
-    // MARK: - Rumble actuation (return path)
+    /// A pad without haptics takes no actuator and the command is dropped.
+    func actuateRumble(deviceId: String, command: RumbleCommand) {
+        guard let actuator = rumbleActuator(for: deviceId) else { return }
+        actuator.apply(strong: command.strong, weak: command.weak, durationMs: command.durationMs)
+    }
 
-    /// Drive the physical controller's haptics. Called from the
-    /// `SatelliteClient` receive thread (via the AppModel rumble handler).
-    /// Most of the heavy lifting is in `RumbleActuator`; the apply closure
-    /// resolves `deviceId → GCController` and gates on whether the pad
-    /// actually exposes haptics (returns `nil` on MFi pads without haptics).
-    ///
-    /// The actuation is serialised + coalesced through `rumbleApplier` rather
-    /// than a fresh per-packet `Task`, so a 60 Hz rumble stream collapses to
-    /// one apply of the newest command and ordering is preserved.
-    ///
-    /// Vibration only — the light bar is a separate return path (see
-    /// `applyLightbar`).
-    func applyRumble(
-        deviceId: String,
-        strongMagnitude: UInt16,
-        weakMagnitude: UInt16,
-        durationMs: UInt16
-    ) {
-        rumbleApplier.submit(
-            deviceId: deviceId,
-            value: RumbleCommand(
-                strong: strongMagnitude,
-                weak: weakMagnitude,
-                durationMs: durationMs
-            )
-        )
+    private func rumbleActuator(for deviceId: String) -> RumbleActuator? {
+        if let existing = actuators[deviceId] { return existing }
+        guard let controller = controllersById[deviceId], let fresh = RumbleActuator(controller: controller) else { return nil }
+        actuators[deviceId] = fresh
+        return fresh
     }
 
     // MARK: - Battery

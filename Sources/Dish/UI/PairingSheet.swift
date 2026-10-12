@@ -52,9 +52,9 @@ struct PairingSheet: View {
                     if clipped != newValue { pin = clipped }
                 }
 
-            if didSubmit, let msg = model.errorMessage {
-                ErrorBanner(message: msg) {
-                    model.errorMessage = nil
+            if didSubmit, let failure = model.lastFailure {
+                ErrorBanner(message: failureText(failure)) {
+                    model.clearFailure()
                     didSubmit = false
                 }
             }
@@ -66,7 +66,7 @@ struct PairingSheet: View {
                     .disabled(isPairing)
                 Button {
                     didSubmit = true
-                    model.errorMessage = nil
+                    model.clearFailure()
                     model.pairWithPin(server, pin: pin)
                 } label: {
                     if isPairing {
@@ -90,7 +90,7 @@ struct PairingSheet: View {
         // the meantime, dismiss the sheet so the user lands back on the
         // connections list with a now-live row.
         .onChange(of: isPairing) { nowPairing in
-            if didSubmit, !nowPairing, model.errorMessage == nil {
+            if didSubmit, !nowPairing, model.lastFailure == nil {
                 dismiss()
             }
         }

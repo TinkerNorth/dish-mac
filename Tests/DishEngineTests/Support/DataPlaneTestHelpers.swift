@@ -124,3 +124,20 @@ enum DataPlaneTestHelpers {
         return (header.counter, inner)
     }
 }
+
+extension DataPlaneTestHelpers {
+    /// A sealed enriched heartbeat ack: backend flag, active count, epoch and
+    /// bitmap, under the default session material.
+    static func ackDatagram(
+        counter: UInt32,
+        backend: Bool = true,
+        count: UInt8 = 1,
+        epoch: UInt16 = 3,
+        bitmap: UInt16 = 0b1
+    ) -> Data {
+        var payload = Data([backend ? 1 : 0, count])
+        payload.append(contentsOf: [UInt8(epoch >> 8), UInt8(epoch & 0xFF)])
+        payload.append(contentsOf: [UInt8(bitmap >> 8), UInt8(bitmap & 0xFF)])
+        return sealDownlink(msgType: ProtocolConstants.msgHeartbeatAck, payload: payload, counter: counter)
+    }
+}

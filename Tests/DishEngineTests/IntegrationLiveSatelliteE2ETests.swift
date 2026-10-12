@@ -84,9 +84,9 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
         )
     }
 
-    private var errorMessages: [String] {
+    private var failures: [ConnectionFailure] {
         events.compactMap {
-            if case let .error(message) = $0 { return message }
+            if case let .failure(failure) = $0 { return failure }
             return nil
         }
     }
@@ -150,6 +150,46 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
 
     // MARK: - The journey
 
+    /// The admin surface is the cross-implementation proof: the satellite's
+    /// liveness machine only advances on frames it actually decrypted. The
+    /// epoch counts applied changes, so an unentitled backend that never plugs
+    /// the slot honestly reports 0, and the apply failure surfaces here.
+    private func assertServerMarkedTheSessionActive(deviceId: String, entitled: Bool) async throws {
+        let active = try await waitForAdmin {
+            let row = try await self.adminConnectionRow(deviceId: deviceId)
+            return (row?["state"] as? String) == "active"
+        }
+        XCTAssertTrue(active, "the real satellite must mark this session active off decrypted UDP")
+        let maybeRow = try await adminConnectionRow(deviceId: deviceId)
+        let row = try XCTUnwrap(maybeRow)
+        let epoch = try XCTUnwrap(row["epoch"] as? Int)
+        XCTAssertGreaterThanOrEqual(epoch, entitled ? 1 : 0)
+        let controllers = try XCTUnwrap(row["controllers"] as? [[String: Any]])
+        let anyPlugged = controllers.contains { ($0["pluggedIn"] as? Bool) == true }
+        if entitled {
+            XCTAssertTrue(anyPlugged, "entitled backend must plug the declared slot")
+            return
+        }
+        XCTAssertFalse(anyPlugged, "unentitled backend applies the slot as backendUnavailable")
+        let surfaced = await waitUntil(timeout: 2) { self.failures.contains(.controllerNotApplied) }
+        XCTAssertTrue(surfaced, "the apply failure must surface, not vanish")
+    }
+
+    /// A burst of input reports and one touchpad frame.
+    private func streamUplinkBurst(_ conn: WifiConnection) {
+        for i in 0 ..< 5 {
+            conn.sendReport(GamepadReport(buttons: 0x1000, lt: UInt8(i), rt: 0, lx: 1000, ly: -1000, rx: 0, ry: 0))
+        }
+        conn.sendTouchpad(
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 1, x: 320, y: -240),
+                finger1: .none,
+                buttonPressed: false
+            ),
+            eventTimeMs: 12345
+        )
+    }
+
     func testPairStreamAndTearDownAgainstTheRealSatellite() async throws {
         let pin = try await operatorPin()
         XCTAssertFalse(pin.isEmpty)
@@ -168,7 +208,7 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
         let keyed = await waitUntil { self.store.sharedKey(for: id) != nil }
         XCTAssertTrue(keyed, "path-A pairing against the real satellite must land the shared key")
         let live = await waitUntil { self.manager.get(id)?.state == .live }
-        XCTAssertTrue(live, "the declarative PUT must reach .live: \(errorMessages)")
+        XCTAssertTrue(live, "the declarative PUT must reach .live: \(failures)")
 
         // TOFU pinned the satellite's real self-signed cert on first contact.
         XCTAssertNotNil(store.certPin(host: host), "first HTTPS contact must pin the cert fingerprint")
@@ -180,56 +220,9 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
         let ack = try XCTUnwrap(conn.lastHeartbeatAck)
         let entitled = ack.backendAvailable
 
-        // Uplink streams: a burst of input reports + one touchpad frame.
-        for i in 0 ..< 5 {
-            conn.sendReport(
-                buttons: 0x1000,
-                lt: UInt8(i),
-                rt: 0,
-                lx: 1000,
-                ly: -1000,
-                rx: 0,
-                ry: 0
-            )
-        }
-        conn.sendTouchpad(
-            sample: TouchpadSample(
-                finger0: TouchpadFinger(active: true, id: 1, x: 320, y: -240),
-                finger1: .none,
-                buttonPressed: false
-            ),
-            eventTimeMs: 12345
-        )
+        streamUplinkBurst(conn)
 
-        // Server-side truth (admin surface): our session row exists and is
-        // ACTIVE — the satellite's liveness machine only advances on frames
-        // it actually decrypted, so this is the cross-implementation crypto
-        // proof, not just a REST echo.
-        let active = try await waitForAdmin {
-            let row = try await self.adminConnectionRow(deviceId: deviceId)
-            return (row?["state"] as? String) == "active"
-        }
-        XCTAssertTrue(active, "the real satellite must mark this session active off decrypted UDP")
-        let maybeRow = try await adminConnectionRow(deviceId: deviceId)
-        let row = try XCTUnwrap(maybeRow)
-        // Epoch counts APPLIED topology changes: an unentitled backend never
-        // plugs the slot, so 0 is the honest value there; entitled runs have
-        // at least the plug itself.
-        let epoch = try XCTUnwrap(row["epoch"] as? Int)
-        XCTAssertGreaterThanOrEqual(epoch, entitled ? 1 : 0)
-
-        // Slot outcome depends on the entitlement boundary (see header).
-        let controllers = try XCTUnwrap(row["controllers"] as? [[String: Any]])
-        let anyPlugged = controllers.contains { ($0["pluggedIn"] as? Bool) == true }
-        if entitled {
-            XCTAssertTrue(anyPlugged, "entitled backend must plug the declared slot")
-        } else {
-            XCTAssertFalse(anyPlugged, "unentitled backend applies the slot as backendUnavailable")
-            let surfaced = await waitUntil(timeout: 2) {
-                self.errorMessages.contains("Server could not apply the controller")
-            }
-            XCTAssertTrue(surfaced, "the apply failure must surface, not vanish")
-        }
+        try await assertServerMarkedTheSessionActive(deviceId: deviceId, entitled: entitled)
 
         // Latency window seeded from real heartbeat RTTs.
         let seeded = await waitUntil { (conn.client?.latencySnapshot().samples ?? 0) >= 1 }

@@ -2,7 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import XCTest
-@testable import DishEngine
+@testable import Dish
 
 /// Coverage for `DishNotificationCenter`: post / dismiss flow, monotonic
 /// ids, same-key replacement, queue cap, and the severity-default

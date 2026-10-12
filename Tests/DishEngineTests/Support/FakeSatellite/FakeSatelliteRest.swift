@@ -21,7 +21,7 @@ final class FakeSatelliteRest {
     private let identity: FakeSatelliteIdentity
     let udp: FakeSatelliteUdp
     let operatorPin: String
-    private let connectionId: String
+    let connectionId: String
     private let queue = DispatchQueue(label: "fake-satellite.rest")
     private var listener: NWListener?
     private let connectionsLock = NSLock()
@@ -249,14 +249,22 @@ final class FakeSatelliteRest {
         {
             return unauthorized("NOT_PAIRED")
         }
+        let minted = mintSession(body: body, pairingKey: pairingKey)
+        // Contract: replacement close-notify goes to the OLD token,
+        // best-effort (only when that session ever showed a reply path).
+        if let previous = minted.previous { udp.sendClose(.replaced, to: previous) }
+        return respondOrHold(FakeSatelliteHttp.json(200, minted.response), on: connection)
+    }
+
+    /// Rotate the token, salt and key, apply the controllers, bump the epoch
+    /// on a topology change and retire the replaced session: old tokens must
+    /// stop decrypting.
+    private func mintSession(body: [String: Any], pairingKey: Data) -> (response: [String: Any], previous: FakeSatelliteSession?) {
         let controllers = body["controllers"] as? [[String: Any]] ?? []
         let wantsMouse = (body["hostFeatures"] as? [String: Any])?["mouseControl"] as? Bool ?? false
         let salt = FakeSatelliteRandom.data(8)
-        let result = store.with { state -> (response: [String: Any], previous: FakeSatelliteSession?) in
+        return store.with { state -> (response: [String: Any], previous: FakeSatelliteSession?) in
             state.sessionPuts.append(body)
-            // Retire the replaced session: old tokens must stop decrypting
-            // (the real satellite `extract`s the row; close-notify below
-            // still reaches it through the captured object).
             let previous = state.activeToken.flatMap { state.sessions.removeValue(forKey: $0) }
             let failure = state.controllerApplyFailure
             if failure == nil {
@@ -273,14 +281,6 @@ final class FakeSatelliteRest {
             )
             state.sessions[token] = session
             state.activeToken = token
-            let applied = controllers.map { ctrl -> [String: Any] in
-                [
-                    "ctrlIdx": ctrl["ctrlIdx"] as? Int ?? 0,
-                    "result": failure ?? "ok",
-                    "appliedType": ctrl["type"] as? Int ?? 0,
-                    "motion": ["sinkSupportedForType": true, "backendOk": true]
-                ]
-            }
             let response: [String: Any] = [
                 "connectionId": connectionId,
                 "token": String(format: "%08x", token),
@@ -288,28 +288,40 @@ final class FakeSatelliteRest {
                 "epoch": Int(state.epoch),
                 "maxControllers": 16,
                 "protocolVersion": 1,
-                "controllers": applied,
+                "controllers": Self.appliedControllers(controllers, failure: failure),
                 "hostFeatures": ["mouseControl": ["granted": wantsMouse]]
             ]
             return (response, previous)
         }
-        // Contract: replacement close-notify goes to the OLD token,
-        // best-effort (only when that session ever showed a reply path).
-        if let previous = result.previous { udp.sendClose(.replaced, to: previous) }
-        let response = FakeSatelliteHttp.json(200, result.response)
+    }
+
+    /// Every requested descriptor's apply result: the failure knob's code, or
+    /// `ok`.
+    private static func appliedControllers(_ controllers: [[String: Any]], failure: String?) -> [[String: Any]] {
+        controllers.map { ctrl -> [String: Any] in
+            [
+                "ctrlIdx": ctrl["ctrlIdx"] as? Int ?? 0,
+                "result": failure ?? "ok",
+                "appliedType": ctrl["type"] as? Int ?? 0,
+                "motion": ["sinkSupportedForType": true, "backendOk": true]
+            ]
+        }
+    }
+
+    /// The hold knob parks the serialized response until a release call;
+    /// nil tells the receive loop nothing is to be sent now.
+    private func respondOrHold(_ response: FakeSatelliteHttp.Response, on connection: NWConnection) -> FakeSatelliteHttp.Response? {
         let held = store.with { state -> Bool in
             guard state.holdNextSessionPut else { return false }
             state.holdNextSessionPut = false
             state.heldSessionPuts += 1
             return true
         }
-        if held {
-            heldLock.lock()
-            heldSessionPut = (connection, FakeSatelliteHttp.serialize(response))
-            heldLock.unlock()
-            return nil
-        }
-        return response
+        guard held else { return response }
+        heldLock.lock()
+        heldSessionPut = (connection, FakeSatelliteHttp.serialize(response))
+        heldLock.unlock()
+        return nil
     }
 
     /// Applied topology = the (ctrlIdx → type) map. Caps/touchpadMode
@@ -324,275 +336,5 @@ final class FakeSatelliteRest {
             return out
         }
         return keyed(old) == keyed(new)
-    }
-
-    /// Real sub-routes 404 once the session is closed (or never opened) —
-    /// `getSessionView`/`applyController`/`removeController` all report
-    /// not-found for a device with no session row.
-    private func notFound() -> FakeSatelliteHttp.Response {
-        FakeSatelliteHttp.json(404, ["error": "connection not found"])
-    }
-
-    private func reconcile(_ request: FakeSatelliteHttp.Request, id: String) -> FakeSatelliteHttp.Response {
-        let body = FakeSatelliteHttp.parseJSON(request.body)
-        if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return notFound() }
-        return store.with { state -> FakeSatelliteHttp.Response in
-            guard state.activeToken != nil else { return self.notFound() }
-            state.reconcileGets.append(id)
-            let controllers = state.controllers.map { ctrl -> [String: Any] in
-                var view: [String: Any] = [
-                    "ctrlIdx": ctrl["ctrlIdx"] as? Int ?? 0,
-                    "active": true,
-                    "appliedType": ctrl["type"] as? Int ?? 0,
-                    "touchpadMode": ctrl["touchpadMode"] as? String ?? "off",
-                    "motion": ["sinkSupportedForType": true, "backendOk": true]
-                ]
-                if let caps = ctrl["caps"] { view["caps"] = caps }
-                return view
-            }
-            return FakeSatelliteHttp.json(200, [
-                "connectionId": id,
-                "deviceId": state.pairedDeviceId ?? "",
-                "epoch": Int(state.ackEpochOverride ?? state.epoch),
-                "protocolVersion": 1,
-                "maxControllers": 16,
-                "controllers": controllers,
-                "hostFeatures": ["mouseControl": ["granted": state.lastMouseGranted]]
-            ])
-        }
-    }
-
-    /// Graceful client close: no close-notify (the closer already knows).
-    private func closeSession(_ request: FakeSatelliteHttp.Request, id: String) -> FakeSatelliteHttp.Response {
-        let body = FakeSatelliteHttp.parseJSON(request.body)
-        if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return notFound() }
-        return store.with { state -> FakeSatelliteHttp.Response in
-            guard state.activeToken != nil else { return self.notFound() }
-            state.sessions.removeAll()
-            state.activeToken = nil
-            if !state.controllers.isEmpty {
-                state.epoch &+= 1
-                state.controllers = []
-            }
-            return FakeSatelliteHttp.json(200, ["ok": true])
-        }
-    }
-
-    // MARK: - Controller sub-resource (contract §Controller)
-
-    private func putSlot(_ request: FakeSatelliteHttp.Request, id: String, idx: Int) -> FakeSatelliteHttp.Response {
-        let body = FakeSatelliteHttp.parseJSON(request.body)
-        if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return notFound() }
-        return store.with { state -> FakeSatelliteHttp.Response in
-            guard state.activeToken != nil else { return self.notFound() }
-            var descriptor = body
-            descriptor["ctrlIdx"] = idx // the path index wins (contract)
-            let existing = state.controllers.firstIndex { ($0["ctrlIdx"] as? Int ?? -1) == idx }
-            if let failure = state.controllerApplyFailure {
-                // replugFailed leaves the previous pad in force; every other
-                // code means the slot is not plugged (contract §Session).
-                let priorType = existing.map { state.controllers[$0]["type"] as? Int ?? 0 }
-                return FakeSatelliteHttp.json(200, [
-                    "epoch": Int(state.epoch),
-                    "controller": [
-                        "ctrlIdx": idx,
-                        "result": failure,
-                        "appliedType": priorType ?? (descriptor["type"] as? Int ?? 0),
-                        "motion": ["sinkSupportedForType": false, "backendOk": false]
-                    ]
-                ])
-            }
-            var list = state.controllers
-            if let existing {
-                // Epoch moves only on a TYPE change (replug); caps/mode
-                // converge in place (`applyDescriptorLocked` same-family arm).
-                let typeChanged = (list[existing]["type"] as? Int ?? 0) != (descriptor["type"] as? Int ?? 0)
-                if !(list[existing] as NSDictionary).isEqual(to: descriptor) {
-                    list[existing] = descriptor
-                    if typeChanged { state.epoch &+= 1 }
-                }
-            } else {
-                list.append(descriptor)
-                state.epoch &+= 1
-            }
-            state.controllers = list.sorted { ($0["ctrlIdx"] as? Int ?? 0) < ($1["ctrlIdx"] as? Int ?? 0) }
-            return FakeSatelliteHttp.json(200, [
-                "epoch": Int(state.epoch),
-                "controller": [
-                    "ctrlIdx": idx,
-                    "result": "ok",
-                    "appliedType": descriptor["type"] as? Int ?? 0,
-                    "motion": ["sinkSupportedForType": true, "backendOk": true]
-                ]
-            ])
-        }
-    }
-
-    /// Removes the SLOT only; the session lives on (contract).
-    private func deleteSlot(_ request: FakeSatelliteHttp.Request, id: String, idx: Int) -> FakeSatelliteHttp.Response {
-        let body = FakeSatelliteHttp.parseJSON(request.body)
-        if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        guard id == connectionId else { return notFound() }
-        return store.with { state -> FakeSatelliteHttp.Response in
-            guard state.activeToken != nil else { return self.notFound() }
-            let before = state.controllers.count
-            state.controllers.removeAll { ($0["ctrlIdx"] as? Int ?? -1) == idx }
-            if state.controllers.count != before { state.epoch &+= 1 }
-            return FakeSatelliteHttp.json(200, ["ok": true, "epoch": Int(state.epoch)])
-        }
-    }
-}
-
-// MARK: - Catalog & capabilities (contract §ServerInfo & Catalog)
-
-extension FakeSatelliteRest {
-
-    private func catalog(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
-        store.with { $0.catalogRequests += 1 }
-        if request.headers["if-none-match"] == Self.catalogETag {
-            return FakeSatelliteHttp.Response(status: 304, headers: [("ETag", Self.catalogETag)], body: Data())
-        }
-        var response = FakeSatelliteHttp.json(200, raw: Self.catalogJSON)
-        response.headers.append(("ETag", Self.catalogETag))
-        return response
-    }
-
-    static let catalogETag = "\"1.6.0+en\""
-
-    static let capabilitiesJSON = """
-    {"protocolVersion":1,"serverVersion":"1.6.0","maxControllers":16,
-     "backend":{"id":"fake","supported":true,"available":true,"errorCode":null},
-     "motion":{"available":true},
-     "host":{"catalog":{"supported":true},
-             "mouseControl":{"supported":true,"available":true},
-             "keyboardControl":{"supported":false},
-             "rumble":{"supported":true,"available":true}}}
-    """
-
-    static let catalogJSON = """
-    {"locale":"en","protocolVersion":1,"serverVersion":"1.6.0",
-     "controllerTypes":[
-       {"id":0,"slug":"xbox360","name":"Xbox 360 Controller","shortName":"Xbox",
-        "description":"Best compatibility.",
-        "image":{"href":"/api/catalog/images/xbox360","etag":"\\"1.6.0\\""},
-        "features":{"rumble":{"supported":true},"analogTriggers":{"supported":true},
-                    "motion":{"supported":false},"lightbar":{"supported":false},
-                    "touchpad":{"supported":false}}},
-       {"id":1,"slug":"ds4","name":"DualShock 4","shortName":"PlayStation",
-        "description":"Motion, touchpad and light bar.",
-        "image":{"href":"/api/catalog/images/ds4","etag":"\\"1.6.0\\""},
-        "features":{"rumble":{"supported":true},"analogTriggers":{"supported":true},
-                    "motion":{"supported":true},"lightbar":{"supported":true},
-                    "touchpad":{"supported":true,"modes":["ds4"]}}},
-       {"id":2,"slug":"dualsense","name":"DualSense","shortName":"DualSense",
-        "description":"Motion, touchpad and light bar.",
-        "image":{"href":"/api/catalog/images/dualsense","etag":"\\"1.6.0\\""},
-        "features":{"rumble":{"supported":true},"analogTriggers":{"supported":true},
-                    "motion":{"supported":true},"lightbar":{"supported":true},
-                    "touchpad":{"supported":true,"modes":["ds4"]}}},
-       {"id":3,"slug":"switchpro","name":"Switch Pro","shortName":"Switch Pro",
-        "description":"Rumble and motion.",
-        "image":{"href":"/api/catalog/images/switchpro","etag":"\\"1.6.0\\""},
-        "features":{"rumble":{"supported":true},"analogTriggers":{"supported":false},
-                    "motion":{"supported":true},"lightbar":{"supported":false},
-                    "touchpad":{"supported":false}}}],
-     "hostFeatures":{"mouseControl":{"supported":true,"modes":["off","ds4","mouse"]},
-                     "keyboardControl":{"supported":false},
-                     "rumble":{"supported":true}}}
-    """
-}
-
-/// Minimal HTTP/1.1 request parsing + response serialization for the fake.
-enum FakeSatelliteHttp {
-
-    struct Request {
-        let method: String
-        let plainPath: String
-        let query: [String: String]
-        let headers: [String: String] // keys lowercased
-        let body: Data
-    }
-
-    struct Response {
-        let status: Int
-        var headers: [(String, String)]
-        let body: Data
-    }
-
-    /// Parses one complete request off the front of `buffer`; nil when more
-    /// bytes are needed. Returns the request and the consumed byte count.
-    static func parseRequest(_ buffer: Data) -> (Request, Int)? {
-        guard let headEnd = buffer.range(of: Data("\r\n\r\n".utf8)) else { return nil }
-        guard let head = String(bytes: buffer[buffer.startIndex ..< headEnd.lowerBound], encoding: .utf8) else { return nil }
-        var lines = head.components(separatedBy: "\r\n")
-        guard !lines.isEmpty else { return nil }
-        let requestLine = lines.removeFirst().split(separator: " ")
-        guard requestLine.count >= 2 else { return nil }
-        let method = String(requestLine[0])
-        let target = String(requestLine[1])
-        var headers: [String: String] = [:]
-        for line in lines {
-            guard let colon = line.firstIndex(of: ":") else { continue }
-            let name = line[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
-            let value = line[line.index(after: colon)...].trimmingCharacters(in: .whitespaces)
-            headers[name] = value
-        }
-        let contentLength = headers["content-length"].flatMap(Int.init) ?? 0
-        let bodyStart = headEnd.upperBound
-        let available = buffer.distance(from: bodyStart, to: buffer.endIndex)
-        guard available >= contentLength else { return nil }
-        let body = Data(buffer[bodyStart ..< buffer.index(bodyStart, offsetBy: contentLength)])
-        let consumed = buffer.distance(from: buffer.startIndex, to: bodyStart) + contentLength
-        let pathAndQuery = target.split(separator: "?", maxSplits: 1)
-        let plainPath = String(pathAndQuery[0])
-        var query: [String: String] = [:]
-        if pathAndQuery.count == 2 {
-            for pair in pathAndQuery[1].split(separator: "&") {
-                let sides = pair.split(separator: "=", maxSplits: 1)
-                guard sides.count == 2 else { continue }
-                let key = String(sides[0]).removingPercentEncoding ?? String(sides[0])
-                query[key] = String(sides[1]).removingPercentEncoding ?? String(sides[1])
-            }
-        }
-        return (Request(method: method, plainPath: plainPath, query: query, headers: headers, body: body), consumed)
-    }
-
-    static func serialize(_ response: Response) -> Data {
-        var head = "HTTP/1.1 \(response.status) \(reasonPhrase(response.status))\r\n"
-        for (name, value) in response.headers {
-            head += "\(name): \(value)\r\n"
-        }
-        head += "Content-Length: \(response.body.count)\r\n\r\n"
-        return Data(head.utf8) + response.body
-    }
-
-    static func json(_ status: Int, _ object: [String: Any]) -> Response {
-        let body = (try? JSONSerialization.data(withJSONObject: object)) ?? Data()
-        return Response(status: status, headers: [("Content-Type", "application/json")], body: body)
-    }
-
-    static func json(_ status: Int, raw: String) -> Response {
-        Response(status: status, headers: [("Content-Type", "application/json")], body: Data(raw.utf8))
-    }
-
-    static func parseJSON(_ data: Data) -> [String: Any] {
-        guard !data.isEmpty else { return [:] }
-        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
-    }
-
-    static func reasonPhrase(_ status: Int) -> String {
-        switch status {
-        case 200: "OK"
-        case 304: "Not Modified"
-        case 400: "Bad Request"
-        case 401: "Unauthorized"
-        case 404: "Not Found"
-        case 409: "Conflict"
-        case 503: "Service Unavailable"
-        default: "Status"
-        }
     }
 }

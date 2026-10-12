@@ -62,13 +62,13 @@ final class AppModelLifecycleTests: XCTestCase {
         // this test pins the notification → zeroAndSendAll linkage, not the
         // per-connection routing, which has its own coverage).
         var reports: [(id: String, buttons: UInt16, lt: UInt8, lx: Int16)] = []
-        model.input.processor.reportSender = { id, buttons, lt, _, lx, _, _, _ in
-            reports.append((id, buttons, lt, lx))
+        model.input.processor.reportSender = { id, report in
+            reports.append((id, report.buttons, report.lt, report.lx))
         }
 
         // Two controllers mid-press.
         var held = GamepadInputProcessor.DeviceState()
-        held.wButtons = 0x1000
+        held.buttons = 0x1000
         held.lt = 200
         held.lx = 5000
         model.input.processor.publish(deviceId: "pad-a", state: held)
@@ -104,11 +104,11 @@ final class AppModelLifecycleTests: XCTestCase {
 
     func testSystemWillSleepZeroesAndSendsAllKnownDevices() {
         var reports: [(id: String, buttons: UInt16)] = []
-        model.input.processor.reportSender = { id, buttons, _, _, _, _, _, _ in
-            reports.append((id, buttons))
+        model.input.processor.reportSender = { id, report in
+            reports.append((id, report.buttons))
         }
         var held = GamepadInputProcessor.DeviceState()
-        held.wButtons = 0x1000
+        held.buttons = 0x1000
         model.input.processor.publish(deviceId: "pad-a", state: held)
         XCTAssertEqual(reports.count, 1)
 
