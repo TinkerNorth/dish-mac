@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishEngine
 import SwiftUI
 
 /// Inline error strip that sits in-window instead of a modal alert. Matches

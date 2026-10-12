@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishEngine
 import SwiftUI
 
 /// Feature-forwarding preferences sheet. Presented from the gear button in

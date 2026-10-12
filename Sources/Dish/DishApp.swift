@@ -2,12 +2,18 @@
 // Copyright (C) 2026 Dish contributors.
 
 import AppKit
+import DishEngine
 import SwiftUI
 
 @main
 struct DishApp: App {
 
-    @StateObject private var model = AppModel()
+    @StateObject private var model = AppModel(
+        lifecycle: appKitLifecycleSignals(
+            application: .default,
+            workspace: NSWorkspace.shared.notificationCenter
+        )
+    )
     /// Process-scoped queue + renderer for `DishNotification` banners.
     /// Injected into the SwiftUI environment so any view + `AppModel` can
     /// publish via `center.add(...)`; the `NotificationOverlay` at the

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishEngine
 import SwiftUI
 
 /// Stacked toast strip rendered at the bottom-center of the window. Reads
