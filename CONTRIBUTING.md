@@ -42,6 +42,31 @@ license — the project is LGPL-3.0-or-later end-to-end (`LICENSE`,
 - Swift 5.9+, 4-space indent, ~120-column soft limit. `.swiftformat` and
   `.swiftlint.yml` are authoritative — run `swiftformat Sources Tests` to
   autofix and `swiftlint lint --strict Sources Tests` to lint.
+
+### Zero warnings
+
+Every Swift compiler warning fails the build: each first-party target in
+`Package.swift` carries `.treatAllWarnings(as: .error)`, so `swift build` and
+`swift test` stop on the first one, locally and in CI. SwiftLint runs
+`--strict` for the same reason. A warning is fixed at its cause, never
+suppressed: no new `// swiftlint:disable`, no `@available(..., deprecated:)`
+added only to quiet a call, no `-Wwarning` flag.
+
+The one exception is a warning whose right fix is out of this code's reach.
+Today that is a single call: `SecKeychainCreate`, the only prompt-free,
+entitlement-free way for an unsigned `swift test` runner to mint the TLS
+identity the in-process satellite serves (a `SecIdentity` needs a key born in
+a keychain, and macOS offers no non-deprecated keychain such a runner can
+create). There the suppression sits on the smallest unit the compiler allows:
+the `LegacyFileKeychain` target under `Tests/Support/`, one function, compiled
+with `-suppress-warnings`, under a header comment that starts with `Marker:`
+and names the fix that would retire it. The suppressed call is made nowhere
+else, and a second such target needs the same justification in its header.
+
+CI builds on the `macos-26` runner image with its default Xcode (26.x). The
+tree must be warning-free there and on the newest release Xcode; a warning
+only the newer compiler raises is a real finding, not noise, and is fixed the
+same way.
 - `AppModel` is the single source of truth — every published field is on
   `AppModel`, and the UI binds to it via `@EnvironmentObject` /
   `@ObservedObject`. Don't introduce competing observable objects.

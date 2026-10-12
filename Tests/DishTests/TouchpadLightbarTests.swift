@@ -30,15 +30,11 @@ final class TouchpadLightbarTests: XCTestCase {
 
         client.sendTouchpad(
             controllerIndex: 2,
-            finger0Active: true,
-            finger0Id: 0x11,
-            finger0X: 0x0102,
-            finger0Y: -2,
-            finger1Active: false,
-            finger1Id: 0x22,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: true,
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 0x11, x: 0x0102, y: -2),
+                finger1: TouchpadFinger(active: false, id: 0x22, x: 0, y: 0),
+                buttonPressed: true
+            ),
             eventTimeMs: 0xA1B2_C3D4
         )
 
@@ -74,15 +70,11 @@ final class TouchpadLightbarTests: XCTestCase {
         client.sendBattery(controllerIndex: 0, level: 80, status: .discharging)
         client.sendTouchpad(
             controllerIndex: 0,
-            finger0Active: false,
-            finger0Id: 0,
-            finger0X: 0,
-            finger0Y: 0,
-            finger1Active: false,
-            finger1Id: 0,
-            finger1X: 0,
-            finger1Y: 0,
-            buttonPressed: false,
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: false, id: 0, x: 0, y: 0),
+                finger1: TouchpadFinger(active: false, id: 0, x: 0, y: 0),
+                buttonPressed: false
+            ),
             eventTimeMs: 7
         )
 

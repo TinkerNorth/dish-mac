@@ -20,6 +20,7 @@
 // branches on that in-band signal rather than assuming either build.
 
 import Combine
+import DishCore
 import XCTest
 @testable import Dish
 

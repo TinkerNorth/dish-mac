@@ -392,5 +392,4 @@ final class SatelliteClient {
             )
         )
     }
-
 }

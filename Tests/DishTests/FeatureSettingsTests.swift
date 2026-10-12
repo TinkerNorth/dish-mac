@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import XCTest
 @testable import Dish
 
@@ -191,10 +192,21 @@ final class TouchpadProcessorTests: XCTestCase {
         let sample: TouchpadSample
         let eventMs: UInt32
 
-        var f0x: Int16 { sample.finger0.x }
-        var f0y: Int16 { sample.finger0.y }
-        var f1x: Int16 { sample.finger1.x }
-        var f1y: Int16 { sample.finger1.y }
+        var f0x: Int16 {
+            sample.finger0.x
+        }
+
+        var f0y: Int16 {
+            sample.finger0.y
+        }
+
+        var f1x: Int16 {
+            sample.finger1.x
+        }
+
+        var f1y: Int16 {
+            sample.finger1.y
+        }
     }
 
     private func install(_ proc: GamepadInputProcessor, into captured: @escaping (Captured) -> Void) {

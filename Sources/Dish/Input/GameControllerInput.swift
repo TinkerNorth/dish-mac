@@ -3,6 +3,7 @@
 
 import Combine
 import CoreHaptics
+import DishCore
 import Foundation
 import GameController
 import os
@@ -54,7 +55,7 @@ final class GameControllerInput: ObservableObject {
     /// `GameControllerInput+ReturnPath.swift` can refresh a slot's pill.
     @Published var slots: [Slot] = []
 
-    let processor = GamepadInputProcessor()
+    nonisolated let processor = GamepadInputProcessor()
 
     /// Per-device, per-finger monotonic touchpad tracking ids. `pushTouchpad`
     /// runs on a GC callback thread, so this is lock-guarded.

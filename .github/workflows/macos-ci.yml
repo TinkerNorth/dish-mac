@@ -18,7 +18,11 @@ concurrency:
 jobs:
   ci:
     name: Build, test, lint, format
-    runs-on: macos-14
+    # macOS 14 images are deprecated (unsupported from 2026-11-02) and their
+    # Xcode 15 SwiftPM cannot compile the String Catalog. Xcode 26 is the
+    # default on this image; bump together with CONTRIBUTING.md.
+    runs-on: macos-26
+    timeout-minutes: 45
 
     steps:
       - name: Checkout code

@@ -157,15 +157,11 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
 
         // 16-byte touchpad with the trailing eventTimeMs (contract §0x000C).
         conn.sendTouchpad(
-            finger0Active: true,
-            finger0Id: 2,
-            finger0X: -100,
-            finger0Y: 200,
-            finger1Active: true,
-            finger1Id: 3,
-            finger1X: 400,
-            finger1Y: -500,
-            buttonPressed: true,
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 2, x: -100, y: 200),
+                finger1: TouchpadFinger(active: true, id: 3, x: 400, y: -500),
+                buttonPressed: true
+            ),
             eventTimeMs: 0xCAFE_F00D
         )
         let padFrame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))

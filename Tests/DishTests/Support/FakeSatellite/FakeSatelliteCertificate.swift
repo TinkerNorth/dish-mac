@@ -10,16 +10,16 @@
 // SHA-256 fingerprint) is available fully headlessly. Serving TLS
 // additionally requires a `SecIdentity`, which macOS only assembles when the
 // private key lives in a keychain, so the key is generated directly inside a
-// throwaway file keychain under the temporary directory (legacy SecKeychain
-// API — deprecated since macOS 12 but the only prompt-free, entitlement-free
-// keychain an unsigned `swift test` runner can create headlessly; a key
-// merely SecItemAdd-ed by ref is NOT matched by SecIdentityCreateWithCertificate,
+// throwaway file keychain under the temporary directory (the legacy
+// SecKeychain API, isolated in the `LegacyFileKeychain` target; a key merely
+// SecItemAdd-ed by ref is NOT matched by SecIdentityCreateWithCertificate,
 // the key must be born in the keychain). If any step fails, the mint falls
 // back to an ephemeral key: `secIdentity()` returns nil, the harness serves
 // plain HTTP, and TOFU tests still exercise fingerprints via `certificateDER`.
 
 import CryptoKit
 import Foundation
+import LegacyFileKeychain
 import Security
 
 /// One instance's certificate + private key, with a lazy best-effort identity.
@@ -272,11 +272,10 @@ private enum Asn1 {
     }
 }
 
-/// One throwaway legacy file keychain per test process, shared by every
-/// FakeSatellite identity minted in that process. The legacy SecKeychain call
-/// is deprecated but is the only keychain an unsigned, unentitled test runner
-/// can create headlessly without prompts; the file sits in the per-boot
-/// temporary directory and is discarded with it.
+/// One throwaway file keychain per test process, shared by every
+/// FakeSatellite identity minted in that process. The file sits in the
+/// per-boot temporary directory and is discarded with it; the deprecated
+/// constructor lives in the `LegacyFileKeychain` target.
 enum FakeSatelliteThrowawayKeychain {
 
     static var shared: SecKeychain? {
@@ -299,11 +298,6 @@ enum FakeSatelliteThrowawayKeychain {
         let path = directory.appendingPathComponent("throwaway.keychain").path
         // Throwaway unlock phrase for a throwaway file — deliberately not a secret.
         let phrase = "fake-satellite-throwaway"
-        var created: SecKeychain?
-        let status = phrase.withCString { phraseBytes in
-            SecKeychainCreate(path, UInt32(phrase.utf8.count), phraseBytes, false, nil, &created)
-        }
-        guard status == errSecSuccess else { return nil }
-        return created
+        return createLegacyFileKeychain(at: path, phrase: phrase)
     }
 }

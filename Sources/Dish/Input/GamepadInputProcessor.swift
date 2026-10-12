@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 
 /// Converts raw gamepad values into the XUSB report format the Satellite
@@ -10,7 +11,7 @@ import Foundation
 /// bridge (see `GameControllerInput.swift`) updates the per-device state
 /// whenever a value changes and calls `trySend(deviceId:)`, which hands the
 /// packed report to the registered `ReportSender`.
-final class GamepadInputProcessor {
+final class GamepadInputProcessor: @unchecked Sendable {
 
     // MARK: - XUSB button bits (identical to dish-android BUTTON_MAP).
 
@@ -75,10 +76,33 @@ final class GamepadInputProcessor {
         _ eventTimeMs: UInt32
     ) -> Void
 
-    var reportSender: ReportSender?
-    var motionSender: MotionSender?
-    var batterySender: BatterySender?
-    var touchpadSender: TouchpadSender?
+    /// The senders are installed by the composition root and read on the
+    /// GameController callback threads; a lock-guarded hand-off keeps that
+    /// race-free without a main-actor hop on the hot path.
+    private let reportSenderBox = LockedBox<ReportSender?>(nil)
+    private let motionSenderBox = LockedBox<MotionSender?>(nil)
+    private let batterySenderBox = LockedBox<BatterySender?>(nil)
+    private let touchpadSenderBox = LockedBox<TouchpadSender?>(nil)
+
+    var reportSender: ReportSender? {
+        get { reportSenderBox.get() }
+        set { reportSenderBox.set(newValue) }
+    }
+
+    var motionSender: MotionSender? {
+        get { motionSenderBox.get() }
+        set { motionSenderBox.set(newValue) }
+    }
+
+    var batterySender: BatterySender? {
+        get { batterySenderBox.get() }
+        set { batterySenderBox.set(newValue) }
+    }
+
+    var touchpadSender: TouchpadSender? {
+        get { touchpadSenderBox.get() }
+        set { touchpadSenderBox.set(newValue) }
+    }
 
     /// Per-device state. Small struct, map lookups on every event — same
     /// design as the Android processor.
@@ -212,11 +236,11 @@ final class GamepadInputProcessor {
         batterySender?(deviceId, level, statusRaw)
     }
 
-    // `publishTouchpad` takes one argument per wire field (the protocol's
-    // §0x000C layout). Bundling them into a struct purely to satisfy the
-    // parameter-count rule would add an indirection the flat wire-mapping
-    // doesn't benefit from — same rationale as `DishCore.Encoders`'
-    // touchpad encoder.
+    /// `publishTouchpad` takes one argument per wire field (the protocol's
+    /// §0x000C layout). Bundling them into a struct purely to satisfy the
+    /// parameter-count rule would add an indirection the flat wire-mapping
+    /// doesn't benefit from — same rationale as `DishCore.Encoders`'
+    /// touchpad encoder.
     /// Forward a touchpad sample. Coordinates are already scaled to int16 by
     /// the bridge, and the per-finger tracking ids are already resolved by it.
     /// No deadzone / filtering is applied — a touchpad is an absolute pointing
