@@ -81,8 +81,8 @@ final class ConnectionHubTests: XCTestCase {
         let conn = WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max)
         wifi.register(conn)
 
-        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
-        hub.bind(slotId: "slot-b", connectionId: sat.id, hasMotion: false, hasLight: false)
+        hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
+        hub.bind(slotId: "slot-b", connectionId: sat.id, capabilities: .none, family: .other)
 
         XCTAssertEqual(hub.bindings, ["slot-b": sat.id])
         XCTAssertEqual(conn.boundSlotId, "slot-b")
@@ -96,13 +96,13 @@ final class ConnectionHubTests: XCTestCase {
         wifi.register(connAlpha)
         wifi.register(connBeta)
 
-        hub.bind(slotId: "slot-a", connectionId: alpha.id, hasMotion: false, hasLight: false)
+        hub.bind(slotId: "slot-a", connectionId: alpha.id, capabilities: .none, family: .other)
         XCTAssertEqual(connAlpha.boundSlotId, "slot-a")
 
         // Rebinding the SLOT to another satellite must detach the first
         // connection too — otherwise it keeps advertising a desired
         // descriptor for a slot it no longer owns (zombie pad).
-        hub.bind(slotId: "slot-a", connectionId: beta.id, hasMotion: false, hasLight: false)
+        hub.bind(slotId: "slot-a", connectionId: beta.id, capabilities: .none, family: .other)
 
         XCTAssertEqual(hub.bindings, ["slot-a": beta.id])
         XCTAssertEqual(connBeta.boundSlotId, "slot-a")
@@ -128,7 +128,7 @@ final class ConnectionHubTests: XCTestCase {
         wifi.register(conn)
         try wifi.cacheCatalog(catalog(firstId: 1, slug: "ds4"), for: sat.id)
 
-        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+        hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
 
         // A ds4-first satellite (e.g. a Mac host) → the bound descriptor
         // carries type 1, not the legacy hardcoded 0.
@@ -141,7 +141,7 @@ final class ConnectionHubTests: XCTestCase {
         wifi.register(conn)
         try wifi.cacheCatalog(catalog(firstId: 0, slug: "xbox360"), for: sat.id)
 
-        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+        hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
 
         XCTAssertEqual(conn.desiredDescriptor?.type, 0)
     }
@@ -153,7 +153,7 @@ final class ConnectionHubTests: XCTestCase {
 
         // No catalog fetched (older / unreachable satellite): the prior
         // behavior — type 0 — stands so nothing regresses.
-        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+        hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
 
         XCTAssertEqual(conn.desiredDescriptor?.type, 0)
     }
@@ -164,7 +164,7 @@ final class ConnectionHubTests: XCTestCase {
         wifi.register(conn)
         wifi.cacheCatalog(CatalogDTO(), for: sat.id) // empty → not cached
 
-        hub.bind(slotId: "slot-a", connectionId: sat.id, hasMotion: false, hasLight: false)
+        hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
 
         XCTAssertEqual(conn.desiredDescriptor?.type, 0)
     }

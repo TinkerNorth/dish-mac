@@ -19,7 +19,34 @@ the repos share a version number.
 
 ## [Unreleased]
 
+### Added
+
+- **Protocol 3.** Every pairing and session request offers version 3 and
+  settles on what the satellite speaks (contract §Versioning): an older
+  satellite still gets a working session at its own version with a soft
+  "Satellite update recommended" chip on its row, and a satellite that is too
+  new or too old says so in plain words instead of a bare mismatch. A session
+  settled on version 2 or later streams the 19-byte pointer frame.
+- **Adaptive triggers and player LEDs on a DualSense.** The host game's
+  trigger effects (feedback, weapon, vibration, bow and machine shapes) play
+  through GameController's adaptive-trigger API, and the player indicator
+  follows the game's assignment. Modes the API has no shape for reset the
+  trigger.
+- **The pad is emulated as itself.** A DualSense, DualShock 4 or Xbox pad binds
+  as the catalog type that emulates its family; anything else takes the first
+  type the satellite offers.
+- **The capabilities probe.** `GET /api/server/capabilities` is read at
+  session open and kept per satellite, ready for the capability table.
+
 ### Changed
+
+- **The descriptor claims only what will land.** A feature switched off in
+  Settings is no longer advertised to the satellite, a pad without a motor
+  claims no rumble, the touchpad is offered as the pad render only when the
+  pad has one and the switch is on, and flipping a switch re-sends the
+  descriptor whole. A rumble packet runs the motors for at most 1.5 s: the
+  satellite refreshes a held level every 200 ms, so anything longer is a dead
+  host's rumble.
 
 - **Every warning fails the build.** Each target treats compiler warnings as
   errors, SwiftLint runs strict, and the one deprecated call the test suite
@@ -72,5 +99,8 @@ the repos share a version number.
   carry plural forms per language.
 - **The PIN field takes ASCII digits only.** A fullwidth or Arabic-Indic digit
   no longer enables Pair.
+- **Touchpad frames reach the host.** The descriptor declared `touchpadMode:
+  off` while the client streamed touchpad frames, so the satellite dropped
+  them; a pad with a touchpad now asks for the pad render.
 
 [Unreleased]: https://github.com/TinkerNorth/dish-mac/compare/main...main

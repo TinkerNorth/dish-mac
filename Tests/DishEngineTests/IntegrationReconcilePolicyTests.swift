@@ -96,7 +96,7 @@ final class IntegrationReconcilePolicyTests: XCTestCase {
         if withSlot, manager.get(server.id) == nil {
             let conn = WifiConnection(id: server.id, server: server)
             manager.register(conn)
-            conn.attachSlot("policy-slot", controllerType: 0, hasMotion: false, hasLight: false)
+            conn.attachSlot("policy-slot", controllerType: 0, capabilities: .none)
         }
         manager.connect(to: server)
         let live = await waitUntil { self.manager.get(self.server.id)?.state == .live }

@@ -13,12 +13,12 @@
 
 | Feature | Android | Windows | Linux | macOS (this) |
 |---|---|---|---|---|
-| Satellite host, protocol 3 | ✅ | ✅ | ✅ | ❌ protocol 1 (🔜) |
+| Satellite host, protocol 3 | ✅ | ✅ | ✅ | ✅ offers 3, settles on the satellite's range, re-offers on an overlapping 409 |
 | Moonlight host (Sunshine / Apollo / Wolf) | ✅ | ✅ | ✅ | ❌ |
 | Mouse mode on the host | ✅ | ❌ | ❌ (deferred) | ❌ (deferred, as the desktops) |
 | Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ❌ |
 | DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ❌ |
-| Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ❌ |
+| Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ❌ mic lamp (no controller audio) |
 | Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery (pad, else the host Mac's) |
 | Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ❌ |
 | Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ❌ |
@@ -27,13 +27,13 @@
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ❌ (display kept awake while streaming, no setting) |
 | Diagnostics screen | ✅ | ✅ | ✅ | ❌ |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ❌ |
-| Protocol chip | ✅ | ✅ | ✅ | ❌ |
+| Protocol chip | ✅ | ✅ | ✅ | ✅ |
 | App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | – no controller audio yet |
 | Capability verdict word "Supported" | ✅ | ✅ | ✅ | ❌ (capability chips only) |
 | Pairing secrets stored encrypted | ✅ Moonlight key · ❌ Satellite key | ✅ DPAPI | ✅ Secret Service | ✅ Keychain |
 | Six languages (en, bs, de, es, fr, pt-BR) | ✅ | ✅ | ✅ | ✅ every word, plural forms included |
 | Light, dark and system theme | ✅ | ✅ | ✅ | ❌ dark only |
-| Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ❌ (first catalog type, no picker) |
+| Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ⚠️ the pad's family picks its type from the catalog's `emulates`; no picker yet |
 
 ## 2. Input, pad to host, by path (cell = USB · Bluetooth)
 
@@ -55,8 +55,8 @@ does not apply here.
 |---|---|---|---|---|
 | Rumble | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (CoreHaptics engines per handle) |
 | Lightbar | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (`GCController.light`) |
-| Adaptive triggers | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ❌ · ❌ |
-| Player LEDs | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ❌ · ❌ |
+| Adaptive triggers | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (the API's shapes; GameController carries them over both links) |
+| Player LEDs | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ✅ (DualSense, by player index) |
 | Mic lamp | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ❌ · ❌ |
 | Controller speaker | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ❌ · ❌ |
 | HD haptics | ⚠️ · ❌ | ⚠️ · ❌ | ⚠️ · ❌ | ❌ · ❌ |
@@ -81,17 +81,12 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. Protocol 3: the v2/v3 constants and frames, the 409 range negotiation and
-   re-offer, the settled version gating the pointer frame, the protocol chip,
-   the capabilities probe, the catalog's `catalogVersion` and `emulates`,
-   honest caps (motion only when the pad has an IMU and the switch is on),
-   trigger effects through `GCDualSenseAdaptiveTrigger`, player LEDs through
-   `playerIndex`, the 1500 ms rumble cap.
-2. Desktop UX: light/dark/system theme, the menu-bar item and background
-   mode, keep-awake modes, the type picker, per-slot switches, the
-   capability table with "Supported", the link-tier cue, Diagnostics, the
-   update check, local crash logs with an opt-out report, Help, Support,
-   Licenses and About.
-3. Controller audio and HD haptics over the DualSense's USB audio function,
-   where Core Audio exposes it.
-4. Moonlight hosts.
+1. Desktop UX: light/dark/system theme, the menu-bar item and background
+   mode, keep-awake modes, the Emulate-as picker over the catalog types, the
+   motion backend status from the apply result, per-slot switches, the
+   capability table with "Supported" fed by the cached capabilities probe,
+   the link-tier cue, Diagnostics, the update check, local crash logs with an
+   opt-out report, Help, Support, Licenses and About.
+2. Controller audio and HD haptics over the DualSense's USB audio function,
+   where Core Audio exposes it; the mic lamp rides the same work.
+3. Moonlight hosts.

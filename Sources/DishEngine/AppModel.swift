@@ -56,6 +56,7 @@ package final class AppModel: ObservableObject {
         routing = InputRouting(gate: gate)
         returnPaths = ReturnPathRouter(input: input, gate: gate, bindings: hub.currentBindings)
         gate.update(settings.flags)
+        wifi.applyForwardingFlags(settings.flags)
         routing.install(on: input.processor)
         observeSlots()
         observeRoutingTable()
@@ -102,6 +103,7 @@ package final class AppModel: ObservableObject {
 
     private func syncGate() {
         gate.update(settings.flags)
+        wifi.applyForwardingFlags(settings.flags)
     }
 
     private func observeEvents() {
@@ -186,15 +188,15 @@ package final class AppModel: ObservableObject {
         wifi.pairWithPin(server, pin: pin)
     }
 
-    /// The bound controller's detected capabilities decide the descriptor's
-    /// motion and light-bar bits.
+    /// The bound pad's detected capabilities become the descriptor's claims,
+    /// and its family picks the catalog type it is emulated as.
     package func bind(slotId: String, connectionId: String) {
-        let capabilities = slots.first { $0.id == slotId }?.capabilities ?? .none
+        let pad = input.slots.first { $0.id == slotId }
         hub.bind(
             slotId: slotId,
             connectionId: connectionId,
-            hasMotion: capabilities.hasMotion,
-            hasLight: capabilities.hasLightbar
+            capabilities: pad?.capabilities ?? .none,
+            family: pad?.family ?? .other
         )
     }
 

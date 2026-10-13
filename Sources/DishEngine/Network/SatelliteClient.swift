@@ -62,6 +62,8 @@ final class SatelliteClient {
         /// Post-increment, so the first packet of a generation rides
         /// counter 1 (contract §Crypto).
         var counter: UInt64 = 0
+        /// The version the session settled on; it picks the 0x000C shape.
+        var protocolVersion = ProtocolConstants.protocolVersionWhenAbsent
     }
 
     let params = LockedBox(SessionParams())
@@ -124,6 +126,20 @@ final class SatelliteClient {
         set { lightbarBox.set(newValue) }
     }
 
+    /// Fired on the receive queue for every parsed MSG_TRIGGER_EFFECTS (0x0010).
+    private let triggerEffectsBox = LockedBox<((TriggerEffectsCommand) -> Void)?>(nil)
+    var onTriggerEffects: ((TriggerEffectsCommand) -> Void)? {
+        get { triggerEffectsBox.get() }
+        set { triggerEffectsBox.set(newValue) }
+    }
+
+    /// Fired on the receive queue for every parsed MSG_PLAYER_LEDS (0x0011).
+    private let playerLedsBox = LockedBox<((PlayerLedsCommand) -> Void)?>(nil)
+    var onPlayerLeds: ((PlayerLedsCommand) -> Void)? {
+        get { playerLedsBox.get() }
+        set { playerLedsBox.set(newValue) }
+    }
+
     /// Fired on the receive queue for an authenticated MSG_SESSION_CLOSE
     /// (0x000F); an unknown FUTURE reason byte degrades to `.shutdown` (the
     /// transient default arm, like the C++ ports). The client also drops
@@ -153,10 +169,11 @@ final class SatelliteClient {
         host: String,
         udpPort: UInt16,
         token: UInt32,
-        sessionKey: SymmetricKey
+        sessionKey: SymmetricKey,
+        protocolVersion: Int = ProtocolConstants.protocolVersionWhenAbsent
     ) -> Bool {
         guard ensureSocket(host: host, udpPort: udpPort) else { return false }
-        params.set(SessionParams(key: sessionKey, token: token))
+        params.set(SessionParams(key: sessionKey, token: token, protocolVersion: protocolVersion))
         lastRecvCounter.set(0)
         missedAcks.set(0)
         connectionAlive.set(true)
@@ -342,19 +359,16 @@ final class SatelliteClient {
 
     // MARK: - Touchpad
 
-    /// Forward a touchpad sample (MSG_TOUCHPAD 0x000C) — the 16-byte
-    /// protocol-1 payload incl. the trailing `eventTimeMs` (sender-side
-    /// sample uptime, ms; u32 LE at offset 12). The server drops legacy
-    /// 12-byte bodies (gap G12). Coordinates are normalised int16; the caller
-    /// scales. Hot path: GameController touchpad callback thread.
+    /// Forward a touchpad sample (MSG_TOUCHPAD 0x000C) in the shape the
+    /// SETTLED version decodes: the 19-byte POINTER frame on version 2 and
+    /// later, the 16-byte frame on version 1, which drops anything longer.
+    /// Coordinates are normalised int16; the caller scales. Hot path:
+    /// GameController touchpad callback thread.
     func sendTouchpad(controllerIndex: Int, sample: TouchpadSample, eventTimeMs: UInt32) {
-        sendEncrypted(
-            msgType: ProtocolConstants.msgTouchpad,
-            payload: Encoders.touchpadPayload(
-                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-                sample: sample,
-                eventTimeMs: eventTimeMs
-            )
-        )
+        let index = UInt8(truncatingIfNeeded: controllerIndex)
+        let payload = ProtocolConstants.settledSpeaksV2(params.get().protocolVersion)
+            ? Encoders.pointerPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs)
+            : Encoders.touchpadPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs)
+        sendEncrypted(msgType: ProtocolConstants.msgTouchpad, payload: payload)
     }
 }

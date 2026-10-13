@@ -18,18 +18,21 @@ extension WifiConnectionManager {
     /// How a session PUT response is acted on.
     enum OpenOutcome: Equatable {
         case unauthorized
-        case versionMismatch
+        /// 409 with the satellite's range (0 for a bound the body lacked).
+        case versionMismatch(supported: Int, supportedMin: Int)
         case refused
         case granted(SessionGrant)
     }
 
-    /// Classify a session PUT response. The terminal 401 and 409 outcomes
-    /// come first; a reachable reply with the three grant fields is a grant;
+    /// Classify a session PUT response. The terminal 401 and the 409 come
+    /// first; a reachable reply with the three grant fields is a grant;
     /// anything else is a refusal.
     nonisolated static func classifyOpen(_ resp: SessionResponse) -> OpenOutcome {
         let unauthorized = resp.unauthorized || resp.verdict == .unauthorized
         if unauthorized { return .unauthorized }
-        if resp.verdict == .versionMismatch { return .versionMismatch }
+        if resp.verdict == .versionMismatch {
+            return .versionMismatch(supported: resp.supportedProtocol, supportedMin: resp.supportedProtocolMin)
+        }
         guard resp.reachable,
               let connectionId = resp.connectionId,
               let tokenHex = resp.token,
@@ -65,13 +68,19 @@ extension WifiConnectionManager {
             return
         }
         let descriptors = conn.desiredDescriptor.map { [$0] } ?? []
-        let resp = await putSession(server: server, pairingKey: pairingKey, controllers: descriptors)
+        let resp = await putSession(
+            server: server,
+            pairingKey: pairingKey,
+            controllers: descriptors,
+            protocolVersion: conn.offeredProtocolVersion
+        )
         switch Self.classifyOpen(resp) {
         case .unauthorized:
             handleTerminalAuth(id, loud: intent == .userInitiated)
-        case .versionMismatch:
-            conn.markDisconnected()
-            emitFailureIfUserInitiated(intent, .protocolMismatch)
+        case let .versionMismatch(supported, supportedMin):
+            if lowerOfferOrFail(conn, intent: intent, supported: supported, supportedMin: supportedMin) {
+                await openSession(conn: conn, server: server, intent: intent)
+            }
         case .refused:
             failRefusedOpen(conn, server: server, id: id, intent: intent, detail: resp.error)
         case let .granted(grant):
@@ -79,7 +88,12 @@ extension WifiConnectionManager {
         }
     }
 
-    private func putSession(server: DiscoveredServer, pairingKey: Data, controllers: [ControllerDescriptor]) async -> SessionResponse {
+    private func putSession(
+        server: DiscoveredServer,
+        pairingKey: Data,
+        controllers: [ControllerDescriptor],
+        protocolVersion: Int
+    ) async -> SessionResponse {
         let proof = SessionCrypto.hmacProofHex(pairingKey: pairingKey, deviceId: deviceId)
         return await http.putSession(
             ip: server.ip,
@@ -87,8 +101,37 @@ extension WifiConnectionManager {
             deviceId: deviceId,
             deviceName: deviceName,
             hmacProof: proof,
-            controllers: controllers
+            controllers: controllers,
+            protocolVersion: protocolVersion
         )
+    }
+
+    // MARK: - Version negotiation (contract §Versioning)
+
+    /// Reads a 409's range. True when the attempt may go on with the lower
+    /// offer now stored on the connection; false when the attempt is over,
+    /// the row's chip says which end must update, and the failure is
+    /// reported. A satellite that repeats a range it already rejected us at
+    /// cannot lower the offer further and reads as unreadable.
+    func lowerOfferOrFail(_ conn: WifiConnection, intent: ConnectIntent, supported: Int, supportedMin: Int) -> Bool {
+        let outcome = settleRejected(supported: supported, supportedMin: supportedMin)
+        if outcome.verdict == .retryLower, outcome.settledVersion < conn.offeredProtocolVersion {
+            conn.setOfferedProtocolVersion(outcome.settledVersion)
+            return true
+        }
+        conn.setProtocolCompat(compatForOutcome(outcome))
+        conn.markDisconnected()
+        emitFailureIfUserInitiated(intent, Self.versionFailure(for: outcome.verdict))
+        return false
+    }
+
+    /// The failure a 409 surfaces once the attempt is over.
+    nonisolated static func versionFailure(for verdict: ProtocolVerdict) -> ConnectionFailure {
+        switch verdict {
+        case .updateDish: .dishUpdateRequired
+        case .updateSatellite: .satelliteUpdateRequired
+        case .unusable, .retryLower, .settled: .protocolMismatch
+        }
     }
 
     /// No usable key on disk: only a fresh user-initiated pair helps, so a
@@ -133,8 +176,17 @@ extension WifiConnectionManager {
             emitFailureIfUserInitiated(intent, .badSessionMaterial)
             return
         }
+        // The SETTLED version, never the offer: a pre-versioning satellite
+        // echoes 1 whatever was asked, and the 0x000C shape follows the echo.
+        let negotiated = settleAccepted(echoedVersion: response.protocolVersion)
         let client = SatelliteClient()
-        let aimed = client.setConnectionParams(host: server.ip, udpPort: udpPort, token: material.token, sessionKey: material.key)
+        let aimed = client.setConnectionParams(
+            host: server.ip,
+            udpPort: udpPort,
+            token: material.token,
+            sessionKey: material.key,
+            protocolVersion: negotiated.settledVersion
+        )
         guard aimed else {
             conn.markDisconnected()
             if intent == .userInitiated {
@@ -144,11 +196,13 @@ extension WifiConnectionManager {
             }
             return
         }
+        conn.adoptProtocol(negotiated)
         store.remember(server)
         clearStale(id)
         clearRetry(id)
         recordSlotOutcome(response, conn: conn)
         await fetchCatalog(id: id, server: server)
+        await fetchCapabilities(id: id, server: server)
         conn.markConnected(client: client, connectionId: grant.connectionId, epoch: response.epoch, hooks: makeHooks(id: id))
     }
 
@@ -183,10 +237,24 @@ extension WifiConnectionManager {
         catalogs[id] = catalog
     }
 
-    /// The type a freshly bound slot defaults to: the first type the
-    /// satellite's catalog offers, else the legacy Xbox target.
-    func defaultControllerType(for id: String) -> Int {
-        catalogs[id]?.controllerTypes.first?.id ?? Int(ProtocolConstants.controllerTypeXbox)
+    /// The type a freshly bound pad is emulated as: the catalog type that
+    /// emulates the pad's own family, else the first type offered, else the
+    /// legacy Xbox target.
+    func defaultControllerType(for id: String, family: PadFamily = .other) -> Int {
+        preferredControllerType(in: catalogs[id], for: family)
+    }
+
+    // MARK: - Capabilities probe
+
+    /// Best-effort, like the catalog: an unreachable or pre-probe satellite
+    /// leaves no entry.
+    func fetchCapabilities(id: String, server: DiscoveredServer) async {
+        await cacheCapabilities(http.getCapabilities(ip: server.ip, port: server.httpPort), for: id)
+    }
+
+    func cacheCapabilities(_ probe: ServerCapabilitiesDTO, for id: String) {
+        guard probe.reachable else { return }
+        capabilities[id] = probe
     }
 
     // MARK: - Proactive re-key
@@ -201,7 +269,12 @@ extension WifiConnectionManager {
         let server = conn.server
         guard let pairingKey = pairingKeyData(for: id) else { return }
         let descriptors = conn.desiredDescriptor.map { [$0] } ?? []
-        let resp = await putSession(server: server, pairingKey: pairingKey, controllers: descriptors)
+        let resp = await putSession(
+            server: server,
+            pairingKey: pairingKey,
+            controllers: descriptors,
+            protocolVersion: conn.offeredProtocolVersion
+        )
         if resp.unauthorized || resp.verdict == .unauthorized {
             handleTerminalAuth(id, loud: false)
             return
@@ -223,7 +296,15 @@ extension WifiConnectionManager {
               case let .granted(grant) = Self.classifyOpen(resp),
               let material = Self.sessionMaterial(tokenHex: grant.tokenHex, saltHex: grant.saltHex, pairingKey: pairingKey),
               let udpPort = UInt16(exactly: server.udpPort) else { return }
-        client.setConnectionParams(host: server.ip, udpPort: udpPort, token: material.token, sessionKey: material.key)
+        let negotiated = settleAccepted(echoedVersion: resp.protocolVersion)
+        client.setConnectionParams(
+            host: server.ip,
+            udpPort: udpPort,
+            token: material.token,
+            sessionKey: material.key,
+            protocolVersion: negotiated.settledVersion
+        )
+        conn.adoptProtocol(negotiated)
         conn.setLastAppliedEpoch(resp.epoch)
     }
 

@@ -28,10 +28,12 @@ enum FakeSatelliteOpcode {
     static let touchpad: UInt16 = 0x000C
     static let lightbar: UInt16 = 0x000D
     static let sessionClose: UInt16 = 0x000F
+    static let triggerEffects: UInt16 = 0x0010
+    static let playerLeds: UInt16 = 0x0011
 }
 
-/// Parsed 16-byte touchpad payload (contract §0x000C), including the
-/// trailing eventTimeMs u32 LE at offset 12.
+/// Parsed 16-byte touchpad payload (contract §0x000C, version 1), including
+/// the trailing eventTimeMs u32 LE at offset 12.
 struct FakeSatelliteTouchpadFrame: Equatable {
     let ctrlIdx: UInt8
     let flags: UInt8
@@ -44,6 +46,22 @@ struct FakeSatelliteTouchpadFrame: Equatable {
     let eventTimeMs: UInt32
 }
 
+/// Parsed 19-byte POINTER payload (contract §0x000C, version 2): the click
+/// moved into a buttons byte and a signed wheel was appended.
+struct FakeSatellitePointerFrame: Equatable {
+    let ctrlIdx: UInt8
+    let fingerFlags: UInt8
+    let buttons: UInt8
+    let finger0Id: UInt8
+    let finger0X: Int16
+    let finger0Y: Int16
+    let finger1Id: UInt8
+    let finger1X: Int16
+    let finger1Y: Int16
+    let eventTimeMs: UInt32
+    let scrollV: Int16
+}
+
 /// One successfully decrypted uplink frame, typed where the opcode is known.
 struct FakeSatelliteFrame {
     enum Detail: Equatable {
@@ -52,6 +70,7 @@ struct FakeSatelliteFrame {
         case motion(ctrlIdx: UInt8, gyro: [Int16], accel: [Int16], timestampDeltaUs: UInt32)
         case battery(ctrlIdx: UInt8, level: UInt8, status: UInt8)
         case touchpad(FakeSatelliteTouchpadFrame)
+        case pointer(FakeSatellitePointerFrame)
         case unknown
     }
 
@@ -79,20 +98,44 @@ struct FakeSatelliteFrame {
         case FakeSatelliteOpcode.battery where payload.count == 3:
             return .battery(ctrlIdx: payload[base], level: payload[base + 1], status: payload[base + 2])
         case FakeSatelliteOpcode.touchpad where payload.count == 16:
-            return .touchpad(FakeSatelliteTouchpadFrame(
-                ctrlIdx: payload[base],
-                flags: payload[base + 1],
-                finger0Id: payload[base + 2],
-                finger0X: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 3)),
-                finger0Y: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 5)),
-                finger1Id: payload[base + 7],
-                finger1X: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 8)),
-                finger1Y: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 10)),
-                eventTimeMs: FakeSatelliteCrypto.readLE32(payload, at: 12)
-            ))
+            return .touchpad(touchpadFrame(payload))
+        case FakeSatelliteOpcode.touchpad where payload.count == 19:
+            return .pointer(pointerFrame(payload))
         default:
             return .unknown
         }
+    }
+
+    private static func touchpadFrame(_ payload: Data) -> FakeSatelliteTouchpadFrame {
+        let base = payload.startIndex
+        return FakeSatelliteTouchpadFrame(
+            ctrlIdx: payload[base],
+            flags: payload[base + 1],
+            finger0Id: payload[base + 2],
+            finger0X: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 3)),
+            finger0Y: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 5)),
+            finger1Id: payload[base + 7],
+            finger1X: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 8)),
+            finger1Y: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 10)),
+            eventTimeMs: FakeSatelliteCrypto.readLE32(payload, at: 12)
+        )
+    }
+
+    private static func pointerFrame(_ payload: Data) -> FakeSatellitePointerFrame {
+        let base = payload.startIndex
+        return FakeSatellitePointerFrame(
+            ctrlIdx: payload[base],
+            fingerFlags: payload[base + 1],
+            buttons: payload[base + 2],
+            finger0Id: payload[base + 3],
+            finger0X: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 4)),
+            finger0Y: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 6)),
+            finger1Id: payload[base + 8],
+            finger1X: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 9)),
+            finger1Y: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 11)),
+            eventTimeMs: FakeSatelliteCrypto.readLE32(payload, at: 13),
+            scrollV: Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 17))
+        )
     }
 }
 
@@ -133,9 +176,16 @@ final class FakeSatelliteStore {
         var controllers: [[String: Any]] = []
         var lastMouseGranted = false
         var lastSessionSaltHex: String?
-        // Knobs.
+        /// Knobs.
         var forced401Code: String?
-        var protocolVersionReject = false
+        /// The range the fake accepts (contract §Versioning); the real
+        /// satellite's is [1, 3].
+        var supportedProtocolMin = 1
+        var supportedProtocol = 3
+        /// The version the last accepted offer settled on, echoed back.
+        var settledProtocolVersion = 1
+        /// Every offer the range refused, in order.
+        var rejectedOffers: [Int] = []
         var holdNextSessionPut = false
         var heldSessionPuts = 0
         var holdNextPair = false

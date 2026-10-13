@@ -86,6 +86,8 @@ package final class WifiConnectionManager: ObservableObject {
     var retryTasks: [String: Task<Void, Never>] = [:]
     /// Per-satellite client catalog, fetched at session open.
     var catalogs: [String: CatalogDTO] = [:]
+    /// Per-satellite capabilities probe, fetched at session open.
+    var capabilities: [String: ServerCapabilitiesDTO] = [:]
 
     private var perConnCancellables: [String: Set<AnyCancellable>] = [:]
     /// Depth-counted so a superseded approval flow unwinding after its
@@ -226,6 +228,14 @@ package final class WifiConnectionManager: ObservableObject {
         Task { await pairAndConnect(conn: conn, server: server, intent: intent) }
     }
 
+    /// The user's switches reach every pooled connection, whose descriptor
+    /// claims only what the switches allow.
+    func applyForwardingFlags(_ flags: ForwardingFlags) {
+        for conn in connections.values {
+            conn.setForwardingFlags(flags)
+        }
+    }
+
     /// A failure is surfaced only for an attempt the user made; automatic
     /// attempts report through the row's state.
     func emitFailureIfUserInitiated(_ intent: ConnectIntent, _ failure: ConnectionFailure) {
@@ -269,6 +279,7 @@ package final class WifiConnectionManager: ObservableObject {
         connections.removeValue(forKey: id)
         perConnCancellables.removeValue(forKey: id)
         catalogs.removeValue(forKey: id)
+        capabilities.removeValue(forKey: id)
         clearStale(id)
         clearRetry(id)
         recomputeAnyRegistering()

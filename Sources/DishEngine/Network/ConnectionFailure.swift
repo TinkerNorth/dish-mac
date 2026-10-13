@@ -10,8 +10,12 @@ package enum ConnectionFailure: Equatable {
     /// The satellite's TLS certificate differs from the one pinned on first
     /// contact: a reinstall, or an imposter. Only forget-and-pair recovers.
     case identityChanged
-    /// The two ends speak incompatible protocol versions (HTTP 409).
+    /// A 409 whose range this client could not read; neither end is blamed.
     case protocolMismatch
+    /// The satellite's oldest protocol is newer than this app speaks.
+    case dishUpdateRequired
+    /// The satellite's newest protocol is older than this app's floor.
+    case satelliteUpdateRequired
     /// The operator declined the client-PIN request on the satellite.
     case approvalDeclined
     /// The client-PIN request expired before the operator answered.

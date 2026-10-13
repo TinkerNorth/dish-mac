@@ -98,7 +98,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         XCTAssertEqual(satellite.unknownTokenDrops, 0)
     }
 
-    func testTouchpadUplinkArrivesAsSixteenByteFrameServerSide() async throws {
+    func testTouchpadUplinkArrivesAsThePointerFrameOnAVersionThreeSession() async throws {
         let conn = try await connectAndAwaitLive()
         conn.sendTouchpad(
             sample: TouchpadSample(
@@ -109,11 +109,12 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
             eventTimeMs: 0x1234_5678
         )
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))
-        guard case let .touchpad(decoded) = frame.detail else {
-            return XCTFail("16-byte touchpad payload must parse, got \(frame.detail)")
+        guard case let .pointer(decoded) = frame.detail else {
+            return XCTFail("the 19-byte POINTER payload must parse, got \(frame.detail)")
         }
         XCTAssertEqual(decoded.finger0Id, 4)
-        XCTAssertEqual(decoded.eventTimeMs, 0x1234_5678, "trailing eventTimeMs survives the wire")
+        XCTAssertEqual(decoded.buttons, 0)
+        XCTAssertEqual(decoded.eventTimeMs, 0x1234_5678, "eventTimeMs survives the wire")
     }
 
     // MARK: - Enriched-ack snapshot poll (G9 parse side)
@@ -218,7 +219,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         _ = try await connectAndAwaitLive()
         let newClient = try XCTUnwrap(conn.client)
         XCTAssertTrue(newClient !== oldClient, "reconnect must build a fresh client")
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
         let applied = await waitUntil {
             self.satellite.appliedControllers.count == 1 && conn.lastAppliedEpoch >= 2
         }
@@ -247,7 +248,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         // declarative PUT itself (the W2-A :337 seam).
         let conn = WifiConnection(id: server.id, server: server)
         manager.register(conn)
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: true, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: ControllerCapabilities(hasMotion: true, hasRumble: true))
 
         _ = try await connectAndAwaitLive()
 
@@ -260,6 +261,9 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         XCTAssertEqual(caps["lightbar"] as? Bool, false)
         XCTAssertEqual(caps["rumble"] as? Bool, true)
         XCTAssertEqual(caps["analogTriggers"] as? Bool, true)
+        XCTAssertEqual(caps["triggerEffects"] as? Bool, false)
+        XCTAssertEqual(caps["playerLeds"] as? Bool, false)
+        XCTAssertEqual(caps["hapticAudio"] as? Bool, false)
         XCTAssertEqual(controllers.first?["touchpadMode"] as? String, "off")
         XCTAssertEqual(satellite.appliedControllers.count, 1, "the server applied the slot")
     }
@@ -269,7 +273,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         XCTAssertTrue(satellite.appliedControllers.isEmpty, "zero-controller session first")
         let epochBefore = satellite.epoch
 
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: true)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: ControllerCapabilities(hasLightbar: true))
         let applied = await waitUntil { self.satellite.appliedControllers.count == 1 }
         XCTAssertTrue(applied, "live attach must PUT the slot without a session re-PUT")
         XCTAssertEqual(satellite.sessionPuts.count, 1, "per-slot converge does not rotate the session")
@@ -300,7 +304,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         // Partial success is a 200 (contract §Error model): the slot draws a
         // per-controller failure code and must NOT count as applied.
         satellite.controllerApplyFailure = "noSlots"
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
 
         let surfaced = await waitUntil { failedSlots == ["slot-a"] }
         XCTAssertTrue(surfaced, "a failed apply must fire slotRegistrationFailed for the rollback")
@@ -310,7 +314,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
 
         // The knob lifted: the next converge applies cleanly.
         satellite.controllerApplyFailure = nil
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
         let healed = await waitUntil { self.satellite.appliedControllers.count == 1 }
         XCTAssertTrue(healed)
     }
