@@ -67,6 +67,8 @@ extension WifiConnectionManager {
             failOpenWithoutKey(conn, id: id, intent: intent)
             return
         }
+        await readCatalogIfUnread(id: id, server: server)
+        refreshControllerType(conn, id: id)
         let descriptors = conn.desiredDescriptor.map { [$0] } ?? []
         let resp = await putSession(
             server: server,
@@ -212,11 +214,36 @@ extension WifiConnectionManager {
     private func recordSlotOutcome(_ response: SessionResponse, conn: WifiConnection) {
         guard let slotId = conn.boundSlotId, let descriptor = conn.desiredDescriptor else { return }
         let applied = response.controllers.first { $0.ctrlIdx == descriptor.ctrlIdx }
-        if applied?.slotIsLive == true {
+        if let applied, applied.slotIsLive {
             conn.markSlotApplied()
+            recordMotionStatus(applied, connectionId: conn.id, slotId: slotId)
         } else {
             reportSlotNotApplied(slotId)
         }
+    }
+
+    /// The satellite's word on motion for the binding it just applied.
+    private func recordMotionStatus(_ applied: ControllerApplyDto, connectionId: String, slotId: String) {
+        motionStatus.setStatus(
+            MotionBackendStatus(sinkSupportedForType: applied.motionSinkSupportedForType, backendOk: applied.motionBackendOk),
+            for: SlotKey(connectionId: connectionId, slotId: slotId)
+        )
+    }
+
+    /// The descriptor's type is resolved as the PUT is built, against the
+    /// newest catalog and the user's pick, so a first contact already
+    /// emulates the pad as itself. Never a re-send: the session is not live.
+    private func refreshControllerType(_ conn: WifiConnection, id: String) {
+        guard let slotId = conn.boundSlotId else { return }
+        conn.setControllerType(resolveControllerType(for: id, slotId: slotId, family: conn.boundFamily))
+    }
+
+    /// The catalog is unauthenticated, so a satellite never seen before is
+    /// asked once before the first PUT; the refresh after the grant keeps it
+    /// current for the sessions that follow.
+    private func readCatalogIfUnread(id: String, server: DiscoveredServer) async {
+        guard catalogs[id] == nil else { return }
+        await fetchCatalog(id: id, server: server)
     }
 
     private func reportSlotNotApplied(_ slotId: String) {
@@ -242,6 +269,16 @@ extension WifiConnectionManager {
     /// legacy Xbox target.
     func defaultControllerType(for id: String, family: PadFamily = .other) -> Int {
         preferredControllerType(in: catalogs[id], for: family)
+    }
+
+    /// The type a bound pad is emulated as: the user's pick for this binding,
+    /// else the family's own type from the catalog.
+    func resolveControllerType(for id: String, slotId: String, family: PadFamily) -> Int {
+        emulatedControllerType(
+            override: typeOverrides.typeFor(SlotKey(connectionId: id, slotId: slotId)),
+            catalog: catalogs[id],
+            family: family
+        )
     }
 
     // MARK: - Capabilities probe
@@ -317,6 +354,7 @@ extension WifiConnectionManager {
         guard conn.hasLiveSession, let connectionId = conn.connectionId else { return }
         conn.setSlotSyncInFlight(true)
         defer { conn.setSlotSyncInFlight(false) }
+        refreshControllerType(conn, id: conn.id)
         if let descriptor = conn.desiredDescriptor {
             await putBoundSlot(descriptor, conn: conn, connectionId: connectionId)
         } else {
@@ -338,9 +376,12 @@ extension WifiConnectionManager {
             handleTerminalAuth(conn.id, loud: false)
             return
         }
-        if resp.controller?.slotIsLive == true {
+        if let controller = resp.controller, controller.slotIsLive {
             conn.markSlotApplied()
             conn.setLastAppliedEpoch(resp.epoch)
+            if let slotId = conn.boundSlotId {
+                recordMotionStatus(controller, connectionId: conn.id, slotId: slotId)
+            }
         } else if let slotId = conn.boundSlotId {
             reportSlotNotApplied(slotId)
         }
