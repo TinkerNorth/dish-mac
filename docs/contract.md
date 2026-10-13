@@ -41,6 +41,7 @@ URLSession, and stores.
 | 0x000C POINTER frame (version 2) beside the 16-byte TOUCHPAD frame | `Sources/DishCore/Wire/Encoders.swift` (`pointerPayload`), chosen by the settled version in `SatelliteClient.sendTouchpad` |
 | TRIGGER_EFFECTS 0x0010 and PLAYER_LEDS 0x0011 return paths | `Sources/DishCore/Wire/FeedbackCommands.swift`, `Sources/DishEngine/Input/DualSenseTriggerEffect.swift`, `Sources/DishEngine/Input/GameControllerInput+ReturnPath.swift` |
 | Descriptor caps as promises (the hardware AND the user's switch), `touchpadMode` | `Sources/DishEngine/Network/DescriptorCaps.swift` |
+| `touchpadMode` ∈ `off`/`ds4`/`mouse` from the controller's pick, the type's `modes` and the host's `mouseControl`; the session's `hostFeatures.mouseControl` request and its grant | `Sources/DishCore/Reducers/TouchpadModeResolve.swift`; `WifiConnection.wantsMouseControl`, carried by every session PUT in `WifiConnectionManager+Session.swift` and converged by `convergeHostFeatures` through the re-key path when a pick flips mid-session |
 | `GET /api/server/capabilities` | `Sources/DishEngine/Network/ServerCapabilities.swift`, cached by `WifiConnectionManager.fetchCapabilities`; the host layer of the capability table (`hostProbeFacts`) |
 | Catalog version 2: `catalogVersion`, `emulates`, the feature slugs, `modes`, `requires` | `Sources/DishEngine/Network/CatalogModels.swift`; `emulatedControllerType`, `offerableTypes` and `typeFeatureFacts` in `DescriptorCaps.swift` (the Emulate picker and the type layer of the capability table); the catalog is read before the first session PUT |
 | The apply result's `motion.sinkSupportedForType` / `motion.backendOk` | `ControllerApplyDto` in `RestModels.swift`, recorded per binding in `MotionBackendStatusStore`, folded by `motionIndicatorFor` in `Sources/DishCore/Reducers/MotionIndicator.swift` |
@@ -95,10 +96,7 @@ and `Integration*` suites drive it end-to-end.
 
 ## Contract surfaces this client does not consume yet
 
-The session PUT carries `hostFeatures` (sent as `mouseControl: false`) and
-decodes the grant shape, but no host-input stream ships yet: the Mouse row
-of the capability table says so at the link layer. The catalog's `image`
-references are decoded and not drawn; the picker names a type, it does not
-picture it. Controller audio is consumed in full but has not yet been heard
+The catalog's `image` references are decoded and not drawn; the picker names
+a type, it does not picture it. Controller audio is consumed in full but has not yet been heard
 on a pad: the engine is proven over fake ports and the fake satellite, as the
 architecture notes say.

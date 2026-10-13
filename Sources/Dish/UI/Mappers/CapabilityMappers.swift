@@ -10,9 +10,9 @@ import SwiftUI
 
 /// What the solver takes, from a bound slot's facts and the user's switches.
 /// The link layer is this client: GameController carries everything the pad
-/// exposes and routes no mouse, and the pad's own audio reaches it only
-/// through the USB audio function it can see; the pad layer's word on the
-/// mic and the speaker is the pad's family.
+/// exposes, the touchpad routes as the host's mouse when picked, and the
+/// pad's own audio reaches it only through the USB audio function it can
+/// see; the pad layer's word on the mic and the speaker is the pad's family.
 func capabilityInputs(_ slot: ControllerSlot, _ flags: ForwardingFlags) -> CapabilityInputs {
     var inputs = CapabilityInputs()
     inputs.padMotion = slot.capabilities.hasMotion
@@ -23,7 +23,7 @@ func capabilityInputs(_ slot: ControllerSlot, _ flags: ForwardingFlags) -> Capab
     inputs.padPlayerLeds = slot.capabilities.hasPlayerLeds
     inputs.padMic = padHasAudio(slot)
     inputs.padSpeaker = padHasAudio(slot)
-    inputs.linkRoutesMouse = false
+    inputs.linkRoutesMouse = true
     inputs.linkRoutesMic = slot.capabilities.hasMic
     inputs.linkRoutesSpeaker = slot.capabilities.hasSpeaker
     applyTypeFacts(slot.typeFeatures, to: &inputs)
@@ -31,7 +31,7 @@ func capabilityInputs(_ slot: ControllerSlot, _ flags: ForwardingFlags) -> Capab
     inputs.userMotionOn = flags.motion
     inputs.userRumbleOn = flags.rumble
     inputs.userLightbarOn = flags.lightbar
-    inputs.userTouchpadPick = flags.touchpad ? .pad : .off
+    inputs.userTouchpadPick = flags.touchpad ? flags.touchpadPick : .off
     inputs.userMicOn = flags.mic
     inputs.userSpeakerOn = flags.speaker
     return inputs
@@ -52,7 +52,7 @@ private func applyTypeFacts(_ facts: TypeFeatureFacts?, to inputs: inout Capabil
     guard let facts else { return }
     inputs.typeResolved = true
     inputs.typeMotion = facts.motion
-    inputs.typeTouchpad = facts.touchpad
+    inputs.typeTouchpad = typeOffersDs4Touchpad(supported: facts.touchpad, modes: facts.touchpadModes)
     inputs.typeRumble = facts.rumble
     inputs.typeLightbar = facts.lightbar
     inputs.typeTriggerEffects = facts.triggerEffects

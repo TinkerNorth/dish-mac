@@ -98,6 +98,8 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private var rekeyRequested = false
     private var pendingControllerType = 0
     private var pendingCapabilities: ControllerCapabilities = .none
+    /// The catalog's and the probe's words the touchpad ladder reads.
+    private(set) var touchpadFacts = TouchpadModeFacts()
     /// The bound pad's family, so the manager can re-resolve the type it is
     /// emulated as when a catalog or a pick arrives.
     private(set) var boundFamily: PadFamily = .other
@@ -146,8 +148,19 @@ package final class WifiConnection: ObservableObject, Identifiable {
         descriptor.ctrlIdx = Self.defaultCtrlIndex
         descriptor.type = UInt8(truncatingIfNeeded: pendingControllerType)
         descriptor.caps = descriptorCaps(pendingCapabilities, forwardingFlags)
-        descriptor.touchpadMode = descriptorTouchpadMode(pendingCapabilities, forwardingFlags)
+        descriptor.touchpadMode = descriptorTouchpadMode(
+            pendingCapabilities,
+            forwardingFlags,
+            typeOffersDs4: touchpadFacts.typeOffersDs4,
+            hostMouseControl: touchpadFacts.hostMouseControl
+        )
         return descriptor
+    }
+
+    /// The session-level request the PUT carries: the bound pad's touchpad
+    /// picked as the host's mouse. The grant is the satellite's answer.
+    var wantsMouseControl: Bool {
+        boundSlotId != nil && pendingCapabilities.hasTouchpad && forwardingFlags.touchpad && forwardingFlags.touchpadPick == .mouse
     }
 
     // MARK: - Protocol version
@@ -369,6 +382,15 @@ package final class WifiConnection: ObservableObject, Identifiable {
         guard capabilities != pendingCapabilities else { return }
         pendingCapabilities = capabilities
         if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
+    }
+
+    /// A changed word re-sends the descriptor only when the mode it declares
+    /// changes: a rung the pick does not use changes nothing on the wire.
+    func setTouchpadFacts(_ facts: TouchpadModeFacts) {
+        let before = desiredDescriptor?.touchpadMode
+        touchpadFacts = facts
+        guard boundSlotId != nil, hasLiveSession, desiredDescriptor?.touchpadMode != before else { return }
+        onTopologyChanged?()
     }
 
     /// The type the pad is emulated as changed. The descriptor is sent

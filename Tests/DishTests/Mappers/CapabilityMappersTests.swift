@@ -67,7 +67,7 @@ final class CapabilityMappersTests: XCTestCase {
         XCTAssertTrue(inputs.padMotion && inputs.padTouchpad && inputs.padRumble && inputs.padLightbar)
         XCTAssertTrue(inputs.padTriggerEffects && inputs.padPlayerLeds)
         XCTAssertFalse(inputs.padMic || inputs.padSpeaker, "no audio route read for this pad")
-        XCTAssertFalse(inputs.linkRoutesMouse, "this client routes no mouse")
+        XCTAssertTrue(inputs.linkRoutesMouse, "the touchpad routes as the host's mouse when picked")
         XCTAssertTrue(inputs.typeResolved && inputs.typeMotion && inputs.typeMic)
         XCTAssertTrue(inputs.hostResolved && inputs.hostRumble && inputs.hostMouseControl)
         XCTAssertFalse(inputs.hostMic)
@@ -143,13 +143,41 @@ final class CapabilityMappersTests: XCTestCase {
         XCTAssertEqual(gamepad.verdictText, "Supported")
         XCTAssertEqual(gamepad.help, "Every layer carries it: the pad, this Mac, the DualSense type and the host.")
         let mouse = try row(.mouse, in: table)
-        XCTAssertEqual(mouse.verdictText, "Not available")
-        XCTAssertEqual(mouse.help, "Dish on a Mac doesn’t route Mouse.")
+        XCTAssertEqual(mouse.verdictText, "Off", "the pick routes the touchpad to the pad render, not the mouse")
+        XCTAssertEqual(mouse.help, "Switched off in Settings.")
         let mic = try row(.mic, in: table)
         XCTAssertEqual(mic.help, "The pad has no Microphone.", "the pad layer fails before the host's")
         let lightbar = try row(.lightbar, in: table)
         XCTAssertEqual(lightbar.verdictText, "Off")
         XCTAssertEqual(lightbar.help, "Switched off in Settings.")
+    }
+
+    func testThePickRoutesTheTouchpadToOneOfItsTwoRows() throws {
+        var slot = dualSense()
+        slot.preferences.touchpad = .mouse
+        let flags = effectiveFlags(global: ForwardingFlags(), slot: slot.preferences)
+        let table = capabilityTable(slot, flags)
+        XCTAssertEqual(try row(.mouse, in: table).verdictText, "Supported")
+        XCTAssertEqual(try row(.touchpad, in: table).verdictText, "Off")
+        let noMouseHost = dualSense(probe: HostProbeFacts(mouseControl: false, rumble: true, mic: false, speaker: false))
+        XCTAssertEqual(try row(.mouse, in: capabilityTable(noMouseHost, flags)).help, "The host doesn’t carry Mouse.")
+        let mouseOnly = TypeFeatureFacts(
+            motion: true,
+            touchpad: true,
+            rumble: true,
+            lightbar: true,
+            triggerEffects: true,
+            playerLeds: true,
+            mic: true,
+            speaker: true,
+            touchpadModes: ["mouse"]
+        )
+        let noDs4 = capabilityTable(dualSense(features: mouseOnly), ForwardingFlags())
+        XCTAssertEqual(
+            try row(.touchpad, in: noDs4).help,
+            "DualSense doesn’t carry Touchpad.",
+            "a type without the ds4 render gates the pad off"
+        )
     }
 
     func testTheTypeAndTheHostLayersBlameThemselves() throws {

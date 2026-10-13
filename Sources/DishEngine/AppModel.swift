@@ -361,6 +361,12 @@ package final class AppModel: ObservableObject {
         }
     }
 
+    /// The touchpad's pick: the pad render, the host's mouse, or off. A
+    /// pick that changes the session's desire re-PUTs the session.
+    package func setTouchpadPick(_ pick: TouchpadPick, slotId: String) {
+        slotPreferences.setTouchpadPick(pick, for: slotId)
+    }
+
     /// Mute or unmute one controller's microphone; muted sends nothing.
     package func setMicMuted(_ muted: Bool, slotId: String) {
         audio.mutes.setMuted(muted, for: slotId)

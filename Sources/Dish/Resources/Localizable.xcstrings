@@ -3809,6 +3809,41 @@
         }
       }
     },
+    "Forwards this pad’s touchpad to the game as a touchpad." : {
+      "comment" : "Touchpad picker detail: the pad render.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prosljeđuje dodirnu ploču ovog pada igri kao dodirnu ploču."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Leitet das Touchpad dieses Pads als Touchpad an das Spiel weiter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reenvía el panel táctil de este mando al juego como panel táctil."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmet le pavé tactile de cette manette au jeu comme pavé tactile."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encaminha o touchpad deste controle ao jogo como touchpad."
+          }
+        }
+      }
+    },
     "Found" : {
       "comment" : "LinkState chip — discovered but unpaired. Maps to Android `chip_status_found`.",
       "localizations" : {
@@ -6014,6 +6049,41 @@
         }
       }
     },
+    "Pad" : {
+      "comment" : "Touchpad picker: the pad render.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pad"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pavé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pad"
+          }
+        }
+      }
+    },
     "Pair" : {
       "comment" : "Submit-pairing button in the PIN sheet. Maps to Android `pair_dialog_submit` (uppercase on Android but the case is a per-locale choice).",
       "localizations" : {
@@ -6819,6 +6889,41 @@
         }
       }
     },
+    "Send the touchpad as a touchpad, or route it as a mouse." : {
+      "comment" : "Touchpad picker tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pošaljite dodirnu ploču kao dodirnu ploču ili je preusmjerite kao miš."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sende das Touchpad als Touchpad oder leite es als Maus weiter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envía el panel táctil como panel táctil o dirígelo como ratón."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoie le pavé tactile en tant que pavé, ou le redirige comme souris."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envie o touchpad como touchpad ou direcione-o como mouse."
+          }
+        }
+      }
+    },
     "Server could not apply the controller" : {
       "comment" : "Failure: a slot descriptor was rejected by the backend.",
       "localizations" : {
@@ -7554,6 +7659,41 @@
         }
       }
     },
+    "The touchpad moves the host’s mouse; the pad’s click is the left button." : {
+      "comment" : "Touchpad picker detail and chip tooltip: the mouse.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodirna površina pomiče miš hosta; klik na kontroleru je lijevo dugme."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Touchpad bewegt die Maus des Hosts; der Klick des Pads ist die linke Taste."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El panel táctil mueve el ratón del host; el clic del mando es el botón izquierdo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le pavé tactile déplace la souris de l’hôte ; le clic de la manette est le bouton gauche."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O touchpad move o mouse do host; o clique do controle é o botão esquerdo."
+          }
+        }
+      }
+    },
     "The update check failed. Dish will retry automatically." : {
       "comment" : "Update status line.",
       "localizations" : {
@@ -7900,6 +8040,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Touchpad para o host"
+          }
+        }
+      }
+    },
+    "Touchpad routing is off for this binding." : {
+      "comment" : "Touchpad picker detail: off.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prosljeđivanje dodirne ploče je isključeno za ovo povezivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Touchpad-Weiterleitung ist für diese Zuordnung aus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El enrutado del panel táctil está desactivado para este vínculo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'acheminement du pavé tactile est désactivé pour cette liaison."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O roteamento do touchpad está desligado para este vínculo."
           }
         }
       }

@@ -50,7 +50,7 @@ final class SlotSwitchesMappersTests: XCTestCase {
     }
 
     func testTheGlobalSwitchOffOutranksTheControllersAndIsNotClickable() throws {
-        let chips = capabilityChips(for: slot(SlotPreferences(touchpad: true)), ForwardingFlags(touchpad: false))
+        let chips = capabilityChips(for: slot(SlotPreferences(touchpad: .pad)), ForwardingFlags(touchpad: false))
         let touchpad = try chip("Touchpad", in: chips)
         XCTAssertFalse(touchpad.on)
         XCTAssertFalse(touchpad.toggle, "a click could not bring it back; Settings can")
@@ -180,7 +180,52 @@ final class SlotSwitchesMappersTests: XCTestCase {
     func testTheSwitchValuesReadBothSides() {
         XCTAssertFalse(switchValue(.motion, ForwardingFlags(motion: false)))
         XCTAssertTrue(switchValue(.rumble, ForwardingFlags(motion: false)))
-        XCTAssertFalse(switchValue(.touchpad, SlotPreferences(touchpad: false)))
-        XCTAssertTrue(switchValue(.motion, SlotPreferences(touchpad: false)))
+        XCTAssertFalse(switchValue(.touchpad, SlotPreferences(touchpad: .off)))
+        XCTAssertTrue(switchValue(.touchpad, SlotPreferences(touchpad: .mouse)), "the mouse is the touchpad sent, as the mouse")
+        XCTAssertTrue(switchValue(.motion, SlotPreferences(touchpad: .off)))
+    }
+
+    // MARK: - The touchpad's pick
+
+    private func probed(mouseControl: Bool) -> HostProbeFacts {
+        HostProbeFacts(mouseControl: mouseControl, rumble: true, mic: false, speaker: false)
+    }
+
+    func testTheTouchpadChipReadsThePickAndSaysWhereTheMouseGoes() throws {
+        let chips = capabilityChips(for: slot(SlotPreferences(touchpad: .mouse)), ForwardingFlags())
+        let touchpad = try chip("Touchpad", in: chips)
+        XCTAssertTrue(touchpad.on)
+        XCTAssertEqual(
+            touchpad.help,
+            "The touchpad moves the host’s mouse; the pad’s click is the left button. Click to turn it off for this controller."
+        )
+        XCTAssertFalse(try chip("Touchpad", in: capabilityChips(for: slot(SlotPreferences(touchpad: .off)), ForwardingFlags())).on)
+    }
+
+    func testThePickerOffersTheMouseOnlyWithTheHostsWord() {
+        var bound = slot()
+        bound.boundConnectionId = "sat"
+        XCTAssertEqual(touchpadPickOptions(bound).map(\.label), ["Off", "Pad", "Mouse"])
+        XCTAssertEqual(touchpadPickOptions(bound).map(\.enabled), [true, true, false], "an unprobed host has not spoken")
+        bound.hostProbe = probed(mouseControl: true)
+        XCTAssertEqual(touchpadPickOptions(bound).map(\.enabled), [true, true, true])
+        bound.hostProbe = probed(mouseControl: false)
+        XCTAssertEqual(touchpadPickOptions(bound).map(\.enabled), [true, true, false])
+    }
+
+    func testTheDetailSaysWhereTheTouchpadGoes() {
+        var bound = slot()
+        bound.hostProbe = probed(mouseControl: false)
+        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "Forwards this pad’s touchpad to the game as a touchpad.")
+        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags(touchpad: false)), "Switched off in Settings.")
+        bound.preferences.touchpad = .off
+        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "Touchpad routing is off for this binding.")
+        bound.preferences.touchpad = .mouse
+        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "The host doesn’t carry Mouse.")
+        bound.hostProbe = probed(mouseControl: true)
+        XCTAssertEqual(
+            touchpadPickDetail(bound, ForwardingFlags()),
+            "The touchpad moves the host’s mouse; the pad’s click is the left button."
+        )
     }
 }

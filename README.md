@@ -24,7 +24,8 @@ protocol-1 satellite; see [Protocol](#protocol).
   one of them.
 - Forwards buttons, sticks and triggers from every GameController-framework
   pad, plus motion (gyro and accelerometer) and the touchpad from DualSense
-  and DualShock 4 pads, and the battery level.
+  and DualShock 4 pads, and the battery level; the touchpad reaches the host
+  as the pad's own or, picked per controller, as the host's mouse.
 - Plays rumble and sets the light bar as the host game asks, each gated by
   its own switch in Settings and, for motion, rumble and the touchpad, by
   the controller's own; on a DualSense it also plays the game's
