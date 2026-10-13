@@ -26,7 +26,7 @@ final class ImportBoundariesTests: XCTestCase {
         ),
         Layer(
             directory: "Sources/Dish",
-            allowed: ["Foundation", "Combine", "SwiftUI", "AppKit", "DishCore", "DishEngine", "DishKernel"]
+            allowed: ["Foundation", "Combine", "SwiftUI", "AppKit", "UserNotifications", "DishCore", "DishEngine", "DishKernel"]
         ),
         Layer(directory: "Tests/Support/DishKernelProbes", allowed: ["Foundation", "Combine", "DishKernel"]),
         Layer(directory: "Tests/Support/LegacyFileKeychain", allowed: ["Foundation", "Security"])

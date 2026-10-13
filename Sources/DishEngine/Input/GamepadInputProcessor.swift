@@ -53,8 +53,12 @@ final class GamepadInputProcessor: @unchecked Sendable {
     static let motionRateLimitHz: UInt64 = 250
     private static let motionMinIntervalNs: UInt64 = 1_000_000_000 / motionRateLimitHz
 
-    // The senders are installed by the composition root and read on the
-    // controller callback threads; the boxes make that hand-off race-free.
+    /// The senders are installed by the composition root and read on the
+    /// controller callback threads; the boxes make that hand-off race-free.
+    /// When the last report left, on the uptime clock; the keep-awake window
+    /// reads it.
+    let lastInputMs = AtomicInt(0)
+
     private let reportSenderBox = LockedBox<ReportSender?>(nil)
     private let motionSenderBox = LockedBox<MotionSender?>(nil)
     private let batterySenderBox = LockedBox<BatterySender?>(nil)
@@ -94,13 +98,14 @@ final class GamepadInputProcessor: @unchecked Sendable {
     }
 
     /// Filter a full-state report through the device's dead zones, remember
-    /// it, and send it.
+    /// it, stamp the moment, and send it.
     func publish(deviceId: DeviceId, state: GamepadReport) {
         lock.lock()
         let zones = deadzones[deviceId] ?? Deadzones()
         let filtered = applyDeadzones(state, zones)
         states[deviceId] = filtered
         lock.unlock()
+        lastInputMs.set(Int(uptimeMs()))
         reportSender?(deviceId, filtered)
     }
 

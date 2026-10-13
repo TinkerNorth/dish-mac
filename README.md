@@ -28,8 +28,13 @@ protocol-1 satellite; see [Protocol](#protocol).
 - Plays rumble and sets the light bar as the host game asks, each gated by
   its own switch in Settings; on a DualSense it also plays the game's
   adaptive-trigger effects and lights the player indicator.
-- Keeps the display awake while a slot streams, releases every session when
+- Keeps the Mac awake while a controller is being used or connected, your
+  choice in Settings with the display optional; releases every session when
   the Mac sleeps and reconnects when it wakes.
+- Keeps streaming when the window is closed, from a menu-bar item; follows
+  the system appearance or a chosen light or dark theme.
+- Checks GitHub for a newer release at startup and every few hours, says so
+  once per version, and lets one switch turn the check off.
 - Speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
 
 What the other clients have that this one does not yet is tracked, row by
@@ -104,12 +109,13 @@ dish-mac/
 │   ├── Models/                   # the value types the UI binds
 │   ├── Network/                  # discovery, pairing, REST, UDP, TOFU, stores
 │   ├── Input/                    # the GameController bridge and the hot path
-│   └── Util/                     # leaf helpers (screen wake, hex, locks)
+│   ├── Update/                   # the release manifest check
+│   └── Util/                     # leaf helpers (the keep-awake pipeline, hex, locks)
 ├── Sources/Dish/
 │   ├── DishApp.swift             # @main
 │   ├── L10n/                     # every word, and the one reader of the catalog
 │   ├── Resources/Localizable.xcstrings
-│   ├── Notifications/            # the toast queue
+│   ├── Notifications/            # the toast queue, the background notice
 │   └── UI/                       # views, Theme.swift, Mappers/
 ├── Tests/DishCoreTests/          # pinned interop vectors, reducer suites
 ├── Tests/DishKernelTests/        # every kernel primitive
@@ -118,6 +124,7 @@ dish-mac/
 ├── Tests/ArchitectureTests/      # the rules a compiler cannot read
 ├── Tests/Support/                # DishKernelProbes, LegacyFileKeychain
 ├── Tests/PARITY.md               # what the other clients have, and what is decided
+├── packaging/update-policy.json  # the oldest build the update check still supports
 ├── docs/ARCHITECTURE.md          # the module map and the dataflow rules
 ├── docs/contract.md              # contract concept → file
 ├── scripts/ci-local.sh           # the CI gate, locally
@@ -184,8 +191,8 @@ swift test --parallel
 |---|---|
 | `DishCoreTests` | The cross-repo interop vectors (HKDF, HMAC proof, AEAD, hex-exact with the satellite and the other clients) and every reducer: reconcile, backoff, close-notify, TOFU verdicts, latency window, REST outcomes. |
 | `DishKernelTests` | Every kernel primitive, with the shared `RepositoryContract`. |
-| `DishEngineTests` | Input mapping, dead zones, the return paths against satellite-sealed datagrams, pairing classification, screen wake; and the live suites, which drive the real manager, connection and client against `Support/FakeSatellite/`, an in-process satellite over loopback sockets with its own independently written crypto, a configurable protocol range and every return path. |
-| `DishTests` | The funnel and the catalog in every language, every mapper flow, the AppKit signal mapping. |
+| `DishEngineTests` | Input mapping, dead zones, the return paths against satellite-sealed datagrams, pairing classification, the keep-awake pipeline, the preference stores, the update checker; and the live suites, which drive the real manager, connection and client against `Support/FakeSatellite/`, an in-process satellite over loopback sockets with its own independently written crypto, a configurable protocol range and every return path. |
+| `DishTests` | The funnel and the catalog in every language, every mapper flow, the AppKit signal mapping, the close-to-background rule. |
 | `ArchitectureTests` | Import boundaries, the package graph, license headers, no suppressions, no mutable statics, the lint thresholds, the version mirrors, the catalog and the tokens. |
 
 For an end-to-end run against the **real** satellite binary (build headless,

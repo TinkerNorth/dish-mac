@@ -47,7 +47,7 @@ frameworks each one may import.
 | `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, and the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes) | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
 | `DishEngine` | Everything that does IO or owns state: discovery, pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, and `AppModel`, the one composition root | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, GameController, CoreHaptics, IOKit, Security, os |
-| `Dish` | The SwiftUI views, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three | Foundation, Combine, SwiftUI, AppKit |
+| `Dish` | The SwiftUI views, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
 `ImportBoundariesTests` fails the build when a file imports outside its row;
 `PackageGraphTests` fails it when a dependency points the wrong way.
@@ -82,9 +82,16 @@ child's state by reference, never as a copy: `WifiConnectionManager` and
 `PairingClient`, `SatelliteClient`. A **reducer** is a pure free function in
 `DishCore` for a `(state, event) -> result` decision.
 
-Where the kernel is wired today: `ScreenWakeController` is a `Controller<Int>`
-fed by a `Composer` over the hub's bindings and summaries; the notification
-queue is a `StateSource<[DishNotification]>`; `composeSlots` and
+Where the kernel is wired today: `WakePipeline` composes the streaming count
+(a `Composer<Int>` over the hub's bindings and summaries), the pad activity
+(`ControllerActivitySource`, a ticking `StateSource<Bool>`) and the keep-awake
+preference into a `Composer<WakeState>` that `WakeStateController`, a
+`Controller<WakeState>`, follows with IOKit assertions; the preference stores
+(`ThemePreferenceStore`, `BackgroundPreferenceStore`, `KeepAwakePreferenceStore`,
+`UpdatePreferenceStore`) are `StateSource`s over `UserDefaults` under the
+fleet's keys; `UpdateChecker` is a `StateSource<UpdateState>` that runs the
+pure `UpdateMachine` reducer and performs the effects it returns; the
+notification queue is a `StateSource<[DishNotification]>`; `composeSlots` and
 `routeSnapshot` are the pure transforms behind the slot list and the hot-path
 table. The coordinators still publish several properties each; moving them
 onto single-state sources is listed under limitations.
@@ -180,6 +187,9 @@ Each entry names the decided shape, so a change lands on it.
 - **The capabilities probe is cached, not shown.** `GET /api/server/capabilities`
   is read at session open into `WifiConnectionManager.capabilities`; the
   capability table that renders it is pending.
+- **The update check downloads nothing.** It reads the release manifest,
+  says so once per version and opens the release page; installing stays
+  manual, as on the other desktop clients.
 - **Trigger effects play the API's shapes.** GameController exposes feedback,
   weapon, vibration and slope shapes; the firmware's galloping mode has none
   and resets the trigger, and the bow and machine modes play their nearest
@@ -203,4 +213,6 @@ Each entry names the decided shape, so a change lands on it.
   boundaries, the dependency graph, license headers, suppressions, mutable
   statics, the lint thresholds and the version mirrors.
 - **The app layer is tested where it decides.** `Tests/DishTests` covers the
-  AppKit signal mapping and the notification queue.
+  AppKit signal mapping, the close-to-background rule (with a recording
+  announcer in place of the notification centre), the mappers and the
+  notification queue.

@@ -21,10 +21,10 @@
 | Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ❌ mic lamp (no controller audio) |
 | Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery (pad, else the host Mac's) |
 | Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ❌ |
-| Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ❌ |
-| Runs in the background / window closed | ⚠️ | ✅ tray | ✅ tray | ❌ (closing the window quits) |
+| Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ✅ `latest.json` from the release permalink; once per version, skippable, floor warning |
+| Runs in the background / window closed | ⚠️ | ✅ tray | ✅ tray | ✅ menu-bar item (closing the window keeps streaming; off in Settings quits) |
 | Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite (release-all on sleep, reconnect on wake) |
-| Keep-awake is user-configurable | ❌ | ✅ | ✅ | ❌ (display kept awake while streaming, no setting) |
+| Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional |
 | Diagnostics screen | ✅ | ✅ | ✅ | ❌ |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ❌ |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
@@ -32,7 +32,7 @@
 | Capability verdict word "Supported" | ✅ | ✅ | ✅ | ❌ (capability chips only) |
 | Pairing secrets stored encrypted | ✅ Moonlight key · ❌ Satellite key | ✅ DPAPI | ✅ Secret Service | ✅ Keychain |
 | Six languages (en, bs, de, es, fr, pt-BR) | ✅ | ✅ | ✅ | ✅ every word, plural forms included |
-| Light, dark and system theme | ✅ | ✅ | ✅ | ❌ dark only |
+| Light, dark and system theme | ✅ | ✅ | ✅ | ✅ |
 | Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ⚠️ the pad's family picks its type from the catalog's `emulates`; no picker yet |
 
 ## 2. Input, pad to host, by path (cell = USB · Bluetooth)
@@ -81,12 +81,12 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. Desktop UX: light/dark/system theme, the menu-bar item and background
-   mode, keep-awake modes, the Emulate-as picker over the catalog types, the
+1. Desktop UX, the rest: the Emulate-as picker over the catalog types, the
    motion backend status from the apply result, per-slot switches, the
    capability table with "Supported" fed by the cached capabilities probe,
-   the link-tier cue, Diagnostics, the update check, local crash logs with an
-   opt-out report, Help, Support, Licenses and About.
+   the link-tier cue, Diagnostics, and local crash logs with an opt-out
+   report. (Theme, background mode, keep-awake modes, the update check and
+   About shipped.)
 2. Controller audio and HD haptics over the DualSense's USB audio function,
    where Core Audio exposes it; the mic lamp rides the same work.
 3. Moonlight hosts.
