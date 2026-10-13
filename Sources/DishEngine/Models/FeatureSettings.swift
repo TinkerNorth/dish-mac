@@ -103,12 +103,25 @@ package struct ForwardingFlags: Equatable {
     package var touchpad = true
     package var rumble = true
     package var lightbar = true
+    /// The pad's own audio has no global switch: these carry the
+    /// controller's own, the mic off until asked.
+    package var mic = false
+    package var speaker = true
 
-    package init(motion: Bool = true, touchpad: Bool = true, rumble: Bool = true, lightbar: Bool = true) {
+    package init(
+        motion: Bool = true,
+        touchpad: Bool = true,
+        rumble: Bool = true,
+        lightbar: Bool = true,
+        mic: Bool = false,
+        speaker: Bool = true
+    ) {
         self.motion = motion
         self.touchpad = touchpad
         self.rumble = rumble
         self.lightbar = lightbar
+        self.mic = mic
+        self.speaker = speaker
     }
 }
 

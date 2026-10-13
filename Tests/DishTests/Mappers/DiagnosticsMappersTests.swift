@@ -51,7 +51,10 @@ final class DiagnosticsMappersTests: XCTestCase {
         let lines = hostLines(HostDiagnostics(summary: summary(), facts: liveFacts()), locale: english)
         XCTAssertEqual(
             lines.map(\.key),
-            ["Address", "Protocol", "Epoch", "Controllers", "Virtual controllers", "Round trip", "Missed heartbeats", "Mouse control"]
+            [
+                "Address", "Protocol", "Epoch", "Controllers", "Virtual controllers", "Round trip", "Missed heartbeats", "Mouse control",
+                "Controller audio"
+            ]
         )
         XCTAssertEqual(lines[1].value, "v3")
         XCTAssertEqual(lines[2].value, "on the host: 4 · applied: 4 · in step")
@@ -60,6 +63,13 @@ final class DiagnosticsMappersTests: XCTestCase {
         XCTAssertEqual(lines[5].value, "no samples yet")
         XCTAssertEqual(lines[6].value, "0")
         XCTAssertEqual(lines[7].value, "not granted")
+        XCTAssertEqual(lines[8].value, "not granted")
+    }
+
+    func testTheHostsAudioLineNamesWhatItGranted() {
+        XCTAssertEqual(hostAudioText(.none), "not granted")
+        XCTAssertEqual(hostAudioText(HostAudioVerdict(mic: true, speaker: true, hapticAudio: true)), "Microphone · Speaker · Haptic audio")
+        XCTAssertEqual(hostAudioText(HostAudioVerdict(mic: false, speaker: true, hapticAudio: false)), "Speaker")
     }
 
     func testBeforeTheFirstAckTheHostSaysSo() {
@@ -95,7 +105,8 @@ final class DiagnosticsMappersTests: XCTestCase {
         )
         XCTAssertTrue(protocolText(lowered).hasPrefix("v1 (offered v3) · "), protocolText(lowered))
         XCTAssertEqual(protocolText(liveFacts()), "v3")
-        XCTAssertEqual(hostLines(HostDiagnostics(summary: summary(), facts: lowered), locale: english).last?.value, "granted")
+        let mouse = hostLines(HostDiagnostics(summary: summary(), facts: lowered), locale: english).first { $0.key == "Mouse control" }
+        XCTAssertEqual(mouse?.value, "granted")
     }
 
     func testTheRoundTripLineCarriesTheThreeFiguresAndTheFill() {
@@ -143,6 +154,71 @@ final class DiagnosticsMappersTests: XCTestCase {
         XCTAssertEqual(lines[6].value, "yes")
         XCTAssertEqual(lines[7].value, "Rumble · Motion")
         XCTAssertEqual(lines[8].value, "pad")
+    }
+
+    private var dualSenseFunction: PadAudioFunction {
+        let device = AudioDeviceFacts(
+            id: 9,
+            uid: "ds",
+            name: "DualSense Wireless Controller",
+            isUSB: true,
+            inputChannels: 1,
+            outputChannels: 4
+        )
+        return PadAudioFunction(device: device, family: .dualSense)
+    }
+
+    private func armedPlan(muted: Bool = false) -> AudioPlan {
+        let host = HostAudioVerdict(mic: true, speaker: true, hapticAudio: true)
+        let facts = AudioFacts(
+            routeMic: true,
+            routeSpeaker: true,
+            routeHapticLanes: true,
+            micOn: true,
+            host: host,
+            live: true,
+            micPermitted: true,
+            muted: muted
+        )
+        return audioPlan(facts)
+    }
+
+    func testAPadsAudioLinesFollowItsRouteAndItsPlan() {
+        let slot = ControllerSlot(id: "pad", name: "DualSense", audioRoute: .routed)
+        let routed = PadAudioRoute(verdict: .routed, function: dualSenseFunction)
+        let unbound = PadDiagnostics(slot: slot, wire: nil, audio: PadAudioDiagnostics(route: routed, state: nil, counters: nil))
+        XCTAssertEqual(audioLines(unbound), [FactLine(key: "Controller audio", value: "DualSense Wireless Controller")])
+        XCTAssertEqual(audioLines(PadDiagnostics(slot: slot, wire: nil)), [], "no catalog read, no lines")
+
+        let xbox = PadAudioRoute(verdict: .familyWithoutAudio, function: nil)
+        let noAudio = PadDiagnostics(slot: slot, wire: nil, audio: PadAudioDiagnostics(route: xbox, state: nil, counters: nil))
+        XCTAssertEqual(audioLines(noAudio), [], "a family without audio has no lines")
+
+        let state = ControllerAudioState(plan: armedPlan(), micLed: .pulse)
+        let counters = AudioCounters(speakerPlayed: 50, speakerConcealed: 2, hapticPlayed: 7, hapticConcealed: 0, micSent: 12)
+        let bound = PadDiagnostics(slot: slot, wire: nil, audio: PadAudioDiagnostics(route: routed, state: state, counters: counters))
+        let lines = audioLines(bound)
+        XCTAssertEqual(lines.map(\.key), ["Controller audio", "Microphone", "Speaker", "Haptics", "Mic lamp"])
+        XCTAssertEqual(lines[1].value, "capturing · 12 sent")
+        XCTAssertEqual(lines[2].value, "playing · 50 played · 2 concealed")
+        XCTAssertEqual(lines[3].value, "playing · 7 played · 0 concealed")
+        XCTAssertEqual(lines[4].value, "Pulse")
+        XCTAssertEqual(padLines(bound).suffix(5), lines, "the pad's card ends with its audio")
+    }
+
+    func testEveryAudioWordIsSpelled() {
+        XCTAssertEqual(micStateText(armedPlan(muted: true), sent: 3), "armed, muted")
+        XCTAssertEqual(micStateText(.silent, sent: 0), "off")
+        XCTAssertEqual(laneText(false, played: 0, concealed: 0), "idle")
+        XCTAssertEqual(micLampText(nil), "Off")
+        XCTAssertEqual(micLampText(.off), "Off")
+        XCTAssertEqual(micLampText(.on), "On")
+        let unplugged = PadAudioRoute(verdict: .noAudioFunction, function: nil)
+        XCTAssertEqual(audioRouteText(unplugged), "no USB audio function on this controller")
+        let twoPads = PadAudioRoute(verdict: .padNameShared, function: nil)
+        XCTAssertEqual(audioRouteText(twoPads), "two controllers share one name, so neither is routed")
+        let twoDevices = PadAudioRoute(verdict: .endpointNameShared, function: nil)
+        XCTAssertEqual(audioRouteText(twoDevices), "macOS lists more than one audio device under its name, so it is not routed")
     }
 
     func testABoundPadWithoutADescriptorIsNotDeclaredYet() {

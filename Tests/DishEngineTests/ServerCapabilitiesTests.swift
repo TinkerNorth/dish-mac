@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import XCTest
 @testable import DishEngine
 
@@ -9,7 +10,8 @@ import XCTest
 final class ServerCapabilitiesTests: XCTestCase {
 
     func testTheFakeFixtureParses() throws {
-        let probe = try JSONDecoder().decode(ServerCapabilitiesDTO.self, from: Data(FakeSatelliteRest.capabilitiesJSON.utf8))
+        let json = FakeSatelliteRest.capabilitiesJSON(controllerAudio: false)
+        let probe = try JSONDecoder().decode(ServerCapabilitiesDTO.self, from: Data(json.utf8))
         XCTAssertEqual(probe.protocolVersion, 3)
         XCTAssertEqual(probe.serverVersion, "1.6.0")
         XCTAssertEqual(probe.maxControllers, 16)
@@ -20,6 +22,12 @@ final class ServerCapabilitiesTests: XCTestCase {
         XCTAssertFalse(probe.host.keyboardControl.supported)
         XCTAssertFalse(probe.controllerAudio.enabled)
         XCTAssertFalse(probe.reachable, "the stamp is the gateway's, not the body's")
+    }
+
+    func testTheFakeFixtureGrantsControllerAudioWhole() throws {
+        let json = FakeSatelliteRest.capabilitiesJSON(controllerAudio: true)
+        let probe = try JSONDecoder().decode(ServerCapabilitiesDTO.self, from: Data(json.utf8))
+        XCTAssertEqual(probe.audioVerdict, HostAudioVerdict(mic: true, speaker: true, hapticAudio: true))
     }
 
     func testAnOlderServerOmitsBlocksAndEachReadsAbsent() throws {

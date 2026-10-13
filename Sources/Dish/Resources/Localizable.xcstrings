@@ -799,6 +799,76 @@
         }
       }
     },
+    "%lld played · %lld concealed" : {
+      "comment" : "Diagnostics: a lane's frames played and concealed.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld reproducirano · %lld prikriveno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld abgespielt · %lld verdeckt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld reproducidos · %lld ocultados"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld lus · %lld masqués"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld reproduzidos · %lld ocultados"
+          }
+        }
+      }
+    },
+    "%lld sent" : {
+      "comment" : "Diagnostics: microphone frames sent this session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld poslano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld gesendet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld enviados"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld envoyés"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld enviados"
+          }
+        }
+      }
+    },
     "%lld%%" : {
       "comment" : "Battery pill percentage.",
       "localizations" : {
@@ -1215,6 +1285,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gatilhos analógicos"
+          }
+        }
+      }
+    },
+    "Audio from the host plays on the pad’s speaker or headset." : {
+      "comment" : "Speaker chip tooltip while on.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zvuk s hosta se reproducira na zvučniku ili slušalicama pada."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ton vom Host läuft über den Lautsprecher oder das Headset des Pads."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El audio del host suena por el altavoz o los auriculares del mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’audio de l’hôte est lu sur le haut-parleur ou le casque de la manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O áudio do host toca no alto-falante ou fone do controle."
           }
         }
       }
@@ -2265,6 +2370,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conexões"
+          }
+        }
+      }
+    },
+    "Controller audio" : {
+      "comment" : "Diagnostics key: the pad's own audio route; also the host's grant line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio kontrolera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller-Audio"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio del mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio de la manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Áudio do controle"
           }
         }
       }
@@ -3914,6 +4054,41 @@
         }
       }
     },
+    "Haptics" : {
+      "comment" : "Diagnostics key: the haptics lanes.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haptika"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haptik"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Háptica"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retour haptique"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Háptica"
+          }
+        }
+      }
+    },
     "Help & FAQ" : {
       "comment" : "About link title.",
       "localizations" : {
@@ -4299,6 +4474,146 @@
         }
       }
     },
+    "Mic" : {
+      "comment" : "Chip label: the controller's microphone switch.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mik"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikro"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micro"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mic"
+          }
+        }
+      }
+    },
+    "Mic lamp" : {
+      "comment" : "Chip and Diagnostics key: the lamp the game asked for.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lampica mikrofona"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofonlampe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luz del micrófono"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voyant du micro"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Luz do microfone"
+          }
+        }
+      }
+    },
+    "Mic live" : {
+      "comment" : "Chip: a microphone is capturing.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon aktivan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon aktiv"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micrófono activo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micro actif"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microfone ativo"
+          }
+        }
+      }
+    },
+    "Mic muted" : {
+      "comment" : "Chip: the microphone is armed but muted.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon utišan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon stumm"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micrófono silenciado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micro coupé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microfone mudo"
+          }
+        }
+      }
+    },
     "Microphone" : {
       "comment" : "Capability row.",
       "localizations" : {
@@ -4330,6 +4645,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Microfone"
+          }
+        }
+      }
+    },
+    "Microphone is live. Click to mute it." : {
+      "comment" : "Slot chip tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon je uključen. Kliknite da ga utišate."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Mikrofon ist an. Zum Stummschalten klicken."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El micrófono está activo. Haz clic para silenciarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le micro est actif. Cliquez pour le couper."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O microfone está ativo. Clique para silenciar."
+          }
+        }
+      }
+    },
+    "Microphone muted. Click to unmute it." : {
+      "comment" : "Slot chip tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon je utišan. Kliknite da ga ponovo uključite."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon stumm. Klicken, um die Stummschaltung aufzuheben."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micrófono silenciado. Haz clic para reactivarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micro coupé. Cliquez pour le rétablir."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microfone mudo. Clique para reativar."
+          }
+        }
+      }
+    },
+    "Microphone permission is off for Dish. Turn it on in system settings to use the controller microphone." : {
+      "comment" : "Mic chip tooltip while the system withholds the microphone.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dozvola za mikrofon je isključena za Dish. Uključite je u postavkama sistema da biste koristili mikrofon kontrolera."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Mikrofonberechtigung ist für Dish aus. Schalte sie in den Systemeinstellungen ein, um das Controller-Mikrofon zu nutzen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El permiso de micrófono está desactivado para Dish. Actívalo en los ajustes del sistema para usar el micrófono del mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'autorisation du micro est désactivée pour Dish. Activez-la dans les réglages du système pour utiliser le micro de la manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A permissão de microfone está desligada para o Dish. Ligue nas configurações do sistema para usar o microfone do controle."
           }
         }
       }
@@ -4750,6 +5170,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Controle de mouse"
+          }
+        }
+      }
+    },
+    "Mute mic" : {
+      "comment" : "Header chip tooltip: the click mutes every armed microphone.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utišaj mikrofon"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikro stummschalten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silenciar micro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Couper le micro"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silenciar mic"
           }
         }
       }
@@ -5314,6 +5769,41 @@
         }
       }
     },
+    "On" : {
+      "comment" : "Lamp state.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uključen"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "An"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encendido"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Activé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ligado"
+          }
+        }
+      }
+    },
     "On the wire" : {
       "comment" : "Controller card line key.",
       "localizations" : {
@@ -5870,6 +6360,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Protocolo"
+          }
+        }
+      }
+    },
+    "Pulse" : {
+      "comment" : "Lamp state.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsiranje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsation"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulso"
           }
         }
       }
@@ -6819,6 +7344,76 @@
         }
       }
     },
+    "The pad’s audio needs USB; over Bluetooth it has no channel." : {
+      "comment" : "Capability table reason: a PlayStation pad without its USB audio function.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zvuk kontrolera treba USB; preko Bluetootha nema kanal."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Ton des Pads braucht USB; über Bluetooth hat er keinen Kanal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El audio del mando necesita USB; por Bluetooth no tiene canal."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le son de la manette passe par USB ; en Bluetooth, il n’a pas de canal."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O áudio do controle precisa de USB; por Bluetooth não tem canal."
+          }
+        }
+      }
+    },
+    "The pad’s mic carries your voice to the host. Off sends nothing." : {
+      "comment" : "Mic chip tooltip while on.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon pada prenosi vaš glas do hosta. Isključeno ne šalje ništa."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Mikrofon des Pads überträgt Ihre Stimme zum Host. Aus sendet nichts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El micrófono del mando lleva tu voz al host. Apagado no envía nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le micro de la manette porte votre voix vers l’hôte. Désactivé, rien n’est envoyé."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O microfone do controle leva sua voz ao host. Desligado não envia nada."
+          }
+        }
+      }
+    },
     "The release information didn't parse. Dish will retry automatically." : {
       "comment" : "Update status line.",
       "localizations" : {
@@ -7344,6 +7939,41 @@
         }
       }
     },
+    "Two controllers share one name, so neither gets its audio." : {
+      "comment" : "Capability table reason.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dva kontrolera dijele jedno ime, pa nijedan ne dobija svoj zvuk."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zwei Controller teilen sich einen Namen, daher bekommt keiner seinen Ton."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dos mandos comparten un nombre, así que ninguno recibe su audio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deux manettes partagent un même nom, donc aucune ne reçoit son son."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dois controles compartilham um nome, então nenhum recebe seu áudio."
+          }
+        }
+      }
+    },
     "Type" : {
       "comment" : "Controller card line key: the emulated type.",
       "localizations" : {
@@ -7515,6 +8145,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desvincular"
+          }
+        }
+      }
+    },
+    "Unmute mic" : {
+      "comment" : "Header chip tooltip: the click unmutes every armed microphone.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uključi mikrofon"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stummschaltung aufheben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reactivar micro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rétablir le micro"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reativar mic"
           }
         }
       }
@@ -8079,6 +8744,41 @@
         }
       }
     },
+    "armed, muted" : {
+      "comment" : "Diagnostics value: the microphone.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "spreman, utišan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "bereit, stumm"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "armado, silenciado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "armé, coupé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "armado, mudo"
+          }
+        }
+      }
+    },
     "available" : {
       "comment" : "Backend word.",
       "localizations" : {
@@ -8110,6 +8810,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "disponível"
+          }
+        }
+      }
+    },
+    "capturing" : {
+      "comment" : "Diagnostics value: the microphone.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "snima"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nimmt auf"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "capturando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en capture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "capturando"
           }
         }
       }
@@ -8219,6 +8954,41 @@
         }
       }
     },
+    "idle" : {
+      "comment" : "Diagnostics value: a lane.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "neaktivan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "inaktiv"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "inactivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "inactive"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "inativo"
+          }
+        }
+      }
+    },
     "in step" : {
       "comment" : "Agreement word.",
       "localizations" : {
@@ -8324,6 +9094,76 @@
         }
       }
     },
+    "macOS lists more than one audio device under its name, so it is not routed" : {
+      "comment" : "Diagnostics value (the sibling line, for a Mac).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS navodi više od jednog audio uređaja pod njegovim imenom, pa nije usmjeren"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS führt mehr als ein Audiogerät unter seinem Namen, daher wird es nicht geroutet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS lista más de un dispositivo de audio con su nombre, así que no se enruta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS liste plus d'un périphérique audio à son nom, donc elle n'est pas routée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS lista mais de um dispositivo de áudio com o nome dele, então ele não é roteado"
+          }
+        }
+      }
+    },
+    "macOS lists more than one audio device under this pad’s name, so its audio is not routed." : {
+      "comment" : "Capability table reason.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS navodi više od jednog audio uređaja pod imenom ovog kontrolera, pa se njegov zvuk ne usmjerava."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS führt mehr als ein Audiogerät unter dem Namen dieses Pads, daher wird sein Ton nicht geleitet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS lista más de un dispositivo de audio con el nombre de este mando, así que su audio no se enruta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS liste plus d’un périphérique audio sous le nom de cette manette, donc son son n’est pas acheminé."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS lista mais de um dispositivo de áudio com o nome deste controle, então seu áudio não é roteado."
+          }
+        }
+      }
+    },
     "mouse" : {
       "comment" : "Touchpad mode word.",
       "localizations" : {
@@ -8425,6 +9265,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "não"
+          }
+        }
+      }
+    },
+    "no USB audio function on this controller" : {
+      "comment" : "Diagnostics value.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ovaj kontroler nema USB audio funkciju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "keine USB-Audiofunktion an diesem Controller"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "este mando no tiene función de audio USB"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune fonction audio USB sur cette manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "este controle não tem função de áudio USB"
           }
         }
       }
@@ -8740,6 +9615,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "pad"
+          }
+        }
+      }
+    },
+    "playing" : {
+      "comment" : "Diagnostics value: a lane.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reproducira"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "spielt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "reproduciendo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en lecture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "tocando"
+          }
+        }
+      }
+    },
+    "two controllers share one name, so neither is routed" : {
+      "comment" : "Diagnostics value.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dva kontrolera dijele isto ime, pa nijedan nije usmjeren"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "zwei Controller tragen denselben Namen, daher wird keiner geroutet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dos mandos comparten el mismo nombre, así que ninguno se enruta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "deux manettes portent le même nom, donc aucune n'est routée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "dois controles têm o mesmo nome, então nenhum é roteado"
           }
         }
       }

@@ -10,8 +10,9 @@ import SwiftUI
 
 /// What the solver takes, from a bound slot's facts and the user's switches.
 /// The link layer is this client: GameController carries everything the pad
-/// exposes and routes no mouse; no controller audio route exists yet, so the
-/// pad layer refuses the mic and the speaker.
+/// exposes and routes no mouse, and the pad's own audio reaches it only
+/// through the USB audio function it can see; the pad layer's word on the
+/// mic and the speaker is the pad's family.
 func capabilityInputs(_ slot: ControllerSlot, _ flags: ForwardingFlags) -> CapabilityInputs {
     var inputs = CapabilityInputs()
     inputs.padMotion = slot.capabilities.hasMotion
@@ -20,14 +21,31 @@ func capabilityInputs(_ slot: ControllerSlot, _ flags: ForwardingFlags) -> Capab
     inputs.padLightbar = slot.capabilities.hasLightbar
     inputs.padTriggerEffects = slot.capabilities.hasTriggerEffects
     inputs.padPlayerLeds = slot.capabilities.hasPlayerLeds
+    inputs.padMic = padHasAudio(slot)
+    inputs.padSpeaker = padHasAudio(slot)
     inputs.linkRoutesMouse = false
+    inputs.linkRoutesMic = slot.capabilities.hasMic
+    inputs.linkRoutesSpeaker = slot.capabilities.hasSpeaker
     applyTypeFacts(slot.typeFeatures, to: &inputs)
     applyHostFacts(slot.hostProbe, to: &inputs)
     inputs.userMotionOn = flags.motion
     inputs.userRumbleOn = flags.rumble
     inputs.userLightbarOn = flags.lightbar
     inputs.userTouchpadPick = flags.touchpad ? .pad : .off
+    inputs.userMicOn = flags.mic
+    inputs.userSpeakerOn = flags.speaker
     return inputs
+}
+
+/// A PlayStation pad has a mic and a speaker whether or not this Mac can
+/// reach them; before the audio catalog is read, what the capabilities
+/// already claim counts.
+func padHasAudio(_ slot: ControllerSlot) -> Bool {
+    switch slot.audioRoute {
+    case .routed, .noAudioFunction, .padNameShared, .endpointNameShared: true
+    case .familyWithoutAudio: false
+    case nil: slot.capabilities.hasMic || slot.capabilities.hasSpeaker
+    }
 }
 
 private func applyTypeFacts(_ facts: TypeFeatureFacts?, to inputs: inout CapabilityInputs) {
@@ -75,7 +93,7 @@ func capabilityTable(_ slot: ControllerSlot, _ flags: ForwardingFlags, words: L1
             label: capabilityFeatureText(row.feature, words: words),
             verdict: row.verdict,
             verdictText: capabilityVerdictText(row.verdict, words: words),
-            help: capabilityHelp(row, typeName: typeName, words: words)
+            help: capabilityHelp(row, typeName: typeName, route: slot.audioRoute, words: words)
         )
     }
 }
@@ -116,22 +134,41 @@ func capabilityVerdictColor(_ verdict: CapVerdict) -> Color {
 
 /// The reason behind a verdict, naming the first failing layer when there
 /// is one, because that is the one whose fix the user can act on.
-func capabilityHelp(_ row: CapabilityRow, typeName: String, words: L10n = .app) -> String {
-    let feature = capabilityFeatureText(row.feature, words: words)
+func capabilityHelp(_ row: CapabilityRow, typeName: String, route: AudioRouteVerdict? = nil, words: L10n = .app) -> String {
     switch row.verdict {
-    case .available: return words.everyLayerCarries(typeName)
-    case .off: return words.switchedOffInSettings
-    case .pending: return words.waitingForTheHostsCatalog
-    case .unavailable: return layerReason(row.failingLayer ?? .host, feature: feature, typeName: typeName, words: words)
+    case .available: words.everyLayerCarries(typeName)
+    case .off: words.switchedOffInSettings
+    case .pending: words.waitingForTheHostsCatalog
+    case .unavailable: layerReason(row.failingLayer ?? .host, row.feature, typeName: typeName, route: route, words: words)
     }
 }
 
-private func layerReason(_ layer: CapLayer, feature: String, typeName: String, words: L10n) -> String {
+private func layerReason(_ layer: CapLayer, _ feature: CapFeature, typeName: String, route: AudioRouteVerdict?, words: L10n) -> String {
+    let name = capabilityFeatureText(feature, words: words)
     switch layer {
-    case .input: words.padLacks(feature)
-    case .link: words.macDoesNotRoute(feature)
-    case .type: words.typeLacks(typeName, feature)
-    case .host: words.hostLacks(feature)
+    case .input: return words.padLacks(name)
+    case .link: return linkReason(feature, name: name, route: route, words: words)
+    case .type: return words.typeLacks(typeName, name)
+    case .host: return words.hostLacks(name)
+    }
+}
+
+/// The link refuses the mouse by design and the pad's audio by
+/// circumstance, so the audio names its circumstance.
+private func linkReason(_ feature: CapFeature, name: String, route: AudioRouteVerdict?, words: L10n) -> String {
+    switch feature {
+    case .mic, .speaker: audioRouteReason(route, words: words)
+    case .gamepad, .triggers, .motion, .touchpad, .mouse, .rumble, .lightbar, .triggerEffects, .playerLeds: words.macDoesNotRoute(name)
+    }
+}
+
+/// Why this Mac routes none of the pad's audio: the audio chips are absent
+/// then, and the table row says why.
+func audioRouteReason(_ route: AudioRouteVerdict?, words: L10n = .app) -> String {
+    switch route {
+    case .padNameShared: words.padNameSharedReason
+    case .endpointNameShared: words.endpointNameSharedReason
+    case .routed, .noAudioFunction, .familyWithoutAudio, nil: words.padAudioNeedsUsb
     }
 }
 

@@ -21,7 +21,7 @@ final class ImportBoundariesTests: XCTestCase {
             directory: "Sources/DishEngine",
             allowed: [
                 "Foundation", "Combine", "CryptoKit", "Darwin", "Network", "GameController",
-                "CoreHaptics", "IOKit", "Security", "os", "DishCore", "DishKernel"
+                "CoreHaptics", "IOKit", "Security", "os", "AudioToolbox", "CoreAudio", "AVFoundation", "DishCore", "DishKernel"
             ]
         ),
         Layer(

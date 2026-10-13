@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import DishEngine
 import Foundation
 import SwiftUI
@@ -59,18 +60,30 @@ struct CapabilityChipModel: Equatable {
 
 /// The chips for a slot as the card shows them: each present feature folds
 /// the global switch with the controller's own and says which one is off;
-/// bound, the gyro chip carries the satellite's word on motion.
-func capabilityChips(for slot: ControllerSlot, _ global: ForwardingFlags, words: L10n = .app) -> [CapabilityChipModel] {
+/// bound, the gyro chip carries the satellite's word on motion, and the mic
+/// chip warns while the system withholds its leave.
+func capabilityChips(
+    for slot: ControllerSlot,
+    _ global: ForwardingFlags,
+    micPermitted: Bool = true,
+    words: L10n = .app
+) -> [CapabilityChipModel] {
     let effective = effectiveFlags(global: global, slot: slot.preferences)
     let gyro = slot.capabilities.hasMotion
         ? switchChip(words.gyro, feature: words.motion, .motion, slot: slot, global: global, words: words)
         : CapabilityChipModel(label: words.noGyro, on: false, available: false, help: words.motionUnavailableHelp)
     let optional: [(present: Bool, label: String, feature: String, key: SlotSwitch)] = [
         (slot.capabilities.hasTouchpad, words.touchpad, words.touchpad, .touchpad),
-        (slot.capabilities.hasRumble, words.rumble, words.rumble, .rumble)
+        (slot.capabilities.hasRumble, words.rumble, words.rumble, .rumble),
+        (slot.capabilities.hasMic, words.mic, words.microphone, .mic),
+        (slot.capabilities.hasSpeaker, words.speaker, words.speaker, .speaker)
     ]
     let switches = optional.filter(\.present).map { entry in
-        switchChip(entry.label, feature: entry.feature, entry.key, slot: slot, global: global, words: words)
+        micPermissionWarning(
+            switchChip(entry.label, feature: entry.feature, entry.key, slot: slot, global: global, words: words),
+            micPermitted: micPermitted,
+            words: words
+        )
     }
     let lightbar = slot.capabilities.hasLightbar ? [detectedChip(
         words.lightbar,
@@ -91,15 +104,78 @@ private func switchChip(
     global: ForwardingFlags,
     words: L10n
 ) -> CapabilityChipModel {
-    let globalOn = switchValue(key, global)
+    let globalOn = globallyAllowed(key, global)
     let ownOn = switchValue(key, slot.preferences)
     guard globalOn else {
         return CapabilityChipModel(label: label, on: false, available: true, help: words.detectedOff(feature), switch: key, toggle: false)
     }
     let help = ownOn
-        ? "\(words.detectedOn(feature)) \(words.clickToTurnOffForThisController)"
+        ? "\(switchedOnSentence(key, feature: feature, words: words)) \(words.clickToTurnOffForThisController)"
         : "\(words.turnedOffForThisController) \(words.clickToTurnOnForThisController)"
     return CapabilityChipModel(label: label, on: ownOn, available: true, help: help, switch: key, toggle: true)
+}
+
+/// What a switched-on chip says of its feature: the detection line, or for
+/// the pad's own audio, where the sound goes.
+private func switchedOnSentence(_ key: SlotSwitch, feature: String, words: L10n) -> String {
+    switch key {
+    case .motion, .rumble, .touchpad: words.detectedOn(feature)
+    case .mic: words.micCarriesYourVoice
+    case .speaker: words.hostAudioPlaysOnThePad
+    }
+}
+
+/// The pad's own audio has no global switch, so its chips answer to the
+/// controller alone.
+func globallyAllowed(_ key: SlotSwitch, _ global: ForwardingFlags) -> Bool {
+    switch key {
+    case .motion, .rumble, .touchpad: switchValue(key, global)
+    case .mic, .speaker: true
+    }
+}
+
+/// A mic switched on without the system's leave warns and says where to
+/// turn it on; the click still works, so the switch can be turned off.
+private func micPermissionWarning(_ chip: CapabilityChipModel, micPermitted: Bool, words: L10n) -> CapabilityChipModel {
+    guard chip.switch == .mic, chip.on, !micPermitted else { return chip }
+    return CapabilityChipModel(
+        label: chip.label,
+        on: true,
+        available: true,
+        help: words.micPermissionOff,
+        warning: true,
+        switch: .mic,
+        toggle: true
+    )
+}
+
+/// The microphone's standing on a bound controller: nil until it is armed,
+/// then live or muted, and a click flips this controller's mute.
+func micStatusChip(_ slot: ControllerSlot, words: L10n = .app) -> CapabilityChipModel? {
+    guard let plan = slot.audio?.plan, plan.micArmed else { return nil }
+    return plan.capture
+        ? CapabilityChipModel(label: words.micLive, on: true, available: true, help: words.micLiveClickToMute)
+        : CapabilityChipModel(label: words.micMuted, on: false, available: true, help: words.micMutedClickToUnmute)
+}
+
+/// The lamp the game asked for, while it asks: GameController reaches no
+/// DualSense lamp, so the chip is the lamp.
+func micLampChip(_ slot: ControllerSlot, words: L10n = .app) -> CapabilityChipModel? {
+    switch slot.audio?.micLed {
+    case .on: CapabilityChipModel(label: words.micLamp, on: true, available: true, help: "\(words.micLamp) · \(words.on)")
+    case .pulse: CapabilityChipModel(label: words.micLamp, on: true, available: true, help: "\(words.micLamp) · \(words.pulse)")
+    case .off, nil: nil
+    }
+}
+
+/// The header's app-wide chip: nil while no microphone is armed, else one
+/// word and one click for every armed mic at once.
+func micIndicatorChip(_ state: MicIndicatorState, words: L10n = .app) -> CapabilityChipModel? {
+    switch state {
+    case .hidden: nil
+    case .live: CapabilityChipModel(label: words.micLive, on: true, available: true, help: words.muteMic)
+    case .muted: CapabilityChipModel(label: words.micMuted, on: false, available: true, help: words.unmuteMic)
+    }
 }
 
 /// Bound, the gyro chip reads the satellite's word; the click hint stays.
@@ -123,6 +199,8 @@ func switchValue(_ key: SlotSwitch, _ flags: ForwardingFlags) -> Bool {
     case .motion: flags.motion
     case .rumble: flags.rumble
     case .touchpad: flags.touchpad
+    case .mic: flags.mic
+    case .speaker: flags.speaker
     }
 }
 
@@ -131,6 +209,8 @@ func switchValue(_ key: SlotSwitch, _ preferences: SlotPreferences) -> Bool {
     case .motion: preferences.motion
     case .rumble: preferences.rumble
     case .touchpad: preferences.touchpad
+    case .mic: preferences.mic
+    case .speaker: preferences.speaker
     }
 }
 

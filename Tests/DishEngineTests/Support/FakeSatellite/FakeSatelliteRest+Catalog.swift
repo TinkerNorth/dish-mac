@@ -19,16 +19,20 @@ extension FakeSatelliteRest {
 
     static let catalogETag = "\"1.6.0+en\""
 
-    static let capabilitiesJSON = """
-    {"protocolVersion":3,"serverVersion":"1.6.0","maxControllers":16,
-     "backend":{"id":"fake","supported":true,"available":true,"errorCode":null},
-     "motion":{"available":true},
-     "host":{"catalog":{"supported":true},
-             "mouseControl":{"supported":true,"available":true},
-             "keyboardControl":{"supported":false},
-             "rumble":{"supported":true,"available":true}},
-     "controllerAudio":{"enabled":false,"mic":false,"speaker":false,"hapticAudio":false}}
-    """
+    /// The probe; the `controllerAudio` block grants everything or nothing.
+    static func capabilitiesJSON(controllerAudio: Bool) -> String {
+        let audio = controllerAudio ? "true" : "false"
+        return """
+        {"protocolVersion":3,"serverVersion":"1.6.0","maxControllers":16,
+         "backend":{"id":"fake","supported":true,"available":true,"errorCode":null},
+         "motion":{"available":true},
+         "host":{"catalog":{"supported":true},
+                 "mouseControl":{"supported":true,"available":true},
+                 "keyboardControl":{"supported":false},
+                 "rumble":{"supported":true,"available":true}},
+         "controllerAudio":{"enabled":\(audio),"mic":\(audio),"speaker":\(audio),"hapticAudio":\(audio)}}
+        """
+    }
 
     /// The version-2 catalog: four types, `emulates` per type, every feature
     /// slug the contract names.

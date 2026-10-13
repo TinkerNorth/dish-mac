@@ -127,10 +127,13 @@ extension SatelliteClient {
         _ = receiveDrained.wait(timeout: .now() + 1.0)
     }
 
+    /// A whole datagram at the contract's ceiling: `recvfrom` truncates to
+    /// the buffer, and a truncated audio ciphertext fails the AEAD, so a
+    /// shorter buffer drops every full-size speaker frame in silence.
     private func receiveOne() {
         let (fd, _) = socketSnapshot()
         if fd < 0 { return }
-        var buf = [UInt8](repeating: 0, count: 256)
+        var buf = [UInt8](repeating: 0, count: ProtocolConstants.udpDatagramMaxBytes)
         var from = sockaddr_in()
         var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
         let bytesRead = buf.withUnsafeMutableBufferPointer { bp -> Int in
@@ -202,6 +205,15 @@ extension SatelliteClient {
         case ProtocolConstants.msgPlayerLeds:
             guard let leds = PlayerLedsCommand.parse(inner.payload) else { return }
             onPlayerLeds?(leds)
+        case ProtocolConstants.msgSpeakerAudio:
+            guard let frame = AudioFrame.parse(inner.payload) else { return }
+            onSpeakerAudio?(frame)
+        case ProtocolConstants.msgHapticAudio:
+            guard let frame = AudioFrame.parse(inner.payload) else { return }
+            onHapticAudio?(frame)
+        case ProtocolConstants.msgMicLed:
+            guard let led = MicLedCommand.parse(inner.payload) else { return }
+            onMicLed?(led)
         case ProtocolConstants.msgSessionClose:
             guard let byte = inner.payload.first else { return }
             // Latch the reason and mark dead NOW: the session is already gone

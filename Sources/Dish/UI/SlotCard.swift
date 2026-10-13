@@ -69,7 +69,7 @@ struct SlotCard: View {
     /// reading lands.
     private var capabilityRow: some View {
         HStack(spacing: 6) {
-            ForEach(capabilityChips(for: slot, settings.flags), id: \.label) { chip in
+            ForEach(capabilityChips(for: slot, settings.flags, micPermitted: model.micPermitted), id: \.label) { chip in
                 if chip.toggle, let feature = chip.switch {
                     Button {
                         model.setSlotSwitch(feature, on: !chip.on, slotId: slot.id)
@@ -80,6 +80,17 @@ struct SlotCard: View {
                 } else {
                     CapabilityChipView(chip: chip)
                 }
+            }
+            if let status = micStatusChip(slot) {
+                Button {
+                    model.setMicMuted(!slot.micMuted, slotId: slot.id)
+                } label: {
+                    CapabilityChipView(chip: status)
+                }
+                .buttonStyle(.plain)
+            }
+            if let lamp = micLampChip(slot) {
+                CapabilityChipView(chip: lamp)
             }
             Spacer(minLength: 0)
             if let battery = slot.battery {
@@ -191,7 +202,7 @@ struct SlotCard: View {
 /// One capability pill. Available and on fills; available and off outlines;
 /// absent hardware outlines dashed, so "not available" never reads as "off".
 /// The tooltip spells the state out as a second channel.
-private struct CapabilityChipView: View {
+struct CapabilityChipView: View {
 
     let chip: CapabilityChipModel
 

@@ -178,6 +178,12 @@ final class ConnectionHub: ObservableObject {
         wifi.get(connectionId)?.setControllerType(wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family))
     }
 
+    /// The bound pad's claims changed; the descriptor follows while live.
+    func setCapabilities(slotId: String, _ capabilities: ControllerCapabilities) {
+        guard let connectionId = bindings[slotId] else { return }
+        wifi.get(connectionId)?.setCapabilities(capabilities)
+    }
+
     func boundConnection(slotId: String) -> ConnectionSummary? {
         guard let cid = bindings[slotId] else { return nil }
         return connections.first { $0.id == cid }

@@ -18,18 +18,35 @@ package struct HostDiagnostics: Equatable, Identifiable {
     }
 }
 
+/// A pad's own audio as the pipeline sees it: its route, the engine's
+/// plan and lamp once bound, and the lanes' counters.
+package struct PadAudioDiagnostics: Equatable {
+    package let route: PadAudioRoute?
+    package let state: ControllerAudioState?
+    package let counters: AudioCounters?
+
+    package init(route: PadAudioRoute?, state: ControllerAudioState?, counters: AudioCounters?) {
+        self.route = route
+        self.state = state
+        self.counters = counters
+    }
+}
+
 package struct PadDiagnostics: Equatable, Identifiable {
     package let slot: ControllerSlot
     /// Nil for an unbound pad, or one whose connection carries no descriptor.
     package let wire: SlotWireFacts?
+    /// Nil until the audio catalog has been read.
+    package let audio: PadAudioDiagnostics?
 
     package var id: String {
         slot.id
     }
 
-    package init(slot: ControllerSlot, wire: SlotWireFacts?) {
+    package init(slot: ControllerSlot, wire: SlotWireFacts?, audio: PadAudioDiagnostics? = nil) {
         self.slot = slot
         self.wire = wire
+        self.audio = audio
     }
 }
 
@@ -53,6 +70,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     private let wifi: WifiConnectionManager
     private let hub: ConnectionHub
     private var slots: () -> [ControllerSlot] = { [] }
+    private var audio: (String) -> PadAudioDiagnostics? = { _ in nil }
     private var timer: DispatchSourceTimer?
 
     init(wifi: WifiConnectionManager, hub: ConnectionHub) {
@@ -64,6 +82,11 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     /// The slot list to read, set once the owner has one.
     func useSlots(_ provider: @escaping () -> [ControllerSlot]) {
         slots = provider
+    }
+
+    /// Each pad's audio by slot id, set once the owner has a pipeline.
+    func useAudio(_ provider: @escaping (String) -> PadAudioDiagnostics?) {
+        audio = provider
     }
 
     override package func start() {
@@ -103,7 +126,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
             )
         }
         let pads = slots().map { slot in
-            PadDiagnostics(slot: slot, wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap(slotWireFacts))
+            PadDiagnostics(slot: slot, wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap(slotWireFacts), audio: audio(slot.id))
         }
         return DiagnosticsSnapshot(hosts: hosts, pads: pads)
     }
