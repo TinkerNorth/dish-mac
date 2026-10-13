@@ -132,11 +132,14 @@ dish-mac/
 ├── Tests/ArchitectureTests/      # the rules a compiler cannot read
 ├── Tests/Support/                # DishKernelProbes, LegacyFileKeychain
 ├── Tests/PARITY.md               # what the other clients have, and what is decided
+├── Resources/Dish.svg            # the fleet's app mark; Dish.icns is rendered from it
 ├── packaging/update-policy.json  # the oldest build the update check still supports
+├── .github/workflows/            # macos-ci, e2e (the real satellite), release, the security gates
 ├── docs/ARCHITECTURE.md          # the module map and the dataflow rules
 ├── docs/contract.md              # contract concept → file
 ├── scripts/ci-local.sh           # the CI gate, locally
-└── scripts/e2e_local.sh          # loopback e2e against the real satellite binary
+├── scripts/e2e_local.sh          # loopback e2e against the real satellite binary
+└── scripts/render-icon.sh        # Resources/Dish.icns from Resources/Dish.svg (needs librsvg)
 ```
 
 ## Return paths
