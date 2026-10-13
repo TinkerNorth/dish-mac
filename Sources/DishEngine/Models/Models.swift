@@ -325,6 +325,8 @@ package struct ControllerSlot: Identifiable, Hashable {
     package var hostProbe: HostProbeFacts?
     /// The satellite's word on this binding's motion; nil before an apply.
     package var motionStatus: MotionBackendStatus?
+    /// The controller's own switches, beneath the global ones.
+    package var preferences = SlotPreferences()
 
     package init(
         id: String,
@@ -336,7 +338,8 @@ package struct ControllerSlot: Identifiable, Hashable {
         emulation: SlotEmulation? = nil,
         typeFeatures: TypeFeatureFacts? = nil,
         hostProbe: HostProbeFacts? = nil,
-        motionStatus: MotionBackendStatus? = nil
+        motionStatus: MotionBackendStatus? = nil,
+        preferences: SlotPreferences = SlotPreferences()
     ) {
         self.id = id
         self.name = name
@@ -348,6 +351,7 @@ package struct ControllerSlot: Identifiable, Hashable {
         self.typeFeatures = typeFeatures
         self.hostProbe = hostProbe
         self.motionStatus = motionStatus
+        self.preferences = preferences
     }
 }
 

@@ -6,22 +6,23 @@ import Foundation
 
 /// Routes the satellite's return paths (rumble, light bar, trigger effects,
 /// player LEDs) from a connection to the controller bound to it. The gate
-/// decision is pure and runs on the receive queue; the binding lookup and
-/// the actuation hop to the main actor. The two feedback paths have no
-/// switch: a pad only receives them when its descriptor claimed them.
+/// decision is pure and runs on the receive queue against the routing table
+/// (rumble is a per-controller switch, the light bar a global one); the
+/// actuation hops to the main actor. The two feedback paths have no switch:
+/// a pad only receives them when its descriptor claimed them.
 @MainActor
 final class ReturnPathRouter {
     private let input: GameControllerInput
     private let gate: ForwardingGate
-    private let bindings: () -> [String: String]
+    private let table: RoutingTable
     /// Connections already wired, pruned to the pool on every pool change so
     /// a forgotten satellite that comes back under the same id is wired again.
     private var wired: Set<String> = []
 
-    init(input: GameControllerInput, gate: ForwardingGate, bindings: @escaping () -> [String: String]) {
+    init(input: GameControllerInput, gate: ForwardingGate, table: RoutingTable) {
         self.input = input
         self.gate = gate
-        self.bindings = bindings
+        self.table = table
     }
 
     /// Wire every connection in `pool` once, and forget the ones that left.
@@ -54,9 +55,10 @@ final class ReturnPathRouter {
         input.applyPlayerLeds(deviceId: deviceId, player: command.playerNumber)
     }
 
-    /// Receive queue: drop when the Rumble switch is off, else hop.
+    /// Receive queue: drop when the bound controller's Rumble switch is off,
+    /// else hop.
     private nonisolated func rumbleArrived(from connectionId: String, _ command: RumbleCommand) {
-        guard ReturnPathRouting.shouldVibrate(flags: gate.snapshot()) else { return }
+        guard let bound = table.boundSlot(of: connectionId), ReturnPathRouting.shouldVibrate(flags: bound.flags) else { return }
         Task { @MainActor in self.applyRumble(from: connectionId, command) }
     }
 
@@ -82,6 +84,6 @@ final class ReturnPathRouter {
 
     /// The slot bound to `connectionId`; slot ids are device ids.
     private func boundDevice(of connectionId: String) -> String? {
-        bindings().first { $0.value == connectionId }?.key
+        table.boundSlot(of: connectionId)?.slotId
     }
 }

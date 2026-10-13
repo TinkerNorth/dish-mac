@@ -240,6 +240,11 @@ package final class WifiConnectionManager: ObservableObject {
         }
     }
 
+    /// The switches in force for one satellite's bound controller.
+    func applyForwardingFlags(_ flags: ForwardingFlags, to connectionId: String) {
+        connections[connectionId]?.setForwardingFlags(flags)
+    }
+
     /// A failure is surfaced only for an attempt the user made; automatic
     /// attempts report through the row's state.
     func emitFailureIfUserInitiated(_ intent: ConnectIntent, _ failure: ConnectionFailure) {
