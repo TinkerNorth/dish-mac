@@ -244,7 +244,9 @@ extension WifiConnectionManager {
         guard let slotId = conn.boundSlotId else { return }
         let type = resolveControllerType(for: id, slotId: slotId, family: conn.boundFamily)
         conn.setControllerType(type)
-        conn.setTypeOffersDs4Touchpad(typeOffersDs4Touchpad(in: catalogs[id], type: type))
+        var facts = conn.touchpadFacts
+        facts.typeOffersDs4 = typeOffersDs4Touchpad(in: catalogs[id], type: type)
+        conn.setTouchpadFacts(facts)
     }
 
     /// The probe is unauthenticated, so a satellite never probed is asked
@@ -308,8 +310,11 @@ extension WifiConnectionManager {
     func cacheCapabilities(_ probe: ServerCapabilitiesDTO, for id: String) {
         guard probe.reachable else { return }
         capabilities[id] = probe
-        connections[id]?.setHostAudio(probe.audioVerdict)
-        connections[id]?.setHostMouseControlAvailable(probe.host.mouseControl.supported && probe.host.mouseControl.available)
+        guard let conn = connections[id] else { return }
+        conn.setHostAudio(probe.audioVerdict)
+        var facts = conn.touchpadFacts
+        facts.hostMouseControl = probe.host.mouseControl.supported && probe.host.mouseControl.available
+        conn.setTouchpadFacts(facts)
     }
 
     // MARK: - Proactive re-key

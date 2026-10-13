@@ -35,6 +35,15 @@ func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingF
     return claims.filter(\.claimed).reduce(UInt16(0)) { $0 | $1.bit }
 }
 
+/// What the descriptor's touchpad ladder reads beside the pick: the
+/// catalog's word on whether the emulated type renders a touchpad, and the
+/// probe's word on whether the host advertises mouse control. A catalog not
+/// read refuses nothing; a host not probed grants nothing.
+struct TouchpadModeFacts: Equatable {
+    var typeOffersDs4 = true
+    var hostMouseControl = false
+}
+
 /// The touchpad mode a descriptor asks for: the controller's pick through
 /// the ladder, off while the global switch is off. The type's word is
 /// whether it offers the pad render; the host's is whether it advertises
