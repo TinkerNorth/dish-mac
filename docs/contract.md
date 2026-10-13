@@ -44,6 +44,10 @@ URLSession, and stores.
 | `GET /api/server/capabilities` | `Sources/DishEngine/Network/ServerCapabilities.swift`, cached by `WifiConnectionManager.fetchCapabilities`; the host layer of the capability table (`hostProbeFacts`) |
 | Catalog version 2: `catalogVersion`, `emulates`, the feature slugs, `modes`, `requires` | `Sources/DishEngine/Network/CatalogModels.swift`; `emulatedControllerType`, `offerableTypes` and `typeFeatureFacts` in `DescriptorCaps.swift` (the Emulate picker and the type layer of the capability table); the catalog is read before the first session PUT |
 | The apply result's `motion.sinkSupportedForType` / `motion.backendOk` | `ControllerApplyDto` in `RestModels.swift`, recorded per binding in `MotionBackendStatusStore`, folded by `motionIndicatorFor` in `Sources/DishCore/Reducers/MotionIndicator.swift` |
+| Controller audio frames: MIC_AUDIO 0x0012 up, SPEAKER_AUDIO 0x0013 and HAPTIC_AUDIO 0x0015 down (`ctrlIdx(1) + seq(u16 BE) + one Opus packet`), MIC_LED 0x0014, the mic-mute button bit, the 1500-byte datagram ceiling | `Sources/DishCore/Wire/AudioFrames.swift`; the receive buffer in `SatelliteClient+IO.swift` is `ProtocolConstants.udpDatagramMaxBytes` |
+| The receiver's reorder window (two frames, loss declared at the second packet ahead, resync after two gaps) | `Sources/DishCore/Reducers/AudioJitterWindow.swift` |
+| The audio plan: `capMic`/`capSpeaker`/`capHapticAudio` from the route and the switches, the mic armed by the session, the host's `controllerAudio` verdict and the system's leave, mute as zero packets, the app-wide mic word | `Sources/DishCore/Reducers/ControllerAudioPolicy.swift`; the probe's block folded by `ServerCapabilitiesDTO.audioVerdict` |
+| The pad's USB audio function (Core Audio HAL), its match to a pad by family, Opus through AudioToolbox, the HAL output and input units, the microphone permission | `Sources/DishEngine/Audio/` (`PadAudioDevices`, `PadAudioRoutes`, `OpusCodec`, `AudioUnits`, `MicPermission`), driven by `ControllerAudioEngine` and wired by `AudioPipeline` |
 
 Test double: `Tests/DishEngineTests/Support/FakeSatellite/` is an in-process
 satellite that accepts a configurable protocol range (1...3 by default, like
@@ -95,5 +99,6 @@ The session PUT carries `hostFeatures` (sent as `mouseControl: false`) and
 decodes the grant shape, but no host-input stream ships yet: the Mouse row
 of the capability table says so at the link layer. The catalog's `image`
 references are decoded and not drawn; the picker names a type, it does not
-picture it. The controller-audio opcodes are ignored on receipt, as the
+picture it. Controller audio is consumed in full but has not yet been heard
+on a pad: the engine is proven over fake ports and the fake satellite, as the
 architecture notes say.

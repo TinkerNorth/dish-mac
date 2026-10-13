@@ -66,7 +66,7 @@ final class CapabilityMappersTests: XCTestCase {
         let inputs = capabilityInputs(dualSense(), ForwardingFlags(motion: false, touchpad: true, rumble: true, lightbar: false))
         XCTAssertTrue(inputs.padMotion && inputs.padTouchpad && inputs.padRumble && inputs.padLightbar)
         XCTAssertTrue(inputs.padTriggerEffects && inputs.padPlayerLeds)
-        XCTAssertFalse(inputs.padMic || inputs.padSpeaker, "no controller audio route on this client")
+        XCTAssertFalse(inputs.padMic || inputs.padSpeaker, "no audio route read for this pad")
         XCTAssertFalse(inputs.linkRoutesMouse, "this client routes no mouse")
         XCTAssertTrue(inputs.typeResolved && inputs.typeMotion && inputs.typeMic)
         XCTAssertTrue(inputs.hostResolved && inputs.hostRumble && inputs.hostMouseControl)
@@ -88,6 +88,47 @@ final class CapabilityMappersTests: XCTestCase {
         let inputs = capabilityInputs(slot, ForwardingFlags())
         XCTAssertFalse(inputs.typeResolved)
         XCTAssertFalse(inputs.hostResolved)
+    }
+
+    private func help(_ feature: CapFeature, _ slot: ControllerSlot, _ flags: ForwardingFlags = ForwardingFlags()) throws -> String {
+        try row(feature, in: capabilityTable(slot, flags)).help
+    }
+
+    func testTheAudioLayersReadTheFamilyAndTheRoute() {
+        var routed = dualSense()
+        routed.capabilities = ControllerCapabilities(hasMic: true, hasSpeaker: true, hasHapticLanes: true)
+        routed.audioRoute = .routed
+        let inputs = capabilityInputs(routed, ForwardingFlags())
+        XCTAssertTrue(inputs.padMic && inputs.padSpeaker && inputs.linkRoutesMic && inputs.linkRoutesSpeaker)
+
+        var bluetooth = dualSense()
+        bluetooth.audioRoute = .noAudioFunction
+        let unrouted = capabilityInputs(bluetooth, ForwardingFlags())
+        XCTAssertTrue(unrouted.padMic, "the pad has a mic whether or not this Mac reaches it")
+        XCTAssertFalse(unrouted.linkRoutesMic)
+
+        var xbox = dualSense()
+        xbox.audioRoute = .familyWithoutAudio
+        XCTAssertFalse(capabilityInputs(xbox, ForwardingFlags()).padMic)
+    }
+
+    func testTheLinkRowNamesWhyThePadsAudioIsNotRouted() throws {
+        var slot = dualSense(probe: HostProbeFacts(mouseControl: true, rumble: true, mic: true, speaker: true))
+        slot.audioRoute = .noAudioFunction
+        XCTAssertEqual(try help(.mic, slot), "The pad’s audio needs USB; over Bluetooth it has no channel.")
+        slot.audioRoute = .padNameShared
+        XCTAssertEqual(try help(.speaker, slot), "Two controllers share one name, so neither gets its audio.")
+        slot.audioRoute = .endpointNameShared
+        let shared = "macOS lists more than one audio device under this pad’s name, so its audio is not routed."
+        XCTAssertEqual(try help(.mic, slot), shared)
+        slot.audioRoute = .familyWithoutAudio
+        XCTAssertEqual(try help(.mic, slot), "The pad has no Microphone.", "an Xbox pad fails at the pad")
+        slot.audioRoute = .routed
+        slot.capabilities = ControllerCapabilities(hasMic: true, hasSpeaker: true)
+        let table = capabilityTable(slot, ForwardingFlags(mic: true))
+        XCTAssertEqual(try row(.mic, in: table).verdictText, "Supported")
+        XCTAssertEqual(try row(.speaker, in: table).verdictText, "Supported")
+        XCTAssertEqual(try row(.mic, in: capabilityTable(slot, ForwardingFlags())).verdictText, "Off", "the mic is off until asked")
     }
 
     // MARK: - The table

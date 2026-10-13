@@ -27,11 +27,13 @@ package struct HostSessionFacts: Equatable {
     package let missedAcks: Int
     package let mouseControlGranted: Bool
     package let latency: LatencySummary
+    /// What the probe granted of the pad's own audio; `.none` until it lands.
+    package let audio: HostAudioVerdict
 
     package init(
         id: String, live: Bool, offeredProtocol: Int, settledProtocol: Int, compat: ProtocolCompat, appliedEpoch: Int,
         hostEpoch: Int?, hostBitmap: UInt16?, confirmedBitmap: UInt16, backendAvailable: Bool?, activeControllers: Int?,
-        missedAcks: Int, mouseControlGranted: Bool, latency: LatencySummary
+        missedAcks: Int, mouseControlGranted: Bool, latency: LatencySummary, audio: HostAudioVerdict = .none
     ) {
         self.id = id
         self.live = live
@@ -47,6 +49,7 @@ package struct HostSessionFacts: Equatable {
         self.missedAcks = missedAcks
         self.mouseControlGranted = mouseControlGranted
         self.latency = latency
+        self.audio = audio
     }
 
     /// A remembered satellite with no connection in the pool.
@@ -88,7 +91,8 @@ package func hostSessionFacts(of conn: WifiConnection) -> HostSessionFacts {
         activeControllers: ack.map { Int($0.activeCount) },
         missedAcks: conn.client?.missedAcks.get() ?? 0,
         mouseControlGranted: conn.mouseControlGranted,
-        latency: conn.client?.latencySummary() ?? HostSessionFacts.resting(id: conn.id).latency
+        latency: conn.client?.latencySummary() ?? HostSessionFacts.resting(id: conn.id).latency,
+        audio: conn.hostAudio
     )
 }
 

@@ -58,6 +58,14 @@ struct MainView: View {
                 Text(dashboardStatusText(model.connections))
                     .font(DishFont.title)
                     .foregroundColor(dashboardAccent(liveCount: liveCount))
+                if let chip = micIndicatorChip(model.micIndicator) {
+                    Button {
+                        model.toggleAllMics()
+                    } label: {
+                        CapabilityChipView(chip: chip)
+                    }
+                    .buttonStyle(.plain)
+                }
                 Spacer()
                 Button {
                     showSettings = true

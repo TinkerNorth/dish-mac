@@ -46,7 +46,7 @@ frameworks each one may import.
 |---|---|---|---|
 | `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, and the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes) | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
-| `DishEngine` | Everything that does IO or owns state: discovery, pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, and `AppModel`, the one composition root | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, GameController, CoreHaptics, IOKit, Security, os |
+| `DishEngine` | Everything that does IO or owns state: discovery, pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, and `AppModel`, the one composition root | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
 | `Dish` | The SwiftUI views, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
 `ImportBoundariesTests` fails the build when a file imports outside its row;
@@ -54,7 +54,8 @@ frameworks each one may import.
 
 Inside the engine the folders are the contract: `Network/` is the control and
 data planes and the stores, `Input/` is the controller bridge and the hot path,
-`Models/` is the value types the UI binds, `Util/` is leaf helpers with no
+`Models/` is the value types the UI binds, `Audio/` is the pad's own audio
+(the routes, the engine, the codec and the HAL units), `Util/` is leaf helpers with no
 domain state. The engine's UI-facing surface is `package`-visible; everything
 else stays `internal`, and the tests reach it with `@testable import`.
 
@@ -187,10 +188,15 @@ engine never imports AppKit.
 
 Each entry names the decided shape, so a change lands on it.
 
-- **No controller audio.** The `mic`, `speaker` and `hapticAudio` caps stay
-  off, the three audio opcodes and the mic lamp are ignored on receipt, and
-  the host reduces the haptics lanes to rumble for this client. The route is
-  the DualSense's USB audio function through Core Audio.
+- **Controller audio is unverified on a pad.** `Audio/` is the route:
+  `PadAudioFunctionSource` reads the HAL's USB devices, `padAudioRoutes`
+  matches them to pads by family, `ControllerAudioEngine` decodes the
+  speaker and haptics lanes through the core's `AudioJitterWindow` and plays
+  them on a HAL output unit at the device's own width, and `MicCapture`
+  encodes the pad's microphone in 20 ms windows. Opus is AudioToolbox's
+  codec, so there is no FEC, DTX or PLC control: a concealed window is
+  silence. The engine is proven over fake ports and the fake satellite; no
+  DualSense was attached where this shipped from.
 - **The coordinators publish several properties each.** `WifiConnectionManager`
   and `ConnectionHub` should become single-state sources with composers over
   them; the hot-path tables stay as they are.

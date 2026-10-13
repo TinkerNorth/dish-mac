@@ -94,6 +94,18 @@ final class CapabilitySolverTests: XCTestCase {
         }
     }
 
+    func testTheLinkRefusesThePadsAudioItHasNoFunctionFor() throws {
+        var inputs = everythingCarries()
+        inputs.linkRoutesMic = false
+        inputs.linkRoutesSpeaker = false
+        let mic = try row(.mic, inputs)
+        XCTAssertEqual(mic.verdict, .unavailable)
+        XCTAssertEqual(mic.failingLayer, .link)
+        XCTAssertEqual(try row(.speaker, inputs).failingLayer, .link)
+        XCTAssertEqual(try row(.gamepad, inputs).verdict, .available, "the link refuses nothing else")
+        XCTAssertEqual(try row(.mic, everythingCarries()).verdict, .available, "a link that never looked refuses nothing")
+    }
+
     func testAnXboxTypeFailsTheSonyFeaturesOnTheTypeLayer() throws {
         var inputs = everythingCarries()
         inputs.typeMotion = false

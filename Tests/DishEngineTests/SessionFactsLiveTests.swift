@@ -127,10 +127,15 @@ final class SessionFactsLiveTests: XCTestCase {
         let source = DiagnosticsSource(wifi: manager, hub: hub)
         var slots: [ControllerSlot] = []
         source.useSlots { slots }
+        source
+            .useAudio { slotId in
+                PadAudioDiagnostics(route: nil, state: nil, counters: AudioCounters(micSent: slotId == "slot-a" ? 1 : 0))
+            }
         source.refresh()
         XCTAssertEqual(source.state.hosts.count, 1)
         XCTAssertEqual(source.state.hosts.first?.summary.live, .connected)
         XCTAssertTrue(source.state.hosts.first?.facts.live ?? false)
+        XCTAssertEqual(source.state.hosts.first?.facts.audio, HostAudioVerdict.none, "the fake grants no controller audio by default")
         XCTAssertEqual(source.state.pads, [])
 
         var slot = ControllerSlot(id: "slot-a", name: "DualSense")
@@ -139,6 +144,7 @@ final class SessionFactsLiveTests: XCTestCase {
         source.start()
         let ticked = await waitUntil(timeout: 3) { source.state.pads.first?.wire?.confirmed == true }
         XCTAssertTrue(ticked, "the tick re-reads the slot list and the wire")
+        XCTAssertEqual(source.state.pads.first?.audio?.counters?.micSent, 1, "and each pad's audio by its id")
         source.stop()
         slots = []
         try await Task.sleep(nanoseconds: 1_200_000_000)

@@ -29,8 +29,16 @@ func hostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n =
         FactLine(key: words.virtualControllers, value: backendText(facts, words: words)),
         FactLine(key: words.roundTrip, value: roundTripText(facts.latency, locale: locale, words: words)),
         FactLine(key: words.missedHeartbeats, value: String(facts.missedAcks)),
-        FactLine(key: words.mouseControl, value: facts.mouseControlGranted ? words.granted : words.notGranted)
+        FactLine(key: words.mouseControl, value: facts.mouseControlGranted ? words.granted : words.notGranted),
+        FactLine(key: words.controllerAudio, value: hostAudioText(facts.audio, words: words))
     ]
+}
+
+/// What the probe granted of the pad's own audio, lane by lane.
+func hostAudioText(_ audio: HostAudioVerdict, words: L10n = .app) -> String {
+    let granted = [(audio.mic, words.microphone), (audio.speaker, words.speaker), (audio.hapticAudio, words.hapticAudio)]
+    let names = granted.filter(\.0).map(\.1)
+    return names.isEmpty ? words.notGranted : names.joined(separator: " · ")
 }
 
 /// The settled version, the offer when it differed, and the standing when
@@ -100,7 +108,54 @@ func padLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
     let opening = [FactLine(key: words.connection, value: words.gameControllerFramework)]
         + (slot.emulation.map { [FactLine(key: words.type, value: emulatedTypeName($0, words: words))] } ?? [])
         + (slot.battery.map { [FactLine(key: words.battery, value: batteryHelp($0, words: words))] } ?? [])
-    return opening + bindingLines(pad, words: words)
+    return opening + bindingLines(pad, words: words) + audioLines(pad, words: words)
+}
+
+/// The pad's own audio: where its route stands and, once the engine has a
+/// plan for it, what the microphone, the speaker and the haptics lanes are
+/// doing. A family without audio has no lines.
+func audioLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
+    guard let audio = pad.audio, let route = audio.route, route.verdict != .familyWithoutAudio else { return [] }
+    let opening = [FactLine(key: words.controllerAudio, value: audioRouteText(route, words: words))]
+    guard let state = audio.state else { return opening }
+    let counters = audio.counters ?? AudioCounters()
+    let speaker = laneText(state.plan.speakerVoice, played: counters.speakerPlayed, concealed: counters.speakerConcealed, words: words)
+    let haptics = laneText(state.plan.hapticVoice, played: counters.hapticPlayed, concealed: counters.hapticConcealed, words: words)
+    return opening + [
+        FactLine(key: words.microphone, value: micStateText(state.plan, sent: counters.micSent, words: words)),
+        FactLine(key: words.speaker, value: speaker),
+        FactLine(key: words.haptics, value: haptics),
+        FactLine(key: words.micLamp, value: micLampText(state.micLed, words: words))
+    ]
+}
+
+/// The device the pad's audio rides, or why it rides none.
+func audioRouteText(_ route: PadAudioRoute, words: L10n = .app) -> String {
+    switch route.verdict {
+    case .routed: route.function.map(\.device.name) ?? words.nothing
+    case .noAudioFunction: words.noUsbAudioFunction
+    case .padNameShared: words.twoControllersShareOneName
+    case .endpointNameShared: words.moreThanOneAudioDevice
+    case .familyWithoutAudio: words.nothing
+    }
+}
+
+func micStateText(_ plan: AudioPlan, sent: Int, words: L10n = .app) -> String {
+    guard plan.micArmed else { return words.offWord }
+    guard plan.capture else { return words.armedMuted }
+    return "\(words.capturing) · \(words.framesSent(sent))"
+}
+
+func laneText(_ voice: Bool, played: Int, concealed: Int, words: L10n = .app) -> String {
+    voice ? "\(words.playing) · \(words.playedAndConcealed(played, concealed))" : words.idle
+}
+
+func micLampText(_ state: MicLedState?, words: L10n = .app) -> String {
+    switch state {
+    case .on: words.on
+    case .pulse: words.pulse
+    case .off, nil: words.off
+    }
 }
 
 /// The wire side is a satellite's: what the descriptor declared and what the

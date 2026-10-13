@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import DishEngine
 import XCTest
 @testable import Dish
@@ -75,6 +76,105 @@ final class SlotSwitchesMappersTests: XCTestCase {
         let motion = try XCTUnwrap(capabilityTable(bound, effective).first { $0.feature == .motion })
         XCTAssertEqual(motion.verdictText, "Off")
         XCTAssertEqual(motionIndicator(bound, effective), .userDisabled)
+    }
+
+    // MARK: - The pad's own audio
+
+    private func audioSlot(_ preferences: SlotPreferences = SlotPreferences()) -> ControllerSlot {
+        ControllerSlot(
+            id: "pad",
+            name: "DualSense",
+            capabilities: ControllerCapabilities(hasMotion: true, hasMic: true, hasSpeaker: true),
+            preferences: preferences,
+            audioRoute: .routed
+        )
+    }
+
+    private func armedPlan(muted: Bool = false) -> AudioPlan {
+        let host = HostAudioVerdict(mic: true, speaker: true, hapticAudio: true)
+        return audioPlan(AudioFacts(
+            routeMic: true,
+            routeSpeaker: true,
+            micOn: true,
+            host: host,
+            live: true,
+            micPermitted: true,
+            muted: muted
+        ))
+    }
+
+    func testThePadsOwnAudioChipsAnswerToTheControllerAlone() throws {
+        let chips = capabilityChips(for: audioSlot(), ForwardingFlags())
+        XCTAssertEqual(chips.map(\.label), ["Gyro", "Mic", "Speaker"])
+        let mic = try chip("Mic", in: chips)
+        XCTAssertFalse(mic.on, "the mic is off until asked")
+        XCTAssertTrue(mic.toggle, "no global switch outranks it")
+        XCTAssertEqual(mic.switch, .mic)
+        XCTAssertEqual(mic.help, "Turned off for this controller. Click to turn it on for this controller.")
+        let speaker = try chip("Speaker", in: chips)
+        XCTAssertTrue(speaker.on)
+        XCTAssertEqual(speaker.switch, .speaker)
+        XCTAssertEqual(speaker.help, "Audio from the host plays on the pad’s speaker or headset. Click to turn it off for this controller.")
+        let micOn = try chip("Mic", in: capabilityChips(for: audioSlot(SlotPreferences(mic: true)), ForwardingFlags()))
+        XCTAssertEqual(
+            micOn.help,
+            "The pad’s mic carries your voice to the host. Off sends nothing. Click to turn it off for this controller."
+        )
+        XCTAssertFalse(micOn.warning)
+    }
+
+    func testAMicWithoutTheSystemsLeaveWarns() throws {
+        let chips = capabilityChips(for: audioSlot(SlotPreferences(mic: true)), ForwardingFlags(), micPermitted: false)
+        let mic = try chip("Mic", in: chips)
+        XCTAssertTrue(mic.warning)
+        XCTAssertTrue(mic.on)
+        XCTAssertTrue(mic.toggle, "the switch can still be turned off")
+        XCTAssertEqual(mic.help, "Microphone permission is off for Dish. Turn it on in system settings to use the controller microphone.")
+        let off = try chip("Mic", in: capabilityChips(for: audioSlot(), ForwardingFlags(), micPermitted: false))
+        XCTAssertFalse(off.warning, "a mic that is off needs no leave")
+    }
+
+    func testTheMicStatusChipAppearsOnceArmedAndTheLampWhenTheGameAsks() throws {
+        var slot = audioSlot(SlotPreferences(mic: true))
+        XCTAssertNil(micStatusChip(slot), "unbound, nothing is armed")
+        slot.audio = ControllerAudioState(plan: armedPlan(), micLed: .pulse)
+        let live = try XCTUnwrap(micStatusChip(slot))
+        XCTAssertEqual(live.label, "Mic live")
+        XCTAssertTrue(live.on)
+        XCTAssertEqual(live.help, "Microphone is live. Click to mute it.")
+        XCTAssertEqual(micLampChip(slot)?.help, "Mic lamp · Pulse")
+        slot.audio = ControllerAudioState(plan: armedPlan(muted: true), micLed: .on)
+        let muted = try XCTUnwrap(micStatusChip(slot))
+        XCTAssertEqual(muted.label, "Mic muted")
+        XCTAssertFalse(muted.on)
+        XCTAssertEqual(muted.help, "Microphone muted. Click to unmute it.")
+        XCTAssertEqual(micLampChip(slot)?.help, "Mic lamp · On")
+        XCTAssertEqual(micLampChip(slot)?.on, true)
+        slot.audio = ControllerAudioState(plan: armedPlan(), micLed: .off)
+        XCTAssertNil(micLampChip(slot), "an unlit lamp is no chip")
+        slot.audio = ControllerAudioState(plan: .silent, micLed: nil)
+        XCTAssertNil(micStatusChip(slot), "a silent plan arms nothing")
+    }
+
+    func testTheHeaderChipFollowsTheAppWideWord() throws {
+        XCTAssertNil(micIndicatorChip(.hidden))
+        let live = try XCTUnwrap(micIndicatorChip(.live))
+        XCTAssertEqual(live.label, "Mic live")
+        XCTAssertEqual(live.help, "Mute mic")
+        XCTAssertTrue(live.on)
+        let muted = try XCTUnwrap(micIndicatorChip(.muted))
+        XCTAssertEqual(muted.label, "Mic muted")
+        XCTAssertEqual(muted.help, "Unmute mic")
+        XCTAssertFalse(muted.on)
+    }
+
+    func testTheGlobalSwitchesCoverOnlyTheThreeForwardedFeatures() {
+        let allOff = ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false, mic: false, speaker: false)
+        XCTAssertFalse(globallyAllowed(.motion, allOff))
+        XCTAssertFalse(globallyAllowed(.rumble, allOff))
+        XCTAssertFalse(globallyAllowed(.touchpad, allOff))
+        XCTAssertTrue(globallyAllowed(.mic, allOff))
+        XCTAssertTrue(globallyAllowed(.speaker, allOff))
     }
 
     func testTheSwitchValuesReadBothSides() {

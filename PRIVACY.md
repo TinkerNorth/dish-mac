@@ -28,6 +28,11 @@ describing another.
   sends no crash reports. There is no analytics SDK, no telemetry, no
   advertising identifier, no usage reporting and no account. Every other
   outbound connection goes to the satellite you chose, by its local address.
+- **A controller's own microphone** (a DualSense's or DualShock 4's, over
+  USB) is sent only to the satellite you paired with, only while that
+  controller's mic switch is on and it is not muted. The switch is off until
+  you turn it on; macOS asks your permission the first time; nothing is
+  stored.
 - Settings, remembered satellites and certificate pins live in your own
   preferences; pairing keys live in your login keychain. Nothing is synced to
   a cloud account by the app.
@@ -70,8 +75,8 @@ app keeps no other log file.
 |---|---|---|
 | Discovery: a Bonjour browse for `_satellite._udp` and a listener on UDP port 9879 | Nothing of yours is sent; the app reads the satellites' announcements | Your local network |
 | Pairing and the control plane: HTTPS on port 9443 to the satellite you chose | Your `deviceId`, your Mac's name as shown in System Settings (the satellite lists paired devices by it), the PIN you typed or the app generated, the controller type and features you bound, and a proof of possession of the pairing key | The satellite |
-| Streaming: encrypted UDP on port 9876 to the satellite you chose | Controller input (buttons, sticks, triggers), and, when the switches are on and the pad has them, motion samples, touchpad positions and the battery level of the pad or of your Mac | The satellite |
-| Return paths over the same UDP channel | Rumble and light-bar commands from the satellite to the pad | Your Mac |
+| Streaming: encrypted UDP on port 9876 to the satellite you chose | Controller input (buttons, sticks, triggers), and, when the switches are on and the pad has them, motion samples, touchpad positions and the battery level of the pad or of your Mac; with that controller's mic switch on and not muted, the sound its own microphone hears, as 20 ms Opus frames | The satellite |
+| Return paths over the same UDP channel | Rumble, light-bar, adaptive-trigger, player-LED and mic-lamp commands from the satellite to the pad, and the host's voice chat and haptics audio for the pad's own speaker and actuators | Your Mac |
 
 The streaming channel is encrypted with a key derived per session from the
 pairing key; the HTTPS connection is pinned to the satellite's certificate.
@@ -135,6 +140,7 @@ so treat it as sensitive before attaching it to a public issue.
 | A power-management assertion (IOKit) | Keeping the Mac awake while a bound controller is being used, or for as long as one is connected, as your keep-awake mode says; the display too only if you ask. Released when the condition ends. |
 | User notifications | One notice, the first time closing the window leaves Dish running behind the menu-bar item. macOS asks you for permission before it is shown. |
 | Host battery readout (IOKit) | Reporting your Mac's battery to the satellite in place of a pad that reports none. |
+| Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
 
 The app runs unsandboxed and asks for no other permission.
 
@@ -146,6 +152,8 @@ The app runs unsandboxed and asks for no other permission.
   the satellite is told to drop this device.
 - **Switch off a forwarded feature** in Settings: motion, rumble, the
   touchpad and the light bar each have their own switch.
+- **Keep a controller's microphone off** (the default), or mute it from the
+  chip on its card or the one in the header; muted sends no audio at all.
 - **Switch off automatic update checks** in Settings; nothing then leaves
   your network until you press "Check for updates" yourself.
 - **Discard a crash log** from the "Crash report" row in Settings, or delete

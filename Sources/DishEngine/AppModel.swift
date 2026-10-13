@@ -31,6 +31,8 @@ package final class AppModel: ObservableObject {
     package let diagnosticsLog = DiagnosticsLogStore()
     /// The crash log an earlier run may have left.
     package let crashLog: CrashLog
+    /// Controller audio: the routes, the mutes, the permission, the engine.
+    let audio: AudioPipeline
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
@@ -40,6 +42,10 @@ package final class AppModel: ObservableObject {
     @Published package private(set) var lastFailure: ConnectionFailure?
     /// Every failure as it happens, for a banner.
     package let failures = PassthroughSubject<ConnectionFailure, Never>()
+    /// The app-wide microphone word the header's chip shows.
+    @Published package private(set) var micIndicator = MicIndicatorState.hidden
+    /// Whether the system lets Dish capture a microphone.
+    @Published package private(set) var micPermitted = true
 
     /// Thread-safe mirror of `settings` for the callback threads.
     private let gate = ForwardingGate()
@@ -68,7 +74,8 @@ package final class AppModel: ObservableObject {
         defaults: UserDefaults = .standard,
         manifestGateway: ManifestGateway? = nil,
         appVersion: String = "0.0.0",
-        crashLog: CrashLog = CrashLog(url: URL(fileURLWithPath: "/dev/null"))
+        crashLog: CrashLog = CrashLog(url: URL(fileURLWithPath: "/dev/null")),
+        audioDependencies: AudioDependencies? = nil
     ) {
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
@@ -102,14 +109,31 @@ package final class AppModel: ObservableObject {
         let routing = InputRouting()
         self.routing = routing
         returnPaths = ReturnPathRouter(input: input, gate: gate, table: routing.table)
-        slotPreferences = SlotPreferenceStore(defaults: defaults)
+        let slotPreferences = SlotPreferenceStore(defaults: defaults)
+        self.slotPreferences = slotPreferences
+        audio = AudioPipeline(
+            hub: hub,
+            wifi: wifi,
+            input: input,
+            slotPreferences: slotPreferences,
+            dependencies: audioDependencies ?? .live()
+        )
         gate.update(settings.flags)
         routing.install(on: input.processor)
+        wireObservers(pipeline: pipeline, lifecycle: lifecycle)
+    }
+
+    /// The observers in their order: the slot list and the routing table,
+    /// the pipelines started, the return paths, the settings, the events
+    /// and the host's lifecycle, and the remembered satellites last.
+    private func wireObservers(pipeline: WakePipeline, lifecycle: LifecycleSignals) {
         observeSlots()
         observeRoutingTable()
         observeDiagnostics()
         pipeline.start()
         updates.start()
+        audio.start()
+        observeMicIndicator()
         observeReturnPathWiring()
         observeSettings()
         observeEvents()
@@ -133,17 +157,30 @@ package final class AppModel: ObservableObject {
             wifi.motionStatus.statePublisher,
             slotPreferences.statePublisher
         )
-        Publishers.CombineLatest4(input.$slots, hub.$connections, hub.$bindings, picks)
-            .sink { [weak self] gcSlots, connections, bindings, picks in
-                self?.rebuildSlots(
-                    gcSlots: gcSlots,
-                    connections: connections,
-                    bindings: bindings,
-                    overrides: picks.0,
-                    motion: picks.1,
-                    preferences: picks.2
+        let sound = Publishers.CombineLatest3(audio.routes.statePublisher, audio.engine.statePublisher, audio.mutes.statePublisher)
+        Publishers.CombineLatest4(input.$slots, hub.$connections, hub.$bindings, Publishers.CombineLatest(picks, sound))
+            .sink { [weak self] gcSlots, connections, bindings, facts in
+                let (overrides, motion, preferences) = facts.0
+                let (routes, audio, mutes) = facts.1
+                let snapshot = SlotFactsSnapshot(
+                    overrides: overrides,
+                    motion: motion,
+                    preferences: preferences,
+                    routes: routes,
+                    audio: audio,
+                    mutes: mutes
                 )
+                self?.rebuildSlots(gcSlots: gcSlots, connections: connections, bindings: bindings, facts: snapshot)
             }
+            .store(in: &cancellables)
+    }
+
+    private func observeMicIndicator() {
+        audio.indicator.statePublisher
+            .sink { [weak self] state in self?.micIndicator = state }
+            .store(in: &cancellables)
+        audio.permission.statePublisher
+            .sink { [weak self] permitted in self?.micPermitted = permitted }
             .store(in: &cancellables)
     }
 
@@ -151,6 +188,7 @@ package final class AppModel: ObservableObject {
     /// reads the slot list the same way.
     private func observeDiagnostics() {
         diagnostics.useSlots { [weak self] in self?.slots ?? [] }
+        diagnostics.useAudio { [weak self] slotId in self?.audio.padDiagnostics(slotId) }
         hub.$connections
             .sink { [weak self] rows in self?.recorder.observeLinks(rows) }
             .store(in: &cancellables)
@@ -243,21 +281,21 @@ package final class AppModel: ObservableObject {
     // MARK: - Slots
 
     /// Rebuild the slot list and evict bindings whose controller is gone.
+    /// The catalogs and probes are read here; the rest arrived with the
+    /// emission.
     private func rebuildSlots(
         gcSlots: [GameControllerInput.Slot],
         connections: [ConnectionSummary],
         bindings: [String: String],
-        overrides: [SlotKey: Int],
-        motion: [SlotKey: MotionBackendStatus],
-        preferences: [String: SlotPreferences]
+        facts: SlotFactsSnapshot
     ) {
         let known = Set(gcSlots.map(\.id))
         for (slotId, _) in bindings where !known.contains(slotId) {
             hub.unbind(slotId: slotId)
         }
-        let facts = SlotFactsSnapshot(
-            catalogs: wifi.catalogs, probes: wifi.capabilities, overrides: overrides, motion: motion, preferences: preferences
-        )
+        var facts = facts
+        facts.catalogs = wifi.catalogs
+        facts.probes = wifi.capabilities
         slots = composeSlots(gcSlots: gcSlots, connections: connections, bindings: bindings, facts: facts)
         self.connections = connections
     }
@@ -296,16 +334,13 @@ package final class AppModel: ObservableObject {
         wifi.pairWithPin(server, pin: pin)
     }
 
-    /// The bound pad's detected capabilities become the descriptor's claims,
-    /// and its family picks the catalog type it is emulated as.
+    /// The bound pad's detected capabilities, with its audio route folded
+    /// in, become the descriptor's claims, and its family picks the catalog
+    /// type it is emulated as.
     package func bind(slotId: String, connectionId: String) {
         let pad = input.slots.first { $0.id == slotId }
-        hub.bind(
-            slotId: slotId,
-            connectionId: connectionId,
-            capabilities: pad?.capabilities ?? .none,
-            family: pad?.family ?? .other
-        )
+        let capabilities = (pad?.capabilities ?? .none).withAudio(audio.routes.state[slotId]?.function)
+        hub.bind(slotId: slotId, connectionId: connectionId, capabilities: capabilities, family: pad?.family ?? .other)
     }
 
     package func unbind(slotId: String) {
@@ -319,7 +354,22 @@ package final class AppModel: ObservableObject {
         case .motion: slotPreferences.setMotion(on, for: slotId)
         case .rumble: slotPreferences.setRumble(on, for: slotId)
         case .touchpad: slotPreferences.setTouchpad(on, for: slotId)
+        case .mic:
+            slotPreferences.setMic(on, for: slotId)
+            if on { audio.requestMicrophoneLeave() }
+        case .speaker: slotPreferences.setSpeaker(on, for: slotId)
         }
+    }
+
+    /// Mute or unmute one controller's microphone; muted sends nothing.
+    package func setMicMuted(_ muted: Bool, slotId: String) {
+        audio.mutes.setMuted(muted, for: slotId)
+    }
+
+    /// The header chip's click: every live microphone mutes together, every
+    /// muted one comes back together.
+    package func toggleAllMics() {
+        audio.toggleAllMics()
     }
 
     /// Emulate the bound pad as `type`, or as its own family again for nil.
@@ -370,6 +420,9 @@ struct SlotFactsSnapshot {
     var overrides: [SlotKey: Int] = [:]
     var motion: [SlotKey: MotionBackendStatus] = [:]
     var preferences: [String: SlotPreferences] = [:]
+    var routes: [String: PadAudioRoute] = [:]
+    var audio: [String: ControllerAudioState] = [:]
+    var mutes: Set<String> = []
 }
 
 /// The UI's slot list: every connected controller, with its binding's
@@ -381,11 +434,15 @@ func composeSlots(
     facts: SlotFactsSnapshot = SlotFactsSnapshot()
 ) -> [ControllerSlot] {
     gcSlots.map { gc in
-        var slot = ControllerSlot(id: gc.id, name: gc.name, capabilities: gc.capabilities, battery: gc.battery)
+        let route = facts.routes[gc.id]
+        var slot = ControllerSlot(id: gc.id, name: gc.name, capabilities: gc.capabilities.withAudio(route?.function), battery: gc.battery)
         slot.preferences = facts.preferences[gc.id] ?? SlotPreferences()
+        slot.audioRoute = route?.verdict
+        slot.micMuted = facts.mutes.contains(gc.id)
         guard let connectionId = bindings[gc.id] else { return slot }
         slot.boundConnectionId = connectionId
         slot.boundStatus = connections.first { $0.id == connectionId }
+        slot.audio = facts.audio[gc.id]
         attachBindingFacts(to: &slot, gc: gc, connectionId: connectionId, facts: facts)
         return slot
     }

@@ -19,7 +19,32 @@ the repos share a version number.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **Controller audio.** A DualSense's or DualShock 4's own audio over its USB
+  audio function through Core Audio (contract §Controller audio, §Controller
+  haptics): the host's speaker and haptics lanes decoded from Opus
+  (AudioToolbox) through the fleet's jitter window and played on the pad at
+  its own width, the haptics on channels 3–4; the pad's microphone captured
+  in 20 ms windows, encoded and sent while the controller's mic switch is on,
+  the session live, the host granting it and the system permitting it, with
+  one sequence that never restarts within a session. Mic and speaker switches
+  on the slot card (the mic off until asked), a mic chip per controller and
+  one in the header that mutes or unmutes every armed mic at once, the game's
+  mic lamp as a chip, the microphone permission in the chip's warning, and
+  the Diagnostics lines for the host's grant and each pad's route, lanes and
+  counters. Not yet verified on a pad.
+- **The descriptor's audio claims** (`mic`, `speaker`, `hapticAudio`) follow
+  the pad's route and switches, and re-send while live when the route changes.
+- **"What carries" knows the pad's audio**: the pad layer is the pad's
+  family, the link layer its USB audio function, and the row says why this
+  Mac routes none (Bluetooth, two pads of a name, two devices of a name).
+
+### Fixed
+
+- **A full-size audio frame no longer fails the AEAD.** The UDP receive
+  buffer was the pre-audio 256 bytes, so every speaker frame was truncated
+  and dropped; it is now the contract's 1500-byte datagram ceiling.
 
 ## [1.0.0] - 2026-10-13
 

@@ -17,8 +17,9 @@ package enum PadFamily: Hashable {
 /// The caps word a descriptor advertises. A cap is a promise that the
 /// matching stream or return path lands, so it needs both the hardware and
 /// the user's switch: a feature turned off in Settings is not advertised.
-/// Analog triggers ride every extended gamepad. The audio caps stay off
-/// until this client carries controller audio.
+/// Analog triggers ride every extended gamepad. The audio caps follow the
+/// pad's audio function and the controller's own switches, the speaker
+/// switch covering the haptics lanes, as on the other clients.
 func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingFlags) -> UInt16 {
     let claims: [(claimed: Bool, bit: UInt16)] = [
         (true, ProtocolConstants.capAnalogTriggers),
@@ -26,7 +27,10 @@ func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingF
         (capabilities.hasMotion && flags.motion, ProtocolConstants.capMotion),
         (capabilities.hasLightbar && flags.lightbar, ProtocolConstants.capLightbar),
         (capabilities.hasTriggerEffects, ProtocolConstants.capTriggerEffects),
-        (capabilities.hasPlayerLeds, ProtocolConstants.capPlayerLeds)
+        (capabilities.hasPlayerLeds, ProtocolConstants.capPlayerLeds),
+        (capabilities.hasMic && flags.mic, ProtocolConstants.capMic),
+        (capabilities.hasSpeaker && flags.speaker, ProtocolConstants.capSpeaker),
+        (capabilities.hasHapticLanes && flags.speaker, ProtocolConstants.capHapticAudio)
     ]
     return claims.filter(\.claimed).reduce(UInt16(0)) { $0 | $1.bit }
 }

@@ -45,6 +45,22 @@ final class SlotPreferencesTests: XCTestCase {
 
     // MARK: - The store
 
+    func testTheMicIsOffUntilAskedAndTheSpeakerOn() {
+        let store = SlotPreferenceStore(defaults: defaults)
+        XCTAssertFalse(store.preferences(for: "ds").mic)
+        XCTAssertTrue(store.preferences(for: "ds").speaker)
+        store.setMic(true, for: "ds")
+        store.setSpeaker(false, for: "ds")
+        XCTAssertEqual(store.preferences(for: "ds"), SlotPreferences(mic: true, speaker: false))
+        XCTAssertNotNil(defaults.string(forKey: SlotPreferenceStore.micKey))
+        XCTAssertNotNil(defaults.string(forKey: SlotPreferenceStore.speakerKey))
+        XCTAssertEqual(SlotPreferenceStore(defaults: defaults).preferences(for: "ds"), SlotPreferences(mic: true, speaker: false))
+        XCTAssertEqual(
+            effectiveFlags(global: ForwardingFlags(), slot: SlotPreferences(mic: true, speaker: false)),
+            ForwardingFlags(mic: true, speaker: false)
+        )
+    }
+
     func testAControllerNeverSwitchedReadsAllOn() {
         let store = SlotPreferenceStore(defaults: defaults)
         XCTAssertEqual(store.preferences(for: "gc:Sony:DualSense"), SlotPreferences())

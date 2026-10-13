@@ -5,36 +5,45 @@ import DishKernel
 import Foundation
 
 /// The switches a controller carries on its own, beneath the global ones in
-/// Settings: motion, rumble and the touchpad. The light bar stays global, as
-/// on the other desktop clients. An unwritten switch is on.
+/// Settings: motion, rumble and the touchpad, and the pad's own microphone
+/// and speaker. The light bar stays global, as on the other desktop clients.
+/// An unwritten switch is on, except the microphone, off until asked.
 package struct SlotPreferences: Hashable {
     package var motion = true
     package var rumble = true
     package var touchpad = true
+    package var mic = false
+    package var speaker = true
 
-    package init(motion: Bool = true, rumble: Bool = true, touchpad: Bool = true) {
+    package init(motion: Bool = true, rumble: Bool = true, touchpad: Bool = true, mic: Bool = false, speaker: Bool = true) {
         self.motion = motion
         self.rumble = rumble
         self.touchpad = touchpad
+        self.mic = mic
+        self.speaker = speaker
     }
 }
 
-/// The three switches a controller carries, for the intent that flips one.
+/// The switches a controller carries, for the intent that flips one.
 package enum SlotSwitch: Equatable {
     case motion
     case rumble
     case touchpad
+    case mic
+    case speaker
 }
 
 /// The switches that reach the wire and the hot path for one controller:
 /// the global switch and the controller's own, both on. The light bar has
-/// no per-controller switch.
+/// no per-controller switch; the pad's audio has no global one.
 package func effectiveFlags(global: ForwardingFlags, slot: SlotPreferences) -> ForwardingFlags {
     ForwardingFlags(
         motion: global.motion && slot.motion,
         touchpad: global.touchpad && slot.touchpad,
         rumble: global.rumble && slot.rumble,
-        lightbar: global.lightbar
+        lightbar: global.lightbar,
+        mic: slot.mic,
+        speaker: slot.speaker
     )
 }
 
@@ -49,6 +58,8 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
     static let motionKey = "motion_preferences"
     static let rumbleKey = "rumble_preferences"
     static let touchpadKey = "touchpad_preferences"
+    static let micKey = "mic_preferences"
+    static let speakerKey = "speaker_preferences"
 
     private let defaults: UserDefaults
 
@@ -74,6 +85,14 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
         update(slotId) { $0.touchpad = enabled }
     }
 
+    package func setMic(_ enabled: Bool, for slotId: String) {
+        update(slotId) { $0.mic = enabled }
+    }
+
+    package func setSpeaker(_ enabled: Bool, for slotId: String) {
+        update(slotId) { $0.speaker = enabled }
+    }
+
     private func update(_ slotId: String, _ change: (inout SlotPreferences) -> Void) {
         var next = preferences(for: slotId)
         change(&next)
@@ -89,6 +108,8 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
         defaults.set(Self.rows(all, \.motion), forKey: Self.motionKey)
         defaults.set(Self.rows(all, \.rumble), forKey: Self.rumbleKey)
         defaults.set(Self.rows(all, \.touchpad), forKey: Self.touchpadKey)
+        defaults.set(Self.rows(all, \.mic), forKey: Self.micKey)
+        defaults.set(Self.rows(all, \.speaker), forKey: Self.speakerKey)
     }
 
     /// One row per controller, in a stable order, as the fleet's JSON shape.
@@ -108,6 +129,12 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
         }
         for (slotId, enabled) in parse(defaults.string(forKey: touchpadKey)) {
             all[slotId, default: SlotPreferences()].touchpad = enabled
+        }
+        for (slotId, enabled) in parse(defaults.string(forKey: micKey)) {
+            all[slotId, default: SlotPreferences()].mic = enabled
+        }
+        for (slotId, enabled) in parse(defaults.string(forKey: speakerKey)) {
+            all[slotId, default: SlotPreferences()].speaker = enabled
         }
         return all
     }

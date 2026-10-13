@@ -140,6 +140,27 @@ final class SatelliteClient {
         set { playerLedsBox.set(newValue) }
     }
 
+    /// Fired on the receive queue for every parsed MSG_SPEAKER_AUDIO (0x0013).
+    private let speakerAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil)
+    var onSpeakerAudio: ((AudioFrame) -> Void)? {
+        get { speakerAudioBox.get() }
+        set { speakerAudioBox.set(newValue) }
+    }
+
+    /// Fired on the receive queue for every parsed MSG_HAPTIC_AUDIO (0x0015).
+    private let hapticAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil)
+    var onHapticAudio: ((AudioFrame) -> Void)? {
+        get { hapticAudioBox.get() }
+        set { hapticAudioBox.set(newValue) }
+    }
+
+    /// Fired on the receive queue for every parsed MSG_MIC_LED (0x0014).
+    private let micLedBox = LockedBox<((MicLedCommand) -> Void)?>(nil)
+    var onMicLed: ((MicLedCommand) -> Void)? {
+        get { micLedBox.get() }
+        set { micLedBox.set(newValue) }
+    }
+
     /// Fired on the receive queue for an authenticated MSG_SESSION_CLOSE
     /// (0x000F); an unknown FUTURE reason byte degrades to `.shutdown` (the
     /// transient default arm, like the C++ ports). The client also drops
@@ -377,5 +398,11 @@ final class SatelliteClient {
             ? Encoders.pointerPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs)
             : Encoders.touchpadPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs)
         sendEncrypted(msgType: ProtocolConstants.msgTouchpad, payload: payload)
+    }
+
+    /// One 20 ms Opus packet from the pad's microphone (MSG_MIC_AUDIO 0x0012).
+    /// The caller enforces mute: a muted client calls this not at all.
+    func sendMicAudio(_ frame: AudioFrame) {
+        sendEncrypted(msgType: ProtocolConstants.msgMicAudio, payload: frame.payload)
     }
 }

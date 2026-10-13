@@ -29,6 +29,31 @@ final class DescriptorCapsTests: XCTestCase {
         XCTAssertEqual(word & (ProtocolConstants.capMic | ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio), 0)
     }
 
+    func testTheAudioCapsFollowTheAudioFunctionAndTheControllersSwitches() {
+        let dualSense = ControllerCapabilities(hasRumble: true, hasMic: true, hasSpeaker: true, hasHapticLanes: true)
+        let on = descriptorCaps(dualSense, ForwardingFlags(mic: true, speaker: true))
+        XCTAssertNotEqual(on & ProtocolConstants.capMic, 0)
+        XCTAssertNotEqual(on & ProtocolConstants.capSpeaker, 0)
+        XCTAssertNotEqual(on & ProtocolConstants.capHapticAudio, 0)
+        XCTAssertNotEqual(on & ProtocolConstants.capRumble, 0, "rumble rides beside the lanes; the host decides which rendering")
+        let defaults = descriptorCaps(dualSense, ForwardingFlags())
+        XCTAssertEqual(defaults & ProtocolConstants.capMic, 0, "the mic is off until asked")
+        XCTAssertNotEqual(defaults & ProtocolConstants.capSpeaker, 0)
+        let speakerOff = descriptorCaps(dualSense, ForwardingFlags(mic: true, speaker: false))
+        XCTAssertEqual(
+            speakerOff & (ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio),
+            0,
+            "the speaker switch covers the lanes"
+        )
+        XCTAssertNotEqual(speakerOff & ProtocolConstants.capMic, 0)
+        let headset = ControllerCapabilities(hasMic: true, hasSpeaker: true)
+        XCTAssertEqual(
+            descriptorCaps(headset, ForwardingFlags(mic: true)) & ProtocolConstants.capHapticAudio,
+            0,
+            "no lanes, no haptics cap"
+        )
+    }
+
     func testAnalogTriggersAreAlwaysClaimed() {
         XCTAssertEqual(descriptorCaps(.none, ForwardingFlags()), ProtocolConstants.capAnalogTriggers)
         XCTAssertEqual(

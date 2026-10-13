@@ -157,7 +157,8 @@ final class FakeSatelliteRest {
         case ("GET", "/api/pair/status"): return pairStatus(request)
         case ("DELETE", "/api/pair"): return selfUnpair(request)
         case ("PUT", "/api/connections"): return putSession(request, on: connection)
-        case ("GET", "/api/server/capabilities"): return FakeSatelliteHttp.json(200, raw: Self.capabilitiesJSON)
+        case ("GET", "/api/server/capabilities"):
+            return FakeSatelliteHttp.json(200, raw: Self.capabilitiesJSON(controllerAudio: store.with { $0.controllerAudioEnabled }))
         case ("GET", "/api/catalog"): return catalog(request)
         default:
             if request.plainPath.hasPrefix("/api/connections/") { return connectionSubroute(request) }
