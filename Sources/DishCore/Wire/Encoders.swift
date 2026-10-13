@@ -76,6 +76,41 @@ public enum Encoders {
         return Data(out)
     }
 
+    /// MSG_TOUCHPAD (0x000C) in its version-2 POINTER shape: `ctrlIdx(1) +
+    /// fingerFlags(1) + buttons(1) + f0(id1 + x2 + y2) + f1(id1 + x2 + y2) +
+    /// eventTimeMs(u32 LE @ 13) + scrollV(i16 LE @ 17)` = 19 bytes. The pad's
+    /// click rides the buttons byte as the left button; `scrollV` is an
+    /// event in 120ths of a notch, 0 on a resend. Only a session settled on
+    /// version 2 or later may send this; the receiver tells the two shapes
+    /// apart by length.
+    public static func pointerPayload(
+        controllerIndex: UInt8,
+        sample: TouchpadSample,
+        eventTimeMs: UInt32,
+        scrollV: Int16 = 0
+    ) -> Data {
+        var out = [UInt8](repeating: 0, count: 1 + ProtocolConstants.pointerPayloadBytes)
+        out[0] = controllerIndex
+        out[1] = pointerFingerFlags(sample)
+        out[2] = sample.buttonPressed ? ProtocolConstants.pointerButtonLeft : 0
+        out[3] = sample.finger0.id
+        storeLE16(sample.finger0.x, into: &out, at: 4)
+        storeLE16(sample.finger0.y, into: &out, at: 6)
+        out[8] = sample.finger1.id
+        storeLE16(sample.finger1.x, into: &out, at: 9)
+        storeLE16(sample.finger1.y, into: &out, at: 11)
+        storeLE32(eventTimeMs, into: &out, at: 13)
+        storeLE16(scrollV, into: &out, at: 17)
+        return Data(out)
+    }
+
+    private static func pointerFingerFlags(_ sample: TouchpadSample) -> UInt8 {
+        var flags: UInt8 = 0
+        if sample.finger0.active { flags |= ProtocolConstants.pointerFinger0Active }
+        if sample.finger1.active { flags |= ProtocolConstants.pointerFinger1Active }
+        return flags
+    }
+
     // MARK: - Private little-endian stores (zero-based [UInt8] offsets)
 
     private static func storeLE16(_ value: Int16, into buf: inout [UInt8], at offset: Int) {

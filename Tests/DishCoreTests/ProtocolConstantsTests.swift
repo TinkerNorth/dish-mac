@@ -11,8 +11,15 @@ import XCTest
 
 final class ProtocolConstantsTests: XCTestCase {
 
-    func testProtocolVersionIsOne() {
-        XCTAssertEqual(ProtocolConstants.protocolVersion, 1)
+    func testTheClientOffersThreeAndStillSpeaksOne() {
+        XCTAssertEqual(ProtocolConstants.protocolVersion, 3)
+        XCTAssertEqual(ProtocolConstants.protocolVersionMin, 1)
+    }
+
+    func testOnlyASessionSettledOnTwoOrLaterSpeaksTheV2Frames() {
+        XCTAssertFalse(ProtocolConstants.settledSpeaksV2(1))
+        XCTAssertTrue(ProtocolConstants.settledSpeaksV2(2))
+        XCTAssertTrue(ProtocolConstants.settledSpeaksV2(3))
     }
 
     func testOpcodeValuesMatchSatelliteTypesHeader() {
@@ -25,6 +32,28 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertEqual(ProtocolConstants.msgTouchpad, 0x000C)
         XCTAssertEqual(ProtocolConstants.msgLightbar, 0x000D)
         XCTAssertEqual(ProtocolConstants.msgSessionClose, 0x000F)
+        XCTAssertEqual(ProtocolConstants.msgTriggerEffects, 0x0010)
+        XCTAssertEqual(ProtocolConstants.msgPlayerLeds, 0x0011)
+        XCTAssertEqual(ProtocolConstants.msgMicAudio, 0x0012)
+        XCTAssertEqual(ProtocolConstants.msgSpeakerAudio, 0x0013)
+        XCTAssertEqual(ProtocolConstants.msgMicLed, 0x0014)
+        XCTAssertEqual(ProtocolConstants.msgHapticAudio, 0x0015)
+    }
+
+    func testVersionTwoFrameAndPayloadSizesMatchContract() {
+        XCTAssertEqual(ProtocolConstants.pointerPayloadBytes, 18)
+        XCTAssertEqual(ProtocolConstants.pointerFinger0Active, 0x01)
+        XCTAssertEqual(ProtocolConstants.pointerFinger1Active, 0x02)
+        XCTAssertEqual(ProtocolConstants.pointerButtonLeft, 0x01)
+        XCTAssertEqual(ProtocolConstants.pointerButtonRight, 0x02)
+        XCTAssertEqual(ProtocolConstants.pointerButtonMiddle, 0x04)
+        XCTAssertEqual(ProtocolConstants.scrollUnitsPerNotch, 120)
+        XCTAssertEqual(ProtocolConstants.triggerEffectBlockBytes, 11)
+        XCTAssertEqual(ProtocolConstants.triggerEffectsPayloadBytes, 23)
+        XCTAssertEqual(ProtocolConstants.playerLedsPayloadBytes, 2)
+        XCTAssertEqual(ProtocolConstants.micLedPayloadBytes, 2)
+        XCTAssertEqual(ProtocolConstants.udpDatagramMaxBytes, 1500)
+        XCTAssertEqual(ProtocolConstants.udpMaxInnerPayloadBytes, 1472)
     }
 
     func testWireSizesMatchContract() {
@@ -58,6 +87,11 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertEqual(ProtocolConstants.capRumble, 0x0002)
         XCTAssertEqual(ProtocolConstants.capMotion, 0x0004)
         XCTAssertEqual(ProtocolConstants.capLightbar, 0x0008)
+        XCTAssertEqual(ProtocolConstants.capTriggerEffects, 0x0010)
+        XCTAssertEqual(ProtocolConstants.capPlayerLeds, 0x0020)
+        XCTAssertEqual(ProtocolConstants.capMic, 0x0040)
+        XCTAssertEqual(ProtocolConstants.capSpeaker, 0x0080)
+        XCTAssertEqual(ProtocolConstants.capHapticAudio, 0x0100)
         XCTAssertEqual(ProtocolConstants.controllerTypeXbox, 0)
         XCTAssertEqual(ProtocolConstants.controllerTypePlayStation, 1)
         XCTAssertEqual(ProtocolConstants.controllerTypeDualSense, 2)
