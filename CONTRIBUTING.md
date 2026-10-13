@@ -67,6 +67,15 @@ you are writing a source), and the engine never words anything (a failure is a
 a sentence). The engine's UI-facing surface is `package`; everything else is
 `internal`, and tests reach it through `@testable import`.
 
+## Touching the mark
+
+`Resources/Dish.svg` is the fleet's app mark (`dish-linux/resources/brand/
+dish-logo.svg`, byte for byte) and `Resources/Dish.icns` is rendered from it by
+`scripts/render-icon.sh` (`brew install librsvg` for `rsvg-convert`; `iconutil`
+ships with macOS). Change the mark across the fleet, copy it here, run the
+script and commit both files; `BrandMarkTests` pins the geometry and
+`BrandGlyphTests` the in-app glyph that mirrors it.
+
 ## Touching the UI
 
 Every design value reaches its call site through a `DishTheme` or `DishFont`
