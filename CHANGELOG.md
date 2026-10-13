@@ -19,6 +19,10 @@ the repos share a version number.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.0.0] - 2026-10-13
+
 ### Added
 
 - **Protocol 3.** Every pairing and session request offers version 3 and
@@ -171,4 +175,5 @@ the repos share a version number.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
-[Unreleased]: https://github.com/TinkerNorth/dish-mac/compare/main...main
+[Unreleased]: https://github.com/TinkerNorth/dish-mac/compare/1.0.0...main
+[1.0.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.0
