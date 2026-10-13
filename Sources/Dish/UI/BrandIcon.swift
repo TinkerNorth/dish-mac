@@ -85,7 +85,8 @@ struct BrandIcon: View {
     }
 
     /// Reflector, highlight, feed horn and mast, rotated around the pivot and
-    /// rotated back so later drawing stays in canvas coordinates.
+    /// rotated back so later drawing stays in canvas coordinates. The dish
+    /// faces its signal: the reflector tilts +28°, up and to the right.
     private func drawDishReflector(in ctx: inout GraphicsContext) {
         let p = glyph
         let o = highlight
@@ -103,17 +104,21 @@ struct BrandIcon: View {
         ctx.translateBy(x: -pivot.x, y: -pivot.y)
     }
 
-    /// The reflector's tilt in the 64-unit glyph.
-    private static let reflectorTiltDegrees: Double = -28
+    /// The reflector's tilt in the 64-unit glyph, the fleet's +28°.
+    static let reflectorTiltDegrees: Double = 28
+
+    /// The lock-on indicator sits on the boresight just past the feed horn.
+    static let lockOn = CGPoint(x: 41.86, y: 9.46)
+
+    private func lockOnRect(radius: CGFloat) -> CGRect {
+        let s = scale
+        return CGRect(x: (Self.lockOn.x - radius) * s, y: (Self.lockOn.y - radius) * s, width: 2 * radius * s, height: 2 * radius * s)
+    }
 
     private func drawDishIndicators(in ctx: inout GraphicsContext) {
-        let s = scale
         if state == .connected {
-            ctx.fill(Path(ellipseIn: CGRect(x: 45 * s, y: 11 * s, width: 6 * s, height: 6 * s)), with: .color(DishTheme.brandGlyph))
-            ctx.fill(
-                Path(ellipseIn: CGRect(x: 46.5 * s, y: 12.5 * s, width: 3 * s, height: 3 * s)),
-                with: .color(DishTheme.brandGlyphHighlight)
-            )
+            ctx.fill(Path(ellipseIn: lockOnRect(radius: 3)), with: .color(DishTheme.brandGlyph))
+            ctx.fill(Path(ellipseIn: lockOnRect(radius: 1.5)), with: .color(DishTheme.brandGlyphHighlight))
         }
         if state == .off {
             strokeSlash(in: &ctx)
