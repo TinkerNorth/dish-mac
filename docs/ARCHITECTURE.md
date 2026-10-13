@@ -223,7 +223,8 @@ Each entry names the decided shape, so a change lands on it.
   against the same vectors; the control-plane, data-plane and `Integration*`
   suites drive the real manager and client over loopback with bounded waits,
   never sleeps. `IntegrationLiveSatelliteE2ETests` runs against the real
-  satellite binary through `scripts/e2e_local.sh`.
+  satellite binary through `scripts/e2e_local.sh`, locally and in CI's
+  `e2e.yml` lane, which builds the satellite from its pinned release tag.
 - **The rules are tested.** `Tests/ArchitectureTests` reads the tree: import
   boundaries, the dependency graph, license headers, suppressions, mutable
   statics, the lint thresholds and the version mirrors.
