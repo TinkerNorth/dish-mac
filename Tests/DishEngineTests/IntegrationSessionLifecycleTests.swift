@@ -128,7 +128,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
             manager.register(fresh)
             return fresh
         }()
-        conn.attachSlot("journey-slot", controllerType: 0, hasMotion: true, hasLight: true)
+        conn.attachSlot("journey-slot", controllerType: 0, capabilities: ControllerCapabilities(hasMotion: true, hasLightbar: true))
         return conn
     }
 
@@ -144,7 +144,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
     private func assertTheFirstPutCarriedTheWholeSlot() throws {
         XCTAssertEqual(satellite.sessionPuts.count, 1)
         let put = try XCTUnwrap(satellite.sessionPuts.first)
-        XCTAssertEqual(put["protocolVersion"] as? Int, 1)
+        XCTAssertEqual(put["protocolVersion"] as? Int, ProtocolConstants.protocolVersion)
         XCTAssertEqual(put["deviceId"] as? String, store.getOrCreateDeviceId())
         let descriptors = try XCTUnwrap(put["controllers"] as? [[String: Any]])
         XCTAssertEqual(descriptors.count, 1)
@@ -181,11 +181,12 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
             eventTimeMs: 0xCAFE_F00D
         )
         let padFrame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))
-        guard case let .touchpad(pad) = padFrame.detail else {
-            return XCTFail("touchpad frame must parse, got \(padFrame.detail)")
+        guard case let .pointer(pad) = padFrame.detail else {
+            return XCTFail("a version-3 session streams the POINTER frame, got \(padFrame.detail)")
         }
         XCTAssertEqual(pad.eventTimeMs, 0xCAFE_F00D)
-        XCTAssertEqual(pad.flags, 0b111, "f0 active | f1 active | button")
+        XCTAssertEqual(pad.fingerFlags, 0b11, "f0 active | f1 active")
+        XCTAssertEqual(pad.buttons, ProtocolConstants.pointerButtonLeft, "the click is the left button")
         XCTAssertEqual(pad.finger1X, 400)
     }
 
@@ -355,16 +356,17 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
 
     // MARK: - Pair-time protocol-version 409
 
-    func testPairTimeVersionRejectionSurfacesMismatchUX() async {
+    func testPairTimeVersionRejectionBelowTheSatellitesFloorNamesTheApp() async {
         let id = server.id
-        satellite.protocolVersionReject = true
+        satellite.protocolRange = 4 ... 5
 
         manager.pairWithPin(server, pin: satellite.operatorPin)
 
         let surfaced = await waitUntil {
-            self.failures.contains(.protocolMismatch)
+            self.failures.contains(.dishUpdateRequired)
         }
-        XCTAssertTrue(surfaced, "a pair-time 409 must surface the version-mismatch UX")
+        XCTAssertTrue(surfaced, "a pair-time 409 below the satellite's floor must say the app needs updating")
+        XCTAssertEqual(manager.get(id)?.protocolCompat, .dishUpdateRequired)
         XCTAssertNil(store.sharedKey(for: id), "a 409'd pair must not mint trust")
         XCTAssertNil(satellite.pairingKeyHex)
         XCTAssertTrue(satellite.sessionPuts.isEmpty, "no session PUT may follow a rejected pair")

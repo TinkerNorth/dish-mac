@@ -46,7 +46,8 @@ extension WifiConnectionManager {
             port: server.pairPort,
             deviceId: deviceId,
             deviceName: deviceName,
-            pin: ""
+            pin: "",
+            protocolVersion: conn.offeredProtocolVersion
         )
         switch PairingClient.classify(pair) {
         case let .success(sharedKey):
@@ -54,8 +55,10 @@ extension WifiConnectionManager {
         case .authRequired, .pendingApproval:
             conn.markDisconnected()
             events.send(.pairingRequired(server))
-        case .versionMismatch:
-            failPairing(conn, .protocolMismatch)
+        case let .versionMismatch(supported, supportedMin):
+            if lowerOfferOrFail(conn, intent: .userInitiated, supported: supported, supportedMin: supportedMin) {
+                await probeAndOpen(conn: conn, server: server)
+            }
         case let .unreachable(detail):
             failPairing(conn, unreachableFailure(server, detail: detail))
         }
@@ -90,28 +93,31 @@ extension WifiConnectionManager {
         let conn = pooledConnection(for: server)
         cancelApprovalPoll(conn.id)
         conn.markConnecting()
-        Task {
-            beginPairing(conn.id)
-            defer { endPairing(conn.id) }
-            let pair = await pairing.pair(
-                ip: server.ip,
-                port: server.pairPort,
-                deviceId: deviceId,
-                deviceName: deviceName,
-                pin: pin
-            )
-            await handlePinResponse(pair, conn: conn, server: server)
-        }
+        Task { await submitPin(conn: conn, server: server, pin: pin) }
     }
 
-    private func handlePinResponse(_ pair: PairResponse, conn: WifiConnection, server: DiscoveredServer) async {
+    /// One PIN submission. A 409 whose range still overlaps ours submits
+    /// again at the lower offer; every other answer ends the attempt.
+    private func submitPin(conn: WifiConnection, server: DiscoveredServer, pin: String) async {
+        beginPairing(conn.id)
+        defer { endPairing(conn.id) }
+        let pair = await pairing.pair(
+            ip: server.ip,
+            port: server.pairPort,
+            deviceId: deviceId,
+            deviceName: deviceName,
+            pin: pin,
+            protocolVersion: conn.offeredProtocolVersion
+        )
         switch PairingClient.classify(pair) {
         case let .success(sharedKey):
             await adoptPairedKey(sharedKey, conn: conn, server: server)
         case .authRequired, .pendingApproval:
             failPairing(conn, .pairingRejected(detail: pair.error))
-        case .versionMismatch:
-            failPairing(conn, .protocolMismatch)
+        case let .versionMismatch(supported, supportedMin):
+            if lowerOfferOrFail(conn, intent: .userInitiated, supported: supported, supportedMin: supportedMin) {
+                await submitPin(conn: conn, server: server, pin: pin)
+            }
         case let .unreachable(detail):
             failPairing(conn, unreachableFailure(server, detail: detail))
         }
@@ -142,23 +148,32 @@ extension WifiConnectionManager {
             deviceId: deviceId,
             deviceName: deviceName,
             pin: "",
-            clientPin: clientPin
+            clientPin: clientPin,
+            protocolVersion: conn.offeredProtocolVersion
         )
         if Task.isCancelled { return }
-        guard await submissionNeedsPolling(submitted, conn: conn, server: server) else { return }
+        guard await submissionNeedsPolling(submitted, conn: conn, server: server, clientPin: clientPin) else { return }
         await pollApproval(conn: conn, server: server)
     }
 
     /// Resolve the submit reply. True when the satellite parked the request
-    /// for the operator and the poll must run.
-    private func submissionNeedsPolling(_ submitted: PairResponse, conn: WifiConnection, server: DiscoveredServer) async -> Bool {
+    /// for the operator and the poll must run. A 409 whose range still
+    /// overlaps ours runs the whole flow again at the lower offer.
+    private func submissionNeedsPolling(
+        _ submitted: PairResponse,
+        conn: WifiConnection,
+        server: DiscoveredServer,
+        clientPin: String
+    ) async -> Bool {
         switch PairingClient.classify(submitted) {
         case .pendingApproval:
             return true
         case let .success(sharedKey):
             await adoptPairedKey(sharedKey, conn: conn, server: server)
-        case .versionMismatch:
-            failPairing(conn, .protocolMismatch)
+        case let .versionMismatch(supported, supportedMin):
+            if lowerOfferOrFail(conn, intent: .userInitiated, supported: supported, supportedMin: supportedMin) {
+                await runApprovalFlow(conn: conn, server: server, clientPin: clientPin)
+            }
         case .authRequired:
             failPairing(conn, .pairingRejected(detail: submitted.error))
         case let .unreachable(detail):

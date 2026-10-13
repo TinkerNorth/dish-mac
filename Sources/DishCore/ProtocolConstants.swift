@@ -23,6 +23,14 @@ public enum ProtocolConstants {
     /// return paths; the client never offers below this.
     public static let protocolVersionMin = 1
 
+    /// What an absent `protocolVersion` field means: a peer from before
+    /// versioning (contract §Versioning).
+    public static let protocolVersionWhenAbsent = 1
+
+    /// What an absent `catalogVersion` field means: the legacy catalog of two
+    /// types with no `emulates` (contract §Catalog).
+    public static let catalogVersionWhenAbsent = 1
+
     /// Whether a settled session speaks the version-2 frames. Every version
     /// gate in the client goes through this.
     public static func settledSpeaksV2(_ settledVersion: Int) -> Bool {

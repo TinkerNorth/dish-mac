@@ -117,7 +117,7 @@ final class ReconcileDriverLiveTests: XCTestCase {
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1))
 
         // Bind a slot and let the live converge apply it server-side.
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
         let applied = await waitUntil { self.satellite.appliedControllers.count == 1 }
         XCTAssertTrue(applied)
         XCTAssertEqual(satellite.sessionPuts.count, 1, "live attach rides the per-slot route")

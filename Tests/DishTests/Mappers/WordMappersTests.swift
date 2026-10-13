@@ -56,6 +56,14 @@ final class WordMappersTests: XCTestCase {
         )
         XCTAssertEqual(failureText(.controllerNotApplied), "Server could not apply the controller")
         XCTAssertEqual(failureText(.noServersFound), "No servers found — check your network")
+        XCTAssertEqual(
+            failureText(.dishUpdateRequired),
+            "This satellite needs a newer version of Dish. Update the app and retry."
+        )
+        XCTAssertEqual(
+            failureText(.satelliteUpdateRequired),
+            "This satellite is too old for this version of Dish. Update the satellite."
+        )
     }
 
     func testAServerDetailIsShownAsItCame() {

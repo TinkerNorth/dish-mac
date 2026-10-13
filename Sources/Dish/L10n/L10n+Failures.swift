@@ -15,6 +15,14 @@ extension L10n {
         catalog.text("This app and the satellite speak different protocol versions. Update both to the latest version.")
     }
 
+    var dishUpdateRequired: String {
+        catalog.text("This satellite needs a newer version of Dish. Update the app and retry.")
+    }
+
+    var satelliteUpdateRequired: String {
+        catalog.text("This satellite is too old for this version of Dish. Update the satellite.")
+    }
+
     var approvalDeclined: String {
         catalog.text("The satellite declined the pairing request.")
     }

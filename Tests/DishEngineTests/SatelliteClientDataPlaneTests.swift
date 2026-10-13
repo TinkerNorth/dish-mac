@@ -240,6 +240,75 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         )
     }
 
+    // MARK: - Version-2 return paths and the settled frame shape
+
+    func testTriggerEffectsAndPlayerLedsDispatchToTheirCallbacks() throws {
+        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
+        defer { client.closeSocket() }
+        var effects: [TriggerEffectsCommand] = []
+        var leds: [PlayerLedsCommand] = []
+        client.onTriggerEffects = { effects.append($0) }
+        client.onPlayerLeds = { leds.append($0) }
+        let left = [UInt8](repeating: 0x21, count: 11)
+        let right = [UInt8](repeating: 0x25, count: 11)
+        client.processIncoming(DataPlaneTestHelpers.sealDownlink(
+            msgType: ProtocolConstants.msgTriggerEffects,
+            payload: Data([3] + left + right),
+            counter: 1
+        ))
+        client.processIncoming(DataPlaneTestHelpers.sealDownlink(
+            msgType: ProtocolConstants.msgPlayerLeds,
+            payload: Data([3, 0b10101]),
+            counter: 2
+        ))
+        XCTAssertEqual(effects, [TriggerEffectsCommand(controllerIndex: 3, left: left, right: right)])
+        XCTAssertEqual(leds, [PlayerLedsCommand(controllerIndex: 3, ledMask: 0b10101)])
+    }
+
+    func testATruncatedFeedbackFrameIsDroppedSilently() throws {
+        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
+        defer { client.closeSocket() }
+        var fired = 0
+        client.onTriggerEffects = { _ in fired += 1 }
+        client.onPlayerLeds = { _ in fired += 1 }
+        client.processIncoming(DataPlaneTestHelpers.sealDownlink(
+            msgType: ProtocolConstants.msgTriggerEffects,
+            payload: Data([3, 1, 2]),
+            counter: 1
+        ))
+        client.processIncoming(DataPlaneTestHelpers.sealDownlink(msgType: ProtocolConstants.msgPlayerLeds, payload: Data([3]), counter: 2))
+        XCTAssertEqual(fired, 0)
+    }
+
+    func testTheTouchpadFrameShapeFollowsTheSettledVersion() throws {
+        let (fd, port) = try XCTUnwrap(DataPlaneTestHelpers.bindLoopbackSocket())
+        defer { close(fd) }
+        let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
+        defer { client.closeSocket() }
+        let sample = TouchpadSample(finger0: .none, finger1: .none, buttonPressed: true)
+
+        client.sendTouchpad(controllerIndex: 0, sample: sample, eventTimeMs: 1)
+        let versionOne = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
+        XCTAssertEqual(
+            DataPlaneTestHelpers.openUplink(versionOne)?.inner.payload.count,
+            16,
+            "a session settled on 1 streams the 16-byte frame"
+        )
+
+        XCTAssertTrue(client.setConnectionParams(
+            host: "127.0.0.1",
+            udpPort: port,
+            token: DataPlaneTestHelpers.testToken,
+            sessionKey: DataPlaneTestHelpers.testKey,
+            protocolVersion: 3
+        ))
+        client.sendTouchpad(controllerIndex: 0, sample: sample, eventTimeMs: 1)
+        let versionThree = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
+        let inner = try XCTUnwrap(DataPlaneTestHelpers.openUplink(versionThree)?.inner)
+        XCTAssertEqual(inner.payload.count, 19, "a session settled on 3 streams the POINTER frame")
+        XCTAssertEqual([UInt8](inner.payload)[2], ProtocolConstants.pointerButtonLeft)
+    }
+
     func testClosedClientDropsSendsWithoutTrapping() throws {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient())
         client.closeSocket()

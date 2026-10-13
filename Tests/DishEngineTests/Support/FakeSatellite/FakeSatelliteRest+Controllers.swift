@@ -36,7 +36,7 @@ extension FakeSatelliteRest {
                 "connectionId": id,
                 "deviceId": state.pairedDeviceId ?? "",
                 "epoch": Int(state.ackEpochOverride ?? state.epoch),
-                "protocolVersion": 1,
+                "protocolVersion": state.settledProtocolVersion,
                 "maxControllers": 16,
                 "controllers": controllers,
                 "hostFeatures": ["mouseControl": ["granted": state.lastMouseGranted]]

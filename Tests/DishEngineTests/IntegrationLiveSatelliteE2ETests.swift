@@ -200,7 +200,7 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
         // declarative session PUT.
         let conn = WifiConnection(id: id, server: server)
         manager.register(conn)
-        conn.attachSlot("e2e-slot", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("e2e-slot", controllerType: 0, capabilities: .none)
 
         // Pair path A with the real rotating operator PIN → key lands →
         // openSession PUT → live.

@@ -16,6 +16,11 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertEqual(ProtocolConstants.protocolVersionMin, 1)
     }
 
+    func testAnAbsentVersionFieldReadsAsTheFirstVersion() {
+        XCTAssertEqual(ProtocolConstants.protocolVersionWhenAbsent, 1)
+        XCTAssertEqual(ProtocolConstants.catalogVersionWhenAbsent, 1)
+    }
+
     func testOnlyASessionSettledOnTwoOrLaterSpeaksTheV2Frames() {
         XCTAssertFalse(ProtocolConstants.settledSpeaksV2(1))
         XCTAssertTrue(ProtocolConstants.settledSpeaksV2(2))

@@ -939,6 +939,41 @@
         }
       }
     },
+    "Dish update required" : {
+      "comment" : "Protocol chip: the satellite's oldest version is above this app's.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obavezno ažuriranje Disha"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish-Update erforderlich"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualización de Dish obligatoria"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mise à jour de Dish requise"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atualização do Dish obrigatória"
+          }
+        }
+      }
+    },
     "Dismiss" : {
       "comment" : "Tooltip of a toast's close cross.",
       "localizations" : {
@@ -2444,6 +2479,76 @@
         }
       }
     },
+    "Satellite update recommended" : {
+      "comment" : "Protocol chip: the satellite works at an older version.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preporučeno ažuriranje Satellitea"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satellite-Update empfohlen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualización de Satellite recomendada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mise à jour de Satellite recommandée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atualização do Satellite recomendada"
+          }
+        }
+      }
+    },
+    "Satellite update required" : {
+      "comment" : "Protocol chip: the satellite's newest version is below this app's floor.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obavezno ažuriranje Satellitea"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satellite-Update erforderlich"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualización de Satellite obligatoria"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mise à jour de Satellite requise"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atualização do Satellite obrigatória"
+          }
+        }
+      }
+    },
     "Scan" : {
       "comment" : "Trigger LAN scan. Maps to Android `action_scan`.",
       "localizations" : {
@@ -2755,6 +2860,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este app e o satélite falam versões diferentes do protocolo. Atualize ambos para a versão mais recente."
+          }
+        }
+      }
+    },
+    "This satellite is too old for this version of Dish. Update the satellite." : {
+      "comment" : "Failure: 409, the satellite's ceiling is below this app's floor.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovaj satelit je prestar za ovu verziju Disha. Ažurirajte satelit."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Satellit ist zu alt für diese Version von Dish. Aktualisiere den Satelliten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este satélite es demasiado antiguo para esta versión de Dish. Actualiza el satélite."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce satellite est trop ancien pour cette version de Dish. Mettez le satellite à jour."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este satélite é antigo demais para esta versão do Dish. Atualize o satélite."
+          }
+        }
+      }
+    },
+    "This satellite needs a newer version of Dish. Update the app and retry." : {
+      "comment" : "Failure: 409, the satellite's floor is above this app's version.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovaj satelit zahtijeva noviju verziju Disha. Ažurirajte aplikaciju i pokušajte ponovo."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Satellit benötigt eine neuere Version von Dish. Aktualisiere die App und versuche es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este satélite necesita una versión más reciente de Dish. Actualiza la aplicación y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce satellite nécessite une version plus récente de Dish. Mettez l’application à jour et réessayez."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este satélite precisa de uma versão mais recente do Dish. Atualize o aplicativo e tente novamente."
           }
         }
       }

@@ -20,42 +20,57 @@ extension FakeSatelliteRest {
     static let catalogETag = "\"1.6.0+en\""
 
     static let capabilitiesJSON = """
-    {"protocolVersion":1,"serverVersion":"1.6.0","maxControllers":16,
+    {"protocolVersion":3,"serverVersion":"1.6.0","maxControllers":16,
      "backend":{"id":"fake","supported":true,"available":true,"errorCode":null},
      "motion":{"available":true},
      "host":{"catalog":{"supported":true},
              "mouseControl":{"supported":true,"available":true},
              "keyboardControl":{"supported":false},
-             "rumble":{"supported":true,"available":true}}}
+             "rumble":{"supported":true,"available":true}},
+     "controllerAudio":{"enabled":false,"mic":false,"speaker":false,"hapticAudio":false}}
     """
 
+    /// The version-2 catalog: four types, `emulates` per type, every feature
+    /// slug the contract names.
     static let catalogJSON = """
-    {"locale":"en","protocolVersion":1,"serverVersion":"1.6.0",
+    {"locale":"en","protocolVersion":3,"serverVersion":"1.6.0","catalogVersion":2,
      "controllerTypes":[
        {"id":0,"slug":"xbox360","name":"Xbox 360 Controller","shortName":"Xbox",
         "description":"Best compatibility.",
         "image":{"href":"/api/catalog/images/xbox360","etag":"\\"1.6.0\\""},
         "features":{"rumble":{"supported":true},"analogTriggers":{"supported":true},
                     "motion":{"supported":false},"lightbar":{"supported":false},
-                    "touchpad":{"supported":false}}},
+                    "touchpad":{"supported":false},"triggerEffects":{"supported":false},
+                    "playerLeds":{"supported":false},"mic":{"supported":false},
+                    "speaker":{"supported":false},"hapticAudio":{"supported":false}},
+        "emulates":{"sdlType":"xbox360","usb":["045e:028e"]}},
        {"id":1,"slug":"ds4","name":"DualShock 4","shortName":"PlayStation",
         "description":"Motion, touchpad and light bar.",
         "image":{"href":"/api/catalog/images/ds4","etag":"\\"1.6.0\\""},
         "features":{"rumble":{"supported":true},"analogTriggers":{"supported":true},
-                    "motion":{"supported":true},"lightbar":{"supported":true},
-                    "touchpad":{"supported":true,"modes":["ds4"]}}},
+                    "motion":{"supported":true,"requires":"vigembus>=1.17"},"lightbar":{"supported":true},
+                    "touchpad":{"supported":true,"modes":["ds4"]},"triggerEffects":{"supported":false},
+                    "playerLeds":{"supported":false},"mic":{"supported":false},
+                    "speaker":{"supported":false},"hapticAudio":{"supported":false}},
+        "emulates":{"sdlType":"ps4","usb":["054c:05c4"]}},
        {"id":2,"slug":"dualsense","name":"DualSense","shortName":"DualSense",
-        "description":"Motion, touchpad and light bar.",
+        "description":"Motion, touchpad, light bar and adaptive triggers.",
         "image":{"href":"/api/catalog/images/dualsense","etag":"\\"1.6.0\\""},
         "features":{"rumble":{"supported":true},"analogTriggers":{"supported":true},
                     "motion":{"supported":true},"lightbar":{"supported":true},
-                    "touchpad":{"supported":true,"modes":["ds4"]}}},
+                    "touchpad":{"supported":true,"modes":["ds4"]},"triggerEffects":{"supported":true},
+                    "playerLeds":{"supported":true},"mic":{"supported":true},
+                    "speaker":{"supported":true},"hapticAudio":{"supported":true}},
+        "emulates":{"sdlType":"ps5","usb":["054c:0ce6"]}},
        {"id":3,"slug":"switchpro","name":"Switch Pro","shortName":"Switch Pro",
         "description":"Rumble and motion.",
         "image":{"href":"/api/catalog/images/switchpro","etag":"\\"1.6.0\\""},
         "features":{"rumble":{"supported":true},"analogTriggers":{"supported":false},
                     "motion":{"supported":true},"lightbar":{"supported":false},
-                    "touchpad":{"supported":false}}}],
+                    "touchpad":{"supported":false},"triggerEffects":{"supported":false},
+                    "playerLeds":{"supported":true},"mic":{"supported":false},
+                    "speaker":{"supported":false},"hapticAudio":{"supported":false}},
+        "emulates":{"sdlType":"switchpro","usb":["057e:2009"]}}],
      "hostFeatures":{"mouseControl":{"supported":true,"modes":["off","ds4","mouse"]},
                      "keyboardControl":{"supported":false},
                      "rumble":{"supported":true}}}

@@ -72,7 +72,7 @@ final class HTTPClientLiveTests: XCTestCase {
         XCTAssertEqual(resp.token, satellite.lastTokenHex)
         XCTAssertEqual(resp.sessionSalt, satellite.lastSessionSaltHex)
         XCTAssertEqual(resp.sessionSalt?.count, 16, "8-byte salt as 16 hex chars")
-        XCTAssertEqual(resp.protocolVersion, 1)
+        XCTAssertEqual(resp.protocolVersion, ProtocolConstants.protocolVersion, "the fake settles on the offer and echoes it")
         XCTAssertEqual(resp.maxControllers, 16)
         XCTAssertEqual(resp.controllers.count, 1)
         XCTAssertTrue(resp.controllers[0].slotIsLive)
@@ -81,8 +81,8 @@ final class HTTPClientLiveTests: XCTestCase {
     func testPutSessionRequestShapeIsTheContracts() async throws {
         _ = await putSession(controllers: [descriptor(idx: 0, type: 1)])
         let recorded = try XCTUnwrap(satellite.sessionPuts.last)
-        // G5: protocolVersion rides every session request.
-        XCTAssertEqual(recorded["protocolVersion"] as? Int, 1)
+        // The offer rides every session request (contract §Versioning).
+        XCTAssertEqual(recorded["protocolVersion"] as? Int, ProtocolConstants.protocolVersion)
         // G6: the proof rides the body too (headers win when both present).
         XCTAssertEqual(recorded["hmacProof"] as? String, proof)
         XCTAssertEqual(recorded["deviceId"] as? String, deviceId)
@@ -154,10 +154,12 @@ final class HTTPClientLiveTests: XCTestCase {
 
     // MARK: - Versioning (G5)
 
-    func testVersionRejectionDrawsTerminal409() async {
-        satellite.protocolVersionReject = true
+    func testAnOfferOutsideTheSatellitesRangeDraws409WithTheRange() async {
+        satellite.protocolRange = 4 ... 5
         let resp = await putSession()
         XCTAssertEqual(resp.httpStatus, 409)
+        XCTAssertEqual(resp.supportedProtocol, 5)
+        XCTAssertEqual(resp.supportedProtocolMin, 4)
         // Same construction `RestStamped.verdict` wires into the shell.
         let verdict = classifyRest(RestReply(
             status: resp.httpStatus, bodyParsed: resp.reachable, code: resp.code ?? ""

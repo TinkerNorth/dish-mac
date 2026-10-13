@@ -224,13 +224,22 @@ final class FakeSatelliteRest {
         FakeSatelliteHttp.json(401, ["error": "unauthorized", "code": code])
     }
 
-    /// contract §Versioning: absent protocolVersion means 1; anything else
-    /// (or the reject knob) draws 409 with the supported version.
+    /// contract §Versioning: an offer inside [supportedMin, supported]
+    /// settles the session on it and is echoed back; absent means 1; an
+    /// offer outside the range draws 409 with both bounds.
     func versionRejection(_ body: [String: Any]) -> FakeSatelliteHttp.Response? {
-        let version = body["protocolVersion"] as? Int ?? 1
-        let knob = store.with { $0.protocolVersionReject }
-        guard version != 1 || knob else { return nil }
-        return FakeSatelliteHttp.json(409, ["error": "protocol version unsupported", "supported": 1])
+        let offered = body["protocolVersion"] as? Int ?? 1
+        let range = store.with { $0.supportedProtocolMin ... $0.supportedProtocol }
+        guard !range.contains(offered) else {
+            store.with { $0.settledProtocolVersion = offered }
+            return nil
+        }
+        store.with { $0.rejectedOffers.append(offered) }
+        return FakeSatelliteHttp.json(409, [
+            "error": "protocol version unsupported",
+            "supported": range.upperBound,
+            "supportedMin": range.lowerBound
+        ])
     }
 
     // MARK: - Session (contract §Session)
@@ -287,7 +296,7 @@ final class FakeSatelliteRest {
                 "sessionSalt": FakeSatelliteCrypto.hexString(salt),
                 "epoch": Int(state.epoch),
                 "maxControllers": 16,
-                "protocolVersion": 1,
+                "protocolVersion": state.settledProtocolVersion,
                 "controllers": Self.appliedControllers(controllers, failure: failure),
                 "hostFeatures": ["mouseControl": ["granted": wantsMouse]]
             ]

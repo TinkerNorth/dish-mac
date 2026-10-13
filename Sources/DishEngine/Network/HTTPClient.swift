@@ -57,8 +57,9 @@ final class HTTPClient {
 
     /// `PUT /api/connections` — declarative session upsert. `controllers` is
     /// the WHOLE desired set (empty = a valid zero-controller session);
-    /// `mouseControl` is the requested host feature (v1 sends false — the
-    /// touchpad-mouse UI is deferred — but the grant still parses).
+    /// `protocolVersion` is this connection's offer (contract §Versioning);
+    /// `mouseControl` is the requested host feature (false until the
+    /// touchpad-mouse UI lands, but the grant still parses).
     func putSession(
         ip: String,
         port: Int,
@@ -66,12 +67,13 @@ final class HTTPClient {
         deviceName: String,
         hmacProof: String,
         controllers: [ControllerDescriptor],
+        protocolVersion: Int = ProtocolConstants.protocolVersion,
         mouseControl: Bool = false
     ) async -> SessionResponse {
         let body = try? JSONEncoder().encode(PutSessionBody(
             deviceId: deviceId,
             deviceName: deviceName,
-            protocolVersion: ProtocolConstants.protocolVersion,
+            protocolVersion: protocolVersion,
             hmacProof: hmacProof,
             controllers: controllers,
             hostFeatures: .init(mouseControl: mouseControl)
@@ -209,6 +211,24 @@ final class HTTPClient {
             hmacProof: ""
         )
         return decode(CatalogDTO.self, from: raw) ?? CatalogDTO()
+    }
+
+    /// `GET /api/server/capabilities` — what the satellite can do right now
+    /// (unauthenticated; contract §ServerInfo). An unreachable satellite or
+    /// an unparseable body yields the default DTO with `reachable` false.
+    func getCapabilities(ip: String, port: Int) async -> ServerCapabilitiesDTO {
+        let raw = await perform(
+            path: "/api/server/capabilities",
+            ip: ip,
+            port: port,
+            method: "GET",
+            body: nil,
+            deviceId: "",
+            hmacProof: ""
+        )
+        var out = decode(ServerCapabilitiesDTO.self, from: raw) ?? ServerCapabilitiesDTO()
+        out.reachable = raw.reachable && !raw.body.isEmpty
+        return out
     }
 
     // MARK: - Plumbing

@@ -95,6 +95,20 @@ extension L10n {
     var unsteady: String {
         catalog.text("Unsteady")
     }
+
+    // MARK: - Protocol chip
+
+    var satelliteUpdateRecommended: String {
+        catalog.text("Satellite update recommended")
+    }
+
+    var satelliteUpdateRequiredChip: String {
+        catalog.text("Satellite update required")
+    }
+
+    var dishUpdateRequiredChip: String {
+        catalog.text("Dish update required")
+    }
 }
 
 extension L10n {

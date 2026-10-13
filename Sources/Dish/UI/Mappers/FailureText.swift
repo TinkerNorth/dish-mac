@@ -11,6 +11,8 @@ func failureText(_ failure: ConnectionFailure, words: L10n = .app) -> String {
     switch failure {
     case .identityChanged: words.identityChanged
     case .protocolMismatch: words.protocolMismatch
+    case .dishUpdateRequired: words.dishUpdateRequired
+    case .satelliteUpdateRequired: words.satelliteUpdateRequired
     case .approvalDeclined: words.approvalDeclined
     case .approvalTimedOut: words.approvalTimedOut
     case .repairNeeded: words.repairNeeded

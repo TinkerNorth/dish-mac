@@ -210,9 +210,17 @@ final class RestModelsTests: XCTestCase {
             CatalogDTO.self, from: Data(FakeSatelliteRest.catalogJSON.utf8)
         )
         XCTAssertEqual(catalog.locale, "en")
-        XCTAssertEqual(catalog.protocolVersion, 1)
+        XCTAssertEqual(catalog.protocolVersion, 3)
+        XCTAssertEqual(catalog.catalogVersion, 2)
         XCTAssertEqual(catalog.serverVersion, "1.6.0")
         XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3])
+        XCTAssertEqual(catalog.controllerTypes.map { $0.emulates?.sdlType }, ["xbox360", "ps4", "ps5", "switchpro"])
+        XCTAssertEqual(catalog.controllerTypes[2].emulates?.usb, ["054c:0ce6"])
+        XCTAssertTrue(catalog.controllerTypes[2].features.triggerEffects.supported)
+        XCTAssertTrue(catalog.controllerTypes[2].features.hapticAudio.supported)
+        XCTAssertFalse(catalog.controllerTypes[1].features.playerLeds.supported)
+        XCTAssertEqual(catalog.controllerTypes[1].features.touchpad.modes, ["ds4"])
+        XCTAssertEqual(catalog.controllerTypes[1].features.motion.requires, "vigembus>=1.17")
         XCTAssertEqual(catalog.controllerTypes.map(\.slug), ["xbox360", "ds4", "dualsense", "switchpro"])
         let ds4 = catalog.controllerTypes[1]
         XCTAssertEqual(ds4.name, "DualShock 4")
@@ -232,9 +240,9 @@ final class RestModelsTests: XCTestCase {
         XCTAssertFalse(catalog.hostFeatures.keyboardControl.supported)
     }
 
-    func testCatalogToleratesEmulatesBlockAndUnknownKeys() throws {
-        // The soon-to-land per-type `emulates` object — and any other key we
-        // don't model — must not break decoding; it is simply ignored.
+    func testCatalogToleratesAnUnknownEmulatesShapeAndUnknownKeys() throws {
+        // A `usb` list in a shape this client does not know, and any key it
+        // does not model, must not break decoding.
         let json = """
         {"locale":"en","protocolVersion":1,"serverVersion":"1.7.0","futureTop":42,
          "controllerTypes":[
@@ -250,6 +258,8 @@ final class RestModelsTests: XCTestCase {
         XCTAssertEqual(catalog.controllerTypes[0].slug, "ds4")
         XCTAssertTrue(catalog.controllerTypes[0].features.motion.supported)
         XCTAssertFalse(catalog.controllerTypes[0].features.lightbar.supported)
+        XCTAssertEqual(catalog.controllerTypes[0].emulates?.sdlType, "ps4")
+        XCTAssertEqual(catalog.controllerTypes[0].emulates?.usb, [], "an unreadable usb list reads as empty")
     }
 
     func testCatalogDefaultsMissingOptionalFields() throws {

@@ -94,7 +94,12 @@ struct SessionResponse: Decodable {
     var sessionSalt: String?
     var epoch = 0
     var maxControllers = ProtocolConstants.maxControllersPerConnection
-    var protocolVersion = ProtocolConstants.protocolVersion
+    /// The version the satellite settled the session on; absent means 1.
+    var protocolVersion = ProtocolConstants.protocolVersionWhenAbsent
+    /// A 409 body's range: the newest version the satellite speaks and its
+    /// floor. 0 when the body did not carry them.
+    var supportedProtocol = 0
+    var supportedProtocolMin = 0
     var controllers: [ControllerApplyDto] = []
     var mouseControl = HostFeatureGrant()
     var error: String?
@@ -115,6 +120,8 @@ struct SessionResponse: Decodable {
     private enum CodingKeys: String, CodingKey {
         case connectionId, token, sessionSalt, epoch, maxControllers, protocolVersion
         case controllers, hostFeatures, error, code
+        case supportedProtocol = "supported"
+        case supportedProtocolMin = "supportedMin"
     }
 
     init(from decoder: Decoder) throws {
@@ -126,7 +133,9 @@ struct SessionResponse: Decodable {
         self.maxControllers = try container.decodeIfPresent(Int.self, forKey: .maxControllers)
             ?? ProtocolConstants.maxControllersPerConnection
         self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
-            ?? ProtocolConstants.protocolVersion
+            ?? ProtocolConstants.protocolVersionWhenAbsent
+        self.supportedProtocol = try container.decodeIfPresent(Int.self, forKey: .supportedProtocol) ?? 0
+        self.supportedProtocolMin = try container.decodeIfPresent(Int.self, forKey: .supportedProtocolMin) ?? 0
         self.controllers = try container.decodeIfPresent([ControllerApplyDto].self, forKey: .controllers) ?? []
         let hostFeatures = try container.decodeIfPresent(HostFeaturesDto.self, forKey: .hostFeatures)
         self.mouseControl = hostFeatures?.mouseControl ?? HostFeatureGrant()
@@ -240,147 +249,6 @@ struct PairStatusResponse: Decodable {
     }
 }
 
-// MARK: - Catalog (contract §ServerInfo & Catalog)
-
-/// `GET /api/catalog` — the virtual controller types a satellite offers
-/// (unauthenticated). Clients derive the bound-slot default from
-/// `controllerTypes.first` rather than hardcoding a type; the rest is modeled
-/// for the deferred Emulate picker. Lenient like the other DTOs here. A soon-
-/// to-land per-type `emulates` object (`{sdlType,usb}`) is intentionally NOT
-/// modeled — unknown keys are ignored, so it is tolerated present or absent
-/// and consumed by nothing yet (a future physical-pad matcher owns it).
-struct CatalogDTO: Decodable, Equatable {
-    var locale = ""
-    var protocolVersion = ProtocolConstants.protocolVersion
-    var serverVersion = ""
-    var controllerTypes: [CatalogControllerType] = []
-    var hostFeatures = CatalogHostFeatures()
-
-    init() {}
-
-    private enum CodingKeys: String, CodingKey {
-        case locale, protocolVersion, serverVersion, controllerTypes, hostFeatures
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.locale = try container.decodeIfPresent(String.self, forKey: .locale) ?? ""
-        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
-            ?? ProtocolConstants.protocolVersion
-        self.serverVersion = try container.decodeIfPresent(String.self, forKey: .serverVersion) ?? ""
-        self.controllerTypes = try container.decodeIfPresent(
-            [CatalogControllerType].self, forKey: .controllerTypes
-        ) ?? []
-        self.hostFeatures = try container.decodeIfPresent(CatalogHostFeatures.self, forKey: .hostFeatures)
-            ?? CatalogHostFeatures()
-    }
-}
-
-/// One offered virtual controller type. `id` is the descriptor `type` byte.
-struct CatalogControllerType: Decodable, Equatable {
-    var id = Int(ProtocolConstants.controllerTypeXbox)
-    var slug = ""
-    var name = ""
-    var shortName = ""
-    var description = ""
-    var features = CatalogFeatures()
-    var image = CatalogImage()
-
-    init() {}
-
-    private enum CodingKeys: String, CodingKey {
-        case id, slug, name, shortName, description, features, image
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeIfPresent(Int.self, forKey: .id)
-            ?? Int(ProtocolConstants.controllerTypeXbox)
-        self.slug = try container.decodeIfPresent(String.self, forKey: .slug) ?? ""
-        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-        self.shortName = try container.decodeIfPresent(String.self, forKey: .shortName) ?? ""
-        self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
-        self.features = try container.decodeIfPresent(CatalogFeatures.self, forKey: .features) ?? CatalogFeatures()
-        self.image = try container.decodeIfPresent(CatalogImage.self, forKey: .image) ?? CatalogImage()
-    }
-}
-
-/// Per-type feature flags (each `{"supported":Bool,...}`; extra fields such as
-/// touchpad `modes` are ignored — not consumed yet).
-struct CatalogFeatures: Decodable, Equatable {
-    var rumble = CatalogFeature()
-    var analogTriggers = CatalogFeature()
-    var motion = CatalogFeature()
-    var lightbar = CatalogFeature()
-    var touchpad = CatalogFeature()
-
-    init() {}
-
-    private enum CodingKeys: String, CodingKey {
-        case rumble, analogTriggers, motion, lightbar, touchpad
-    }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.rumble = try container.decodeIfPresent(CatalogFeature.self, forKey: .rumble) ?? CatalogFeature()
-        self.analogTriggers = try container.decodeIfPresent(CatalogFeature.self, forKey: .analogTriggers)
-            ?? CatalogFeature()
-        self.motion = try container.decodeIfPresent(CatalogFeature.self, forKey: .motion) ?? CatalogFeature()
-        self.lightbar = try container.decodeIfPresent(CatalogFeature.self, forKey: .lightbar) ?? CatalogFeature()
-        self.touchpad = try container.decodeIfPresent(CatalogFeature.self, forKey: .touchpad) ?? CatalogFeature()
-    }
-}
-
-/// A single `{"supported":Bool}` capability flag.
-struct CatalogFeature: Decodable, Equatable {
-    var supported = false
-
-    init() {}
-
-    private enum CodingKeys: String, CodingKey { case supported }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
-    }
-}
-
-/// A type's artwork reference (`{href,etag}`); rendered by the deferred picker.
-struct CatalogImage: Decodable, Equatable {
-    var href = ""
-    var etag = ""
-
-    init() {}
-
-    private enum CodingKeys: String, CodingKey { case href, etag }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.href = try container.decodeIfPresent(String.self, forKey: .href) ?? ""
-        self.etag = try container.decodeIfPresent(String.self, forKey: .etag) ?? ""
-    }
-}
-
-/// Host-level catalog features (`{supported}` shape — distinct from the
-/// session response's grant shape). Modeled for fidelity; unused for now.
-struct CatalogHostFeatures: Decodable, Equatable {
-    var mouseControl = CatalogFeature()
-    var keyboardControl = CatalogFeature()
-    var rumble = CatalogFeature()
-
-    init() {}
-
-    private enum CodingKeys: String, CodingKey { case mouseControl, keyboardControl, rumble }
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.mouseControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .mouseControl) ?? CatalogFeature()
-        self.keyboardControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .keyboardControl)
-            ?? CatalogFeature()
-        self.rumble = try container.decodeIfPresent(CatalogFeature.self, forKey: .rumble) ?? CatalogFeature()
-    }
-}
-
 // MARK: - Request bodies
 
 /// Declarative per-controller desired state sent in the session/controller
@@ -396,17 +264,32 @@ struct ControllerDescriptor: Encodable, Hashable {
     var touchpadMode = TouchpadMode.off
 
     private enum CodingKeys: String, CodingKey { case ctrlIdx, type, caps, touchpadMode }
-    private enum CapsKeys: String, CodingKey { case rumble, motion, analogTriggers, lightbar }
+    private enum CapsKeys: String, CodingKey {
+        case rumble, motion, analogTriggers, lightbar, triggerEffects, playerLeds, mic, speaker, hapticAudio
+    }
+
+    /// Every cap bit and the key it is written under, so the body always
+    /// carries the whole caps object.
+    private static let capKeys: [(bit: UInt16, key: CapsKeys)] = [
+        (ProtocolConstants.capRumble, .rumble),
+        (ProtocolConstants.capMotion, .motion),
+        (ProtocolConstants.capAnalogTriggers, .analogTriggers),
+        (ProtocolConstants.capLightbar, .lightbar),
+        (ProtocolConstants.capTriggerEffects, .triggerEffects),
+        (ProtocolConstants.capPlayerLeds, .playerLeds),
+        (ProtocolConstants.capMic, .mic),
+        (ProtocolConstants.capSpeaker, .speaker),
+        (ProtocolConstants.capHapticAudio, .hapticAudio)
+    ]
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(ctrlIdx, forKey: .ctrlIdx)
         try container.encode(Int(type), forKey: .type)
         var capsContainer = container.nestedContainer(keyedBy: CapsKeys.self, forKey: .caps)
-        try capsContainer.encode(caps & ProtocolConstants.capRumble != 0, forKey: .rumble)
-        try capsContainer.encode(caps & ProtocolConstants.capMotion != 0, forKey: .motion)
-        try capsContainer.encode(caps & ProtocolConstants.capAnalogTriggers != 0, forKey: .analogTriggers)
-        try capsContainer.encode(caps & ProtocolConstants.capLightbar != 0, forKey: .lightbar)
+        for entry in Self.capKeys {
+            try capsContainer.encode(caps & entry.bit != 0, forKey: entry.key)
+        }
         try container.encode(touchpadMode.wireName, forKey: .touchpadMode)
     }
 }
@@ -415,7 +298,7 @@ struct ControllerDescriptor: Encodable, Hashable {
 
 /// `nil`-out empty strings so `optional == nil` uniformly means "absent",
 /// matching dish-linux's `setIfNonEmpty` parse rule.
-private func nonEmpty(_ value: String?) -> String? {
+func nonEmpty(_ value: String?) -> String? {
     guard let value, !value.isEmpty else { return nil }
     return value
 }

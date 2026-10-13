@@ -74,29 +74,28 @@ package final class WifiConnection: ObservableObject, Identifiable {
     /// exist before the bitmap bit does, and that gap is not drift.
     private(set) var slotApplied = false
 
+    /// What the last negotiation said about the satellite's version.
+    @Published private(set) var protocolCompat: ProtocolCompat = .unknown
+    /// The version the live session speaks; the floor while no session.
+    private(set) var settledProtocolVersion = ProtocolConstants.protocolVersionMin
+    /// The version the next pairing or session PUT offers. A 409 whose range
+    /// still overlaps ours lowers it, and the lowered offer sticks to this
+    /// connection so a retry never repeats the rejected number.
+    private(set) var offeredProtocolVersion = ProtocolConstants.protocolVersion
+
     private var hooks = SessionHooks()
     private let tickIntervalNs: UInt64
     private var aliveTask: Task<Void, Never>?
     private var rekeyRequested = false
     private var pendingControllerType = 0
-    private var pendingHasLight = false
-    private var pendingHasMotion = false
+    private var pendingCapabilities: ControllerCapabilities = .none
+    private var forwardingFlags = ForwardingFlags()
     private var rumbleHandler: ((RumbleCommand) -> Void)?
     private var lightbarHandler: ((LightbarCommand) -> Void)?
+    private var triggerEffectsHandler: ((TriggerEffectsCommand) -> Void)?
+    private var playerLedsHandler: ((PlayerLedsCommand) -> Void)?
 
     nonisolated static let defaultCtrlIndex = 0
-    /// Every macOS-bridged extended gamepad has analog triggers and accepts
-    /// the rumble return path.
-    nonisolated static let defaultCaps: UInt16 = ProtocolConstants.capAnalogTriggers | ProtocolConstants.capRumble
-
-    /// The descriptor caps word: the fixed bits plus motion and light bar
-    /// when the physical pad has them.
-    nonisolated static func capabilityWord(hasMotion: Bool, hasLight: Bool) -> UInt16 {
-        var word = defaultCaps
-        if hasMotion { word |= ProtocolConstants.capMotion }
-        if hasLight { word |= ProtocolConstants.capLightbar }
-        return word
-    }
 
     init(id: String, server: DiscoveredServer, tickIntervalNs: UInt64 = 1_000_000_000) {
         self.id = id
@@ -129,15 +128,34 @@ package final class WifiConnection: ObservableObject, Identifiable {
     }
 
     /// The whole desired controller set for the session PUT: the bound slot
-    /// as one descriptor, or nil for a valid zero-controller session.
+    /// as one descriptor, or nil for a valid zero-controller session. The
+    /// caps and the touchpad mode say what the pad has AND the user allows.
     var desiredDescriptor: ControllerDescriptor? {
         guard boundSlotId != nil else { return nil }
         var descriptor = ControllerDescriptor()
         descriptor.ctrlIdx = Self.defaultCtrlIndex
         descriptor.type = UInt8(truncatingIfNeeded: pendingControllerType)
-        descriptor.caps = Self.capabilityWord(hasMotion: pendingHasMotion, hasLight: pendingHasLight)
-        descriptor.touchpadMode = .off
+        descriptor.caps = descriptorCaps(pendingCapabilities, forwardingFlags)
+        descriptor.touchpadMode = descriptorTouchpadMode(pendingCapabilities, forwardingFlags)
         return descriptor
+    }
+
+    // MARK: - Protocol version
+
+    /// A 409 left a lower version to offer.
+    func setOfferedProtocolVersion(_ version: Int) {
+        offeredProtocolVersion = version
+    }
+
+    /// The PUT settled: the frames key off this, and the chip follows.
+    func adoptProtocol(_ outcome: ProtocolOutcome) {
+        settledProtocolVersion = outcome.settledVersion
+        protocolCompat = compatForOutcome(outcome)
+    }
+
+    /// A terminal 409: the row keeps saying which end must update.
+    func setProtocolCompat(_ compat: ProtocolCompat) {
+        protocolCompat = compat
     }
 
     // MARK: - Session lifecycle
@@ -166,6 +184,8 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private func installClientHandlers(_ client: SatelliteClient) {
         client.onRumble = rumbleHandler
         client.onLightbar = lightbarHandler
+        client.onTriggerEffects = triggerEffectsHandler
+        client.onPlayerLeds = playerLedsHandler
         client.onSessionClose = { [weak self] reason in
             Task { @MainActor [weak self] in
                 self?.onSessionClose?(reason)
@@ -317,12 +337,19 @@ package final class WifiConnection: ObservableObject, Identifiable {
 
     // MARK: - Slot binding
 
-    func attachSlot(_ slotId: String, controllerType: Int, hasMotion: Bool, hasLight: Bool) {
+    func attachSlot(_ slotId: String, controllerType: Int, capabilities: ControllerCapabilities) {
         boundSlotId = slotId
         pendingControllerType = controllerType
-        pendingHasMotion = hasMotion
-        pendingHasLight = hasLight
+        pendingCapabilities = capabilities
         if hasLiveSession { onTopologyChanged?() }
+    }
+
+    /// A switch flipped in Settings. The descriptor is always sent whole, so
+    /// a changed claim re-sends it while a slot is bound and live.
+    func setForwardingFlags(_ flags: ForwardingFlags) {
+        guard flags != forwardingFlags else { return }
+        forwardingFlags = flags
+        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
     }
 
     /// The belief updates at once; a failed DELETE self-heals via reconcile.
@@ -372,12 +399,30 @@ package final class WifiConnection: ObservableObject, Identifiable {
         clientRef.get()?.onLightbar = handler
     }
 
+    func setTriggerEffectsHandler(_ handler: @escaping (TriggerEffectsCommand) -> Void) {
+        triggerEffectsHandler = handler
+        clientRef.get()?.onTriggerEffects = handler
+    }
+
+    func setPlayerLedsHandler(_ handler: @escaping (PlayerLedsCommand) -> Void) {
+        playerLedsHandler = handler
+        clientRef.get()?.onPlayerLeds = handler
+    }
+
     var hasRumbleHandler: Bool {
         rumbleHandler != nil
     }
 
     var hasLightbarHandler: Bool {
         lightbarHandler != nil
+    }
+
+    var hasTriggerEffectsHandler: Bool {
+        triggerEffectsHandler != nil
+    }
+
+    var hasPlayerLedsHandler: Bool {
+        playerLedsHandler != nil
     }
 }
 

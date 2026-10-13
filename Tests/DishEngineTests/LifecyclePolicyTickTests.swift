@@ -97,7 +97,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
 
         var converges = 0
         conn.onTopologyChanged = { converges += 1 }
-        conn.attachSlot("slot-f", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-f", controllerType: 0, capabilities: .none)
         XCTAssertEqual(converges, 1, "faltering is still a live session — REST converge must fire")
         conn.detachSlot()
         XCTAssertEqual(converges, 2)
@@ -247,7 +247,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
         (conn, client) = try makeLive(epoch: 5, hooks: hooks)
 
         // Bound + server-confirmed slot 0: expected bitmap 0b1 matches.
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
         conn.markSlotApplied()
         seedAck(epoch: 5, bitmap: 0b1)
         conn.aliveTick()
@@ -268,7 +268,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
         // Desire exists but the per-slot PUT hasn't landed: the expected
         // bitmap must come from the applied BELIEF (empty), not the want —
         // otherwise every converge flight would false-positive.
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
         seedAck(epoch: 5, bitmap: 0)
         conn.aliveTick()
         XCTAssertEqual(reconciles, 0)
@@ -277,7 +277,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
     func testDesiredSlotsReflectBindingForTheGetCompare() throws {
         (conn, client) = try makeLive(hooks: SessionHooks())
         XCTAssertEqual(conn.desiredSlots(), [])
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: true, hasLight: true)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: ControllerCapabilities(hasMotion: true, hasLightbar: true))
         XCTAssertEqual(conn.desiredSlots(), [DesiredSlot(ctrlIdx: 0, type: 0)])
         conn.detachSlot()
         XCTAssertEqual(conn.desiredSlots(), [])
@@ -290,7 +290,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
         hooks.reconcile = {}
         (conn, client) = try makeLive(epoch: 7, hooks: hooks)
         conn.setReconcileInFlight(true)
-        conn.attachSlot("slot-a", controllerType: 0, hasMotion: false, hasLight: false)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
         conn.markSlotApplied()
 
         conn.markDisconnected()

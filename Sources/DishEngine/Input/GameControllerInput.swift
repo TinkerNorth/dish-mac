@@ -57,6 +57,8 @@ final class GameControllerInput: ObservableObject {
         let name: String
         var capabilities: ControllerCapabilities = .none
         var battery: BatteryReading?
+        /// The pad's family, which picks the catalog type it is emulated as.
+        var family: PadFamily = .other
     }
 
     @Published var slots: [Slot] = []
@@ -80,6 +82,17 @@ final class GameControllerInput: ObservableObject {
     /// The rumble return path, serialised and coalesced per controller.
     lazy var rumbleApplier = ReturnPathApplier<RumbleCommand>(label: "dish.returnpath.rumble") { [weak self] deviceId, command in
         self?.actuateRumble(deviceId: deviceId, command: command)
+    }
+
+    /// The adaptive-trigger return path, serialised and coalesced per controller.
+    lazy var triggerEffectsApplier =
+        ReturnPathApplier<TriggerEffectsCommand>(label: "dish.returnpath.triggers") { [weak self] deviceId, command in
+            self?.writeTriggerEffects(deviceId: deviceId, command: command)
+        }
+
+    /// The player-LED return path, serialised and coalesced per controller.
+    lazy var playerLedsApplier = ReturnPathApplier<Int>(label: "dish.returnpath.playerleds") { [weak self] deviceId, player in
+        self?.writePlayerIndex(deviceId: deviceId, player: player)
     }
 
     /// IOKit's battery snapshot is a blocking call, kept off the main thread.
@@ -131,7 +144,7 @@ final class GameControllerInput: ObservableObject {
         guard let pad = controller.extendedGamepad else { return }
         let id = slotId(for: controller)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
-        recordSlot(id: id, controller: controller, capabilities: capabilities)
+        recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
         processor.setDeadzones(deviceId: id, .init(stickFlat: kDefaultStickFlat, triggerFlat: kDefaultTriggerFlat))
         installReportHandler(id: id, pad: pad)
         installMotionHandler(id: id, controller: controller)
@@ -150,29 +163,46 @@ final class GameControllerInput: ObservableObject {
     }
 
     /// `hasBattery` is always true: a pad without its own battery still
-    /// reports the host Mac's.
+    /// reports the host Mac's. Only the DualSense takes trigger effects and
+    /// has player LEDs the framework drives by player index.
     private static func detectCapabilities(_ controller: GCController, pad: GCExtendedGamepad) -> ControllerCapabilities {
-        ControllerCapabilities(
+        let dualSense = pad is GCDualSenseGamepad
+        return ControllerCapabilities(
             hasMotion: controller.motion != nil,
             hasTouchpad: touchpadInputs(pad) != nil,
             hasRumble: controller.haptics != nil,
             hasLightbar: controller.light != nil,
-            hasBattery: true
+            hasBattery: true,
+            hasTriggerEffects: dualSense,
+            hasPlayerLeds: dualSense
         )
     }
 
-    private func recordSlot(id: String, controller: GCController, capabilities: ControllerCapabilities) {
+    /// The pad's family from the framework's product category; anything
+    /// the framework does not name is a generic pad.
+    static func family(of controller: GCController) -> PadFamily {
+        switch controller.productCategory {
+        case GCProductCategoryDualSense: .dualSense
+        case GCProductCategoryDualShock4: .dualShock4
+        case GCProductCategoryXboxOne: .xbox
+        default: .other
+        }
+    }
+
+    private func recordSlot(id: String, controller: GCController, capabilities: ControllerCapabilities, family: PadFamily) {
         let name = controller.vendorName ?? controller.productCategory
         if let index = slots.firstIndex(where: { $0.id == id }) {
             slots[index].capabilities = capabilities
+            slots[index].family = family
         } else {
-            slots.append(Slot(id: id, name: name, capabilities: capabilities))
+            slots.append(Slot(id: id, name: name, capabilities: capabilities, family: family))
         }
         Self.log.info("""
         DEVCAPS id=\(id, privacy: .public) name=\(name, privacy: .public) \
         category=\(controller.productCategory, privacy: .public) \
         extendedGamepad=yes motion=\(capabilities.hasMotion) touchpad=\(capabilities.hasTouchpad) \
-        rumble=\(capabilities.hasRumble) lightbar=\(capabilities.hasLightbar) battery=\(capabilities.hasBattery)
+        rumble=\(capabilities.hasRumble) lightbar=\(capabilities.hasLightbar) battery=\(capabilities.hasBattery) \
+        triggerEffects=\(capabilities.hasTriggerEffects) playerLeds=\(capabilities.hasPlayerLeds)
         """)
     }
 
