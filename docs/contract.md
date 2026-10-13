@@ -41,8 +41,9 @@ URLSession, and stores.
 | 0x000C POINTER frame (version 2) beside the 16-byte TOUCHPAD frame | `Sources/DishCore/Wire/Encoders.swift` (`pointerPayload`), chosen by the settled version in `SatelliteClient.sendTouchpad` |
 | TRIGGER_EFFECTS 0x0010 and PLAYER_LEDS 0x0011 return paths | `Sources/DishCore/Wire/FeedbackCommands.swift`, `Sources/DishEngine/Input/DualSenseTriggerEffect.swift`, `Sources/DishEngine/Input/GameControllerInput+ReturnPath.swift` |
 | Descriptor caps as promises (the hardware AND the user's switch), `touchpadMode` | `Sources/DishEngine/Network/DescriptorCaps.swift` |
-| `GET /api/server/capabilities` | `Sources/DishEngine/Network/ServerCapabilities.swift`, cached by `WifiConnectionManager.fetchCapabilities` |
-| Catalog version 2: `catalogVersion`, `emulates`, the feature slugs, `modes`, `requires` | `Sources/DishEngine/Network/CatalogModels.swift`; `preferredControllerType` in `DescriptorCaps.swift` |
+| `GET /api/server/capabilities` | `Sources/DishEngine/Network/ServerCapabilities.swift`, cached by `WifiConnectionManager.fetchCapabilities`; the host layer of the capability table (`hostProbeFacts`) |
+| Catalog version 2: `catalogVersion`, `emulates`, the feature slugs, `modes`, `requires` | `Sources/DishEngine/Network/CatalogModels.swift`; `emulatedControllerType`, `offerableTypes` and `typeFeatureFacts` in `DescriptorCaps.swift` (the Emulate picker and the type layer of the capability table); the catalog is read before the first session PUT |
+| The apply result's `motion.sinkSupportedForType` / `motion.backendOk` | `ControllerApplyDto` in `RestModels.swift`, recorded per binding in `MotionBackendStatusStore`, folded by `motionIndicatorFor` in `Sources/DishCore/Reducers/MotionIndicator.swift` |
 
 Test double: `Tests/DishEngineTests/Support/FakeSatellite/` is an in-process
 satellite that accepts a configurable protocol range (1...3 by default, like
@@ -90,10 +91,9 @@ and `Integration*` suites drive it end-to-end.
 
 ## Contract surfaces this client does not consume yet
 
-`GET /api/catalog` and `GET /api/server/capabilities` are not fetched —
-there is no "Emulate" picker yet; every bind requests the Xbox target
-(catalog type 0), so the catalog/capabilities probes have nothing to render.
 The session PUT carries `hostFeatures` (sent as `mouseControl: false`) and
-decodes the grant shape, but no host-input stream ships yet, and
-`touchpadMode` stays `off`. These are UI-layer follow-ups; the wire/REST
-layers above already carry everything they need.
+decodes the grant shape, but no host-input stream ships yet: the Mouse row
+of the capability table says so at the link layer. The catalog's `image`
+references are decoded and not drawn; the picker names a type, it does not
+picture it. The controller-audio opcodes are ignored on receipt, as the
+architecture notes say.

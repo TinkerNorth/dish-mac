@@ -35,6 +35,9 @@ protocol-1 satellite; see [Protocol](#protocol).
   the system appearance or a chosen light or dark theme.
 - Checks GitHub for a newer release at startup and every few hours, says so
   once per version, and lets one switch turn the check off.
+- Emulates each pad as the type its satellite offers for it, or the one you
+  pick, and shows what carries end to end: the pad, this Mac, the type and
+  the host, feature by feature.
 - Speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
 
 What the other clients have that this one does not yet is tracked, row by

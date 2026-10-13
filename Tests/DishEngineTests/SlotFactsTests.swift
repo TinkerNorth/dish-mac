@@ -69,16 +69,28 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertEqual(
             dualSense,
             TypeFeatureFacts(
-                motion: true, touchpad: true, rumble: true, lightbar: true,
-                triggerEffects: true, playerLeds: true, mic: true, speaker: true
+                motion: true,
+                touchpad: true,
+                rumble: true,
+                lightbar: true,
+                triggerEffects: true,
+                playerLeds: true,
+                mic: true,
+                speaker: true
             )
         )
         let xbox = try XCTUnwrap(try typeFeatureFacts(in: catalog(), type: 0))
         XCTAssertEqual(
             xbox,
             TypeFeatureFacts(
-                motion: false, touchpad: false, rumble: true, lightbar: false,
-                triggerEffects: false, playerLeds: false, mic: false, speaker: false
+                motion: false,
+                touchpad: false,
+                rumble: true,
+                lightbar: false,
+                triggerEffects: false,
+                playerLeds: false,
+                mic: false,
+                speaker: false
             )
         )
     }
