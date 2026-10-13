@@ -45,28 +45,93 @@ func bindButtonTitle(expanded: Bool, words: L10n = .app) -> String {
 /// One capability pill. Three states a player can tell apart: available and
 /// on, available but off in Settings, and absent from the hardware; a fourth
 /// tone warns when the satellite, not the pad or the switch, is the reason.
+/// A chip with a `switch` is the controller's own toggle for that feature,
+/// clickable while the global switch in Settings is on.
 struct CapabilityChipModel: Equatable {
     let label: String
     let on: Bool
     let available: Bool
     let help: String
     var warning = false
+    var `switch`: SlotSwitch?
+    var toggle = false
 }
 
-/// The chips for a slot as the card shows them: bound, the gyro chip carries
-/// the satellite's word on motion; unbound, the detected state.
-func capabilityChips(for slot: ControllerSlot, _ flags: ForwardingFlags, words: L10n = .app) -> [CapabilityChipModel] {
-    let chips = capabilityChips(slot.capabilities, flags, words: words)
-    guard slot.boundConnectionId != nil, slot.capabilities.hasMotion, let gyro = chips.first else { return chips }
-    let state = motionIndicator(slot, flags)
-    let bound = CapabilityChipModel(
-        label: gyro.label,
+/// The chips for a slot as the card shows them: each present feature folds
+/// the global switch with the controller's own and says which one is off;
+/// bound, the gyro chip carries the satellite's word on motion.
+func capabilityChips(for slot: ControllerSlot, _ global: ForwardingFlags, words: L10n = .app) -> [CapabilityChipModel] {
+    let effective = effectiveFlags(global: global, slot: slot.preferences)
+    let gyro = slot.capabilities.hasMotion
+        ? switchChip(words.gyro, feature: words.motion, .motion, slot: slot, global: global, words: words)
+        : CapabilityChipModel(label: words.noGyro, on: false, available: false, help: words.motionUnavailableHelp)
+    let optional: [(present: Bool, label: String, feature: String, key: SlotSwitch)] = [
+        (slot.capabilities.hasTouchpad, words.touchpad, words.touchpad, .touchpad),
+        (slot.capabilities.hasRumble, words.rumble, words.rumble, .rumble)
+    ]
+    let switches = optional.filter(\.present).map { entry in
+        switchChip(entry.label, feature: entry.feature, entry.key, slot: slot, global: global, words: words)
+    }
+    let lightbar = slot.capabilities.hasLightbar ? [detectedChip(
+        words.lightbar,
+        feature: words.lightBar,
+        on: effective.lightbar,
+        words: words
+    )] : []
+    return [boundGyro(gyro, slot: slot, effective: effective, words: words)] + switches + lightbar
+}
+
+/// A feature with a per-controller switch: off in Settings outranks off
+/// here, and the hint says what a click does.
+private func switchChip(
+    _ label: String,
+    feature: String,
+    _ key: SlotSwitch,
+    slot: ControllerSlot,
+    global: ForwardingFlags,
+    words: L10n
+) -> CapabilityChipModel {
+    let globalOn = switchValue(key, global)
+    let ownOn = switchValue(key, slot.preferences)
+    guard globalOn else {
+        return CapabilityChipModel(label: label, on: false, available: true, help: words.detectedOff(feature), switch: key, toggle: false)
+    }
+    let help = ownOn
+        ? "\(words.detectedOn(feature)) \(words.clickToTurnOffForThisController)"
+        : "\(words.turnedOffForThisController) \(words.clickToTurnOnForThisController)"
+    return CapabilityChipModel(label: label, on: ownOn, available: true, help: help, switch: key, toggle: true)
+}
+
+/// Bound, the gyro chip reads the satellite's word; the click hint stays.
+private func boundGyro(_ chip: CapabilityChipModel, slot: ControllerSlot, effective: ForwardingFlags, words: L10n) -> CapabilityChipModel {
+    guard slot.boundConnectionId != nil, slot.capabilities.hasMotion else { return chip }
+    let state = motionIndicator(slot, effective)
+    let hint = chip.toggle ? " \(chip.on ? words.clickToTurnOffForThisController : words.clickToTurnOnForThisController)" : ""
+    return CapabilityChipModel(
+        label: chip.label,
         on: state == .forwarding,
         available: true,
-        help: motionIndicatorText(state, words: words),
-        warning: motionIndicatorWarns(state)
+        help: motionIndicatorText(state, words: words) + hint,
+        warning: motionIndicatorWarns(state),
+        switch: chip.switch,
+        toggle: chip.toggle
     )
-    return [bound] + chips.dropFirst()
+}
+
+func switchValue(_ key: SlotSwitch, _ flags: ForwardingFlags) -> Bool {
+    switch key {
+    case .motion: flags.motion
+    case .rumble: flags.rumble
+    case .touchpad: flags.touchpad
+    }
+}
+
+func switchValue(_ key: SlotSwitch, _ preferences: SlotPreferences) -> Bool {
+    switch key {
+    case .motion: preferences.motion
+    case .rumble: preferences.rumble
+    case .touchpad: preferences.touchpad
+    }
 }
 
 /// The chips for a slot. Motion always shows, present or explicitly absent;

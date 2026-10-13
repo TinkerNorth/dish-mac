@@ -26,7 +26,8 @@ protocol-1 satellite; see [Protocol](#protocol).
   pad, plus motion (gyro and accelerometer) and the touchpad from DualSense
   and DualShock 4 pads, and the battery level.
 - Plays rumble and sets the light bar as the host game asks, each gated by
-  its own switch in Settings; on a DualSense it also plays the game's
+  its own switch in Settings and, for motion, rumble and the touchpad, by
+  the controller's own; on a DualSense it also plays the game's
   adaptive-trigger effects and lights the player indicator.
 - Keeps the Mac awake while a controller is being used or connected, your
   choice in Settings with the display optional; releases every session when
