@@ -45,8 +45,11 @@ protocol-1 satellite; see [Protocol](#protocol).
   pick, and shows what carries end to end: the pad, this Mac, the type and
   the host, feature by feature.
 - Opens a Diagnostics window with each session's own account of itself, each
-  controller down to the wire, and a log of what changed; keeps a local crash
-  log you review, redacted, before choosing to send it.
+  controller down to the wire, and a log of what changed; inspects one
+  controller live (its input as the host sees it, motion and touch, a drift
+  and a range test on the raw sticks, a rumble bench, a test tone and a
+  microphone meter); keeps a local crash log you review, redacted, before
+  choosing to send it.
 - Speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
 
 What the other clients have that this one does not yet is tracked, row by

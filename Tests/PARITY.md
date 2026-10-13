@@ -25,7 +25,7 @@
 | Runs in the background / window closed | ⚠️ | ✅ tray | ✅ tray | ✅ menu-bar item (closing the window keeps streaming; off in Settings quits) |
 | Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite (release-all on sleep, reconnect on wake) |
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional |
-| Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts, each controller down to the wire, the flight recorder |
+| Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts, each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, the rumble bench, the test tone and the microphone meter) |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ every host is a satellite, so every row reads Fastest |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
 | App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | ✅ header chip: live, muted or hidden; one click mutes or unmutes every armed mic |
@@ -97,9 +97,7 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. The Diagnostics extras the Linux client has: the input inspector, the
-   stick drift test and the rumble bench. (Theme, background mode,
-   keep-awake modes, the update check, About, the Emulate picker, "What
-   carries", the motion word, the link tier, Diagnostics, the crash log and
-   the per-controller switches shipped.)
-2. Moonlight hosts.
+1. Moonlight hosts. (Theme, background mode, keep-awake modes, the update
+   check, About, the Emulate picker, "What carries", the motion word, the
+   link tier, Diagnostics and its inspector, the crash log, the
+   per-controller switches, controller audio and mouse mode shipped.)

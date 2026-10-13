@@ -189,6 +189,61 @@ final class ControllerAudioEngineTests: XCTestCase {
         XCTAssertEqual(ports.inputs.count, 1, "no new input is opened without the system's leave")
     }
 
+    // MARK: - The inspector's tests
+
+    func testTheToneOpensTheOutputForItselfAndClosesItWhenNoVoiceIsWanted() async throws {
+        engine.apply([binding(facts(live: false))])
+        XCTAssertTrue(ports.outputs.isEmpty, "no session, no voice")
+        XCTAssertTrue(engine.playTone(for: "slot"))
+        XCTAssertFalse(engine.playTone(for: "slot"), "one tone at a time")
+        let output = try XCTUnwrap(ports.outputs.first)
+        XCTAssertTrue(output.started)
+        XCTAssertEqual(engine.state["slot"]?.tonePlaying, true)
+        let swept = await waitUntil(timeout: 3) { self.engine.counters(for: "slot")?.toneWindows == TestTone.windows }
+        XCTAssertTrue(swept, "forty windows, one every 20 ms")
+        let window = output.pull(frames: AudioWire.samplesPerChannel)
+        XCTAssertGreaterThan(rms(window, stride: 4, offset: 0), 0.1, "the tone rides the speaker pair")
+        XCTAssertEqual(rms(window, stride: 4, offset: 2), 0, "and never the haptics lanes")
+        let closed = await waitUntil { self.engine.state["slot"]?.tonePlaying == false }
+        XCTAssertTrue(closed)
+        XCTAssertFalse(output.started, "nothing else wanted the output")
+    }
+
+    func testTheToneNeedsASpeakerRoute() {
+        engine.apply([AudioBinding(slotId: "slot", connection: connection, route: nil, facts: facts())])
+        XCTAssertFalse(engine.playTone(for: "slot"))
+        XCTAssertFalse(engine.playTone(for: "nobody"))
+    }
+
+    func testTheMicMeterListensWithoutSendingAndStopsOnItsOwn() async throws {
+        let short = ControllerAudioEngine(ports: ports, meterMs: 300)
+        short.apply([binding(facts(live: false))])
+        XCTAssertTrue(ports.inputs.isEmpty, "no session, no capture")
+        XCTAssertTrue(short.startMicMeter(for: "slot"))
+        XCTAssertFalse(short.startMicMeter(for: "slot"), "one meter at a time")
+        let input = try XCTUnwrap(ports.inputs.first)
+        XCTAssertTrue(input.started)
+        input.push(tone(channels: 1))
+        let metered = await waitUntil { short.state["slot"]?.micMeter?.peakPercent == 30 }
+        XCTAssertTrue(metered, "a 0.3 tone peaks at 30%")
+        XCTAssertEqual(short.state["slot"]?.micMeter?.levelPercent, 21)
+        XCTAssertEqual(short.counters(for: "slot")?.micSent, 0, "the meter sends nothing")
+        let stopped = await waitUntil { short.state["slot"]?.micMeter == nil }
+        XCTAssertTrue(stopped, "the meter stops on its own")
+        XCTAssertFalse(input.started, "nothing else wanted the microphone")
+    }
+
+    func testTheMicMeterNeedsAMicRouteAndTheSystemsLeave() {
+        var refused = facts(live: false)
+        refused.micPermitted = false
+        engine.apply([binding(refused)])
+        XCTAssertFalse(engine.startMicMeter(for: "slot"))
+        engine.apply([AudioBinding(slotId: "slot", connection: connection, route: nil, facts: facts())])
+        XCTAssertFalse(engine.startMicMeter(for: "slot"))
+        engine.stopMicMeter(for: "slot")
+        XCTAssertEqual(engine.state["slot"]?.micMeter, nil)
+    }
+
     // MARK: - Lifecycle
 
     func testARestingSessionOpensNothingAndARemovedBindingClosesEverything() {
