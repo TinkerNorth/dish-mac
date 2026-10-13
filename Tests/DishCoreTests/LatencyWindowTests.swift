@@ -165,3 +165,19 @@ final class LatencyWindowTests: XCTestCase {
         XCTAssertEqual(formatLatencyMs(-3.0), "~0.0 ms")
     }
 }
+
+extension LatencyWindowTests {
+
+    func testTheSummaryCarriesTheMedianAndTheTailRoundTrips() {
+        var window = LatencyWindow()
+        XCTAssertEqual(window.summary(), LatencySummary(p50RttMs: nil, p99RttMs: nil, samples: 0, capacity: LatencyWindow.capacity))
+        for rtt in [10.0, 20.0, 30.0, 40.0, 500.0] {
+            window.recordRtt(ms: rtt)
+        }
+        let summary = window.summary()
+        XCTAssertEqual(summary.p50RttMs, 30.0)
+        XCTAssertEqual(summary.p99RttMs, 500.0, "nearest rank: the tail sample itself")
+        XCTAssertEqual(summary.samples, 5)
+        XCTAssertEqual(window.p50OneWayMs(), 15.0, "the one-way figure is still the halved median")
+    }
+}

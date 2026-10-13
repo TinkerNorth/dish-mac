@@ -69,6 +69,19 @@ the repos share a version number.
   backend status drive the gyro chip: streaming, host can't receive, server
   can't deliver.
 - **The link tier.** Satellite rows wear the fleet's "Fastest" cue.
+- **Diagnostics.** A window, from Settings or the menu bar, with each
+  satellite session's own account of itself (the settled and offered
+  protocol, the epoch and the controller bitmap against what this client
+  applied, the backend, the round trips, the missed heartbeats, the mouse
+  grant), each controller down to the wire (the emulated type, the index,
+  the confirmation, the advertised caps word, the touchpad mode) and a
+  flight recorder of what changed, copyable whole. Read-only: every figure
+  is one the app already acts on.
+- **A local crash log.** A fatal signal appends a backtrace to
+  `~/Library/Logs/Dish/crash.log`; the next launch offers the report in
+  Settings with the home folder, network addresses and key-like values
+  removed, to copy, to open as a prefilled GitHub issue in the browser, or
+  to discard. Nothing is sent on its own.
 
 ### Changed
 

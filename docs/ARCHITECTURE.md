@@ -94,9 +94,12 @@ fleet's keys; `ControllerTypeStore` and `MotionBackendStatusStore` are
 read as each descriptor is built, the second written from every apply result;
 `UpdateChecker` is a `StateSource<UpdateState>` that runs the
 pure `UpdateMachine` reducer and performs the effects it returns; the
-notification queue is a `StateSource<[DishNotification]>`; `composeSlots` and
-`routeSnapshot` are the pure transforms behind the slot list and the hot-path
-table. The coordinators still publish several properties each; moving them
+notification queue is a `StateSource<[DishNotification]>`; `DiagnosticsSource`
+is a `StateSource<DiagnosticsSnapshot>` that re-reads the session facts at
+1 Hz while the Diagnostics window is open, and `DiagnosticsLogStore` keeps the
+flight recorder's lines that `DiagnosticsRecorder` derives by diffing the
+rows and the slots; `composeSlots` and `routeSnapshot` are the pure transforms
+behind the slot list and the hot-path table. The coordinators still publish several properties each; moving them
 onto single-state sources is listed under limitations.
 
 ## Capturing a request: `AsyncState<T, E>`
@@ -192,10 +195,13 @@ Each entry names the decided shape, so a change lands on it.
   the light bar are global; the other clients gate them per binding. The
   shape is a per-`SlotKey` store beside `ControllerTypeStore`, folded into
   `descriptorCaps` and the capability table's user gates.
-- **No Diagnostics window and no crash log yet.** The session facts live on
-  `WifiConnection` (`lastHeartbeatAck`, the settled version, the latency
-  window) and the slot facts on `ControllerSlot`; the window, the flight
-  recorder and the local crash log are the next slice.
+- **The crash log is local and the handler is process state.** `CrashHandler`
+  holds its buffers in one process-wide `let`, because a C signal handler
+  takes no context; the install step is its only writer. The report is
+  redacted by `CrashReport` in the core and sent only by the user's browser.
+- **Diagnostics shows the facts, not the bench.** The input inspector, the
+  stick drift test and the rumble bench the Linux client has are pending; the
+  window reads the facts the engine already holds.
 - **The update check downloads nothing.** It reads the release manifest,
   says so once per version and opens the release page; installing stays
   manual, as on the other desktop clients.
@@ -223,5 +229,6 @@ Each entry names the decided shape, so a change lands on it.
   statics, the lint thresholds and the version mirrors.
 - **The app layer is tested where it decides.** `Tests/DishTests` covers the
   AppKit signal mapping, the close-to-background rule (with a recording
-  announcer in place of the notification centre), the mappers and the
+  announcer in place of the notification centre), the mappers (the slot card,
+  the capability table, the Diagnostics lines, the crash report) and the
   notification queue.

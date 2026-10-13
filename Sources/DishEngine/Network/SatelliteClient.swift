@@ -297,6 +297,13 @@ final class SatelliteClient {
         return (latencyWindow.p50OneWayMs(), latencyWindow.sampleCount)
     }
 
+    /// The round trips the Diagnostics window shows.
+    func latencySummary() -> LatencySummary {
+        latencyLock.lock()
+        defer { latencyLock.unlock() }
+        return latencyWindow.summary()
+    }
+
     /// Stamp the single-in-flight ping clock (heartbeat timer). The 5 s loss
     /// reclaim + never-overwrite rule live in `DishCore.LatencyWindow`.
     func armLatencyPing(nowMs: Int64) {

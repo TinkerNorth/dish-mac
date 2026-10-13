@@ -10,6 +10,7 @@ struct MenuBarMenu: View {
 
     @EnvironmentObject var model: AppModel
     let showWindow: () -> Void
+    let showDiagnostics: () -> Void
 
     private let words = L10n.app
 
@@ -17,6 +18,8 @@ struct MenuBarMenu: View {
         Text(dashboardStatusText(model.connections))
         Divider()
         Button(words.showDish, action: showWindow)
+        Button(words.diagnostics, action: showDiagnostics)
+        Divider()
         Button(words.quit) { NSApplication.shared.terminate(nil) }
             .keyboardShortcut("q")
     }

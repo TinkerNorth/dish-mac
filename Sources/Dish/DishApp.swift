@@ -14,7 +14,8 @@ struct DishApp: App {
             application: .default,
             workspace: NSWorkspace.shared.notificationCenter
         ),
-        appVersion: bundleVersion(Bundle.main)
+        appVersion: bundleVersion(Bundle.main),
+        crashLog: CrashLog.standard()
     )
     @StateObject private var notifications = DishNotificationCenter()
     @StateObject private var failureNotifier = FailureNotifier()
@@ -23,6 +24,9 @@ struct DishApp: App {
     @Environment(\.openWindow) private var openWindow
 
     init() {
+        // First, so a fault anywhere after this leaves a backtrace the user
+        // can review and choose to send; nothing is transmitted.
+        CrashHandler.install(log: CrashLog.standard())
         // `swift run` launches a bare binary with no .app bundle, so the
         // activation policy is set here for the window and the Dock icon.
         NSApplication.shared.setActivationPolicy(.regular)
@@ -57,8 +61,17 @@ struct DishApp: App {
         .windowResizability(.contentMinSize)
         .defaultSize(width: 560, height: 700)
 
+        Window(L10n.app.diagnostics, id: DishWindow.diagnostics) {
+            DiagnosticsView()
+                .preferredColorScheme(colorScheme(for: model.theme.state))
+                .environmentObject(model.diagnostics)
+                .environmentObject(model.diagnosticsLog)
+                .frame(minWidth: 560, minHeight: 520)
+        }
+        .defaultSize(width: 660, height: 780)
+
         MenuBarExtra {
-            MenuBarMenu(showWindow: showMainWindow)
+            MenuBarMenu(showWindow: showMainWindow, showDiagnostics: showDiagnosticsWindow)
                 .environmentObject(model)
         } label: {
             Image(systemName: "gamecontroller")
@@ -69,11 +82,17 @@ struct DishApp: App {
         openWindow(id: DishWindow.main)
         NSApplication.shared.activate(ignoringOtherApps: true)
     }
+
+    private func showDiagnosticsWindow() {
+        openWindow(id: DishWindow.diagnostics)
+        NSApplication.shared.activate(ignoringOtherApps: true)
+    }
 }
 
-/// The scene ids the menu bar reopens.
+/// The scene ids the menu bar and Settings open.
 enum DishWindow {
     static let main = "main"
+    static let diagnostics = "diagnostics"
 }
 
 /// The running build as the bundle reports it; a bare `swift run` binary has
