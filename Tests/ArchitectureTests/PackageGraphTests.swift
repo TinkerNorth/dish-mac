@@ -15,13 +15,25 @@ final class PackageGraphTests: XCTestCase {
         let name: String
         let body: String
 
+        /// The list as names: a sibling module by its string, a product of
+        /// another package as `package/product`, so the arrow to the one
+        /// third-party package reads in the assertions below.
         var dependencies: [String]? {
             guard let start = body.range(of: "dependencies: [") else { return nil }
-            let list = body[start.upperBound...].prefix { $0 != "]" }
-            return list
-                .split(separator: ",")
-                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines).replacingOccurrences(of: "\"", with: "") }
-                .filter { !$0.isEmpty }
+            let list = String(body[start.upperBound...].prefix { $0 != "]" })
+            return Self.entries(in: list)
+        }
+
+        private static func entries(in list: String) -> [String] {
+            let pattern = #"\.product\(name: "([^"]+)", package: "([^"]+)"\)|"([^"]+)""#
+            let regex = try? NSRegularExpression(pattern: pattern)
+            let whole = NSRange(list.startIndex..., in: list)
+            return regex?.matches(in: list, range: whole).map { match in
+                if let product = Range(match.range(at: 1), in: list), let package = Range(match.range(at: 2), in: list) {
+                    return "\(list[package])/\(list[product])"
+                }
+                return Range(match.range(at: 3), in: list).map { String(list[$0]) } ?? ""
+            } ?? []
         }
 
         var treatsWarningsAsErrors: Bool {
@@ -88,8 +100,24 @@ final class PackageGraphTests: XCTestCase {
         XCTAssertEqual(block("DishEngine")?.dependencies, ["DishCore", "DishKernel"])
     }
 
-    func testTheAppDependsOnTheEngineCoreAndKernel() {
-        XCTAssertEqual(block("Dish")?.dependencies, ["DishEngine", "DishCore", "DishKernel"])
+    func testTheAppDependsOnTheEngineCoreKernelAndTheCrashUploader() {
+        XCTAssertEqual(block("Dish")?.dependencies, ["DishEngine", "DishCore", "DishKernel", "DishCrashUpload"])
+    }
+
+    /// The one third-party package reaches the tree through one module, so
+    /// the engine's list above stays Apple-only.
+    func testOnlyTheCrashUploaderDependsOnTheSdk() {
+        XCTAssertEqual(block("DishCrashUpload")?.dependencies, ["DishEngine", "DishCore", "sentry-cocoa/Sentry"])
+        let withSdk = blocks.filter { ($0.dependencies ?? []).contains { $0.hasPrefix("sentry-cocoa/") } }.map(\.name)
+        XCTAssertEqual(withSdk, ["DishCrashUpload"])
+    }
+
+    /// The SDK is pinned exactly, like the lint tools: a range would let a
+    /// resolve move the crash reporter under a release.
+    func testTheSdkIsPinnedExactly() throws {
+        let manifest = try RepoFiles.read("Package.swift")
+        XCTAssertTrue(manifest.contains(#".package(url: "https://github.com/getsentry/sentry-cocoa", exact: ""#))
+        XCTAssertFalse(manifest.contains("from: \""), "no open-ended package ranges")
     }
 
     func testEveryFirstPartyTargetTreatsWarningsAsErrors() {

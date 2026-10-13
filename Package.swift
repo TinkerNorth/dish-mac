@@ -12,6 +12,12 @@ let package = Package(
     name: "Dish",
     defaultLocalization: "en",
     platforms: [.macOS(.v13)],
+    dependencies: [
+        // The crash reporter behind the Share crash reports switch, pinned
+        // exactly like the lint tools; it reaches the app only through
+        // `DishCrashUpload`, so the engine's dependency list stays Apple-only.
+        .package(url: "https://github.com/getsentry/sentry-cocoa", exact: "9.30.1")
+    ],
     targets: [
         // The pure protocol core: wire codecs, crypto, protocol constants and
         // policy reducers. Foundation + CryptoKit only; the import allowlist is
@@ -37,10 +43,19 @@ let package = Package(
             path: "Sources/DishEngine",
             swiftSettings: warningsAreErrors
         ),
+        // The Sentry SDK behind the crash-reporting switch, armed only by a
+        // build that carries a DSN. Its own module, so the SDK is the one
+        // third-party import in the tree and the engine never sees it.
+        .target(
+            name: "DishCrashUpload",
+            dependencies: ["DishEngine", "DishCore", .product(name: "Sentry", package: "sentry-cocoa")],
+            path: "Sources/DishCrashUpload",
+            swiftSettings: warningsAreErrors
+        ),
         // The SwiftUI projection and the AppKit glue.
         .executableTarget(
             name: "Dish",
-            dependencies: ["DishEngine", "DishCore", "DishKernel"],
+            dependencies: ["DishEngine", "DishCore", "DishKernel", "DishCrashUpload"],
             path: "Sources/Dish",
             resources: [
                 // SwiftPM compiles the String Catalog into per-locale
@@ -68,6 +83,12 @@ let package = Package(
             name: "DishTests",
             dependencies: ["Dish", "DishEngine"],
             path: "Tests/DishTests",
+            swiftSettings: warningsAreErrors
+        ),
+        .testTarget(
+            name: "DishCrashUploadTests",
+            dependencies: ["DishCrashUpload", "DishEngine", "DishCore"],
+            path: "Tests/DishCrashUploadTests",
             swiftSettings: warningsAreErrors
         ),
         // The rules of the repository, read from the tree: import boundaries,

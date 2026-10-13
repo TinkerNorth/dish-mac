@@ -35,6 +35,8 @@ package final class AppModel: ObservableObject {
     let audio: AudioPipeline
     /// The input inspector, armed on one controller while its sheet is open.
     package let inspector: InputInspector
+    /// The Share crash reports switch; the uploader behind it is the app's.
+    package let crashReporting: CrashReportingController
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
@@ -64,9 +66,21 @@ package final class AppModel: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
 
     /// The app's entry point: production stores, the host's lifecycle
-    /// signals, the running build's version for the update check.
-    package convenience init(lifecycle: LifecycleSignals, appVersion: String, crashLog: CrashLog) {
-        self.init(store: ConnectionStore(), lifecycle: lifecycle, appVersion: appVersion, crashLog: crashLog)
+    /// signals, the running build's version for the update check, the crash
+    /// uploader behind the Share crash reports switch.
+    package convenience init(
+        lifecycle: LifecycleSignals,
+        appVersion: String,
+        crashLog: CrashLog,
+        crashUploader: CrashUploader
+    ) {
+        self.init(
+            store: ConnectionStore(),
+            lifecycle: lifecycle,
+            appVersion: appVersion,
+            crashLog: crashLog,
+            crashUploader: crashUploader
+        )
     }
 
     init(
@@ -77,7 +91,8 @@ package final class AppModel: ObservableObject {
         manifestGateway: ManifestGateway? = nil,
         appVersion: String = "0.0.0",
         crashLog: CrashLog = CrashLog(url: URL(fileURLWithPath: "/dev/null")),
-        audioDependencies: AudioDependencies? = nil
+        audioDependencies: AudioDependencies? = nil,
+        crashUploader: CrashUploader? = nil
     ) {
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
@@ -121,15 +136,17 @@ package final class AppModel: ObservableObject {
             dependencies: audioDependencies ?? .live()
         )
         inspector = InputInspector(processor: input.processor)
-        gate.update(settings.flags)
-        routing.install(on: input.processor)
+        crashReporting = CrashReportingController(defaults: defaults, uploader: crashUploader)
         wireObservers(pipeline: pipeline, lifecycle: lifecycle)
     }
 
-    /// The observers in their order: the slot list and the routing table,
-    /// the pipelines started, the return paths, the settings, the events
-    /// and the host's lifecycle, and the remembered satellites last.
+    /// The gate and the routing table installed first, then the observers
+    /// in their order: the slot list and the routing table, the pipelines
+    /// started, the return paths, the settings, the events and the host's
+    /// lifecycle, and the remembered satellites last.
     private func wireObservers(pipeline: WakePipeline, lifecycle: LifecycleSignals) {
+        gate.update(settings.flags)
+        routing.install(on: input.processor)
         observeSlots()
         observeRoutingTable()
         observeDiagnostics()

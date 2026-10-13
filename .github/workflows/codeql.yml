@@ -44,10 +44,17 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      # The crash reporter's unused binary slices stay out of the cache: SwiftPM
+      # downloads every xcframework the sentry-cocoa package declares, three
+      # gigabytes unpacked, and the build needs only `Sentry`; a missing
+      # unused artifact is neither re-fetched nor missed.
       - name: Cache SwiftPM
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .build
+          path: |
+            .build
+            !.build/artifacts/sentry-cocoa/Sentry-*
+            !.build/artifacts/sentry-cocoa/SentryObjC-*
           key: ${{ runner.os }}-codeql-spm-${{ hashFiles('Package.swift', 'Package.resolved') }}
           restore-keys: ${{ runner.os }}-codeql-spm-
 
