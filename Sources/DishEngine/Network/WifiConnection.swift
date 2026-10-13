@@ -76,6 +76,8 @@ package final class WifiConnection: ObservableObject, Identifiable {
 
     /// What the last negotiation said about the satellite's version.
     @Published private(set) var protocolCompat: ProtocolCompat = .unknown
+    /// The session grant's word on host mouse control, for the diagnostics.
+    private(set) var mouseControlGranted = false
     /// The version the live session speaks; the floor while no session.
     private(set) var settledProtocolVersion = ProtocolConstants.protocolVersionMin
     /// The version the next pairing or session PUT offers. A 409 whose range
@@ -309,6 +311,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
         lastAppliedEpoch = -1
         reconcileInFlight = false
         slotApplied = false
+        mouseControlGranted = false
         hooks = SessionHooks()
         latencyOneWayMs = nil
         latencySamples = 0
@@ -323,6 +326,10 @@ package final class WifiConnection: ObservableObject, Identifiable {
 
     func setLastAppliedEpoch(_ epoch: Int) {
         lastAppliedEpoch = epoch
+    }
+
+    func setMouseControlGranted(_ granted: Bool) {
+        mouseControlGranted = granted
     }
 
     func setReconcileInFlight(_ inFlight: Bool) {
