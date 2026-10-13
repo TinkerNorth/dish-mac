@@ -17,13 +17,7 @@ final class EncodersTests: XCTestCase {
     func testInputPayloadPinsTheXusbLittleEndianLayout() {
         let payload = Encoders.inputPayload(
             controllerIndex: 3,
-            buttons: 0xABCD,
-            lt: 0x11,
-            rt: 0x22,
-            lx: 0x1234,
-            ly: -2,
-            rx: Int16.max,
-            ry: Int16.min
+            report: GamepadReport(buttons: 0xABCD, lt: 0x11, rt: 0x22, lx: 0x1234, ly: -2, rx: Int16.max, ry: Int16.min)
         )
         XCTAssertEqual(payload.count, ProtocolConstants.inputPayloadBytes)
         XCTAssertEqual(
@@ -45,12 +39,7 @@ final class EncodersTests: XCTestCase {
     func testMotionPayloadPinsTheSeventeenByteLittleEndianLayout() {
         let payload = Encoders.motionPayload(
             controllerIndex: 1,
-            gyroX: 0x1234,
-            gyroY: -1,
-            gyroZ: 2,
-            accelX: -32768,
-            accelY: 32767,
-            accelZ: 0,
+            sample: MotionSample(gyroX: 0x1234, gyroY: -1, gyroZ: 2, accelX: -32768, accelY: 32767, accelZ: 0),
             timestampDeltaUs: 0xAABB_CCDD
         )
         XCTAssertEqual(payload.count, ProtocolConstants.motionPayloadBytes)

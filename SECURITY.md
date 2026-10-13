@@ -1,10 +1,11 @@
 # Security policy — TinkerNorth
 
-This file covers all four TinkerNorth repositories that ship the
+This file covers the five TinkerNorth repositories that ship the
 wireless-gamepad product end-to-end:
 
 - [`satellite`](https://github.com/TinkerNorth/satellite) — server (Windows / Linux / macOS)
 - [`dish-android`](https://github.com/TinkerNorth/dish-android) — Android client
+- [`dish-windows`](https://github.com/TinkerNorth/dish-windows) — Windows client (Qt6 / SDL2)
 - [`dish-linux`](https://github.com/TinkerNorth/dish-linux) — Linux client (Qt6 / SDL2)
 - [`dish-mac`](https://github.com/TinkerNorth/dish-mac) — macOS client (SwiftUI)
 
@@ -25,7 +26,7 @@ Use one of:
 1. **GitHub private vulnerability reporting** — open the repo, click
    *Security → Report a vulnerability*. This is preferred because it
    creates a tracked advisory and a private discussion thread.
-2. **Email** — `security@tinkernorth.invalid` (PGP key on request).
+2. **Email** — `security@tinkernorth.com` (PGP key on request).
    Include the repo, version (commit SHA or release tag), reproduction
    steps, and impact.
 
@@ -49,8 +50,8 @@ date regardless. We'd rather know than not know.
 
 In scope:
 
-- All four repos in this directory.
-- Release artifacts attached to GitHub Releases for any of the four repos.
+- All five repos above.
+- Release artifacts attached to GitHub Releases for any of the five repos.
 - The wire protocol (protocol 1 — the single source of truth is
   [`satellite/docs/contract.md`](https://github.com/TinkerNorth/satellite/blob/main/docs/contract.md)):
   the HTTPS `:9443` control plane (TOFU-pinned self-signed TLS, HMAC
@@ -81,7 +82,7 @@ Out of scope:
 | `dish-linux` | latest minor on `main`; previous minor for 90 days | tracks the oldest LTS the release CI builds against |
 | `dish-mac` | latest minor on `main`; previous minor for 90 days | macOS 13+ |
 
-Patch releases (`vX.Y.Z+1`) are issued on demand for the latest minor;
+Patch releases (`X.Y.Z+1`) are issued on demand for the latest minor;
 the previous minor only receives backports for high/critical fixes.
 
 ---
@@ -142,11 +143,11 @@ go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@latest
 
 ### 1) Download every file from the Release
 
-For tag `vX.Y.Z` of `<repo>` (one of `satellite`, `dish-android`,
+For tag `X.Y.Z` of `<repo>` (one of `satellite`, `dish-android`,
 `dish-linux`, `dish-mac`):
 
 ```bash
-gh release download vX.Y.Z -R TinkerNorth/<repo> -D ./release
+gh release download X.Y.Z -R TinkerNorth/<repo> -D ./release
 cd release
 ls
 ```
@@ -181,7 +182,7 @@ modified after release.
 cosign verify-blob \
   --certificate SHA256SUMS.crt \
   --signature   SHA256SUMS.sig \
-  --certificate-identity-regexp '^https://github\.com/TinkerNorth/<repo>/\.github/workflows/release\.yml@refs/tags/v.*$' \
+  --certificate-identity-regexp '^https://github\.com/TinkerNorth/<repo>/\.github/workflows/release\.yml@refs/tags/[0-9].*$' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   SHA256SUMS
 ```
@@ -201,7 +202,7 @@ for f in *.exe *.zip *.deb *.AppImage *.apk *.aab; do
   cosign verify-blob \
     --certificate "$f.crt" \
     --signature   "$f.sig" \
-    --certificate-identity-regexp '^https://github\.com/TinkerNorth/<repo>/\.github/workflows/release\.yml@refs/tags/v.*$' \
+    --certificate-identity-regexp '^https://github\.com/TinkerNorth/<repo>/\.github/workflows/release\.yml@refs/tags/[0-9].*$' \
     --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
     "$f"
 done
@@ -213,7 +214,7 @@ done
 slsa-verifier verify-artifact \
   --provenance-path <repo>.intoto.jsonl \
   --source-uri      github.com/TinkerNorth/<repo> \
-  --source-tag      vX.Y.Z \
+  --source-tag      X.Y.Z \
   <artifact-filename>
 ```
 
@@ -237,7 +238,7 @@ diff <(jq -S . prev-release/<repo>.sbom.spdx.json) \
 
 ## Known gaps
 
-- **Branch protection on `main`.** Three of the four repos run on a
+- **Branch protection on `main`.** The repos run on a
   free org plan that does not expose required-status-check enforcement
   for private repositories. Direct pushes to `main` are blocked by
   convention only; the per-repo CI workflows are the de-facto gate.
