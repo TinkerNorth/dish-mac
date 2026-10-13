@@ -205,7 +205,8 @@ swift test --parallel
 For an end-to-end run against the **real** satellite binary (build headless,
 pair, stream, tear down over loopback), see
 [`scripts/e2e_local.sh`](scripts/e2e_local.sh); the suite it drives skips
-unless `DISH_E2E_LIVE=1`.
+unless `DISH_E2E_LIVE=1`. CI runs the same script on every push and pull
+request (`e2e.yml`), against the satellite release the workflow pins.
 
 ## Development
 
