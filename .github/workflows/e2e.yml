@@ -1,0 +1,86 @@
+name: e2e (real satellite)
+
+# Builds the real satellite from a pinned release tag and drives one full
+# session against it over loopback through scripts/e2e_local.sh: pairing
+# (path A, the rotating PIN), the TOFU pin of its self-signed certificate,
+# the hmacProof, the declarative session PUT with the slot descriptor,
+# encrypted UDP both ways with heartbeats the server decrypts, the latency
+# window seeding from real acks, the graceful DELETE and the self-unpair.
+# GitHub's runners are unentitled, so the satellite's virtual-pad backend is
+# inert and the driver asserts the honest `backendUnavailable` path for the
+# slot; game adoption and the live return paths still need entitled hardware.
+#
+# The satellite is a tag, not a branch, so a green run here means the same
+# thing next month; E2EWorkflowTests pins that and the script's contract.
+#
+# Pin map (verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`):
+#   actions/checkout @ v7.0.1 → 3d3c42e5aac5ba805825da76410c181273ba90b1
+#   actions/cache    @ v6.1.0 → 55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: Pair, stream and tear down against the real satellite
+    runs-on: macos-26
+    timeout-minutes: 60
+    env:
+      # The satellite release this client is verified against. Bump it in
+      # its own commit, with the CHANGELOG line that says what changed.
+      SATELLITE_TAG: "2.1.3"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Checkout the satellite at its release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: TinkerNorth/satellite
+          ref: ${{ env.SATELLITE_TAG }}
+          path: satellite
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      # The satellite's own macOS lane's list. The runner image ships some of
+      # these already, and `brew install` of a present formula warns, so only
+      # the missing ones are installed.
+      - name: Install the satellite's build dependencies
+        run: |
+          for formula in cmake pkg-config libsodium opus; do
+            brew list --versions "$formula" > /dev/null 2>&1 || brew install "$formula"
+          done
+          cmake --version
+          pkg-config --modversion libsodium
+          pkg-config --modversion opus
+
+      - name: Cache SwiftPM
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .build
+            !.build/**/*.bundle
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/Resources/**') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # The script builds the satellite (Release, its own CMake convention
+      # drops the bundle at the repo root), starts it headless with an
+      # isolated HOME, waits for both surfaces, runs the env-gated driver and
+      # tears everything down; a failure prints the satellite's log tail.
+      - name: Build the satellite and drive the session
+        env:
+          SATELLITE_REPO: ${{ github.workspace }}/satellite
+        run: bash scripts/e2e_local.sh

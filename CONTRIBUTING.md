@@ -299,6 +299,13 @@ Build + style:
   builds with warnings as errors.
 - `version-consistency.yml`: `VERSION` is the source; `CHANGELOG.md`'s top
   heading and `bundle.sh`'s plist values must agree with it.
+- `e2e.yml`, on `macos-26`: checks out the satellite at the release tag the
+  workflow pins (`SATELLITE_TAG`), builds it from source and runs
+  `scripts/e2e_local.sh`, the same loopback end-to-end a developer runs:
+  pairing, the TOFU pin, the session PUT, encrypted UDP both ways, the
+  graceful close and the self-unpair against the real binary. The runner is
+  unentitled, so the slot applies as `backendUnavailable` and the driver
+  asserts that honest path.
 
 Security gates (also blocking):
 

@@ -77,6 +77,13 @@ the repos share a version number.
   the confirmation, the advertised caps word, the touchpad mode) and a
   flight recorder of what changed, copyable whole. Read-only: every figure
   is one the app already acts on.
+- **An end-to-end lane against the real satellite.** CI builds satellite
+  2.1.3 from source on every push and pull request and drives pairing, the
+  TOFU pin, the session PUT, encrypted UDP both ways, the latency window,
+  the graceful close and the self-unpair through `scripts/e2e_local.sh`;
+  the unentitled runner asserts the honest `backendUnavailable` path.
+  `E2EWorkflowTests` pins the lane to the script and the script to the
+  driver's environment contract.
 - **A local crash log.** A fatal signal appends a backtrace to
   `~/Library/Logs/Dish/crash.log`; the next launch offers the report in
   Settings with the home folder, network addresses and key-like values
