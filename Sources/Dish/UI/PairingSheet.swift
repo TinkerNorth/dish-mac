@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishEngine
 import SwiftUI
 
-/// PIN-entry sheet shown when the server requires (re-)pairing. Mirrors
-/// `dialog_pairing.xml` on Android, which gates the Pair button on a
-/// 4-digit numeric PIN.
+/// The PIN sheet shown when a server requires pairing. The Pair button is
+/// gated on a four-digit PIN, the length the satellite rotates.
 struct PairingSheet: View {
 
     @EnvironmentObject var model: AppModel
@@ -16,82 +16,75 @@ struct PairingSheet: View {
     @State private var pin = ""
     @State private var didSubmit = false
 
-    private var serverId: String {
-        WifiConnection.idFor(server)
-    }
+    private let words = L10n.app
 
     private var isPairing: Bool {
-        wifi.pairingInFlight.contains(serverId)
-    }
-
-    private var pinValid: Bool {
-        pin.count == 4 && pin.allSatisfy(\.isNumber)
+        wifi.pairingInFlight.contains(WifiConnection.idFor(server))
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Pair with \(server.name.isEmpty ? server.ip : server.name)")
-                .font(.system(size: 16, weight: .semibold))
+            Text(words.pairWith(serverTitle(server)))
+                .font(DishFont.sheetTitle)
                 .foregroundColor(DishTheme.onSurface)
-            Text("Enter the 4-digit PIN shown on the Satellite server.")
-                .font(.system(size: 12))
+            Text(words.enterPin)
+                .font(DishFont.detail)
                 .foregroundColor(DishTheme.muted)
 
-            // Inline loader removed: the in-flight state now lives inside the
-            // Pair button below (spinner + "Pairing…"), per the design spec.
-            // Two loaders for the same submission read as visual noise in a
-            // sheet this small.
-            TextField(String(localized: "PIN"), text: $pin)
+            TextField(words.pin, text: $pin)
                 .textFieldStyle(.roundedBorder)
-                .font(.system(size: 14, design: .monospaced))
+                .font(DishFont.monoField)
                 .disabled(isPairing)
-                .onChange(of: pin) { newValue in
-                    let digits = newValue.filter(\.isNumber)
-                    let clipped = String(digits.prefix(4))
-                    if clipped != newValue { pin = clipped }
-                }
+                .onChange(of: pin, perform: clipPin)
 
-            if didSubmit, let msg = model.errorMessage {
-                ErrorBanner(message: msg) {
-                    model.errorMessage = nil
+            if didSubmit, let failure = model.lastFailure {
+                ErrorBanner(message: failureText(failure)) {
+                    model.clearFailure()
                     didSubmit = false
                 }
             }
 
             HStack {
                 Spacer()
-                Button("Cancel") { dismiss() }
+                Button(words.cancel) { dismiss() }
                     .buttonStyle(DishOutlinedButtonStyle())
                     .disabled(isPairing)
-                Button {
-                    didSubmit = true
-                    model.errorMessage = nil
-                    model.pairWithPin(server, pin: pin)
-                } label: {
+                Button(action: submit) {
                     if isPairing {
                         HStack(spacing: 6) {
                             DishSpinner(size: 12)
-                            Text("Pairing…")
+                            Text(words.pairing)
                         }
                     } else {
-                        Text("Pair")
+                        Text(words.pair)
                     }
                 }
                 .buttonStyle(DishOutlinedButtonStyle())
-                .disabled(!pinValid || isPairing)
+                .disabled(!isValidPin(pin) || isPairing)
             }
         }
         .padding(20)
         .frame(minWidth: 340)
         .background(DishTheme.background)
-        // Once pairing succeeds (connection enters .connecting → .connected) the
-        // server is removed from `pairingInFlight`. If no error was raised in
-        // the meantime, dismiss the sheet so the user lands back on the
-        // connections list with a now-live row.
-        .onChange(of: isPairing) { nowPairing in
-            if didSubmit, !nowPairing, model.errorMessage == nil {
-                dismiss()
-            }
+        .onChange(of: isPairing, perform: dismissWhenPaired)
+    }
+
+    private func clipPin(_ typed: String) {
+        let clipped = clippedPin(typed)
+        if clipped != typed { pin = clipped }
+    }
+
+    private func submit() {
+        didSubmit = true
+        model.clearFailure()
+        model.pairWithPin(server, pin: pin)
+    }
+
+    /// Pairing ends with the row live or with a failure; only the first
+    /// closes the sheet.
+    private func dismissWhenPaired(_ nowPairing: Bool) {
+        if didSubmit, !nowPairing, model.lastFailure == nil {
+            dismiss()
         }
     }
 }

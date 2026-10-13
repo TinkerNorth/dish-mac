@@ -1,24 +1,19 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishEngine
 import SwiftUI
 
-/// Stacked toast strip rendered at the bottom-center of the window. Reads
-/// `DishNotificationCenter.visible` and animates entries / exits with the
-/// brand fade + slide. Drop in via `.overlay(NotificationOverlay(), alignment:
-/// .bottom)` on the root scene; the host wires a single
-/// `DishNotificationCenter` into the environment.
+/// The toast strip at the bottom of the window. Reads the notification
+/// queue and animates entries and exits with the brand fade and slide.
 struct NotificationOverlay: View {
 
     @EnvironmentObject var center: DishNotificationCenter
 
     var body: some View {
         VStack(spacing: 8) {
-            // The newest notification stacks on top so the user sees the
-            // most recent surface above older ones still waiting to fade.
-            // Reversing the queue keeps `visible` in insertion order (the
-            // queue's natural orientation) while rendering newest-first.
-            ForEach(center.visible.reversed()) { notification in
+            // Newest on top; the queue itself stays in insertion order.
+            ForEach(center.state.reversed()) { notification in
                 NotificationToast(notification: notification) {
                     center.dismiss(id: notification.id)
                 }
@@ -31,45 +26,41 @@ struct NotificationOverlay: View {
         .padding(.horizontal, 20)
         .padding(.bottom, 16)
         .frame(maxWidth: .infinity, alignment: .center)
-        .animation(.easeInOut(duration: 0.22), value: center.visible)
-        // Hit-test only the toast pills themselves: the bottom strip is
-        // transparent to taps so the user can still interact with content
-        // underneath (Manage button, slot cards, ...) while a banner is up.
-        .allowsHitTesting(!center.visible.isEmpty)
+        .animation(.easeInOut(duration: 0.22), value: center.state)
+        // Only the pills take hits; the strip stays transparent to clicks.
+        .allowsHitTesting(!center.state.isEmpty)
     }
 }
 
-/// One toast row. Mirrors the brand pill rendered by
-/// `MaterialSnackbarRenderer` on Android: severity rail on the leading
-/// edge, SF Symbol glyph, title (bold), optional monospace body, optional
-/// action button, optional close button.
+/// One toast: a severity rail, a glyph, the title, an optional monospace
+/// body, an optional action, and the close cross.
 struct NotificationToast: View {
 
     let notification: DishNotification
     let onDismiss: () -> Void
 
+    private let words = L10n.app
+
     var body: some View {
         HStack(alignment: .center, spacing: 10) {
-            // Severity rail (4 pt wide vertical accent at the leading
-            // edge). Matches Android's LayerDrawable rail.
             Rectangle()
-                .fill(railColor)
+                .fill(severityColor(notification.severity))
                 .frame(width: 4)
                 .clipShape(RoundedRectangle(cornerRadius: 2))
             if let glyph = notification.glyph {
                 Image(systemName: glyph)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(railColor)
+                    .font(DishFont.toastGlyph)
+                    .foregroundColor(severityColor(notification.severity))
                     .frame(width: 18)
             }
             VStack(alignment: .leading, spacing: 2) {
                 Text(notification.title)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(DishFont.toastTitle)
                     .foregroundColor(DishTheme.onSurface)
                     .fixedSize(horizontal: false, vertical: true)
                 if let body = notification.body, !body.isEmpty {
                     Text(body)
-                        .font(.system(size: 11, design: .monospaced))
+                        .font(DishFont.mono)
                         .foregroundColor(DishTheme.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -85,31 +76,20 @@ struct NotificationToast: View {
             if notification.dismissible {
                 Button(action: onDismiss) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(DishFont.closeGlyph)
                         .foregroundColor(DishTheme.muted)
                         .padding(4)
                 }
                 .buttonStyle(.plain)
-                .help(Text("Dismiss"))
+                .help(words.dismiss)
             }
         }
         .padding(.vertical, 8)
         .padding(.horizontal, 10)
         .background(DishTheme.surface)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10).stroke(DishTheme.outline, lineWidth: 1)
-        )
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DishTheme.outline, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: 10))
-        .shadow(color: Color.black.opacity(0.35), radius: 6, x: 0, y: 3)
+        .shadow(color: DishTheme.shadow, radius: 6, x: 0, y: 3)
         .frame(maxWidth: 460)
-    }
-
-    private var railColor: Color {
-        switch notification.severity {
-        case .info: DishTheme.primary
-        case .success: DishTheme.success
-        case .warn: DishTheme.warning
-        case .error: DishTheme.error
-        }
     }
 }

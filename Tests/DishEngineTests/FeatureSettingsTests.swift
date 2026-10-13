@@ -1,0 +1,271 @@
+// SPDX-License-Identifier: LGPL-3.0-or-later
+// Copyright (C) 2026 Dish contributors.
+
+import DishCore
+import XCTest
+@testable import DishEngine
+
+/// Coverage for the feature-toggle layer:
+///
+///   * `FeatureSettings` — first-launch defaults, `UserDefaults` round-trip,
+///     and the `flags` snapshot it hands to the gate.
+///   * `ForwardingGate` — the thread-safe mirror the hot-path senders read.
+///   * `GamepadInputProcessor.publishTouchpad` — sender forwarding.
+///
+/// Each `FeatureSettings` test uses an isolated `UserDefaults` suite so the
+/// developer's real preferences are never touched and tests don't cross-talk.
+@MainActor
+final class FeatureSettingsTests: XCTestCase {
+
+    /// A throwaway `UserDefaults` suite, wiped on teardown.
+    private func makeSuite() -> (UserDefaults, String) {
+        let name = "dish.test.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: name) else {
+            preconditionFailure("could not create isolated UserDefaults test suite")
+        }
+        return (defaults, name)
+    }
+
+    // MARK: - Defaults
+
+    func testFreshInstallDefaultsEverythingOn() {
+        let (defaults, name) = makeSuite()
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let settings = FeatureSettings(defaults: defaults)
+        XCTAssertTrue(settings.motionEnabled)
+        XCTAssertTrue(settings.rumbleEnabled)
+        XCTAssertTrue(settings.touchpadEnabled)
+        XCTAssertEqual(settings.lightbarMode, .followGame)
+    }
+
+    // MARK: - Persistence round-trip
+
+    func testMotionTogglePersistsAcrossInstances() {
+        let (defaults, name) = makeSuite()
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let first = FeatureSettings(defaults: defaults)
+        first.motionEnabled = false
+
+        let second = FeatureSettings(defaults: defaults)
+        XCTAssertFalse(second.motionEnabled)
+        // Untouched toggles keep their default.
+        XCTAssertTrue(second.rumbleEnabled)
+    }
+
+    func testEveryTogglePersistsIndependently() {
+        let (defaults, name) = makeSuite()
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let first = FeatureSettings(defaults: defaults)
+        first.motionEnabled = false
+        first.rumbleEnabled = false
+        first.touchpadEnabled = false
+
+        let second = FeatureSettings(defaults: defaults)
+        XCTAssertFalse(second.motionEnabled)
+        XCTAssertFalse(second.rumbleEnabled)
+        XCTAssertFalse(second.touchpadEnabled)
+    }
+
+    func testLightbarModePersists() {
+        let (defaults, name) = makeSuite()
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let first = FeatureSettings(defaults: defaults)
+        first.lightbarMode = .off
+
+        let second = FeatureSettings(defaults: defaults)
+        XCTAssertEqual(second.lightbarMode, .off)
+    }
+
+    // MARK: - flags snapshot
+
+    func testFlagsMirrorAllOn() {
+        let (defaults, name) = makeSuite()
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let settings = FeatureSettings(defaults: defaults)
+        let flags = settings.flags
+        XCTAssertTrue(flags.motion)
+        XCTAssertTrue(flags.touchpad)
+        XCTAssertTrue(flags.rumble)
+        XCTAssertTrue(flags.lightbar) // followGame → lightbar on
+    }
+
+    func testFlagsReflectDisabledToggles() {
+        let (defaults, name) = makeSuite()
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let settings = FeatureSettings(defaults: defaults)
+        settings.motionEnabled = false
+        settings.touchpadEnabled = false
+
+        let flags = settings.flags
+        XCTAssertFalse(flags.motion)
+        XCTAssertFalse(flags.touchpad)
+        XCTAssertTrue(flags.rumble) // untouched
+    }
+
+    func testFlagsLightbarFalseWhenModeOff() {
+        let (defaults, name) = makeSuite()
+        defer { defaults.removePersistentDomain(forName: name) }
+
+        let settings = FeatureSettings(defaults: defaults)
+        settings.lightbarMode = .off
+        XCTAssertFalse(settings.flags.lightbar)
+
+        settings.lightbarMode = .followGame
+        XCTAssertTrue(settings.flags.lightbar)
+    }
+
+    // MARK: - LightbarMode
+
+    func testLightbarModeRawValuesAreStable() {
+        // The raw value is persisted, so it must not drift.
+        XCTAssertEqual(LightbarMode.followGame.rawValue, "followGame")
+        XCTAssertEqual(LightbarMode.off.rawValue, "off")
+        XCTAssertEqual(LightbarMode.allCases.count, 2)
+    }
+}
+
+/// `ForwardingGate` is `Sendable`, not actor-isolated — these run off the main
+/// actor deliberately, the same way the hot-path senders call it.
+final class ForwardingGateTests: XCTestCase {
+
+    func testDefaultSnapshotIsAllOn() {
+        let gate = ForwardingGate()
+        let flags = gate.snapshot()
+        XCTAssertTrue(flags.motion)
+        XCTAssertTrue(flags.touchpad)
+        XCTAssertTrue(flags.rumble)
+        XCTAssertTrue(flags.lightbar)
+    }
+
+    func testUpdateIsReflectedInSnapshot() {
+        let gate = ForwardingGate()
+        gate.update(ForwardingFlags(motion: false, touchpad: true, rumble: false, lightbar: true))
+        let flags = gate.snapshot()
+        XCTAssertFalse(flags.motion)
+        XCTAssertTrue(flags.touchpad)
+        XCTAssertFalse(flags.rumble)
+        XCTAssertTrue(flags.lightbar)
+    }
+
+    func testLastUpdateWins() {
+        let gate = ForwardingGate()
+        gate.update(ForwardingFlags(motion: false))
+        gate.update(ForwardingFlags(motion: true))
+        XCTAssertTrue(gate.snapshot().motion)
+    }
+
+    /// Hammer the gate from many concurrent readers + writers; the test
+    /// passes if it completes without a sanitizer trip or crash.
+    func testConcurrentAccessIsSafe() {
+        let gate = ForwardingGate()
+        let iterations = 2000
+        let group = DispatchGroup()
+        for idx in 0 ..< iterations {
+            group.enter()
+            DispatchQueue.global().async {
+                if idx.isMultiple(of: 2) {
+                    gate.update(ForwardingFlags(motion: idx.isMultiple(of: 4)))
+                } else {
+                    _ = gate.snapshot()
+                }
+                group.leave()
+            }
+        }
+        XCTAssertEqual(group.wait(timeout: .now() + 5), .success)
+    }
+}
+
+/// Touchpad path on the processor — `publishTouchpad` is a pure pass-through
+/// to `touchpadSender` (a touchpad is an absolute surface, no deadzone) plus
+/// the protocol-1 `eventTimeMs` stamp (uptime ms off the injectable `nowNs`
+/// clock — contract §0x000C).
+final class TouchpadProcessorTests: XCTestCase {
+
+    private struct Captured: Equatable {
+        let id: String
+        let sample: TouchpadSample
+        let eventMs: UInt32
+
+        var f0x: Int16 {
+            sample.finger0.x
+        }
+
+        var f0y: Int16 {
+            sample.finger0.y
+        }
+
+        var f1x: Int16 {
+            sample.finger1.x
+        }
+
+        var f1y: Int16 {
+            sample.finger1.y
+        }
+    }
+
+    private func install(_ proc: GamepadInputProcessor, into captured: @escaping (Captured) -> Void) {
+        proc.touchpadSender = { id, sample, eventMs in
+            captured(Captured(id: id, sample: sample, eventMs: eventMs))
+        }
+    }
+
+    func testPublishTouchpadForwardsAllFields() {
+        var captured: Captured?
+        let proc = GamepadInputProcessor()
+        install(proc) { captured = $0 }
+        let sample = TouchpadSample(
+            finger0: TouchpadFinger(active: true, id: 7, x: 1234, y: -567),
+            finger1: TouchpadFinger(active: false, id: 3, x: 0, y: 0),
+            buttonPressed: true
+        )
+        proc.publishTouchpad(deviceId: "pad", sample: sample, nowNs: 5_000_000_000)
+        XCTAssertEqual(captured, Captured(id: "pad", sample: sample, eventMs: 5000))
+    }
+
+    func testPublishTouchpadNoSenderIsNoOp() {
+        // No sender installed — must not crash.
+        let proc = GamepadInputProcessor()
+        proc.publishTouchpad(
+            deviceId: "pad",
+            sample: TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false)
+        )
+    }
+
+    func testPublishTouchpadCarriesFullInt16Range() {
+        var captured: Captured?
+        let proc = GamepadInputProcessor()
+        install(proc) { captured = $0 }
+        proc.publishTouchpad(
+            deviceId: "pad",
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 0, x: Int16.max, y: Int16.min),
+                finger1: TouchpadFinger(active: true, id: 1, x: -1, y: 1),
+                buttonPressed: false
+            )
+        )
+        XCTAssertEqual(captured?.f0x, Int16.max)
+        XCTAssertEqual(captured?.f0y, Int16.min)
+        XCTAssertEqual(captured?.f1x, -1)
+        XCTAssertEqual(captured?.f1y, 1)
+    }
+
+    func testEventTimeMsTruncatesNanosecondsToMilliseconds() {
+        // The wire stamp is uptime ms as u32 — a >49.7-day uptime wraps by
+        // design (the receiver consumes deltas). 2^32 ms + 1 ms wraps to 1.
+        var captured: Captured?
+        let proc = GamepadInputProcessor()
+        install(proc) { captured = $0 }
+        proc.publishTouchpad(
+            deviceId: "pad",
+            sample: TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false),
+            nowNs: (UInt64(UInt32.max) + 2) * 1_000_000
+        )
+        XCTAssertEqual(captured?.eventMs, 1)
+    }
+}

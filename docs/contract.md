@@ -10,7 +10,7 @@ macOS-side mapping. When code and contract disagree, the contract wins.
 
 The pure protocol layer is the `DishCore` SwiftPM target (Foundation +
 CryptoKit only — the compiler enforces that the wire/crypto/policy code
-stays IO-free). The imperative shell in `Sources/Dish/Network` owns sockets,
+stays IO-free). The imperative shell in `Sources/DishEngine/Network` owns sockets,
 URLSession, and stores.
 
 | Contract concept | dish-mac home |
@@ -25,18 +25,18 @@ URLSession, and stores.
 | Latency readout (64-sample RTT window, p50 ÷ 2, single-in-flight ping) | `Sources/DishCore/Reducers/LatencyWindow.swift` |
 | TOFU verdict ladder (`trustFirstUse` / `match` / `mismatch`) + SHA-256 DER fingerprint | `Sources/DishCore/Reducers/Tofu.swift` |
 | REST error model (terminal 401 codes, 409, 503, transport) | `Sources/DishCore/Reducers/RestOutcome.swift` |
-| TOFU TLS enforcement (pin on first contact, abort handshake on mismatch) | `Sources/Dish/Network/TofuTrustDelegate.swift`, composed by `WifiConnectionManager.makePinVerifier` |
-| Wire DTOs (ControllerDescriptor, session/controller/pair responses, host-feature grants) | `Sources/Dish/Network/RestModels.swift` |
-| Authed REST routes (session PUT/GET/DELETE, per-slot PUT/DELETE, self-unpair; `X-Device-Id` + `X-Hmac-Proof` headers) | `Sources/Dish/Network/HTTPClient.swift` |
-| Pairing paths A + B (`POST /api/pair`, `GET /api/pair/status` poll) + outcome classification | `Sources/Dish/Network/PairingClient.swift` |
-| Session lifecycle: declarative PUT, HKDF key handoff, proactive re-key, live per-slot converge | `Sources/Dish/Network/WifiConnectionManager+Session.swift` |
-| Connect/pair flows, terminal-401 key drop + stale marker, forget → self-unpair, identity-changed UX | `Sources/Dish/Network/WifiConnectionManager.swift` + `WifiConnectionManager+Pairing.swift` |
-| UDP data plane: socket, per-direction counters from 1, replay guard, heartbeat timer, receive loop | `Sources/Dish/Network/SatelliteClient.swift` + `SatelliteClient+IO.swift` |
-| Per-session liveness (2 s heartbeat, alive tick, enriched-ack snapshot, close-reason surfacing) | `Sources/Dish/Network/WifiConnection.swift` |
-| Satellite identity: `mid:<machineId>` keying, legacy-ghost collapse, DHCP re-home, TOFU pin registry | `Sources/Dish/Network/ConnectionStore.swift` |
-| Pairing-key storage (Keychain; in-memory impl for tests) | `Sources/Dish/Network/KeyStore.swift` |
-| Discovery: mDNS `_satellite._udp` + TXT (`mid`, ports) | `Sources/Dish/Network/MdnsBrowser.swift` |
-| Discovery: legacy UDP `:9879` beacon (fallback) | `Sources/Dish/Network/LANDiscovery.swift` |
+| TOFU TLS enforcement (pin on first contact, abort handshake on mismatch) | `Sources/DishEngine/Network/TofuTrustDelegate.swift`, composed by `WifiConnectionManager.makePinVerifier` |
+| Wire DTOs (ControllerDescriptor, session/controller/pair responses, host-feature grants) | `Sources/DishEngine/Network/RestModels.swift` |
+| Authed REST routes (session PUT/GET/DELETE, per-slot PUT/DELETE, self-unpair; `X-Device-Id` + `X-Hmac-Proof` headers) | `Sources/DishEngine/Network/HTTPClient.swift` |
+| Pairing paths A + B (`POST /api/pair`, `GET /api/pair/status` poll) + outcome classification | `Sources/DishEngine/Network/PairingClient.swift` |
+| Session lifecycle: declarative PUT, HKDF key handoff, proactive re-key, live per-slot converge | `Sources/DishEngine/Network/WifiConnectionManager+Session.swift` |
+| Connect/pair flows, terminal-401 key drop + stale marker, forget → self-unpair, identity-changed UX | `Sources/DishEngine/Network/WifiConnectionManager.swift` + `WifiConnectionManager+Pairing.swift` |
+| UDP data plane: socket, per-direction counters from 1, replay guard, heartbeat timer, receive loop | `Sources/DishEngine/Network/SatelliteClient.swift` + `SatelliteClient+IO.swift` |
+| Per-session liveness (2 s heartbeat, alive tick, enriched-ack snapshot, close-reason surfacing) | `Sources/DishEngine/Network/WifiConnection.swift` |
+| Satellite identity: `mid:<machineId>` keying, legacy-ghost collapse, DHCP re-home, TOFU pin registry | `Sources/DishEngine/Network/ConnectionStore.swift` |
+| Pairing-key storage (Keychain; in-memory impl for tests) | `Sources/DishEngine/Network/KeyStore.swift` |
+| Discovery: mDNS `_satellite._udp` + TXT (`mid`, ports) | `Sources/DishEngine/Network/MdnsBrowser.swift` |
+| Discovery: legacy UDP `:9879` beacon (fallback) | `Sources/DishEngine/Network/LANDiscovery.swift` |
 
 Test double: `Tests/DishTests/Support/FakeSatellite/` is an in-process
 protocol-1 satellite (REST + UDP, independent CryptoKit crypto asserted

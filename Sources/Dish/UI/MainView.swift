@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishEngine
 import SwiftUI
 
-/// Dashboard window — mirrors `activity_main.xml`. Top status row, controller
-/// slot list, and a "Manage connections" button that presents
-/// `ConnectionsView` in a sheet.
+/// The dashboard window: the status row, the controller slot list, and the
+/// Manage button that presents `ConnectionsView` in a sheet.
 struct MainView: View {
 
     @EnvironmentObject var model: AppModel
@@ -13,14 +13,16 @@ struct MainView: View {
     @State private var showConnections = false
     @State private var showSettings = false
 
+    private let words = L10n.app
+
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             header
             Divider().background(DishTheme.outline)
             slotSection
             Spacer(minLength: 0)
-            if let msg = model.errorMessage {
-                ErrorBanner(message: msg) { model.errorMessage = nil }
+            if let failure = model.lastFailure {
+                ErrorBanner(message: failureText(failure)) { model.clearFailure() }
             }
         }
         .padding(20)
@@ -43,62 +45,34 @@ struct MainView: View {
     // MARK: - Header
 
     private var liveCount: Int {
-        model.connections.filter { $0.live == .connected }.count
-    }
-
-    private var statusText: String {
-        let live = liveCount
-        let total = model.connections.count
-        switch (live, total) {
-        case (0, 0): return String(localized: "No connections yet")
-        case (0, _): return "\(total) paired"
-        case (1, _): return model.connections.first { $0.live == .connected }?.label ?? ""
-        default: return "\(live) active connections"
-        }
-    }
-
-    private var summaryText: String {
-        let live = liveCount
-        let total = model.connections.count
-        if live == 0, total == 0 { return String(localized: "Tap Manage to add one") }
-        if live == 0 { return "\(total) paired" }
-        return "\(live) of \(total) online"
+        liveConnections(model.connections).count
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 10) {
-                // v6 brand satellite glyph + status dot. Same icon family
-                // the ConnectionsView rows render — the header reads as
-                // "n satellite servers online" rather than as a generic
-                // sender status. Flips to the "connected" variant (uplink
-                // dot above the antenna) when at least one is live.
                 ZStack(alignment: .bottomTrailing) {
-                    BrandIcon(
-                        kind: .satellite,
-                        state: liveCount > 0 ? .connected : .default,
-                        size: 28
-                    )
-                    StatusDot(color: liveCount > 0 ? DishTheme.success : DishTheme.muted)
+                    BrandIcon(kind: .satellite, state: dashboardIconState(liveCount: liveCount), size: 28)
+                    StatusDot(color: dashboardAccent(liveCount: liveCount))
                 }
-                Text(statusText)
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundColor(liveCount > 0 ? DishTheme.success : DishTheme.muted)
+                Text(dashboardStatusText(model.connections))
+                    .font(DishFont.title)
+                    .foregroundColor(dashboardAccent(liveCount: liveCount))
                 Spacer()
                 Button {
                     showSettings = true
                 } label: {
                     Image(systemName: "gearshape")
-                        .font(.system(size: 14))
+                        .font(DishFont.icon)
                         .foregroundColor(DishTheme.primary)
                 }
                 .buttonStyle(.plain)
-                .help(Text("Settings"))
-                Button(String(localized: "Manage")) { showConnections = true }
+                .help(words.settings)
+                Button(words.manage) { showConnections = true }
                     .buttonStyle(DishOutlinedButtonStyle())
             }
-            Text(summaryText)
-                .font(.system(size: 12))
+            Text(dashboardSummaryText(model.connections))
+                .font(DishFont.detail)
                 .foregroundColor(DishTheme.muted)
         }
     }
@@ -108,7 +82,7 @@ struct MainView: View {
     private var slotSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
-                SectionHeader(title: String(localized: "CONTROLLERS"))
+                SectionHeader(title: words.controllersSection)
                 if wifi.anyControllerRegistering {
                     ProgressView()
                         .controlSize(.small)
@@ -117,8 +91,8 @@ struct MainView: View {
                 Spacer()
             }
             if model.slots.isEmpty {
-                Text("No controllers connected")
-                    .font(.system(size: 12))
+                Text(words.noControllersConnected)
+                    .font(DishFont.detail)
                     .foregroundColor(DishTheme.muted)
             } else {
                 ScrollView {

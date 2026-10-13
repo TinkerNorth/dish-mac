@@ -2,17 +2,24 @@
 // Copyright (C) 2026 Dish contributors.
 
 import AppKit
+import DishEngine
 import SwiftUI
 
 @main
 struct DishApp: App {
 
-    @StateObject private var model = AppModel()
+    @StateObject private var model = AppModel(
+        lifecycle: appKitLifecycleSignals(
+            application: .default,
+            workspace: NSWorkspace.shared.notificationCenter
+        )
+    )
     /// Process-scoped queue + renderer for `DishNotification` banners.
     /// Injected into the SwiftUI environment so any view + `AppModel` can
     /// publish via `center.add(...)`; the `NotificationOverlay` at the
     /// bottom of the window reads `visible` and renders the stack.
     @StateObject private var notifications = DishNotificationCenter()
+    @StateObject private var failureNotifier = FailureNotifier()
 
     init() {
         // `swift run` launches us as a bare Mach-O binary with no .app bundle,
@@ -24,7 +31,7 @@ struct DishApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("Dish") {
+        WindowGroup(L10n.app.appName) {
             MainView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)
@@ -42,7 +49,7 @@ struct DishApp: App {
                         .environmentObject(notifications)
                 }
                 .onAppear {
-                    model.bindNotifications(notifications)
+                    failureNotifier.bind(model: model, center: notifications)
                 }
         }
         .windowResizability(.contentMinSize)

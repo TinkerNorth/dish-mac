@@ -34,11 +34,16 @@ jobs:
       - name: Swift version
         run: swift --version
 
+      # The compiled resource bundles stay out of the cache: a restored
+      # bundle carries the previous commit's language tables, which shadow
+      # the current catalog, and nothing in the build graph removes them.
       - name: Cache SwiftPM
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
-          path: .build
-          key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          path: |
+            .build
+            !.build/**/*.bundle
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/Resources/**') }}
           restore-keys: |
             ${{ runner.os }}-spm-
 
@@ -74,11 +79,16 @@ jobs:
       - name: SwiftLint
         run: swiftlint lint --strict --reporter github-actions-logging
 
-      - name: Build (debug)
-        run: swift build --configuration debug
+      - name: Build (debug, with tests)
+        run: swift build --build-tests --enable-code-coverage
+
+      # This toolchain's SwiftPM copies the String Catalog verbatim, which
+      # nothing reads at run time; the tests read the compiled tables.
+      - name: Compile the String Catalog where SwiftPM copied it
+        run: find .build -type d -name 'Dish_Dish.bundle' -exec ./scripts/compile-catalog.sh {} \;
 
       - name: Run tests
-        run: swift test --parallel --enable-code-coverage
+        run: swift test --skip-build --parallel --enable-code-coverage
 
       - name: Build release binary
         run: swift build --configuration release

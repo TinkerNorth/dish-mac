@@ -1,25 +1,32 @@
-## Description
-<!-- Briefly describe the changes in this PR -->
+## What changes, and why
 
-## Type of Change
-- [ ] Bug fix (non-breaking change which fixes an issue)
-- [ ] New feature (non-breaking change which adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
-- [ ] Refactor (code change that neither fixes a bug nor adds a feature)
-- [ ] Documentation update
+<!-- Two or three sentences. Name the behaviour a user or a developer sees, not the files. -->
 
-## How Has This Been Tested?
-<!-- Describe the tests you ran to verify your changes -->
+## Kind of change
 
-- [ ] Unit tests
-- [ ] Manual testing on macOS
-- [ ] Tested against live Satellite server
+- [ ] Fix
+- [ ] Feature
+- [ ] Refactor (behaviour unchanged)
+- [ ] Docs, CI or repo plumbing
+- [ ] Wire protocol or pairing flow (`[wire-coordinated]` in CHANGELOG; the satellite and the sibling clients need the matching change)
 
-## Checklist
-- [ ] My code follows the project's style guidelines (`swiftformat .` and `swiftlint`)
-- [ ] I have performed a self-review of my code
-- [ ] I have commented my code in hard-to-understand areas
-- [ ] I have made corresponding changes to documentation
-- [ ] `swift build` and `swift test` are warning-free (every target treats warnings as errors)
-- [ ] I have added tests that prove my fix is effective or that my feature works
-- [ ] New and existing unit tests pass locally with my changes
+## Shape of the code (CONTRIBUTING, "Shape of the code")
+
+- [ ] Immutable by default; one flow per function; named steps instead of comments.
+- [ ] Every `switch` is exhaustive, with no `default`.
+- [ ] No singleton, no mutable static, no discarded result, no lint suppression.
+- [ ] The engine vends data; words and colours reach a view only through `L10n`, `DishTheme` and `DishFont`.
+
+## Tests
+
+- [ ] Red first: a test failed before the change and passes after it.
+- [ ] Every new flow has a test, including the empty, error and loading shapes.
+- [ ] A new user-facing string has its catalog entry and all five translations.
+- [ ] `scripts/ci-local.sh` passes (format, lint strict, build, tests, release build, bundle).
+- [ ] Manual check on macOS: <!-- what you clicked, with which controller and satellite -->
+
+## Bookkeeping
+
+- [ ] `CHANGELOG.md` has a line under `[Unreleased]`.
+- [ ] `Tests/PARITY.md` is updated if a row changed.
+- [ ] `docs/ARCHITECTURE.md` or `DESIGN.md` is updated if a rule or a token changed.

@@ -1,12 +1,9 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 //
-// Pure inner-payload encoders (client → server streams) and decoders
-// (server → client return paths) for the protocol-1 UDP messages. Byte
-// layouts port dish-linux SatelliteClient's static encoders/parsers against
-// satellite/src/core/types.h; the receiver decodes with explicit byte shifts,
-// so every multi-byte field's endianness is written out here rather than
-// relying on struct layout. See satellite/docs/contract.md §UDP messages.
+// Inner-payload encoders (client to server) and decoders (server to client)
+// for the UDP streams. Every multi-byte field's endianness is written out,
+// because the receiver decodes with explicit byte shifts.
 
 import Foundation
 
@@ -15,78 +12,48 @@ import Foundation
 public enum Encoders {
 
     /// MSG_INPUT (0x0001): `ctrlIdx(1) + XUSB_REPORT(12 LE)` = 13 bytes.
-    /// Full-state snapshot per packet, loss-safe by construction — never
-    /// delta-encode input frames (contract §UDP messages).
-    public static func inputPayload(
-        controllerIndex: UInt8,
-        buttons: UInt16,
-        lt: UInt8,
-        rt: UInt8,
-        lx: Int16,
-        ly: Int16,
-        rx: Int16,
-        ry: Int16
-    ) -> Data {
+    public static func inputPayload(controllerIndex: UInt8, report: GamepadReport) -> Data {
         var out = [UInt8](repeating: 0, count: ProtocolConstants.inputPayloadBytes)
         out[0] = controllerIndex
-        out[1] = UInt8(truncatingIfNeeded: buttons)
-        out[2] = UInt8(truncatingIfNeeded: buttons >> 8)
-        out[3] = lt
-        out[4] = rt
-        storeLE16(lx, into: &out, at: 5)
-        storeLE16(ly, into: &out, at: 7)
-        storeLE16(rx, into: &out, at: 9)
-        storeLE16(ry, into: &out, at: 11)
+        out[1] = UInt8(truncatingIfNeeded: report.buttons)
+        out[2] = UInt8(truncatingIfNeeded: report.buttons >> 8)
+        out[3] = report.lt
+        out[4] = report.rt
+        storeLE16(report.lx, into: &out, at: 5)
+        storeLE16(report.ly, into: &out, at: 7)
+        storeLE16(report.rx, into: &out, at: 9)
+        storeLE16(report.ry, into: &out, at: 11)
         return Data(out)
     }
 
     /// MSG_MOTION (0x000A): `ctrlIdx(1) + gyroX/Y/Z(3 × i16 LE) +
     /// accelX/Y/Z(3 × i16 LE) + timestampDeltaUs(u32 LE)` = 17 bytes.
-    ///
-    /// Scale: gyro int16 LSB = 2000/32767 deg/s; accel int16 LSB = 4/32767 g;
-    /// right-handed frame, +X right, +Y up, +Z toward player. Senders apply
-    /// the rotation; receivers do not. `timestampDeltaUs` is microseconds
-    /// since the previous motion packet for the same controller (0 on the
-    /// first).
-    public static func motionPayload(
-        controllerIndex: UInt8,
-        gyroX: Int16,
-        gyroY: Int16,
-        gyroZ: Int16,
-        accelX: Int16,
-        accelY: Int16,
-        accelZ: Int16,
-        timestampDeltaUs: UInt32
-    ) -> Data {
+    /// `timestampDeltaUs` is the time since this controller's previous motion
+    /// packet, 0 on the first.
+    public static func motionPayload(controllerIndex: UInt8, sample: MotionSample, timestampDeltaUs: UInt32) -> Data {
         var out = [UInt8](repeating: 0, count: ProtocolConstants.motionPayloadBytes)
         out[0] = controllerIndex
-        storeLE16(gyroX, into: &out, at: 1)
-        storeLE16(gyroY, into: &out, at: 3)
-        storeLE16(gyroZ, into: &out, at: 5)
-        storeLE16(accelX, into: &out, at: 7)
-        storeLE16(accelY, into: &out, at: 9)
-        storeLE16(accelZ, into: &out, at: 11)
+        storeLE16(sample.gyroX, into: &out, at: 1)
+        storeLE16(sample.gyroY, into: &out, at: 3)
+        storeLE16(sample.gyroZ, into: &out, at: 5)
+        storeLE16(sample.accelX, into: &out, at: 7)
+        storeLE16(sample.accelY, into: &out, at: 9)
+        storeLE16(sample.accelZ, into: &out, at: 11)
         storeLE32(timestampDeltaUs, into: &out, at: 13)
         return Data(out)
     }
 
     /// MSG_BATTERY (0x000B): `ctrlIdx(1) + level(1) + status(1)` = 3 bytes.
-    /// `level` is 0...100, or `ProtocolConstants.batteryLevelUnknown` (0xFF).
-    /// Senders with no battery information at all MUST NOT send this stream;
-    /// status-only readers send `level = 0xFF`.
+    /// `level` is 0...100, or `ProtocolConstants.batteryLevelUnknown` for a
+    /// status-only reading.
     public static func batteryPayload(controllerIndex: UInt8, level: UInt8, status: BatteryStatus) -> Data {
         Data([controllerIndex, level, status.rawValue])
     }
 
     /// MSG_TOUCHPAD (0x000C): `ctrlIdx(1) + flags(1) + f0(id1 + x2 + y2) +
     /// f1(id1 + x2 + y2) + eventTimeMs(u32 LE @ offset 12)` = 16 bytes.
-    ///
-    /// `flags` bit 0 = finger0 active, bit 1 = finger1 active, bit 2 =
-    /// clickable-pad button. Coordinates are normalised int16 LE on both axes
-    /// so the wire is resolution-independent. The trailing `eventTimeMs`
-    /// (sender-side sample uptime, ms) is the protocol-1 addition — the
-    /// server requires msgLen >= 16 inner and drops legacy 12-byte bodies
-    /// (mouse-mode timing depends on the timestamp).
+    /// `flags` bit 0 = finger0 active, bit 1 = finger1 active, bit 2 = the
+    /// clickable pad. The server drops a body shorter than 16 bytes.
     public static func touchpadPayload(
         controllerIndex: UInt8,
         sample: TouchpadSample,

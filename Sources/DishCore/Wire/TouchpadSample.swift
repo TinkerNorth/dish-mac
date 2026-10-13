@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
+// Copyright (C) 2026 Dish contributors.
 
 /// One finger slot of a touchpad sample: whether it is down, its monotonic
 /// tracking id, and its normalised int16 position (contract §0x000C).

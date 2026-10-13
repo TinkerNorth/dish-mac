@@ -1,0 +1,74 @@
+name: Version consistency
+
+# A PR-time text gate, not a build. VERSION is the one source of the version;
+# bundle.sh writes it into the Info.plist, and CHANGELOG.md mirrors it by hand
+# as its top heading. This job fails the pull request that moves one copy
+# without the other. release.yml keeps its own check: only it can compare the
+# git tag against the tree.
+#
+# Pin map (verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`):
+#   actions/checkout @ v7.0.1 → 3d3c42e5aac5ba805825da76410c181273ba90b1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - CHANGELOG.md
+      - bundle.sh
+      - .github/workflows/version-consistency.yml
+  pull_request:
+    branches: [main]
+    paths:
+      - VERSION
+      - CHANGELOG.md
+      - bundle.sh
+      - .github/workflows/version-consistency.yml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: VERSION / CHANGELOG / bundle.sh
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Compare the version mirrors
+        run: |
+          set -euo pipefail
+          fail=0
+          err() { echo "::error::$1"; fail=1; }
+
+          ver="$(tr -d '[:space:]' < VERSION)"
+          if ! echo "$ver" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "::error::VERSION must hold MAJOR.MINOR.PATCH (got '$ver')"
+            exit 1
+          fi
+          echo "VERSION declares $ver"
+
+          # A released version needs its own heading; an unreleased tree keeps
+          # the Unreleased one.
+          grep -Eq "^## \[($ver|Unreleased)\]" CHANGELOG.md \
+            || err "CHANGELOG.md has neither a [$ver] nor an [Unreleased] heading"
+
+          # The plist versions must come from the file, never from a literal.
+          grep -Fq '< "$PWD/VERSION"' bundle.sh \
+            || err "bundle.sh must read the VERSION file"
+          for key in CFBundleVersion CFBundleShortVersionString; do
+            grep -Eq "<key>$key</key>.*<string>\\\$\{VERSION\}</string>" bundle.sh \
+              || err "bundle.sh must write $key from \${VERSION}"
+          done
+
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::Version sources drifted. VERSION is the source; CONTRIBUTING.md, 'Cutting a release', has the mirror list."
+            exit 1
+          fi
+          echo "All version mirrors agree."
