@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import XCTest
 @testable import DishEngine
 
@@ -41,6 +42,36 @@ final class GamepadInputProcessorTests: XCTestCase {
     func testScaleTriggerClampsOverflow() {
         XCTAssertEqual(scaleTrigger(-1), 0)
         XCTAssertEqual(scaleTrigger(2), 255)
+    }
+
+    // MARK: - The inspector's taps
+
+    func testTheTapsSeeTheRawAndTheFilteredReportAndEveryAdmittedSample() {
+        let processor = GamepadInputProcessor()
+        processor.setDeadzones(deviceId: "pad", .init(stickFlat: 3000, triggerFlat: 10))
+        var tapped: [(raw: GamepadReport, filtered: GamepadReport)] = []
+        var motions = 0
+        var touches = 0
+        processor.reportTap = { _, raw, filtered in tapped.append((raw, filtered)) }
+        processor.motionTap = { _, _ in motions += 1 }
+        processor.touchpadTap = { _, _ in touches += 1 }
+        let raw = GamepadReport(buttons: 1, lt: 5, rt: 200, lx: 2000, ly: -2000, rx: 9000, ry: 0)
+        processor.publish(deviceId: "pad", state: raw)
+        XCTAssertEqual(tapped.count, 1)
+        XCTAssertEqual(tapped.first?.raw, raw)
+        XCTAssertEqual(tapped.first?.filtered.lx, 0, "the dead zone applied for the host")
+        XCTAssertEqual(tapped.first?.filtered.rx, 9000)
+        XCTAssertEqual(tapped.first?.filtered.lt, 0)
+        let sample = MotionSample(gyroX: 1, gyroY: 2, gyroZ: 3, accelX: 4, accelY: 5, accelZ: 6)
+        processor.publishMotion(deviceId: "pad", sample: sample, nowNs: 1_000_000)
+        processor.publishMotion(deviceId: "pad", sample: sample, nowNs: 1_000_001)
+        XCTAssertEqual(motions, 1, "a sample the rate limit refused is not tapped either")
+        let finger = TouchpadFinger(active: true, id: 0, x: 0, y: 0)
+        processor.publishTouchpad(deviceId: "pad", sample: TouchpadSample(finger0: finger, finger1: finger, buttonPressed: false))
+        XCTAssertEqual(touches, 1)
+        processor.reportTap = nil
+        processor.publish(deviceId: "pad", state: raw)
+        XCTAssertEqual(tapped.count, 1, "a removed tap sees nothing")
     }
 
     // MARK: - Button bitfield (wire contract parity with Android)

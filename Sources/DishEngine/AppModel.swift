@@ -33,6 +33,8 @@ package final class AppModel: ObservableObject {
     package let crashLog: CrashLog
     /// Controller audio: the routes, the mutes, the permission, the engine.
     let audio: AudioPipeline
+    /// The input inspector, armed on one controller while its sheet is open.
+    package let inspector: InputInspector
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
@@ -118,6 +120,7 @@ package final class AppModel: ObservableObject {
             slotPreferences: slotPreferences,
             dependencies: audioDependencies ?? .live()
         )
+        inspector = InputInspector(processor: input.processor)
         gate.update(settings.flags)
         routing.install(on: input.processor)
         wireObservers(pipeline: pipeline, lifecycle: lifecycle)

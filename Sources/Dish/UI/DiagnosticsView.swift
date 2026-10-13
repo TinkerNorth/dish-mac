@@ -11,9 +11,11 @@ import SwiftUI
 /// on, not a second measurement. The source ticks while the window is open.
 struct DiagnosticsView: View {
 
+    @EnvironmentObject var model: AppModel
     @EnvironmentObject var diagnostics: DiagnosticsSource
     @EnvironmentObject var log: DiagnosticsLogStore
     @State private var copied = false
+    @State private var inspecting: ControllerSlot?
 
     private let words = L10n.app
 
@@ -33,6 +35,11 @@ struct DiagnosticsView: View {
         .background(DishTheme.background.ignoresSafeArea())
         .onAppear { diagnostics.start() }
         .onDisappear { diagnostics.stop() }
+        .sheet(item: $inspecting) { slot in
+            InspectorView(slotId: slot.id)
+                .environmentObject(model)
+                .environmentObject(model.inspector)
+        }
     }
 
     private var hostsSection: some View {
@@ -59,7 +66,13 @@ struct DiagnosticsView: View {
                 emptyNote(words.noControllersConnected)
             }
             ForEach(diagnostics.state.pads) { pad in
-                DiagnosticsCard(title: pad.slot.name, dot: nil, chip: nil, lines: padLines(pad))
+                DiagnosticsCard(
+                    title: pad.slot.name,
+                    dot: nil,
+                    chip: nil,
+                    lines: padLines(pad),
+                    action: CardAction(label: words.inspectInput) { inspecting = pad.slot }
+                )
             }
         }
     }
@@ -103,6 +116,12 @@ struct DiagnosticsView: View {
     }
 }
 
+/// A button in a card's headline.
+struct CardAction {
+    let label: String
+    let run: () -> Void
+}
+
 /// One card: a headline with its dot and chip, then one fact per line with
 /// the key in a fixed left column so every card lines up.
 private struct DiagnosticsCard: View {
@@ -111,6 +130,7 @@ private struct DiagnosticsCard: View {
     let dot: Color?
     let chip: String?
     let lines: [FactLine]
+    var action: CardAction?
 
     private static let keyColumn: CGFloat = 150
 
@@ -128,6 +148,10 @@ private struct DiagnosticsCard: View {
                     Text(chip)
                         .font(DishFont.monoChip)
                         .foregroundColor(DishTheme.muted)
+                }
+                if let action {
+                    Button(action.label, action: action.run)
+                        .buttonStyle(DishOutlinedButtonStyle())
                 }
             }
             ForEach(lines) { line in
