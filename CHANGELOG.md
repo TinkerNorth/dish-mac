@@ -39,6 +39,16 @@ the repos share a version number.
 - **"What carries" knows the pad's audio**: the pad layer is the pad's
   family, the link layer its USB audio function, and the row says why this
   Mac routes none (Bluetooth, two pads of a name, two devices of a name).
+- **The controller inspector.** From a controller's Diagnostics card: its
+  input as the host sees it (the buttons held, the sticks and triggers after
+  the dead zones, the report rate), motion in degrees per second and g and
+  the touchpad's fingers, the two stick tests the other clients run (a
+  3 second drift test and an 8 second range test, read from the sticks as
+  the pad sends them, before the dead zones, with the suggested dead zone
+  and the gate's circularity error), a rumble bench that buzzes the motors
+  whatever the rumble switch says, and the two audio tests: a test tone on
+  the pad's speaker and a microphone meter that listens for eight seconds
+  and sends nothing.
 - **Mouse mode on the host.** The touchpad's per-controller pick, Off, Pad
   or Mouse, on the slot card; the descriptor declares `touchpadMode` through
   the fleet's ladder (the pad render needs a type that offers `ds4`, the

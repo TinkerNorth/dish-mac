@@ -64,6 +64,7 @@ struct DishApp: App {
         Window(L10n.app.diagnostics, id: DishWindow.diagnostics) {
             DiagnosticsView()
                 .preferredColorScheme(colorScheme(for: model.theme.state))
+                .environmentObject(model)
                 .environmentObject(model.diagnostics)
                 .environmentObject(model.diagnosticsLog)
                 .frame(minWidth: 560, minHeight: 520)
