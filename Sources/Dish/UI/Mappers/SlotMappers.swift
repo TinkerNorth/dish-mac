@@ -43,12 +43,30 @@ func bindButtonTitle(expanded: Bool, words: L10n = .app) -> String {
 }
 
 /// One capability pill. Three states a player can tell apart: available and
-/// on, available but off in Settings, and absent from the hardware.
+/// on, available but off in Settings, and absent from the hardware; a fourth
+/// tone warns when the satellite, not the pad or the switch, is the reason.
 struct CapabilityChipModel: Equatable {
     let label: String
     let on: Bool
     let available: Bool
     let help: String
+    var warning = false
+}
+
+/// The chips for a slot as the card shows them: bound, the gyro chip carries
+/// the satellite's word on motion; unbound, the detected state.
+func capabilityChips(for slot: ControllerSlot, _ flags: ForwardingFlags, words: L10n = .app) -> [CapabilityChipModel] {
+    let chips = capabilityChips(slot.capabilities, flags, words: words)
+    guard slot.boundConnectionId != nil, slot.capabilities.hasMotion, let gyro = chips.first else { return chips }
+    let state = motionIndicator(slot, flags)
+    let bound = CapabilityChipModel(
+        label: gyro.label,
+        on: state == .forwarding,
+        available: true,
+        help: motionIndicatorText(state, words: words),
+        warning: motionIndicatorWarns(state)
+    )
+    return [bound] + chips.dropFirst()
 }
 
 /// The chips for a slot. Motion always shows, present or explicitly absent;

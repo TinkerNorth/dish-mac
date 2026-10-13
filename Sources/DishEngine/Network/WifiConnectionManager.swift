@@ -88,6 +88,10 @@ package final class WifiConnectionManager: ObservableObject {
     var catalogs: [String: CatalogDTO] = [:]
     /// Per-satellite capabilities probe, fetched at session open.
     var capabilities: [String: ServerCapabilitiesDTO] = [:]
+    /// The user's per-binding Emulate pick, read as each descriptor is built.
+    let typeOverrides = ControllerTypeStore()
+    /// The satellite's motion word per binding, from the apply results.
+    let motionStatus = MotionBackendStatusStore()
 
     private var perConnCancellables: [String: Set<AnyCancellable>] = [:]
     /// Depth-counted so a superseded approval flow unwinding after its
@@ -280,6 +284,8 @@ package final class WifiConnectionManager: ObservableObject {
         perConnCancellables.removeValue(forKey: id)
         catalogs.removeValue(forKey: id)
         capabilities.removeValue(forKey: id)
+        typeOverrides.clearConnection(id)
+        motionStatus.clearConnection(id)
         clearStale(id)
         clearRetry(id)
         recomputeAnyRegistering()

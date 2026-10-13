@@ -62,3 +62,53 @@ func preferredControllerType(in catalog: CatalogDTO?, for family: PadFamily) -> 
     }
     return first.id
 }
+
+// MARK: - The Emulate picker and the capability table's facts
+
+/// Every catalog type that carries a display name is offered, even one newer
+/// than this app; a nameless row is dropped. Catalog order is the order.
+func offerableTypes(in catalog: CatalogDTO?) -> [PickableType] {
+    (catalog?.controllerTypes ?? []).filter(isTypeOfferable).map { type in
+        PickableType(id: type.id, slug: type.slug, name: type.name, shortName: type.shortName, description: type.description)
+    }
+}
+
+/// Per the contract an unknown slug still renders, so the one gate is a name.
+func isTypeOfferable(_ type: CatalogControllerType) -> Bool {
+    !type.name.isEmpty || !type.shortName.isEmpty
+}
+
+/// The ladder: the user's override, else the type the catalog says emulates
+/// the pad's family, else the first offered, else the legacy Xbox target.
+func emulatedControllerType(override: Int?, catalog: CatalogDTO?, family: PadFamily) -> Int {
+    override ?? preferredControllerType(in: catalog, for: family)
+}
+
+/// What the catalog says `type` carries; nil for a type the catalog does
+/// not name, which leaves the type layer unresolved rather than refusing.
+func typeFeatureFacts(in catalog: CatalogDTO?, type: Int) -> TypeFeatureFacts? {
+    guard let row = catalog?.controllerTypes.first(where: { $0.id == type }) else { return nil }
+    return TypeFeatureFacts(
+        motion: row.features.motion.supported,
+        touchpad: row.features.touchpad.supported,
+        rumble: row.features.rumble.supported,
+        lightbar: row.features.lightbar.supported,
+        triggerEffects: row.features.triggerEffects.supported,
+        playerLeds: row.features.playerLeds.supported,
+        mic: row.features.mic.supported,
+        speaker: row.features.speaker.supported
+    )
+}
+
+/// The host layer from the probe: a host feature counts when it is both
+/// supported and available right now; audio is what the host's switches
+/// let flow. Nil for a satellite that was never probed.
+func hostProbeFacts(_ probe: ServerCapabilitiesDTO?) -> HostProbeFacts? {
+    guard let probe, probe.reachable else { return nil }
+    return HostProbeFacts(
+        mouseControl: probe.host.mouseControl.supported && probe.host.mouseControl.available,
+        rumble: probe.host.rumble.supported && probe.host.rumble.available,
+        mic: probe.controllerAudio.mic,
+        speaker: probe.controllerAudio.speaker
+    )
+}

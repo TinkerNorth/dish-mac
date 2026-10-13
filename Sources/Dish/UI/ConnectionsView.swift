@@ -159,6 +159,10 @@ struct ConnectionsView: View {
                         .font(DishFont.monoChip)
                         .foregroundColor(protocolCompatColor(summary.compat))
                 }
+                Text(linkTierText(summary.kind))
+                    .font(DishFont.monoChip)
+                    .foregroundColor(linkTierColor(summary.kind))
+                    .help(linkTierHelp(summary.kind))
             }
             Spacer()
             primaryButton(for: summary)

@@ -147,24 +147,41 @@ final class ConnectionHub: ObservableObject {
         {
             current.removeValue(forKey: priorSlot)
             wifi.get(connectionId)?.detachSlot()
+            wifi.motionStatus.clear(SlotKey(connectionId: connectionId, slotId: priorSlot))
         }
         if let priorConnection = current[slotId], priorConnection != connectionId {
             wifi.get(priorConnection)?.detachSlot()
+            wifi.motionStatus.clear(SlotKey(connectionId: priorConnection, slotId: slotId))
         }
         current[slotId] = connectionId
         bindings = current
         rebuild()
         wifi.get(connectionId)?.attachSlot(
             slotId,
-            controllerType: wifi.defaultControllerType(for: connectionId, family: family),
-            capabilities: capabilities
+            controllerType: wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family),
+            capabilities: capabilities,
+            family: family
         )
     }
 
     func unbind(slotId: String) {
         guard let cid = bindings.removeValue(forKey: slotId) else { return }
         wifi.get(cid)?.detachSlot()
+        wifi.motionStatus.clear(SlotKey(connectionId: cid, slotId: slotId))
         rebuild()
+    }
+
+    /// The user's Emulate pick for a bound slot; nil returns to the family's
+    /// own type. A live binding re-sends its descriptor with the new type.
+    func setEmulatedType(slotId: String, type: Int?, family: PadFamily) {
+        guard let connectionId = bindings[slotId] else { return }
+        let key = SlotKey(connectionId: connectionId, slotId: slotId)
+        if let type {
+            wifi.typeOverrides.setType(type, for: key)
+        } else {
+            wifi.typeOverrides.clear(key)
+        }
+        wifi.get(connectionId)?.setControllerType(wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family))
     }
 
     func boundConnection(slotId: String) -> ConnectionSummary? {
