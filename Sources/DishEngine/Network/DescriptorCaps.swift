@@ -35,11 +35,29 @@ func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingF
     return claims.filter(\.claimed).reduce(UInt16(0)) { $0 | $1.bit }
 }
 
-/// The touchpad mode a descriptor asks for: the pad render when the pad has
-/// a touchpad and the switch is on, else off. Host mouse control is a later
-/// surface.
-func descriptorTouchpadMode(_ capabilities: ControllerCapabilities, _ flags: ForwardingFlags) -> TouchpadMode {
-    capabilities.hasTouchpad && flags.touchpad ? .ds4 : .off
+/// The touchpad mode a descriptor asks for: the controller's pick through
+/// the ladder, off while the global switch is off. The type's word is
+/// whether it offers the pad render; the host's is whether it advertises
+/// mouse control.
+func descriptorTouchpadMode(
+    _ capabilities: ControllerCapabilities,
+    _ flags: ForwardingFlags,
+    typeOffersDs4: Bool = true,
+    hostMouseControl: Bool = false
+) -> TouchpadMode {
+    resolveTouchpadMode(
+        pick: flags.touchpad ? flags.touchpadPick : .off,
+        padHasTouchpad: capabilities.hasTouchpad,
+        typeOffersDs4: typeOffersDs4,
+        hostMouseControl: hostMouseControl
+    )
+}
+
+/// Whether the catalog type a pad is emulated as renders a touchpad; a
+/// catalog not read, or a type it does not name, refuses nothing.
+func typeOffersDs4Touchpad(in catalog: CatalogDTO?, type: Int) -> Bool {
+    guard let row = catalog?.controllerTypes.first(where: { $0.id == type }) else { return true }
+    return typeOffersDs4Touchpad(supported: row.features.touchpad.supported, modes: row.features.touchpad.modes)
 }
 
 /// The `sdlType` values a pad family is naturally emulated as, best first.
@@ -100,7 +118,8 @@ func typeFeatureFacts(in catalog: CatalogDTO?, type: Int) -> TypeFeatureFacts? {
         triggerEffects: row.features.triggerEffects.supported,
         playerLeds: row.features.playerLeds.supported,
         mic: row.features.mic.supported,
-        speaker: row.features.speaker.supported
+        speaker: row.features.speaker.supported,
+        touchpadModes: row.features.touchpad.modes
     )
 }
 

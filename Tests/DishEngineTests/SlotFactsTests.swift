@@ -76,7 +76,8 @@ final class SlotFactsTests: XCTestCase {
                 triggerEffects: true,
                 playerLeds: true,
                 mic: true,
-                speaker: true
+                speaker: true,
+                touchpadModes: ["ds4"]
             )
         )
         let xbox = try XCTUnwrap(try typeFeatureFacts(in: catalog(), type: 0))
@@ -93,6 +94,13 @@ final class SlotFactsTests: XCTestCase {
                 speaker: false
             )
         )
+    }
+
+    func testTheTypeFactsCarryTheTouchpadModes() throws {
+        let dualShock = try XCTUnwrap(try typeFeatureFacts(in: catalog(), type: 1))
+        XCTAssertEqual(dualShock.touchpadModes, ["ds4"])
+        let xbox = try XCTUnwrap(try typeFeatureFacts(in: catalog(), type: 0))
+        XCTAssertEqual(xbox.touchpadModes, [], "no touchpad, no modes")
     }
 
     func testAnUnknownTypeOrNoCatalogLeavesTheTypeUnresolved() throws {

@@ -95,6 +95,33 @@ final class DescriptorCapsTests: XCTestCase {
         try JSONDecoder().decode(CatalogDTO.self, from: Data(FakeSatelliteRest.catalogJSON.utf8))
     }
 
+    func testTheTouchpadModeFollowsThePickThroughTheLadder() {
+        let withPad = ControllerCapabilities(hasTouchpad: true)
+        let mouse = ForwardingFlags(touchpadPick: .mouse)
+        XCTAssertEqual(descriptorTouchpadMode(withPad, mouse, typeOffersDs4: true, hostMouseControl: true), .mouse)
+        XCTAssertEqual(descriptorTouchpadMode(withPad, mouse, typeOffersDs4: true, hostMouseControl: false), .off, "no host word, no mouse")
+        XCTAssertEqual(
+            descriptorTouchpadMode(withPad, ForwardingFlags(), typeOffersDs4: false, hostMouseControl: true),
+            .off,
+            "no ds4 render"
+        )
+        let globalOff = ForwardingFlags(touchpad: false, touchpadPick: .mouse)
+        XCTAssertEqual(
+            descriptorTouchpadMode(withPad, globalOff, typeOffersDs4: true, hostMouseControl: true),
+            .off,
+            "Settings outranks the pick"
+        )
+        XCTAssertEqual(descriptorTouchpadMode(.none, mouse, typeOffersDs4: true, hostMouseControl: true), .off, "no touchpad, no mouse")
+    }
+
+    func testTheCatalogsWordOnTheTypesTouchpad() throws {
+        XCTAssertTrue(typeOffersDs4Touchpad(in: nil, type: 2), "no catalog refuses nothing")
+        let catalog = try JSONDecoder().decode(CatalogDTO.self, from: Data(FakeSatelliteRest.catalogJSON.utf8))
+        XCTAssertTrue(typeOffersDs4Touchpad(in: catalog, type: 1), "the DualShock 4 type offers the pad render")
+        XCTAssertFalse(typeOffersDs4Touchpad(in: catalog, type: 0), "the Xbox type has no touchpad")
+        XCTAssertTrue(typeOffersDs4Touchpad(in: catalog, type: 9), "a type the catalog does not name refuses nothing")
+    }
+
     func testEachFamilyIsEmulatedAsItself() throws {
         let types = try catalog()
         XCTAssertEqual(preferredControllerType(in: types, for: .dualSense), 2)

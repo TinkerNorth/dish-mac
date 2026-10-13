@@ -98,6 +98,11 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private var rekeyRequested = false
     private var pendingControllerType = 0
     private var pendingCapabilities: ControllerCapabilities = .none
+    /// Whether the emulated type renders a touchpad, from the catalog; a
+    /// catalog not read refuses nothing.
+    private(set) var typeOffersDs4Touchpad = true
+    /// Whether the satellite advertises mouse control, from its probe.
+    private(set) var hostMouseControlAvailable = false
     /// The bound pad's family, so the manager can re-resolve the type it is
     /// emulated as when a catalog or a pick arrives.
     private(set) var boundFamily: PadFamily = .other
@@ -146,8 +151,19 @@ package final class WifiConnection: ObservableObject, Identifiable {
         descriptor.ctrlIdx = Self.defaultCtrlIndex
         descriptor.type = UInt8(truncatingIfNeeded: pendingControllerType)
         descriptor.caps = descriptorCaps(pendingCapabilities, forwardingFlags)
-        descriptor.touchpadMode = descriptorTouchpadMode(pendingCapabilities, forwardingFlags)
+        descriptor.touchpadMode = descriptorTouchpadMode(
+            pendingCapabilities,
+            forwardingFlags,
+            typeOffersDs4: typeOffersDs4Touchpad,
+            hostMouseControl: hostMouseControlAvailable
+        )
         return descriptor
+    }
+
+    /// The session-level request the PUT carries: the bound pad's touchpad
+    /// picked as the host's mouse. The grant is the satellite's answer.
+    var wantsMouseControl: Bool {
+        boundSlotId != nil && pendingCapabilities.hasTouchpad && forwardingFlags.touchpad && forwardingFlags.touchpadPick == .mouse
     }
 
     // MARK: - Protocol version
@@ -368,6 +384,21 @@ package final class WifiConnection: ObservableObject, Identifiable {
     func setCapabilities(_ capabilities: ControllerCapabilities) {
         guard capabilities != pendingCapabilities else { return }
         pendingCapabilities = capabilities
+        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
+    }
+
+    /// The catalog's word on the emulated type's touchpad changed; a
+    /// changed mode re-sends the descriptor while the slot is bound and live.
+    func setTypeOffersDs4Touchpad(_ offers: Bool) {
+        guard offers != typeOffersDs4Touchpad else { return }
+        typeOffersDs4Touchpad = offers
+        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
+    }
+
+    /// The probe's word on the host's mouse control changed.
+    func setHostMouseControlAvailable(_ available: Bool) {
+        guard available != hostMouseControlAvailable else { return }
+        hostMouseControlAvailable = available
         if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
     }
 

@@ -15,7 +15,7 @@
 |---|---|---|---|---|
 | Satellite host, protocol 3 | ✅ | ✅ | ✅ | ✅ offers 3, settles on the satellite's range, re-offers on an overlapping 409 |
 | Moonlight host (Sunshine / Apollo / Wolf) | ✅ | ✅ | ✅ | ❌ |
-| Mouse mode on the host | ✅ | ❌ | ❌ (deferred) | ❌ (deferred, as the desktops) |
+| Mouse mode on the host | ✅ | ❌ | ❌ (deferred) | ✅ per-controller pick Off / Pad / Mouse; the request rides the session PUT and a flip mid-session converges through the re-key path |
 | Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked; not yet verified on a pad |
 | DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; not yet verified on a pad |
 | Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ⚠️ mic lamp as a chip on the slot card (GameController reaches no DualSense lamp) |
@@ -68,7 +68,13 @@ does not apply here.
   unentitled macOS app reads a pad, so there is no Direct claim, no per-model
   report parser and no "Layout guessed" chip. What the framework exposes is
   what Dish forwards.
-- **Mouse mode on the host is a recorded deferral**, as on the desktops.
+- **Mouse mode is the pad's own touchpad routed by the host**, as on
+  Android: the pick is per controller, the descriptor declares `mouse` only
+  when the pad has a touchpad and the host advertises mouse control, the
+  session PUT asks for `hostFeatures.mouseControl` whenever a bound pad is
+  picked as the mouse, and a pick that changes that desire mid-session
+  re-PUTs the whole session through the re-key path (the grant is computed
+  only at the session PUT), so the socket and the hot path never blip.
 - **Controller identity is the vendor name and product category**, because
   GameController vends a fresh object on every reconnect and exposes no
   per-unit identifier. Two identical pads take ordinals.

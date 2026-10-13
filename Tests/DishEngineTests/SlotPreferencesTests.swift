@@ -30,8 +30,13 @@ final class SlotPreferencesTests: XCTestCase {
         let all = ForwardingFlags()
         XCTAssertEqual(effectiveFlags(global: all, slot: SlotPreferences()), all)
         XCTAssertEqual(
-            effectiveFlags(global: all, slot: SlotPreferences(motion: false, rumble: false, touchpad: false)),
-            ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: true)
+            effectiveFlags(global: all, slot: SlotPreferences(motion: false, rumble: false, touchpad: .off)),
+            ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: true, touchpadPick: .off)
+        )
+        XCTAssertEqual(
+            effectiveFlags(global: all, slot: SlotPreferences(touchpad: .mouse)),
+            ForwardingFlags(touchpadPick: .mouse),
+            "the mouse pick sends the touchpad and says what as"
         )
         XCTAssertEqual(
             effectiveFlags(
@@ -61,6 +66,31 @@ final class SlotPreferencesTests: XCTestCase {
         )
     }
 
+    func testTheTouchpadPickIsWrittenInTheWiresWordsBesideTheOnOffRow() {
+        let store = SlotPreferenceStore(defaults: defaults)
+        store.setTouchpadPick(.mouse, for: "ds")
+        XCTAssertEqual(store.preferences(for: "ds").touchpad, .mouse)
+        XCTAssertEqual(defaults.string(forKey: SlotPreferenceStore.touchpadModeKey), #"[{"mode":"mouse","slotId":"ds"}]"#)
+        XCTAssertEqual(
+            defaults.string(forKey: SlotPreferenceStore.touchpadKey),
+            #"[{"enabled":true,"slotId":"ds"}]"#,
+            "an older build still reads a switch"
+        )
+        XCTAssertEqual(SlotPreferenceStore(defaults: defaults).preferences(for: "ds").touchpad, .mouse)
+        store.setTouchpad(false, for: "ds")
+        XCTAssertEqual(store.preferences(for: "ds").touchpad, .off)
+        store.setTouchpad(true, for: "ds")
+        XCTAssertEqual(store.preferences(for: "ds").touchpad, .pad, "the chip's click brings the pad render back")
+    }
+
+    func testAnOlderOnOffRowReadsAsThePickAndAnUnknownModeIsSkipped() {
+        defaults.set(#"[{"enabled":false,"slotId":"ds"},{"enabled":true,"slotId":"xb"}]"#, forKey: SlotPreferenceStore.touchpadKey)
+        defaults.set(#"[{"mode":"banana","slotId":"ds"},{"mode":"mouse","slotId":"xb"}]"#, forKey: SlotPreferenceStore.touchpadModeKey)
+        let store = SlotPreferenceStore(defaults: defaults)
+        XCTAssertEqual(store.preferences(for: "ds").touchpad, .off, "the on/off row speaks when the mode is not a wire word")
+        XCTAssertEqual(store.preferences(for: "xb").touchpad, .mouse, "the pick outranks the on/off row")
+    }
+
     func testAControllerNeverSwitchedReadsAllOn() {
         let store = SlotPreferenceStore(defaults: defaults)
         XCTAssertEqual(store.preferences(for: "gc:Sony:DualSense"), SlotPreferences())
@@ -72,8 +102,8 @@ final class SlotPreferencesTests: XCTestCase {
         store.setMotion(false, for: "ds")
         store.setRumble(false, for: "xbox")
         store.setTouchpad(false, for: "ds")
-        XCTAssertEqual(store.preferences(for: "ds"), SlotPreferences(motion: false, rumble: true, touchpad: false))
-        XCTAssertEqual(store.preferences(for: "xbox"), SlotPreferences(motion: true, rumble: false, touchpad: true))
+        XCTAssertEqual(store.preferences(for: "ds"), SlotPreferences(motion: false, rumble: true, touchpad: .off))
+        XCTAssertEqual(store.preferences(for: "xbox"), SlotPreferences(motion: true, rumble: false, touchpad: .pad))
         let relaunch = SlotPreferenceStore(defaults: defaults)
         XCTAssertEqual(relaunch.state, store.state, "the switches survive a relaunch")
     }

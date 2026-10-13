@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import DishEngine
 import SwiftUI
 
@@ -26,6 +27,9 @@ struct SlotCard: View {
             }
             if slot.boundConnectionId != nil, let emulation = slot.emulation {
                 emulateRow(emulation)
+                if slot.capabilities.hasTouchpad {
+                    touchpadRow
+                }
                 capabilityTableView
             }
         }
@@ -118,6 +122,35 @@ struct SlotCard: View {
                 .foregroundColor(DishTheme.muted)
             Spacer(minLength: 0)
         }
+    }
+
+    /// The touchpad picker: off, the pad render, or the host's mouse.
+    private var touchpadRow: some View {
+        HStack(spacing: 8) {
+            Text(words.touchpad)
+                .font(DishFont.caption)
+                .foregroundColor(DishTheme.muted)
+            Picker("", selection: touchpadBinding) {
+                ForEach(touchpadPickOptions(slot)) { option in
+                    Text(option.label).tag(option.id).disabled(!option.enabled)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .frame(maxWidth: 180)
+            .help(words.touchpadPickerHelp)
+            Text(touchpadPickDetail(slot, settings.flags))
+                .font(DishFont.microRegular)
+                .foregroundColor(DishTheme.muted)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var touchpadBinding: Binding<TouchpadPick> {
+        Binding(
+            get: { slot.preferences.touchpad },
+            set: { model.setTouchpadPick($0, slotId: slot.id) }
+        )
     }
 
     private func emulateBinding(_ emulation: SlotEmulation) -> Binding<Int?> {

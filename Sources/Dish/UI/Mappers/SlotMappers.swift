@@ -110,18 +110,62 @@ private func switchChip(
         return CapabilityChipModel(label: label, on: false, available: true, help: words.detectedOff(feature), switch: key, toggle: false)
     }
     let help = ownOn
-        ? "\(switchedOnSentence(key, feature: feature, words: words)) \(words.clickToTurnOffForThisController)"
+        ? "\(switchedOnSentence(key, feature: feature, slot.preferences, words: words)) \(words.clickToTurnOffForThisController)"
         : "\(words.turnedOffForThisController) \(words.clickToTurnOnForThisController)"
     return CapabilityChipModel(label: label, on: ownOn, available: true, help: help, switch: key, toggle: true)
 }
 
-/// What a switched-on chip says of its feature: the detection line, or for
-/// the pad's own audio, where the sound goes.
-private func switchedOnSentence(_ key: SlotSwitch, feature: String, words: L10n) -> String {
+/// What a switched-on chip says of its feature: the detection line, where
+/// the touchpad goes when it is the host's mouse, or for the pad's own
+/// audio, where the sound goes.
+private func switchedOnSentence(_ key: SlotSwitch, feature: String, _ preferences: SlotPreferences, words: L10n) -> String {
     switch key {
-    case .motion, .rumble, .touchpad: words.detectedOn(feature)
+    case .motion, .rumble: words.detectedOn(feature)
+    case .touchpad: preferences.touchpad == .mouse ? words.touchpadMovesTheMouse : words.detectedOn(feature)
     case .mic: words.micCarriesYourVoice
     case .speaker: words.hostAudioPlaysOnThePad
+    }
+}
+
+/// One choice of the touchpad picker; the mouse is offered only by a host
+/// that advertises mouse control.
+struct TouchpadPickOption: Equatable, Identifiable {
+    let id: TouchpadPick
+    let label: String
+    let enabled: Bool
+}
+
+func touchpadPickOptions(_ slot: ControllerSlot, words: L10n = .app) -> [TouchpadPickOption] {
+    TouchpadPick.pickerOrder.map { pick in
+        TouchpadPickOption(id: pick, label: touchpadPickText(pick, words: words), enabled: touchpadPickOffered(pick, slot))
+    }
+}
+
+func touchpadPickText(_ pick: TouchpadPick, words: L10n = .app) -> String {
+    switch pick {
+    case .off: words.off
+    case .pad: words.pad
+    case .mouse: words.mouse
+    }
+}
+
+/// Off and the pad render are always on offer; the mouse needs the host's
+/// word, and an unprobed host has not spoken yet.
+func touchpadPickOffered(_ pick: TouchpadPick, _ slot: ControllerSlot) -> Bool {
+    switch pick {
+    case .off, .pad: true
+    case .mouse: slot.hostProbe?.mouseControl == true
+    }
+}
+
+/// The line under the picker: where the touchpad goes, or why it goes
+/// nowhere.
+func touchpadPickDetail(_ slot: ControllerSlot, _ global: ForwardingFlags, words: L10n = .app) -> String {
+    guard global.touchpad else { return words.switchedOffInSettings }
+    switch slot.preferences.touchpad {
+    case .off: return words.touchpadRoutingOff
+    case .pad: return words.touchpadForwardedAsTouchpad
+    case .mouse: return touchpadPickOffered(.mouse, slot) ? words.touchpadMovesTheMouse : words.hostLacks(words.mouse)
     }
 }
 
@@ -208,7 +252,7 @@ func switchValue(_ key: SlotSwitch, _ preferences: SlotPreferences) -> Bool {
     switch key {
     case .motion: preferences.motion
     case .rumble: preferences.rumble
-    case .touchpad: preferences.touchpad
+    case .touchpad: preferences.touchpad != .off
     case .mic: preferences.mic
     case .speaker: preferences.speaker
     }
