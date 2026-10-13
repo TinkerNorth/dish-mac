@@ -154,6 +154,11 @@ struct ConnectionsView: View {
                 Text(statusLine(for: summary))
                     .font(DishFont.monoChip)
                     .foregroundColor(DishTheme.muted)
+                if let compat = protocolCompatText(summary.compat) {
+                    Text(compat)
+                        .font(DishFont.monoChip)
+                        .foregroundColor(protocolCompatColor(summary.compat))
+                }
             }
             Spacer()
             primaryButton(for: summary)

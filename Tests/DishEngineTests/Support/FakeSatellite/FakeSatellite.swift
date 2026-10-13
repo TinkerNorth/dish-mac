@@ -138,10 +138,27 @@ final class FakeSatellite {
         set { store.with { $0.forced401Code = newValue } }
     }
 
-    /// Force 409 protocol-version rejection on pair + session PUT.
-    var protocolVersionReject: Bool {
-        get { store.with { $0.protocolVersionReject } }
-        set { store.with { $0.protocolVersionReject = newValue } }
+    /// The protocol range the fake accepts on pair and session PUT; an offer
+    /// outside it draws 409 with both bounds (contract §Versioning). The real
+    /// satellite's range is 1...3.
+    var protocolRange: ClosedRange<Int> {
+        get { store.with { $0.supportedProtocolMin ... $0.supportedProtocol } }
+        set {
+            store.with {
+                $0.supportedProtocolMin = newValue.lowerBound
+                $0.supportedProtocol = newValue.upperBound
+            }
+        }
+    }
+
+    /// The version the last accepted offer settled on.
+    var settledProtocolVersion: Int {
+        store.with { $0.settledProtocolVersion }
+    }
+
+    /// Every offer the range refused with 409, in order.
+    var rejectedOffers: [Int] {
+        store.with { $0.rejectedOffers }
     }
 
     /// One-shot: process the next session PUT normally but park its response
@@ -255,6 +272,18 @@ final class FakeSatellite {
     @discardableResult
     func injectLightbar(ctrlIdx: UInt8, red: UInt8, green: UInt8, blue: UInt8) -> Bool {
         udp.sendToActive(opcode: FakeSatelliteOpcode.lightbar, payload: Data([ctrlIdx, red, green, blue]))
+    }
+
+    /// Version 2: the game's two 11-byte trigger-effect blocks, left then right.
+    @discardableResult
+    func injectTriggerEffects(ctrlIdx: UInt8, left: [UInt8], right: [UInt8]) -> Bool {
+        udp.sendToActive(opcode: FakeSatelliteOpcode.triggerEffects, payload: Data([ctrlIdx] + left + right))
+    }
+
+    /// Version 2: the player-indicator bitmask, bit 0 the leftmost LED.
+    @discardableResult
+    func injectPlayerLeds(ctrlIdx: UInt8, mask: UInt8) -> Bool {
+        udp.sendToActive(opcode: FakeSatelliteOpcode.playerLeds, payload: Data([ctrlIdx, mask]))
     }
 
     // MARK: - State inspection

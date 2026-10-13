@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import CoreHaptics
+import DishCore
 import Foundation
 import GameController
 
@@ -44,6 +45,89 @@ extension GameControllerInput {
         guard let controller = controllersById[deviceId], let fresh = RumbleActuator(controller: controller) else { return nil }
         actuators[deviceId] = fresh
         return fresh
+    }
+
+    // MARK: - Adaptive triggers (DualSense)
+
+    /// Queue the game's trigger-effect blocks; a burst collapses to the newest
+    /// pair per controller.
+    func applyTriggerEffects(deviceId: String, command: TriggerEffectsCommand) {
+        triggerEffectsApplier.submit(deviceId: deviceId, value: command)
+    }
+
+    /// A pad that is not a DualSense has no adaptive triggers and the command
+    /// is dropped.
+    func writeTriggerEffects(deviceId: String, command: TriggerEffectsCommand) {
+        guard let dualSense = controllersById[deviceId]?.extendedGamepad as? GCDualSenseGamepad else { return }
+        Self.play(DualSenseTriggerEffect.decode(command.left), on: dualSense.leftTrigger)
+        Self.play(DualSenseTriggerEffect.decode(command.right), on: dualSense.rightTrigger)
+    }
+
+    /// One decoded effect onto one trigger, each shape through the framework
+    /// call that renders it.
+    static func play(_ effect: DualSenseTriggerEffect, on trigger: GCDualSenseAdaptiveTrigger) {
+        switch effect {
+        case .off:
+            trigger.setModeOff()
+        case let .feedback(startPosition, strength):
+            trigger.setModeFeedbackWithStartPosition(startPosition, resistiveStrength: strength)
+        case let .positionalFeedback(strengths):
+            trigger.setModeFeedback(resistiveStrengths: positionalStrengths(strengths))
+        case let .weapon(startPosition, endPosition, strength):
+            trigger.setModeWeaponWithStartPosition(startPosition, endPosition: endPosition, resistiveStrength: strength)
+        case let .vibration(startPosition, amplitude, frequency):
+            trigger.setModeVibrationWithStartPosition(startPosition, amplitude: amplitude, frequency: frequency)
+        case let .positionalVibration(amplitudes, frequency):
+            trigger.setModeVibration(amplitudes: positionalAmplitudes(amplitudes), frequency: frequency)
+        }
+    }
+
+    /// The framework's ten-zone struct from an array; a short array leaves
+    /// the remaining zones at zero.
+    static func positionalStrengths(_ values: [Float]) -> GCDualSenseAdaptiveTrigger.PositionalResistiveStrengths {
+        var out = GCDualSenseAdaptiveTrigger.PositionalResistiveStrengths()
+        withUnsafeMutableBytes(of: &out.values) { raw in
+            let zones = raw.bindMemory(to: Float.self)
+            for (index, value) in values.prefix(zones.count).enumerated() {
+                zones[index] = value
+            }
+        }
+        return out
+    }
+
+    static func positionalAmplitudes(_ values: [Float]) -> GCDualSenseAdaptiveTrigger.PositionalAmplitudes {
+        var out = GCDualSenseAdaptiveTrigger.PositionalAmplitudes()
+        withUnsafeMutableBytes(of: &out.values) { raw in
+            let zones = raw.bindMemory(to: Float.self)
+            for (index, value) in values.prefix(zones.count).enumerated() {
+                zones[index] = value
+            }
+        }
+        return out
+    }
+
+    // MARK: - Player LEDs
+
+    /// Queue the player the game assigned; the framework lights the pad's
+    /// own pattern for it.
+    func applyPlayerLeds(deviceId: String, player: Int) {
+        playerLedsApplier.submit(deviceId: deviceId, value: player)
+    }
+
+    func writePlayerIndex(deviceId: String, player: Int) {
+        controllersById[deviceId]?.playerIndex = Self.playerIndex(for: player)
+    }
+
+    /// Players one to four light the framework's four patterns; anything
+    /// else clears them.
+    static func playerIndex(for player: Int) -> GCControllerPlayerIndex {
+        switch player {
+        case 1: .index1
+        case 2: .index2
+        case 3: .index3
+        case 4: .index4
+        default: .indexUnset
+        }
     }
 
     // MARK: - Battery

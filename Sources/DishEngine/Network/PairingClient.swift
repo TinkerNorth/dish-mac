@@ -42,9 +42,9 @@ final class PairingClient {
         /// Path B accepted: poll `/api/pair/status` for the operator's decision.
         case pendingApproval
         case authRequired
-        /// 409 — client/server protocol skew. TERMINAL: stop retrying,
-        /// tell the user to update (contract §Versioning).
-        case versionMismatch
+        /// 409 with the satellite's range; `settleRejected` decides whether
+        /// a lower offer can still open a session (contract §Versioning).
+        case versionMismatch(supported: Int, supportedMin: Int)
         case unreachable(String)
     }
 
@@ -57,7 +57,7 @@ final class PairingClient {
             return .success(sharedKeyHex: key)
         }
         if response.httpStatus == 409 {
-            return .versionMismatch
+            return .versionMismatch(supported: response.supportedProtocol, supportedMin: response.supportedProtocolMin)
         }
         if response.pending {
             return .pendingApproval
@@ -150,7 +150,8 @@ final class PairingClient {
         deviceId: String,
         deviceName: String,
         pin: String,
-        clientPin: String = ""
+        clientPin: String = "",
+        protocolVersion: Int = ProtocolConstants.protocolVersion
     ) async -> PairResponse {
         guard let url = URL(string: "https://\(ip):\(port)/api/pair") else {
             return PairResponse(ok: false, error: "bad url")
@@ -163,7 +164,7 @@ final class PairingClient {
             deviceName: deviceName,
             pin: pin,
             clientPin: clientPin,
-            protocolVersion: ProtocolConstants.protocolVersion
+            protocolVersion: protocolVersion
         )) else {
             return PairResponse(ok: false, error: "encode failed")
         }

@@ -70,11 +70,11 @@ final class PairingClientLiveTests: XCTestCase {
 
     // MARK: - G5: protocolVersion + 409
 
-    func testVersionRejectionClassifiesAsVersionMismatch() async {
-        satellite.protocolVersionReject = true
+    func testVersionRejectionClassifiesAsVersionMismatchWithTheRange() async {
+        satellite.protocolRange = 4 ... 5
         let response = await pair(pin: "4321")
         XCTAssertEqual(response.httpStatus, 409)
-        XCTAssertEqual(PairingClient.classify(response), .versionMismatch)
+        XCTAssertEqual(PairingClient.classify(response), .versionMismatch(supported: 5, supportedMin: 4))
     }
 
     // MARK: - Path B (client PIN + status poll)

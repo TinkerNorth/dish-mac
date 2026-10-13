@@ -5,8 +5,9 @@ four Dish clients beside [dish-android], [dish-windows] and [dish-linux]. It
 finds a Satellite on the LAN (mDNS, with the legacy UDP beacon as fallback),
 pairs with a PIN over TOFU-pinned TLS, declares its controllers to the server
 over REST, and streams their input over encrypted UDP (ChaCha20-Poly1305 under
-per-session HKDF keys), with rumble and the light bar flowing back. It speaks
-**protocol 1**; see [Protocol](#protocol).
+per-session HKDF keys), with rumble, the light bar, adaptive triggers and
+player LEDs flowing back. It offers **protocol 3** and still works with a
+protocol-1 satellite; see [Protocol](#protocol).
 
 [dish-android]: https://github.com/TinkerNorth/dish-android
 [dish-windows]: https://github.com/TinkerNorth/dish-windows
@@ -25,7 +26,8 @@ per-session HKDF keys), with rumble and the light bar flowing back. It speaks
   pad, plus motion (gyro and accelerometer) and the touchpad from DualSense
   and DualShock 4 pads, and the battery level.
 - Plays rumble and sets the light bar as the host game asks, each gated by
-  its own switch in Settings.
+  its own switch in Settings; on a DualSense it also plays the game's
+  adaptive-trigger effects and lights the player indicator.
 - Keeps the display awake while a slot streams, releases every session when
   the Mac sleeps and reconnects when it wakes.
 - Speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
@@ -137,8 +139,14 @@ hardware ignores the packet.
 
 ## Protocol
 
-This client speaks **protocol 1**. The client-server contract (REST surface,
-UDP streams, crypto, liveness, identity) lives in one place,
+This client offers **protocol 3** on every pairing and session request and
+settles each session on what the satellite speaks: an older satellite gets a
+working session at its own version and a soft "update recommended" chip; a
+satellite whose range does not overlap this client's gets a plain word about
+which end must update. A session settled on version 2 or later streams the
+19-byte pointer frame and receives the trigger-effect and player-LED return
+paths it advertised. The client-server contract (REST surface, UDP streams,
+crypto, liveness, identity, versioning) lives in one place,
 [`satellite/docs/contract.md`][contract]; nothing here restates it, and when
 in doubt the contract wins. [`docs/contract.md`](docs/contract.md) maps each
 contract concept to the Swift file that implements it.
@@ -176,7 +184,7 @@ swift test --parallel
 |---|---|
 | `DishCoreTests` | The cross-repo interop vectors (HKDF, HMAC proof, AEAD, hex-exact with the satellite and the other clients) and every reducer: reconcile, backoff, close-notify, TOFU verdicts, latency window, REST outcomes. |
 | `DishKernelTests` | Every kernel primitive, with the shared `RepositoryContract`. |
-| `DishEngineTests` | Input mapping, dead zones, the return paths against satellite-sealed datagrams, pairing classification, screen wake; and the live suites, which drive the real manager, connection and client against `Support/FakeSatellite/`, an in-process protocol-1 satellite over loopback sockets with its own independently written crypto. |
+| `DishEngineTests` | Input mapping, dead zones, the return paths against satellite-sealed datagrams, pairing classification, screen wake; and the live suites, which drive the real manager, connection and client against `Support/FakeSatellite/`, an in-process satellite over loopback sockets with its own independently written crypto, a configurable protocol range and every return path. |
 | `DishTests` | The funnel and the catalog in every language, every mapper flow, the AppKit signal mapping. |
 | `ArchitectureTests` | Import boundaries, the package graph, license headers, no suppressions, no mutable statics, the lint thresholds, the version mirrors, the catalog and the tokens. |
 

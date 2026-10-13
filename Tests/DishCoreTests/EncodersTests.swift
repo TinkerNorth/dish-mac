@@ -106,6 +106,70 @@ final class EncodersTests: XCTestCase {
         )
     }
 
+    // MARK: - MSG_TOUCHPAD (0x000C) — the version-2 19-byte POINTER layout
+
+    func testPointerPayloadPinsTheNineteenByteLayout() {
+        let payload = Encoders.pointerPayload(
+            controllerIndex: 5,
+            sample: TouchpadSample(
+                finger0: TouchpadFinger(active: true, id: 7, x: 0x1234, y: -2),
+                finger1: TouchpadFinger(active: false, id: 9, x: 100, y: -100),
+                buttonPressed: true
+            ),
+            eventTimeMs: 0x0102_0304,
+            scrollV: -120
+        )
+        XCTAssertEqual(payload.count, 1 + ProtocolConstants.pointerPayloadBytes)
+        XCTAssertEqual(payload.count, 19)
+        XCTAssertEqual(
+            [UInt8](payload),
+            [
+                5, // ctrlIdx
+                0x01, // fingerFlags: f0 active only; the click is no longer here
+                0x01, // buttons: left = the pad's click
+                7, // f0 id
+                0x34, 0x12, // f0 x LE
+                0xFE, 0xFF, // f0 y = -2
+                9, // f1 id
+                0x64, 0x00, // f1 x = 100
+                0x9C, 0xFF, // f1 y = -100
+                0x04, 0x03, 0x02, 0x01, // eventTimeMs u32 LE @ offset 13
+                0x88, 0xFF // scrollV = -120, one notch down
+            ]
+        )
+    }
+
+    func testPointerFingerFlagsAndButtonsAreSeparateBytes() {
+        func bytes(_ f0: Bool, _ f1: Bool, _ click: Bool) -> (flags: UInt8, buttons: UInt8) {
+            let payload = Encoders.pointerPayload(
+                controllerIndex: 0,
+                sample: TouchpadSample(
+                    finger0: TouchpadFinger(active: f0, id: 0, x: 0, y: 0),
+                    finger1: TouchpadFinger(active: f1, id: 0, x: 0, y: 0),
+                    buttonPressed: click
+                ),
+                eventTimeMs: 0
+            )
+            return (payload[1], payload[2])
+        }
+        XCTAssertEqual(bytes(false, false, false).flags, 0)
+        XCTAssertEqual(bytes(true, false, false).flags, 0x01)
+        XCTAssertEqual(bytes(false, true, false).flags, 0x02)
+        XCTAssertEqual(bytes(true, true, false).flags, 0x03)
+        XCTAssertEqual(bytes(true, true, true).flags, 0x03, "the click never sets a finger flag")
+        XCTAssertEqual(bytes(false, false, true).buttons, 0x01)
+        XCTAssertEqual(bytes(true, true, false).buttons, 0)
+    }
+
+    func testAResendCarriesNoScroll() {
+        let payload = Encoders.pointerPayload(
+            controllerIndex: 0,
+            sample: TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false),
+            eventTimeMs: 0
+        )
+        XCTAssertEqual([UInt8](payload.suffix(2)), [0, 0])
+    }
+
     func testTouchpadFlagsBitsAreFinger0Finger1Button() {
         func flags(_ f0: Bool, _ f1: Bool, _ button: Bool) -> UInt8 {
             let payload = Encoders.touchpadPayload(

@@ -196,6 +196,12 @@ extension SatelliteClient {
         case ProtocolConstants.msgLightbar:
             guard let lightbar = LightbarCommand.parse(inner.payload) else { return }
             onLightbar?(lightbar)
+        case ProtocolConstants.msgTriggerEffects:
+            guard let effects = TriggerEffectsCommand.parse(inner.payload) else { return }
+            onTriggerEffects?(effects)
+        case ProtocolConstants.msgPlayerLeds:
+            guard let leds = PlayerLedsCommand.parse(inner.payload) else { return }
+            onPlayerLeds?(leds)
         case ProtocolConstants.msgSessionClose:
             guard let byte = inner.payload.first else { return }
             // Latch the reason and mark dead NOW: the session is already gone

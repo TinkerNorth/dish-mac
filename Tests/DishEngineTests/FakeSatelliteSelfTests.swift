@@ -228,24 +228,36 @@ final class FakeSatelliteRestSelfTests: XCTestCase {
         defer { satellite.stop() }
         try satellite.start()
         let rest = FakeSatelliteRestScriptClient(satellite: satellite)
-        let rejected = try await rest.request(
+        // An offer inside the range settles on it and is echoed.
+        let accepted = try await rest.request(
             "POST",
             "/api/pair",
             json: ["deviceId": "d3", "deviceName": "n", "pin": "1234", "protocolVersion": 2]
         )
+        XCTAssertEqual(accepted.status, 200)
+        XCTAssertEqual(accepted.int("protocolVersion"), 2)
+        XCTAssertEqual(satellite.settledProtocolVersion, 2)
+        // An offer above the range draws 409 with both bounds.
+        let rejected = try await rest.request(
+            "POST",
+            "/api/pair",
+            json: ["deviceId": "d3", "deviceName": "n", "pin": "1234", "protocolVersion": 9]
+        )
         XCTAssertEqual(rejected.status, 409)
-        XCTAssertEqual(rejected.int("supported"), 1)
+        XCTAssertEqual(rejected.int("supported"), 3)
+        XCTAssertEqual(rejected.int("supportedMin"), 1)
         // Absent protocolVersion means 1 (contract §Versioning).
         let absent = try await rest.request("POST", "/api/pair", json: ["deviceId": "d3", "deviceName": "n", "pin": "1234"])
         XCTAssertEqual(absent.status, 200)
-        // Knob: force 409 even for a well-formed v1 session PUT.
-        satellite.protocolVersionReject = true
+        XCTAssertEqual(absent.int("protocolVersion"), 1)
+        // The range knob: a floor above the script's offer of 1 draws 409 on the PUT too.
+        satellite.protocolRange = 2 ... 3
         let key = try XCTUnwrap(try FakeSatelliteCrypto.hexToData(XCTUnwrap(satellite.pairingKeyHex)))
         do {
             _ = try await FakeSatelliteScript.putSession(rest, deviceId: "d3", pairingKey: key, controllers: [])
-            XCTFail("expected 409 from the protocolVersionReject knob")
+            XCTFail("expected 409 from a range that excludes the offer")
         } catch {}
-        satellite.protocolVersionReject = false
+        satellite.protocolRange = 1 ... 3
         _ = try await FakeSatelliteScript.putSession(rest, deviceId: "d3", pairingKey: key, controllers: [])
     }
 
@@ -300,7 +312,7 @@ final class FakeSatelliteRestSelfTests: XCTestCase {
         XCTAssertEqual(satellite.catalogRequests, 2)
         let caps = try await rest.request("GET", "/api/server/capabilities")
         XCTAssertEqual(caps.status, 200)
-        XCTAssertEqual(caps.int("protocolVersion"), 1)
+        XCTAssertEqual(caps.int("protocolVersion"), 3)
         XCTAssertEqual((caps.dict("backend"))?["id"] as? String, "fake")
     }
 

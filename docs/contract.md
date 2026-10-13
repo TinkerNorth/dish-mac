@@ -3,7 +3,7 @@
 The protocol contract (REST surface, UDP streams, crypto, liveness,
 identity) lives in ONE place: **`satellite/docs/contract.md`** in the
 [TinkerNorth/satellite](https://github.com/TinkerNorth/satellite) repo. This
-client implements protocol 1 against it; this file only records the
+client offers protocol 3 and still speaks 1; this file only records the
 macOS-side mapping. When code and contract disagree, the contract wins.
 
 ## Where the contract lands in this app
@@ -37,11 +37,19 @@ URLSession, and stores.
 | Pairing-key storage (Keychain; in-memory impl for tests) | `Sources/DishEngine/Network/KeyStore.swift` |
 | Discovery: mDNS `_satellite._udp` + TXT (`mid`, ports) | `Sources/DishEngine/Network/MdnsBrowser.swift` |
 | Discovery: legacy UDP `:9879` beacon (fallback) | `Sources/DishEngine/Network/LANDiscovery.swift` |
+| Versioning: the offer, the 409 range, the settled version that keys the frames, the compat chip | `Sources/DishCore/Reducers/ProtocolNegotiation.swift`, applied by `lowerOfferOrFail` and `adoptGrant` in `Sources/DishEngine/Network/WifiConnectionManager+Session.swift` |
+| 0x000C POINTER frame (version 2) beside the 16-byte TOUCHPAD frame | `Sources/DishCore/Wire/Encoders.swift` (`pointerPayload`), chosen by the settled version in `SatelliteClient.sendTouchpad` |
+| TRIGGER_EFFECTS 0x0010 and PLAYER_LEDS 0x0011 return paths | `Sources/DishCore/Wire/FeedbackCommands.swift`, `Sources/DishEngine/Input/DualSenseTriggerEffect.swift`, `Sources/DishEngine/Input/GameControllerInput+ReturnPath.swift` |
+| Descriptor caps as promises (the hardware AND the user's switch), `touchpadMode` | `Sources/DishEngine/Network/DescriptorCaps.swift` |
+| `GET /api/server/capabilities` | `Sources/DishEngine/Network/ServerCapabilities.swift`, cached by `WifiConnectionManager.fetchCapabilities` |
+| Catalog version 2: `catalogVersion`, `emulates`, the feature slugs, `modes`, `requires` | `Sources/DishEngine/Network/CatalogModels.swift`; `preferredControllerType` in `DescriptorCaps.swift` |
 
-Test double: `Tests/DishTests/Support/FakeSatellite/` is an in-process
-protocol-1 satellite (REST + UDP, independent CryptoKit crypto asserted
-against the same pinned vectors) that the control-plane, data-plane and
-`Integration*` suites drive end-to-end.
+Test double: `Tests/DishEngineTests/Support/FakeSatellite/` is an in-process
+satellite that accepts a configurable protocol range (1...3 by default, like
+the real one), settles and echoes the offer, decodes both 0x000C shapes, and
+injects every return path (REST + UDP, independent CryptoKit crypto asserted
+against the same pinned vectors); the control-plane, data-plane, negotiation
+and `Integration*` suites drive it end-to-end.
 
 ## Client behaviours required by the contract
 

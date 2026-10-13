@@ -7,6 +7,7 @@
 // the path-B approval loop end-to-end (G5/G6/G8/G11/G16/G17 wiring).
 
 import Combine
+import DishCore
 import XCTest
 @testable import DishEngine
 
@@ -102,7 +103,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
         XCTAssertEqual(satellite.sessionPuts.count, 1)
         let put = try XCTUnwrap(satellite.sessionPuts.first)
         XCTAssertEqual(put["deviceId"] as? String, store.getOrCreateDeviceId())
-        XCTAssertEqual(put["protocolVersion"] as? Int, 1)
+        XCTAssertEqual(put["protocolVersion"] as? Int, ProtocolConstants.protocolVersion)
 
         // Success remembers the satellite under its stable mid: identity.
         let row = store.remembered().first { $0.id == serverId }
@@ -155,16 +156,17 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
 
     // MARK: - Terminal 409 (G5)
 
-    func testVersionMismatchSurfacesTerminalMessageAndKeepsKey() async {
+    func testASatelliteFloorAboveOurVersionIsTerminalAndKeepsTheKey() async {
         prePair()
-        satellite.protocolVersionReject = true
+        satellite.protocolRange = 4 ... 5
 
         manager.connect(to: server)
 
         let surfaced = await waitUntil {
-            self.failures.contains(.protocolMismatch)
+            self.failures.contains(.dishUpdateRequired)
         }
         XCTAssertTrue(surfaced)
+        XCTAssertEqual(manager.get(serverId)?.protocolCompat, .dishUpdateRequired)
         XCTAssertNotNil(store.sharedKey(for: serverId), "version skew is not trust loss")
         XCTAssertFalse(manager.staleSatelliteIds.contains(serverId))
         XCTAssertEqual(manager.get(serverId)?.state, .idle)

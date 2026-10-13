@@ -1,20 +1,41 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 //
-// Pure protocol-1 constants + tiny wire-string mappers shared by the wire
-// layer, the REST DTO parsers and the pure reducers. Mirrors the authoritative
-// satellite/src/core/types.h subset the CLIENT needs (opcodes, caps, apply
-// results, touchpad modes, controller types, crypto/timeout sizes). Ports
-// dish-linux src/Models/Protocol.h — see satellite/docs/contract.md.
+// The protocol constants and the tiny wire-string mappers shared by the wire
+// layer, the REST DTO parsers and the pure reducers: the client-side subset of
+// satellite/src/core/types.h. See satellite/docs/contract.md.
 
 import Foundation
 
-/// Protocol-1 wire + REST constants (contract SSOT: `satellite/docs/contract.md`).
+/// Wire and REST constants (contract SSOT: `satellite/docs/contract.md`).
 public enum ProtocolConstants {
 
-    /// REST + wire protocol version. Rides in every pairing/session request so
-    /// any future change is gateable (contract §Versioning).
-    public static let protocolVersion = 1
+    /// The newest protocol version this client speaks. It rides in every
+    /// pairing and session request as the offer; the satellite settles each
+    /// session on it or answers 409 with its own range (contract
+    /// §Versioning, `settleAccepted` / `settleRejected`). Version 2 reshaped
+    /// 0x000C into the POINTER frame and added the feedback return paths;
+    /// version 3 added HAPTIC_AUDIO with no frame change.
+    public static let protocolVersion = 3
+
+    /// The oldest version this client still speaks end to end. A session
+    /// settled on 1 streams the 16-byte TOUCHPAD frame and gets no feedback
+    /// return paths; the client never offers below this.
+    public static let protocolVersionMin = 1
+
+    /// What an absent `protocolVersion` field means: a peer from before
+    /// versioning (contract §Versioning).
+    public static let protocolVersionWhenAbsent = 1
+
+    /// What an absent `catalogVersion` field means: the legacy catalog of two
+    /// types with no `emulates` (contract §Catalog).
+    public static let catalogVersionWhenAbsent = 1
+
+    /// Whether a settled session speaks the version-2 frames. Every version
+    /// gate in the client goes through this.
+    public static func settledSpeaksV2(_ settledVersion: Int) -> Bool {
+        settledVersion >= 2
+    }
 
     // MARK: - UDP opcodes (contract §UDP messages)
 
@@ -36,12 +57,34 @@ public enum ProtocolConstants {
     public static let msgMotion: UInt16 = 0x000A
     /// c→s: ctrlIdx(1) + level(1) + status(1).
     public static let msgBattery: UInt16 = 0x000B
-    /// c→s: ctrlIdx(1) + 15 bytes — see `Encoders.touchpadPayload`.
+    /// c→s: ctrlIdx(1) + 15 bytes on a version-1 session
+    /// (`Encoders.touchpadPayload`), ctrlIdx(1) + 18 bytes on version 2 and
+    /// later (`Encoders.pointerPayload`); the receiver tells them apart by
+    /// length.
     public static let msgTouchpad: UInt16 = 0x000C
     /// s→c: ctrlIdx(1) + r(1) + g(1) + b(1).
     public static let msgLightbar: UInt16 = 0x000D
     /// s→c: reason(1) — see `CloseReason`.
     public static let msgSessionClose: UInt16 = 0x000F
+    /// s→c (version 2): ctrlIdx(1) + left block(11) + right block(11), the
+    /// DualSense trigger-effect fields verbatim. Sent only to a session whose
+    /// descriptor advertised `triggerEffects`.
+    public static let msgTriggerEffects: UInt16 = 0x0010
+    /// s→c (version 2): ctrlIdx(1) + ledMask(1), bit 0 the leftmost LED. Sent
+    /// only to a session whose descriptor advertised `playerLeds`.
+    public static let msgPlayerLeds: UInt16 = 0x0011
+    /// c→s (version 2): ctrlIdx(1) + seq(u16 BE) + one 20 ms Opus packet of
+    /// the pad's microphone. Gated on `mic`.
+    public static let msgMicAudio: UInt16 = 0x0012
+    /// s→c (version 2): ctrlIdx(1) + seq(u16 BE) + one 20 ms Opus packet for
+    /// the pad's speaker. Gated on `speaker`.
+    public static let msgSpeakerAudio: UInt16 = 0x0013
+    /// s→c (version 2): ctrlIdx(1) + state(1: 0 off, 1 on, 2 pulse), the
+    /// mic-mute lamp. Gated on `mic`.
+    public static let msgMicLed: UInt16 = 0x0014
+    /// s→c (version 3): ctrlIdx(1) + seq(u16 BE) + one 20 ms Opus packet of
+    /// the DualSense haptics lanes. Gated on `hapticAudio`.
+    public static let msgHapticAudio: UInt16 = 0x0015
 
     // MARK: - Wire sizes (contract §Crypto / §UDP messages)
 
@@ -70,6 +113,20 @@ public enum ProtocolConstants {
     /// (was 12); the server requires msgLen >= 16 inner, so a legacy 12-byte
     /// body is dropped.
     public static let touchpadPayloadBytes = 15
+    /// The POINTER shape of MSG_TOUCHPAD (version 2), AFTER the 1-byte
+    /// ctrlIdx: fingerFlags(1) + buttons(1) + f0(id1+x2+y2) + f1(id1+x2+y2)
+    /// + eventTimeMs(u32 LE) + scrollV(i16 LE) = 18 bytes (19 with ctrlIdx).
+    /// The click moved out of the finger flags into the buttons byte.
+    public static let pointerPayloadBytes = 18
+    /// POINTER fingerFlags bits.
+    public static let pointerFinger0Active: UInt8 = 0x01
+    public static let pointerFinger1Active: UInt8 = 0x02
+    /// POINTER buttons bits.
+    public static let pointerButtonLeft: UInt8 = 0x01
+    public static let pointerButtonRight: UInt8 = 0x02
+    public static let pointerButtonMiddle: UInt8 = 0x04
+    /// POINTER scrollV is an event: one wheel notch is 120, a resend is 0.
+    public static let scrollUnitsPerNotch: Int16 = 120
     /// MSG_HEARTBEAT_ACK payload: backendAvailable(1) + count(1) +
     /// epoch(u16 BE) + bitmap(u16 BE). Drives the reconcile loop.
     public static let heartbeatAckPayloadBytes = 6
@@ -77,6 +134,24 @@ public enum ProtocolConstants {
     public static let rumblePayloadBytes = 7
     /// MSG_LIGHTBAR payload: ctrlIdx(1) + r(1) + g(1) + b(1).
     public static let lightbarPayloadBytes = 4
+    /// One DualSense trigger-effect block: the mode byte plus ten parameters.
+    public static let triggerEffectBlockBytes = 11
+    /// MSG_TRIGGER_EFFECTS payload: ctrlIdx(1) + left(11) + right(11).
+    public static let triggerEffectsPayloadBytes = 1 + 2 * triggerEffectBlockBytes
+    /// MSG_PLAYER_LEDS payload: ctrlIdx(1) + ledMask(1).
+    public static let playerLedsPayloadBytes = 2
+    /// MSG_MIC_LED payload: ctrlIdx(1) + state(1).
+    public static let micLedPayloadBytes = 2
+
+    // MARK: - Datagram ceiling (contract §Crypto)
+
+    /// One Ethernet MTU in either direction, so a full audio frame crosses a
+    /// LAN without fragmenting. A longer datagram is truncated on read and
+    /// fails the AEAD.
+    public static let udpDatagramMaxBytes = 1500
+    /// What the crypto framing leaves for `msgType | msgLen | payload`'s
+    /// payload: 1500 − header(8) − inner header(4) − tag(16).
+    public static let udpMaxInnerPayloadBytes = udpDatagramMaxBytes - headerSize - innerHeaderSize - authTagSize
 
     // MARK: - Liveness (contract §Liveness)
 
@@ -109,6 +184,20 @@ public enum ProtocolConstants {
     public static let capRumble: UInt16 = 0x0002
     public static let capMotion: UInt16 = 0x0004
     public static let capLightbar: UInt16 = 0x0008
+    /// Version-2 actuators. A cap advertises what THIS client can land on the
+    /// pad; the satellite sends 0x0010 / 0x0011 only to a session that claimed
+    /// it.
+    public static let capTriggerEffects: UInt16 = 0x0010
+    public static let capPlayerLeds: UInt16 = 0x0020
+    /// Controller audio, each direction its own claim: `mic` sources
+    /// MSG_MIC_AUDIO (and takes the mic-lamp return path), `speaker` accepts
+    /// MSG_SPEAKER_AUDIO.
+    public static let capMic: UInt16 = 0x0040
+    public static let capSpeaker: UInt16 = 0x0080
+    /// Version 3: this client plays the haptic waveform into the pad's own
+    /// audio function. Without the claim the host reduces the lanes to
+    /// MSG_RUMBLE.
+    public static let capHapticAudio: UInt16 = 0x0100
 
     // MARK: - Controller types (catalog ids / descriptor `type`)
 

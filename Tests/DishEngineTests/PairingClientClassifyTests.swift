@@ -94,7 +94,16 @@ final class PairingClientClassifyTests: XCTestCase {
         r.reachable = true
         r.httpStatus = 409
         r.error = "protocol version unsupported"
-        XCTAssertEqual(PairingClient.classify(r), .versionMismatch)
+        XCTAssertEqual(PairingClient.classify(r), .versionMismatch(supported: 0, supportedMin: 0))
+    }
+
+    func testConflictCarriesTheSatellitesRangeWhenTheBodyHasIt() {
+        var r = PairResponse()
+        r.reachable = true
+        r.httpStatus = 409
+        r.supportedProtocol = 3
+        r.supportedProtocolMin = 1
+        XCTAssertEqual(PairingClient.classify(r), .versionMismatch(supported: 3, supportedMin: 1))
     }
 
     func testPendingResponseIsPendingApproval() {

@@ -167,17 +167,23 @@ engine never imports AppKit.
 
 Each entry names the decided shape, so a change lands on it.
 
-- **Protocol 1 only.** `ProtocolConstants.protocolVersion` is 1; the v2 and v3
-  opcodes, caps and the 19-byte pointer frame, the 409 range negotiation and
-  the protocol chip are the next wave. The settled version must gate the
-  frame set, and an absent `protocolVersion` must read as 1.
+- **No controller audio.** The `mic`, `speaker` and `hapticAudio` caps stay
+  off, the three audio opcodes and the mic lamp are ignored on receipt, and
+  the host reduces the haptics lanes to rumble for this client. The route is
+  the DualSense's USB audio function through Core Audio.
 - **The coordinators publish several properties each.** `WifiConnectionManager`
   and `ConnectionHub` should become single-state sources with composers over
   them; the hot-path tables stay as they are.
-- **No type picker.** Every bind requests the catalog's first offered type;
-  the Emulate picker, seeded from the catalog's `emulates` hints, is pending.
-- **No capabilities probe.** `GET /api/server/capabilities` is not read, so
-  nothing knows the host's audio or mouse verdicts yet.
+- **No type picker.** A bind requests the catalog type that emulates the pad's
+  family, else the first offered; the Emulate picker over the catalog's types
+  is pending, as is surfacing the apply result's motion backend status.
+- **The capabilities probe is cached, not shown.** `GET /api/server/capabilities`
+  is read at session open into `WifiConnectionManager.capabilities`; the
+  capability table that renders it is pending.
+- **Trigger effects play the API's shapes.** GameController exposes feedback,
+  weapon, vibration and slope shapes; the firmware's galloping mode has none
+  and resets the trigger, and the bow and machine modes play their nearest
+  shape.
 
 ## Testing
 

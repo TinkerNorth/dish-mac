@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Darwin
+import DishCore
 import Foundation
 
 // MARK: - Server / protocol DTOs (names match Android Models.kt)
@@ -120,7 +121,10 @@ struct PairResponse: Codable {
     var sharedKey: String?
     /// Echoed by the server on every pairing response; absent means 1
     /// (contract §Versioning).
-    var protocolVersion = 1
+    var protocolVersion = ProtocolConstants.protocolVersionWhenAbsent
+    /// A 409 body's range (`supported`, `supportedMin`); 0 when absent.
+    var supportedProtocol = 0
+    var supportedProtocolMin = 0
     /// HTTP status of the exchange (0 = the transport never produced a
     /// response). Client-side, not on the wire — lets the manager spot a 409
     /// version mismatch without re-reading the body.
@@ -130,7 +134,11 @@ struct PairResponse: Codable {
     /// server never sends this field; it's set client-side by `PairingClient`.
     var reachable = false
 
-    private enum CodingKeys: String, CodingKey { case ok, pending, error, sharedKey, protocolVersion }
+    private enum CodingKeys: String, CodingKey {
+        case ok, pending, error, sharedKey, protocolVersion
+        case supportedProtocol = "supported"
+        case supportedProtocolMin = "supportedMin"
+    }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
@@ -138,7 +146,10 @@ struct PairResponse: Codable {
         self.pending = try container.decodeIfPresent(Bool.self, forKey: .pending) ?? false
         self.error = try container.decodeIfPresent(String.self, forKey: .error)
         self.sharedKey = try container.decodeIfPresent(String.self, forKey: .sharedKey)
-        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion) ?? 1
+        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
+            ?? ProtocolConstants.protocolVersionWhenAbsent
+        self.supportedProtocol = try container.decodeIfPresent(Int.self, forKey: .supportedProtocol) ?? 0
+        self.supportedProtocolMin = try container.decodeIfPresent(Int.self, forKey: .supportedProtocolMin) ?? 0
     }
 
     init(
@@ -146,9 +157,11 @@ struct PairResponse: Codable {
         pending: Bool = false,
         error: String? = nil,
         sharedKey: String? = nil,
-        protocolVersion: Int = 1,
+        protocolVersion: Int = ProtocolConstants.protocolVersionWhenAbsent,
         httpStatus: Int = 0,
-        reachable: Bool = false
+        reachable: Bool = false,
+        supportedProtocol: Int = 0,
+        supportedProtocolMin: Int = 0
     ) {
         self.ok = ok
         self.pending = pending
@@ -157,6 +170,8 @@ struct PairResponse: Codable {
         self.protocolVersion = protocolVersion
         self.httpStatus = httpStatus
         self.reachable = reachable
+        self.supportedProtocol = supportedProtocol
+        self.supportedProtocolMin = supportedProtocolMin
     }
 }
 
@@ -204,14 +219,25 @@ package struct ConnectionSummary: Identifiable, Hashable {
     /// 0.1 ms), present only while a session is up and has paired at least
     /// one ack (gap G13).
     package var latencyMs: Double?
+    /// What the last negotiation said about the satellite's protocol version.
+    package var compat: ProtocolCompat
 
-    package init(id: String, label: String, detail: String, live: LinkState, boundSlotId: String?, latencyMs: Double? = nil) {
+    package init(
+        id: String,
+        label: String,
+        detail: String,
+        live: LinkState,
+        boundSlotId: String?,
+        latencyMs: Double? = nil,
+        compat: ProtocolCompat = .unknown
+    ) {
         self.id = id
         self.label = label
         self.detail = detail
         self.live = live
         self.boundSlotId = boundSlotId
         self.latencyMs = latencyMs
+        self.compat = compat
     }
 }
 
@@ -232,19 +258,27 @@ package struct ControllerCapabilities: Hashable {
     /// REST controller descriptor's caps word.
     package var hasLightbar = false
     package var hasBattery = false
+    /// The pad takes the DualSense adaptive-trigger effects.
+    package var hasTriggerEffects = false
+    /// The pad has player-indicator LEDs the framework drives by player index.
+    package var hasPlayerLeds = false
 
     package init(
         hasMotion: Bool = false,
         hasTouchpad: Bool = false,
         hasRumble: Bool = false,
         hasLightbar: Bool = false,
-        hasBattery: Bool = false
+        hasBattery: Bool = false,
+        hasTriggerEffects: Bool = false,
+        hasPlayerLeds: Bool = false
     ) {
         self.hasMotion = hasMotion
         self.hasTouchpad = hasTouchpad
         self.hasRumble = hasRumble
         self.hasLightbar = hasLightbar
         self.hasBattery = hasBattery
+        self.hasTriggerEffects = hasTriggerEffects
+        self.hasPlayerLeds = hasPlayerLeds
     }
 
     package static let none = ControllerCapabilities()

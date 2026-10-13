@@ -39,16 +39,17 @@ extension FakeSatelliteRest {
         let clientPin = body["clientPin"] as? String ?? ""
         if !pin.isEmpty, pin == operatorPin {
             let minted = FakeSatelliteRandom.hex(32)
-            store.with { state in
+            let settled = store.with { state in
                 state.pairingKeyHex = minted
                 state.pairedDeviceId = deviceId
                 state.pairedDeviceName = deviceName
+                return state.settledProtocolVersion
             }
             return FakeSatelliteHttp.json(200, [
                 "ok": true,
                 "message": "paired successfully",
                 "sharedKey": minted,
-                "protocolVersion": 1
+                "protocolVersion": settled
             ])
         }
         if !clientPin.isEmpty {
@@ -92,7 +93,7 @@ extension FakeSatelliteRest {
             "ok": true,
             "message": "key rotated",
             "sharedKey": minted,
-            "protocolVersion": 1
+            "protocolVersion": store.with { $0.settledProtocolVersion }
         ])
     }
 

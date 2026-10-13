@@ -120,7 +120,8 @@ final class ConnectionHub: ObservableObject {
                 detail: "\(server.ip) • UDP \(server.udpPort)",
                 live: live,
                 boundSlotId: bound,
-                latencyMs: conn?.latencyOneWayMs
+                latencyMs: conn?.latencyOneWayMs,
+                compat: conn?.protocolCompat ?? .unknown
             ))
         }
         connections = out.sorted { $0.label < $1.label }
@@ -137,15 +138,9 @@ final class ConnectionHub: ObservableObject {
     }
 
     /// Bind `slotId` to `connectionId`. Evicts any prior owner on either side.
-    ///
-    /// `hasMotion` / `hasLight` report whether the bound physical controller
-    /// exposes a `GCMotion` IMU / an addressable RGB light; they are forwarded
-    /// into the REST controller descriptor's caps word as `capMotion` /
-    /// `capLightbar` (declarative session PUT / per-slot converge). The
-    /// caller (`AppModel`) resolves them from the slot's detected
-    /// `ControllerCapabilities` — `ConnectionHub` has no controller handle
-    /// of its own.
-    func bind(slotId: String, connectionId: String, hasMotion: Bool, hasLight: Bool) {
+    /// The pad's detected capabilities become the descriptor's claims, and
+    /// its family picks the catalog type it is emulated as.
+    func bind(slotId: String, connectionId: String, capabilities: ControllerCapabilities, family: PadFamily) {
         var current = bindings
         if let priorSlot = current.first(where: { $0.value == connectionId })?.key,
            priorSlot != slotId
@@ -161,9 +156,8 @@ final class ConnectionHub: ObservableObject {
         rebuild()
         wifi.get(connectionId)?.attachSlot(
             slotId,
-            controllerType: wifi.defaultControllerType(for: connectionId),
-            hasMotion: hasMotion,
-            hasLight: hasLight
+            controllerType: wifi.defaultControllerType(for: connectionId, family: family),
+            capabilities: capabilities
         )
     }
 

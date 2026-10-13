@@ -4,9 +4,11 @@
 import DishCore
 import Foundation
 
-/// Routes the satellite's return paths (rumble, light bar) from a connection
-/// to the controller bound to it. The gate decision is pure and runs on the
-/// receive queue; the binding lookup and the actuation hop to the main actor.
+/// Routes the satellite's return paths (rumble, light bar, trigger effects,
+/// player LEDs) from a connection to the controller bound to it. The gate
+/// decision is pure and runs on the receive queue; the binding lookup and
+/// the actuation hop to the main actor. The two feedback paths have no
+/// switch: a pad only receives them when its descriptor claimed them.
 @MainActor
 final class ReturnPathRouter {
     private let input: GameControllerInput
@@ -29,7 +31,27 @@ final class ReturnPathRouter {
             wired.insert(id)
             conn.setRumbleHandler { [weak self] command in self?.rumbleArrived(from: id, command) }
             conn.setLightbarHandler { [weak self] command in self?.lightbarArrived(from: id, command) }
+            conn.setTriggerEffectsHandler { [weak self] command in self?.triggerEffectsArrived(from: id, command) }
+            conn.setPlayerLedsHandler { [weak self] command in self?.playerLedsArrived(from: id, command) }
         }
+    }
+
+    private nonisolated func triggerEffectsArrived(from connectionId: String, _ command: TriggerEffectsCommand) {
+        Task { @MainActor in self.applyTriggerEffects(from: connectionId, command) }
+    }
+
+    private nonisolated func playerLedsArrived(from connectionId: String, _ command: PlayerLedsCommand) {
+        Task { @MainActor in self.applyPlayerLeds(from: connectionId, command) }
+    }
+
+    private func applyTriggerEffects(from connectionId: String, _ command: TriggerEffectsCommand) {
+        guard let deviceId = boundDevice(of: connectionId) else { return }
+        input.applyTriggerEffects(deviceId: deviceId, command: command)
+    }
+
+    private func applyPlayerLeds(from connectionId: String, _ command: PlayerLedsCommand) {
+        guard let deviceId = boundDevice(of: connectionId) else { return }
+        input.applyPlayerLeds(deviceId: deviceId, player: command.playerNumber)
     }
 
     /// Receive queue: drop when the Rumble switch is off, else hop.
