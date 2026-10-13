@@ -7,7 +7,7 @@
 >
 > Legend: ✅ works · ⚠️ shipped, not yet verified on real hardware · ❌ not
 > available · – not applicable · 🔜 decided and in progress. Verified against
-> the code on 2026-10-12.
+> the code on 2026-10-13.
 
 ## 1. What works, per client
 
