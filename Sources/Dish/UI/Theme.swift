@@ -1,50 +1,53 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import AppKit
 import SwiftUI
 
 /// The palette, shared with every Dish client (the cross-repo token schema
-/// in DESIGN.md). Every colour a view draws is one of these names.
+/// in DESIGN.md). Every colour a view draws is one of these names, and each
+/// resolves to its dark or light value with the window's appearance, which
+/// the theme mode sets.
 enum DishTheme {
-    static let background = Color(hex: 0x060818)
-    static let surface = Color(hex: 0x0C1027)
-    static let surfaceDim = Color(hex: 0x131A3A)
-    static let primary = Color(hex: 0x4FE3FF)
-    static let primaryDark = Color(hex: 0x2C93AD)
-    static let onPrimary = Color(hex: 0x060818)
-    static let onSurface = Color(hex: 0xE6ECFF)
-    static let muted = Color(hex: 0x93A0C8)
-    static let outline = Color(hex: 0x4FE3FF, alpha: 0.18)
-    static let success = Color(hex: 0x22C55E)
-    static let error = Color(hex: 0xE74C3C)
-    static let warning = Color(hex: 0xF59E0B)
-    static let cardStroke = Color(hex: 0x4FE3FF, alpha: 0.12)
+    static let background = Color(dark: 0x060818, light: 0xF5F7FC)
+    static let surface = Color(dark: 0x0C1027, light: 0xFFFFFF)
+    static let surfaceDim = Color(dark: 0x131A3A, light: 0xE7ECF6)
+    static let primary = Color(dark: 0x4FE3FF, light: 0x0E7C97)
+    static let primaryDark = Color(dark: 0x2C93AD, light: 0x0A5E73)
+    static let onPrimary = Color(dark: 0x060818, light: 0xFFFFFF)
+    static let onSurface = Color(dark: 0xE6ECFF, light: 0x0C1430)
+    static let muted = Color(dark: 0x93A0C8, light: 0x5A6680)
+    static let outline = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.18)
+    static let success = Color(dark: 0x22C55E, light: 0x1B873F)
+    static let error = Color(dark: 0xE74C3C, light: 0xC0392B)
+    static let warning = Color(dark: 0xF59E0B, light: 0xB7791F)
+    static let cardStroke = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.12)
 
     /// A pressed outlined button.
-    static let pressedFill = Color(hex: 0x4FE3FF, alpha: 0.12)
+    static let pressedFill = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.12)
     /// A capability chip whose feature is on.
-    static let chipFill = Color(hex: 0x4FE3FF, alpha: 0.14)
+    static let chipFill = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.14)
     /// The inline error strip.
-    static let errorFill = Color(hex: 0xE74C3C, alpha: 0.12)
+    static let errorFill = Color(dark: 0xE74C3C, light: 0xC0392B, alpha: 0.12)
     /// The spinner's resting ring.
-    static let spinnerTrack = Color(hex: 0x4FE3FF, alpha: 0.25)
+    static let spinnerTrack = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.25)
     /// The indeterminate bar's track.
-    static let barTrack = Color(hex: 0x4FE3FF, alpha: 0.22)
+    static let barTrack = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.22)
     /// A toast's drop shadow.
-    static let shadow = Color(hex: 0x000000, alpha: 0.35)
+    static let shadow = Color(dark: 0x000000, light: 0x0C1430, alpha: 0.35)
 
     /// The brand glyphs' fill, from the brand book rather than the UI accent.
-    static let brandGlyph = Color(hex: 0x8FCFE3)
+    static let brandGlyph = Color(dark: 0x8FCFE3, light: 0x2F7E96)
     /// A glyph in its "off" state.
-    static let brandGlyphOff = Color(hex: 0x8FCFE3, alpha: 0.4)
+    static let brandGlyphOff = Color(dark: 0x8FCFE3, light: 0x2F7E96, alpha: 0.4)
     /// The Bluetooth rune in its "off" state.
-    static let brandRuneOff = Color(hex: 0x8FCFE3, alpha: 0.45)
+    static let brandRuneOff = Color(dark: 0x8FCFE3, light: 0x2F7E96, alpha: 0.45)
     /// A glyph's white highlight.
-    static let brandGlyphHighlight = Color(hex: 0xFFFFFF, alpha: 0.55)
+    static let brandGlyphHighlight = Color(dark: 0xFFFFFF, light: 0xFFFFFF, alpha: 0.55)
     /// The highlight of a glyph in its "off" state.
-    static let brandGlyphHighlightOff = Color(hex: 0xFFFFFF, alpha: 0.22)
+    static let brandGlyphHighlightOff = Color(dark: 0xFFFFFF, light: 0xFFFFFF, alpha: 0.22)
     /// The dark cut under an "off" slash, for contrast on any ground.
-    static let brandSlashCut = Color(hex: 0x0F1620)
+    static let brandSlashCut = Color(dark: 0x0F1620, light: 0xF5F7FC)
 }
 
 /// The type scale. Every font a view sets is one of these names.
@@ -84,11 +87,24 @@ enum DishFont {
 }
 
 extension Color {
-    init(hex: UInt32, alpha: Double = 1.0) {
-        let red = Double((hex >> 16) & 0xFF) / 255.0
-        let green = Double((hex >> 8) & 0xFF) / 255.0
-        let blue = Double(hex & 0xFF) / 255.0
-        self.init(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
+    /// A colour that follows the window's appearance: `dark` under a dark
+    /// appearance, `light` otherwise, both sRGB hex with one alpha.
+    init(dark: UInt32, light: UInt32, alpha: Double = 1.0) {
+        self.init(nsColor: NSColor(name: nil) { appearance in
+            let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return NSColor(hex: isDark ? dark : light, alpha: alpha)
+        })
+    }
+}
+
+extension NSColor {
+    convenience init(hex: UInt32, alpha: Double) {
+        self.init(
+            srgbRed: CGFloat((hex >> 16) & 0xFF) / 255,
+            green: CGFloat((hex >> 8) & 0xFF) / 255,
+            blue: CGFloat(hex & 0xFF) / 255,
+            alpha: CGFloat(alpha)
+        )
     }
 }
 
