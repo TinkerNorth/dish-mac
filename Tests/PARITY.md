@@ -26,14 +26,14 @@
 | Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite (release-all on sleep, reconnect on wake) |
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional |
 | Diagnostics screen | ✅ | ✅ | ✅ | ❌ |
-| Link-tier cue on host rows | ✅ | ✅ | ✅ | ❌ |
+| Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ every host is a satellite, so every row reads Fastest |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
 | App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | – no controller audio yet |
-| Capability verdict word "Supported" | ✅ | ✅ | ✅ | ❌ (capability chips only) |
+| Capability verdict word "Supported" | ✅ | ✅ | ✅ | ✅ "What carries" on every bound slot: pad ∩ Mac ∩ type ∩ host, Off and Pending distinct |
 | Pairing secrets stored encrypted | ✅ Moonlight key · ❌ Satellite key | ✅ DPAPI | ✅ Secret Service | ✅ Keychain |
 | Six languages (en, bs, de, es, fr, pt-BR) | ✅ | ✅ | ✅ | ✅ every word, plural forms included |
 | Light, dark and system theme | ✅ | ✅ | ✅ | ✅ |
-| Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ⚠️ the pad's family picks its type from the catalog's `emulates`; no picker yet |
+| Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ✅ Auto (the family's type from `emulates`) or a pick, held for the run |
 
 ## 2. Input, pad to host, by path (cell = USB · Bluetooth)
 
@@ -81,12 +81,11 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. Desktop UX, the rest: the Emulate-as picker over the catalog types, the
-   motion backend status from the apply result, per-slot switches, the
-   capability table with "Supported" fed by the cached capabilities probe,
-   the link-tier cue, Diagnostics, and local crash logs with an opt-out
-   report. (Theme, background mode, keep-awake modes, the update check and
-   About shipped.)
+1. Desktop UX, the rest: Diagnostics (session facts, slot wire facts, the
+   flight recorder), a local crash log the user sends as an issue, and
+   per-slot switches. (Theme, background mode, keep-awake modes, the update
+   check, About, the Emulate picker, "What carries", the motion word and the
+   link tier shipped.)
 2. Controller audio and HD haptics over the DualSense's USB audio function,
    where Core Audio exposes it; the mic lamp rides the same work.
 3. Moonlight hosts.

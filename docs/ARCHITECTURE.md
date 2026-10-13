@@ -89,7 +89,10 @@ preference into a `Composer<WakeState>` that `WakeStateController`, a
 `Controller<WakeState>`, follows with IOKit assertions; the preference stores
 (`ThemePreferenceStore`, `BackgroundPreferenceStore`, `KeepAwakePreferenceStore`,
 `UpdatePreferenceStore`) are `StateSource`s over `UserDefaults` under the
-fleet's keys; `UpdateChecker` is a `StateSource<UpdateState>` that runs the
+fleet's keys; `ControllerTypeStore` and `MotionBackendStatusStore` are
+`StateSource`s keyed by binding, the first written by the Emulate picker and
+read as each descriptor is built, the second written from every apply result;
+`UpdateChecker` is a `StateSource<UpdateState>` that runs the
 pure `UpdateMachine` reducer and performs the effects it returns; the
 notification queue is a `StateSource<[DishNotification]>`; `composeSlots` and
 `routeSnapshot` are the pure transforms behind the slot list and the hot-path
@@ -131,7 +134,11 @@ state and `WifiConnectionManager` performs the effects.
    worded, `L10n` is the one place a key becomes a word, and the String
    Catalog is the one place it is translated. The derivations between a
    model value and what a view draws (a chip's text, a dot's colour, a
-   battery glyph) are pure functions under `Sources/Dish/UI/Mappers`.
+   battery glyph) are pure functions under `Sources/Dish/UI/Mappers`. A
+   decision the fleet shares, such as the capability solver's verdicts or
+   the motion indicator's fold, is a reducer in `DishCore`; the mapper only
+   builds its inputs from the slot's facts and the user's switches and words
+   its output.
 
 ## Threading and the hot path
 
@@ -181,12 +188,14 @@ Each entry names the decided shape, so a change lands on it.
 - **The coordinators publish several properties each.** `WifiConnectionManager`
   and `ConnectionHub` should become single-state sources with composers over
   them; the hot-path tables stay as they are.
-- **No type picker.** A bind requests the catalog type that emulates the pad's
-  family, else the first offered; the Emulate picker over the catalog's types
-  is pending, as is surfacing the apply result's motion backend status.
-- **The capabilities probe is cached, not shown.** `GET /api/server/capabilities`
-  is read at session open into `WifiConnectionManager.capabilities`; the
-  capability table that renders it is pending.
+- **One switch per feature, not per slot.** Motion, rumble, the touchpad and
+  the light bar are global; the other clients gate them per binding. The
+  shape is a per-`SlotKey` store beside `ControllerTypeStore`, folded into
+  `descriptorCaps` and the capability table's user gates.
+- **No Diagnostics window and no crash log yet.** The session facts live on
+  `WifiConnection` (`lastHeartbeatAck`, the settled version, the latency
+  window) and the slot facts on `ControllerSlot`; the window, the flight
+  recorder and the local crash log are the next slice.
 - **The update check downloads nothing.** It reads the release manifest,
   says so once per version and opens the release page; installing stays
   manual, as on the other desktop clients.

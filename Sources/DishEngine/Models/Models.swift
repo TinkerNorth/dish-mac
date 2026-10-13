@@ -221,6 +221,8 @@ package struct ConnectionSummary: Identifiable, Hashable {
     package var latencyMs: Double?
     /// What the last negotiation said about the satellite's protocol version.
     package var compat: ProtocolCompat
+    /// The kind of link, for the tier cue. Every host here is a satellite.
+    package var kind: ConnectionKind
 
     package init(
         id: String,
@@ -229,7 +231,8 @@ package struct ConnectionSummary: Identifiable, Hashable {
         live: LinkState,
         boundSlotId: String?,
         latencyMs: Double? = nil,
-        compat: ProtocolCompat = .unknown
+        compat: ProtocolCompat = .unknown,
+        kind: ConnectionKind = .satellite
     ) {
         self.id = id
         self.label = label
@@ -238,6 +241,7 @@ package struct ConnectionSummary: Identifiable, Hashable {
         self.boundSlotId = boundSlotId
         self.latencyMs = latencyMs
         self.compat = compat
+        self.kind = kind
     }
 }
 
@@ -313,6 +317,14 @@ package struct ControllerSlot: Identifiable, Hashable {
     package var capabilities: ControllerCapabilities = .none
     /// Most recent battery reading, nil until the first sample arrives.
     package var battery: BatteryReading?
+    /// How a bound slot is emulated and what else it could be; nil unbound.
+    package var emulation: SlotEmulation?
+    /// What the emulated type carries; nil until the catalog is read.
+    package var typeFeatures: TypeFeatureFacts?
+    /// What the bound satellite carries; nil until its probe is read.
+    package var hostProbe: HostProbeFacts?
+    /// The satellite's word on this binding's motion; nil before an apply.
+    package var motionStatus: MotionBackendStatus?
 
     package init(
         id: String,
@@ -320,7 +332,11 @@ package struct ControllerSlot: Identifiable, Hashable {
         boundConnectionId: String? = nil,
         boundStatus: ConnectionSummary? = nil,
         capabilities: ControllerCapabilities = .none,
-        battery: BatteryReading? = nil
+        battery: BatteryReading? = nil,
+        emulation: SlotEmulation? = nil,
+        typeFeatures: TypeFeatureFacts? = nil,
+        hostProbe: HostProbeFacts? = nil,
+        motionStatus: MotionBackendStatus? = nil
     ) {
         self.id = id
         self.name = name
@@ -328,6 +344,10 @@ package struct ControllerSlot: Identifiable, Hashable {
         self.boundStatus = boundStatus
         self.capabilities = capabilities
         self.battery = battery
+        self.emulation = emulation
+        self.typeFeatures = typeFeatures
+        self.hostProbe = hostProbe
+        self.motionStatus = motionStatus
     }
 }
 

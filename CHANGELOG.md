@@ -56,6 +56,19 @@ the repos share a version number.
   `packaging/update-policy.json` holds the floor.
 - **About.** Settings links the help pages, the support page, the privacy
   policy and the license note, and prints the running version.
+- **The Emulate picker.** A bound slot shows the types its satellite offers
+  and the one the pad is emulated as. Auto is the family's own type; a pick
+  re-sends the descriptor over the per-slot route and holds for this run,
+  as on the other clients. The catalog is read before the first PUT, so a
+  DualSense is a DualSense from the first contact, not the second.
+- **"What carries".** Every bound slot folds the pad, this Mac, the emulated
+  type and the satellite's probe into the fleet's eleven capability rows,
+  each Supported, Off, Not available (naming the first layer that refuses)
+  or Pending while the host is unread.
+- **The satellite's word on motion.** The apply result's motion sink and
+  backend status drive the gyro chip: streaming, host can't receive, server
+  can't deliver.
+- **The link tier.** Satellite rows wear the fleet's "Fastest" cue.
 
 ### Changed
 

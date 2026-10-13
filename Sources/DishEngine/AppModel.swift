@@ -113,9 +113,10 @@ package final class AppModel: ObservableObject {
     // MARK: - Wiring
 
     private func observeSlots() {
-        Publishers.CombineLatest3(input.$slots, hub.$connections, hub.$bindings)
-            .sink { [weak self] gcSlots, connections, bindings in
-                self?.rebuildSlots(gcSlots: gcSlots, connections: connections, bindings: bindings)
+        let picks = Publishers.CombineLatest(wifi.typeOverrides.statePublisher, wifi.motionStatus.statePublisher)
+        Publishers.CombineLatest4(input.$slots, hub.$connections, hub.$bindings, picks)
+            .sink { [weak self] gcSlots, connections, bindings, picks in
+                self?.rebuildSlots(gcSlots: gcSlots, connections: connections, bindings: bindings, overrides: picks.0, motion: picks.1)
             }
             .store(in: &cancellables)
     }
@@ -187,12 +188,19 @@ package final class AppModel: ObservableObject {
     // MARK: - Slots
 
     /// Rebuild the slot list and evict bindings whose controller is gone.
-    private func rebuildSlots(gcSlots: [GameControllerInput.Slot], connections: [ConnectionSummary], bindings: [String: String]) {
+    private func rebuildSlots(
+        gcSlots: [GameControllerInput.Slot],
+        connections: [ConnectionSummary],
+        bindings: [String: String],
+        overrides: [SlotKey: Int],
+        motion: [SlotKey: MotionBackendStatus]
+    ) {
         let known = Set(gcSlots.map(\.id))
         for (slotId, _) in bindings where !known.contains(slotId) {
             hub.unbind(slotId: slotId)
         }
-        slots = composeSlots(gcSlots: gcSlots, connections: connections, bindings: bindings)
+        let facts = SlotFactsSnapshot(catalogs: wifi.catalogs, probes: wifi.capabilities, overrides: overrides, motion: motion)
+        slots = composeSlots(gcSlots: gcSlots, connections: connections, bindings: bindings, facts: facts)
         self.connections = connections
     }
 
@@ -245,6 +253,12 @@ package final class AppModel: ObservableObject {
     package func unbind(slotId: String) {
         hub.unbind(slotId: slotId)
     }
+
+    /// Emulate the bound pad as `type`, or as its own family again for nil.
+    package func setEmulatedType(slotId: String, type: Int?) {
+        let pad = input.slots.first { $0.id == slotId }
+        hub.setEmulatedType(slotId: slotId, type: type, family: pad?.family ?? .other)
+    }
 }
 
 /// The slot id to live connection table the hot path reads.
@@ -256,15 +270,42 @@ func routeSnapshot(bindings: [String: String], pool: [String: WifiConnection]) -
     return snapshot
 }
 
+/// What the slot list reads beside the bindings: the catalogs and probes
+/// per satellite, the Emulate picks and the motion words per binding.
+struct SlotFactsSnapshot {
+    var catalogs: [String: CatalogDTO] = [:]
+    var probes: [String: ServerCapabilitiesDTO] = [:]
+    var overrides: [SlotKey: Int] = [:]
+    var motion: [SlotKey: MotionBackendStatus] = [:]
+}
+
 /// The UI's slot list: every connected controller, with its binding's
-/// connection summary attached.
-func composeSlots(gcSlots: [GameControllerInput.Slot], connections: [ConnectionSummary], bindings: [String: String]) -> [ControllerSlot] {
+/// connection summary and the binding's facts attached.
+func composeSlots(
+    gcSlots: [GameControllerInput.Slot],
+    connections: [ConnectionSummary],
+    bindings: [String: String],
+    facts: SlotFactsSnapshot = SlotFactsSnapshot()
+) -> [ControllerSlot] {
     gcSlots.map { gc in
         var slot = ControllerSlot(id: gc.id, name: gc.name, capabilities: gc.capabilities, battery: gc.battery)
-        if let connectionId = bindings[gc.id] {
-            slot.boundConnectionId = connectionId
-            slot.boundStatus = connections.first { $0.id == connectionId }
-        }
+        guard let connectionId = bindings[gc.id] else { return slot }
+        slot.boundConnectionId = connectionId
+        slot.boundStatus = connections.first { $0.id == connectionId }
+        attachBindingFacts(to: &slot, gc: gc, connectionId: connectionId, facts: facts)
         return slot
     }
+}
+
+/// The emulated type and its facts, the host's facts and the motion word
+/// for one binding.
+func attachBindingFacts(to slot: inout ControllerSlot, gc: GameControllerInput.Slot, connectionId: String, facts: SlotFactsSnapshot) {
+    let key = SlotKey(connectionId: connectionId, slotId: gc.id)
+    let catalog = facts.catalogs[connectionId]
+    let override = facts.overrides[key]
+    let type = emulatedControllerType(override: override, catalog: catalog, family: gc.family)
+    slot.emulation = SlotEmulation(type: type, isOverride: override != nil, offered: offerableTypes(in: catalog))
+    slot.typeFeatures = typeFeatureFacts(in: catalog, type: type)
+    slot.hostProbe = hostProbeFacts(facts.probes[connectionId])
+    slot.motionStatus = facts.motion[key]
 }

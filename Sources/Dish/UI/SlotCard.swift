@@ -13,6 +13,7 @@ struct SlotCard: View {
     let slot: ControllerSlot
 
     @State private var expanded = false
+    @State private var showCapabilities = false
 
     private let words = L10n.app
 
@@ -22,6 +23,10 @@ struct SlotCard: View {
             capabilityRow
             if expanded, slot.boundConnectionId == nil {
                 bindPicker
+            }
+            if slot.boundConnectionId != nil, let emulation = slot.emulation {
+                emulateRow(emulation)
+                capabilityTableView
             }
         }
         .padding(12)
@@ -64,7 +69,7 @@ struct SlotCard: View {
     /// reading lands.
     private var capabilityRow: some View {
         HStack(spacing: 6) {
-            ForEach(capabilityChips(slot.capabilities, settings.flags), id: \.label) { chip in
+            ForEach(capabilityChips(for: slot, settings.flags), id: \.label) { chip in
                 CapabilityChipView(chip: chip)
             }
             Spacer(minLength: 0)
@@ -72,6 +77,63 @@ struct SlotCard: View {
                 BatteryPill(reading: battery)
             }
         }
+    }
+
+    /// The Emulate picker: Auto, then every type the satellite offers.
+    private func emulateRow(_ emulation: SlotEmulation) -> some View {
+        HStack(spacing: 8) {
+            Text(words.emulateAs)
+                .font(DishFont.caption)
+                .foregroundColor(DishTheme.muted)
+            Picker("", selection: emulateBinding(emulation)) {
+                ForEach(emulateOptions(emulation)) { option in
+                    Text(option.label).tag(option.id)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(maxWidth: 180)
+            Text(emulateDetail(emulation))
+                .font(DishFont.microRegular)
+                .foregroundColor(DishTheme.muted)
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func emulateBinding(_ emulation: SlotEmulation) -> Binding<Int?> {
+        Binding(
+            get: { emulateSelection(emulation) },
+            set: { model.setEmulatedType(slotId: slot.id, type: $0) }
+        )
+    }
+
+    /// "What carries": every feature with its verdict, the reason in the tooltip.
+    private var capabilityTableView: some View {
+        DisclosureGroup(isExpanded: $showCapabilities) {
+            VStack(spacing: 4) {
+                ForEach(capabilityTable(slot, settings.flags)) { row in
+                    capabilityTableRow(row)
+                }
+            }
+            .padding(.top, 4)
+        } label: {
+            Text(words.whatCarries)
+                .font(DishFont.caption)
+                .foregroundColor(DishTheme.muted)
+        }
+    }
+
+    private func capabilityTableRow(_ row: CapabilityRowModel) -> some View {
+        HStack {
+            Text(row.label)
+                .font(DishFont.caption)
+                .foregroundColor(DishTheme.onSurface)
+            Spacer()
+            Text(row.verdictText)
+                .font(DishFont.micro)
+                .foregroundColor(capabilityVerdictColor(row.verdict))
+        }
+        .help(row.help)
     }
 
     private var bindPicker: some View {
@@ -124,10 +186,16 @@ private struct CapabilityChipView: View {
 
     let chip: CapabilityChipModel
 
+    /// Warning first, then the on and off tones.
+    private var chipColor: Color {
+        if chip.warning { return DishTheme.warning }
+        return chip.on ? DishTheme.primary : DishTheme.muted
+    }
+
     var body: some View {
         Text(chip.label)
             .font(DishFont.micro)
-            .foregroundColor(chip.on ? DishTheme.primary : DishTheme.muted)
+            .foregroundColor(chipColor)
             .opacity(chip.available ? 1.0 : 0.7)
             .padding(.vertical, 3)
             .padding(.horizontal, 7)

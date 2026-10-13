@@ -89,6 +89,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private var rekeyRequested = false
     private var pendingControllerType = 0
     private var pendingCapabilities: ControllerCapabilities = .none
+    /// The bound pad's family, so the manager can re-resolve the type it is
+    /// emulated as when a catalog or a pick arrives.
+    private(set) var boundFamily: PadFamily = .other
     private var forwardingFlags = ForwardingFlags()
     private var rumbleHandler: ((RumbleCommand) -> Void)?
     private var lightbarHandler: ((LightbarCommand) -> Void)?
@@ -337,11 +340,20 @@ package final class WifiConnection: ObservableObject, Identifiable {
 
     // MARK: - Slot binding
 
-    func attachSlot(_ slotId: String, controllerType: Int, capabilities: ControllerCapabilities) {
+    func attachSlot(_ slotId: String, controllerType: Int, capabilities: ControllerCapabilities, family: PadFamily = .other) {
         boundSlotId = slotId
         pendingControllerType = controllerType
         pendingCapabilities = capabilities
+        boundFamily = family
         if hasLiveSession { onTopologyChanged?() }
+    }
+
+    /// The type the pad is emulated as changed. The descriptor is sent
+    /// whole, so a new type re-sends it while the slot is bound and live.
+    func setControllerType(_ type: Int) {
+        guard type != pendingControllerType else { return }
+        pendingControllerType = type
+        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
     }
 
     /// A switch flipped in Settings. The descriptor is always sent whole, so

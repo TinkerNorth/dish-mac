@@ -71,6 +71,41 @@
         }
       }
     },
+    "%@ doesn’t carry %@." : {
+      "comment" : "Capability help, the type layer; the type's name, then the feature.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ nema kanal za %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ überträgt %@ nicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ no transmite %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ne transmet pas de %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não transmite %@."
+          }
+        }
+      }
+    },
     "%lld active connections" : {
       "comment" : "Dashboard headline when two or more servers are live.",
       "localizations" : {
@@ -414,6 +449,76 @@
         }
       }
     },
+    "A Moonlight host’s control stream." : {
+      "comment" : "Link tier tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontrolni tok Moonlight hosta."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Steuerstream eines Moonlight-Hosts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El flujo de control de un host Moonlight."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le flux de contrôle d’un hôte Moonlight."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O fluxo de controle de um host Moonlight."
+          }
+        }
+      }
+    },
+    "A Satellite link: our own wire, one hop, every feature." : {
+      "comment" : "Link tier tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satellite veza: naš vlastiti protokol, jedan skok, svaka funkcija."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Satellite-Verbindung: unser eigener Draht, ein Hop, jede Funktion."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un enlace Satellite: nuestro propio cable, un salto, todas las funciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une liaison Satellite : notre propre fil, un seul saut, toutes les fonctions."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um link Satellite: nosso próprio fio, um salto, todos os recursos."
+          }
+        }
+      }
+    },
     "ABOUT" : {
       "comment" : "Settings section eyebrow, uppercase.",
       "localizations" : {
@@ -480,6 +585,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "APARÊNCIA"
+          }
+        }
+      }
+    },
+    "Adaptive triggers" : {
+      "comment" : "Capability row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaptivni okidači"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adaptive Trigger"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatillos adaptativos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gâchettes adaptatives"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatilhos adaptáveis"
           }
         }
       }
@@ -554,6 +694,111 @@
         }
       }
     },
+    "Analog triggers" : {
+      "comment" : "Capability row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analogni okidači"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analoge Trigger"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatillos analógicos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gâchettes analogiques"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatilhos analógicos"
+          }
+        }
+      }
+    },
+    "Auto" : {
+      "comment" : "Picker choice: the pad's own family picks the type.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatski"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatique"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático"
+          }
+        }
+      }
+    },
+    "Auto sends %@ for this controller." : {
+      "comment" : "Picker detail; the argument is the type's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatski šalje %@ za ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch sendet %@ für diesen Controller."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático envía %@ para este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatique envoie %@ pour cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automático envia %@ para este controle."
+          }
+        }
+      }
+    },
     "Automatic update checks are off." : {
       "comment" : "Update status line.",
       "localizations" : {
@@ -620,6 +865,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Token inválido do servidor"
+          }
+        }
+      }
+    },
+    "Basic" : {
+      "comment" : "Link tier chip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Osnovni"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einfach"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Básica"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Basique"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Básica"
           }
         }
       }
@@ -1569,6 +1849,41 @@
         }
       }
     },
+    "Dish on a Mac doesn’t route %@." : {
+      "comment" : "Capability help, the link layer; the argument is the feature.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish na Macu ne prosljeđuje %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish auf dem Mac leitet %@ nicht weiter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish en Mac no transmite %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish sur Mac ne transmet pas %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish no Mac não transmite %@."
+          }
+        }
+      }
+    },
     "Dish update required" : {
       "comment" : "Protocol chip: the satellite's oldest version is above this app's.",
       "localizations" : {
@@ -1744,6 +2059,41 @@
         }
       }
     },
+    "Emulate as" : {
+      "comment" : "Picker title on a bound slot.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emuliraj kao"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emulieren als"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emular como"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Émuler comme"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emular como"
+          }
+        }
+      }
+    },
     "Enter an IPv4 address like 192.168.1.50 (optionally :port)" : {
       "comment" : "Inline error when the typed address is not an IPv4 literal.",
       "localizations" : {
@@ -1849,6 +2199,41 @@
         }
       }
     },
+    "Every layer carries it: the pad, this Mac, the %@ type and the host." : {
+      "comment" : "Capability help for Supported; the argument is the type's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svaki sloj to prenosi: pad, ovaj Mac, tip %@ i host."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Ebene überträgt es: das Pad, dieser Mac, der Typ %@ und der Host."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada capa lo transmite: el mando, este Mac, el tipo %@ y el host."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque couche le transmet : la manette, ce Mac, le type %@ et l’hôte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada camada transmite: o controle, este Mac, o tipo %@ e o host."
+          }
+        }
+      }
+    },
     "FORWARDED FEATURES" : {
       "comment" : "Settings section eyebrow, uppercase.",
       "localizations" : {
@@ -1880,6 +2265,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "RECURSOS ENCAMINHADOS"
+          }
+        }
+      }
+    },
+    "Fast" : {
+      "comment" : "Link tier chip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brz"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnell"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rápida"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rapide"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rápida"
+          }
+        }
+      }
+    },
+    "Fastest" : {
+      "comment" : "Link tier chip on a satellite row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Najbrži"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Am schnellsten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más rápida"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La plus rapide"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais rápida"
           }
         }
       }
@@ -2195,6 +2650,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Encontrado · %@"
+          }
+        }
+      }
+    },
+    "Gamepad" : {
+      "comment" : "Capability row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamepad"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gamepad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controle"
           }
         }
       }
@@ -2619,6 +3109,41 @@
         }
       }
     },
+    "Microphone" : {
+      "comment" : "Capability row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Micrófono"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microphone"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Microfone"
+          }
+        }
+      }
+    },
     "Motion" : {
       "comment" : "Feature name in the gyro chip's tooltip.",
       "localizations" : {
@@ -2720,6 +3245,251 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Movimento indisponível — este controle não tem giroscópio nem acelerômetro."
+          }
+        }
+      }
+    },
+    "Motion: host can’t receive" : {
+      "comment" : "Gyro chip tooltip: the satellite has no motion sink for the emulated type.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret: host ne može primiti"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung: Host kann nicht empfangen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento: el host no puede recibir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement : l’hôte ne peut pas recevoir"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento: o host não consegue receber"
+          }
+        }
+      }
+    },
+    "Motion: no gyroscope" : {
+      "comment" : "Gyro chip tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret: nema žiroskopa"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung: kein Gyroskop"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento: sin giroscopio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement : pas de gyroscope"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento: sem giroscópio"
+          }
+        }
+      }
+    },
+    "Motion: not sent" : {
+      "comment" : "Gyro chip tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret: nije poslan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung: nicht gesendet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento: no enviado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement : non transmis"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento: não enviado"
+          }
+        }
+      }
+    },
+    "Motion: server can’t deliver" : {
+      "comment" : "Gyro chip tooltip: the satellite's motion backend is unhealthy.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret: server ne može isporučiti"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung: Server kann nicht zustellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento: el servidor no puede entregar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement : le serveur ne peut pas transmettre"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento: o servidor não consegue entregar"
+          }
+        }
+      }
+    },
+    "Motion: streaming" : {
+      "comment" : "Gyro chip tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret: striming"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung: streamt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento: transmitiendo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement : diffusion"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento: transmitindo"
+          }
+        }
+      }
+    },
+    "Motion: turned off" : {
+      "comment" : "Gyro chip tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret: isključen"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung: ausgeschaltet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento: desactivado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement : désactivé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento: desligado"
+          }
+        }
+      }
+    },
+    "Mouse" : {
+      "comment" : "Capability row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Miš"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ratón"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Souris"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouse"
           }
         }
       }
@@ -3035,6 +3805,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda não há informações de atualização."
+          }
+        }
+      }
+    },
+    "Not available" : {
+      "comment" : "Capability verdict.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije dostupan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht verfügbar"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No disponible"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indisponible"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Indisponível"
           }
         }
       }
@@ -3424,6 +4229,41 @@
         }
       }
     },
+    "Pending" : {
+      "comment" : "Capability verdict before the host resolves.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Na čekanju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausstehend"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendiente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendente"
+          }
+        }
+      }
+    },
     "Play vibration the host game sends back on your controller." : {
       "comment" : "Settings toggle detail.",
       "localizations" : {
@@ -3455,6 +4295,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reproduzir no seu controle a vibração que o jogo do host envia de volta."
+          }
+        }
+      }
+    },
+    "Player LEDs" : {
+      "comment" : "Capability row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LED indikatori igrača"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spieler-LEDs"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LED de jugador"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LED de joueur"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LEDs de jogador"
           }
         }
       }
@@ -3949,6 +4824,41 @@
         }
       }
     },
+    "Speaker" : {
+      "comment" : "Capability row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zvučnik"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lautsprecher"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Altavoz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haut-parleur"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alto-falante"
+          }
+        }
+      }
+    },
     "Support Dish" : {
       "comment" : "About link title.",
       "localizations" : {
@@ -3980,6 +4890,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apoiar o Dish"
+          }
+        }
+      }
+    },
+    "Supported" : {
+      "comment" : "Capability verdict.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podržano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unterstützt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compatible"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pris en charge"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suportado"
+          }
+        }
+      }
+    },
+    "Switched off in Settings." : {
+      "comment" : "Capability help for Off.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isključeno u Postavkama."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In den Einstellungen ausgeschaltet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivado en Ajustes."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé dans les Réglages."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desligado nos Ajustes."
           }
         }
       }
@@ -4050,6 +5030,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tap Manage to add one"
+          }
+        }
+      }
+    },
+    "The host doesn’t carry %@." : {
+      "comment" : "Capability help, the host layer; the argument is the feature.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host nema kanal za %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Host überträgt %@ nicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El host no transmite %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’hôte ne transmet pas %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O host não transmite %@."
+          }
+        }
+      }
+    },
+    "The pad has no %@." : {
+      "comment" : "Capability help, the pad layer; the argument is the feature.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pad nema %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Pad bietet %@ nicht."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mando no tiene %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La manette n’a pas de %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O controle não tem %@."
           }
         }
       }
@@ -4155,6 +5205,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O satélite recusou o pedido de pareamento."
+          }
+        }
+      }
+    },
+    "The system’s Bluetooth gamepad layer." : {
+      "comment" : "Link tier tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistemski Bluetooth sloj za gamepad."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Bluetooth-Gamepad-Schicht des Systems."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La capa de mando Bluetooth del sistema."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La couche manette Bluetooth du système."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A camada de gamepad Bluetooth do sistema."
           }
         }
       }
@@ -4474,6 +5559,41 @@
         }
       }
     },
+    "Type %lld" : {
+      "comment" : "A catalog type the catalog does not name, by its number.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tip %lld"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Typ %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tipo %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Type %lld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tipo %lld"
+          }
+        }
+      }
+    },
     "UDP broadcast" : {
       "comment" : "Discovery path: the legacy UDP beacon.",
       "localizations" : {
@@ -4715,6 +5835,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JANELA"
+          }
+        }
+      }
+    },
+    "Waiting for the host’s catalog and capabilities." : {
+      "comment" : "Capability help for Pending.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeka se katalog i mogućnosti hosta."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf den Katalog und die Fähigkeiten des Hosts."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando el catálogo y las capacidades del host."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du catalogue et des capacités de l’hôte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando o catálogo e as capacidades do host."
+          }
+        }
+      }
+    },
+    "Waiting on the type…" : {
+      "comment" : "Picker detail before the catalog is read.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeka se tip…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf den Typ…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando el tipo…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du type…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando o tipo…"
+          }
+        }
+      }
+    },
+    "What carries" : {
+      "comment" : "Disclosure title of the capability table.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Šta prenosi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was übertragen wird"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qué se transmite"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce qui est transmis"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O que é transmitido"
           }
         }
       }
