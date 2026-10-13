@@ -25,7 +25,7 @@ public enum UpdatePhase: Equatable, Sendable {
     case failed
 }
 
-public enum UpdateError: Equatable, Sendable {
+public enum UpdateError: Error, Equatable, Sendable {
     case none
     /// The reachability gate; no request was made.
     case offline

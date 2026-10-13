@@ -13,45 +13,50 @@ dish-windows and the Satellite web UI in the same breath.
 
 ## Palette (`DishTheme`)
 
-Cyan on deep space, as the website.
+Cyan on deep space in the dark, the Linux client's light palette in the
+light. Every colour token is one `Color(dark:light:alpha:)`, resolved through
+`NSColor(name:dynamicProvider:)` at draw time, so a view never asks which
+appearance is on: the Theme setting (System, Light, Dark) sets the window's
+colour scheme with `preferredColorScheme`, and the tokens follow it.
 
-| Token | Value | Role |
-|---|---|---|
-| `DishTheme.background` | `0x060818` | Window body (`--tn-ink`) |
-| `DishTheme.surface` | `0x0C1027` | Cards and rows (`--tn-night`) |
-| `DishTheme.surfaceDim` | `0x131A3A` | Recessed picker rows (`--tn-deep`) |
-| `DishTheme.primary` | `0x4FE3FF` | The accent (`--tn-signal`) |
-| `DishTheme.primaryDark` | `0x2C93AD` | Pressed and disabled accent (`--tn-signal-dim`) |
-| `DishTheme.onPrimary` | `0x060818` | Text on the accent |
-| `DishTheme.onSurface` | `0xE6ECFF` | Body text (`--body-color`) |
-| `DishTheme.muted` | `0x93A0C8` | Secondary text and resting dots (`--muted`) |
-| `DishTheme.outline` | accent @ 18 % | Dividers and outlined chips |
-| `DishTheme.success` | `0x22C55E` | Live, charging, success toasts |
-| `DishTheme.error` | `0xE74C3C` | Errors, a near-empty battery |
-| `DishTheme.warning` | `0xF59E0B` | Warnings, a low battery |
-| `DishTheme.cardStroke` | accent @ 12 % | Card borders |
+| Token | Dark | Light | Role |
+|---|---|---|---|
+| `DishTheme.background` | `0x060818` | `0xF5F7FC` | Window body (`--tn-ink`) |
+| `DishTheme.surface` | `0x0C1027` | `0xFFFFFF` | Cards and rows (`--tn-night`) |
+| `DishTheme.surfaceDim` | `0x131A3A` | `0xE7ECF6` | Recessed picker rows (`--tn-deep`) |
+| `DishTheme.primary` | `0x4FE3FF` | `0x0E7C97` | The accent (`--tn-signal`) |
+| `DishTheme.primaryDark` | `0x2C93AD` | `0x0A5E73` | Pressed and disabled accent (`--tn-signal-dim`) |
+| `DishTheme.onPrimary` | `0x060818` | `0xFFFFFF` | Text on the accent |
+| `DishTheme.onSurface` | `0xE6ECFF` | `0x0C1430` | Body text (`--body-color`) |
+| `DishTheme.muted` | `0x93A0C8` | `0x5A6680` | Secondary text and resting dots (`--muted`) |
+| `DishTheme.outline` | accent @ 18 % | accent @ 18 % | Dividers and outlined chips |
+| `DishTheme.success` | `0x22C55E` | `0x1B873F` | Live, charging, success toasts |
+| `DishTheme.error` | `0xE74C3C` | `0xC0392B` | Errors, a near-empty battery |
+| `DishTheme.warning` | `0xF59E0B` | `0xB7791F` | Warnings, a low battery |
+| `DishTheme.cardStroke` | accent @ 12 % | accent @ 12 % | Card borders |
 
-Fills derived from the palette, named so no view multiplies an alpha itself:
+Fills derived from the palette, named so no view multiplies an alpha itself
+("accent" and "error" mean that appearance's own value):
 
-| Token | Value | Role |
-|---|---|---|
-| `DishTheme.pressedFill` | accent @ 12 % | A pressed outlined button |
-| `DishTheme.chipFill` | accent @ 14 % | A capability chip whose feature is on |
-| `DishTheme.errorFill` | error @ 12 % | The inline error strip |
-| `DishTheme.spinnerTrack` | accent @ 25 % | The spinner's resting ring |
-| `DishTheme.barTrack` | accent @ 22 % | The indeterminate bar's track |
-| `DishTheme.shadow` | black @ 35 % | A toast's drop shadow |
+| Token | Dark | Light | Role |
+|---|---|---|---|
+| `DishTheme.pressedFill` | accent @ 12 % | accent @ 12 % | A pressed outlined button |
+| `DishTheme.chipFill` | accent @ 14 % | accent @ 14 % | A capability chip whose feature is on |
+| `DishTheme.errorFill` | error @ 12 % | error @ 12 % | The inline error strip |
+| `DishTheme.spinnerTrack` | accent @ 25 % | accent @ 25 % | The spinner's resting ring |
+| `DishTheme.barTrack` | accent @ 22 % | accent @ 22 % | The indeterminate bar's track |
+| `DishTheme.shadow` | black @ 35 % | `0x0C1430` @ 35 % | A toast's drop shadow |
 
 The brand glyphs (`BrandIcon`) use the brand book's colours, not the accent:
 
-| Token | Value | Role |
-|---|---|---|
-| `DishTheme.brandGlyph` | `0x8FCFE3` | Glyph fill |
-| `DishTheme.brandGlyphOff` | `0x8FCFE3` @ 40 % | Glyph fill in the "off" state |
-| `DishTheme.brandRuneOff` | `0x8FCFE3` @ 45 % | The Bluetooth rune in the "off" state |
-| `DishTheme.brandGlyphHighlight` | white @ 55 % | Glyph highlight |
-| `DishTheme.brandGlyphHighlightOff` | white @ 22 % | Glyph highlight in the "off" state |
-| `DishTheme.brandSlashCut` | `0x0F1620` | The dark cut under an "off" slash |
+| Token | Dark | Light | Role |
+|---|---|---|---|
+| `DishTheme.brandGlyph` | `0x8FCFE3` | `0x2F7E96` | Glyph fill |
+| `DishTheme.brandGlyphOff` | `0x8FCFE3` @ 40 % | `0x2F7E96` @ 40 % | Glyph fill in the "off" state |
+| `DishTheme.brandRuneOff` | `0x8FCFE3` @ 45 % | `0x2F7E96` @ 45 % | The Bluetooth rune in the "off" state |
+| `DishTheme.brandGlyphHighlight` | white @ 55 % | white @ 55 % | Glyph highlight |
+| `DishTheme.brandGlyphHighlightOff` | white @ 22 % | white @ 22 % | Glyph highlight in the "off" state |
+| `DishTheme.brandSlashCut` | `0x0F1620` | `0xF5F7FC` | The cut under an "off" slash, the window body's colour |
 
 ## Type scale (`DishFont`)
 

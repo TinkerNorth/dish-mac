@@ -37,9 +37,32 @@ the repos share a version number.
   type the satellite offers.
 - **The capabilities probe.** `GET /api/server/capabilities` is read at
   session open and kept per satellite, ready for the capability table.
+- **Light, dark and system appearance.** Settings gets a Theme picker; every
+  `DishTheme` token carries a light value taken from the Linux client's
+  palette, and System follows the desktop.
+- **Runs in the background.** Closing the window keeps controllers streaming
+  behind a menu-bar item that shows the dashboard headline, reopens the
+  window and quits; the first close says so once, in a system notification.
+  Switching it off in Settings restores quit-on-close.
+- **Keep-awake modes.** Off, While playing (held only while a bound
+  controller is being used, with a stillness window of 1 to 180 minutes) and
+  While connected, each with an optional display hold. The default is While
+  playing with the display left alone, the fleet's keys and defaults.
+- **The update check.** At startup and every few hours Dish reads the release
+  permalink's `latest.json` (schema 1, product `dish-mac`), says once per
+  version when a newer build exists, lets you skip a version, and warns when
+  the running build is below the supported floor. One switch turns it off;
+  the manual check stays. `release.yml` produces the manifest and
+  `packaging/update-policy.json` holds the floor.
+- **About.** Settings links the help pages, the support page, the privacy
+  policy and the license note, and prints the running version.
 
 ### Changed
 
+- **The machine is held awake, not the display.** The display-sleep assertion
+  that followed the streaming count has become the keep-awake pipeline: a
+  system-sleep assertion by default, the display only when the switch says
+  so, released by the stillness window in While playing.
 - **The descriptor claims only what will land.** A feature switched off in
   Settings is no longer advertised to the satellite, a pad without a motor
   claims no rumble, the touchpad is offered as the pad render only when the
@@ -77,7 +100,7 @@ the repos share a version number.
   build on a raw colour or font size outside `Theme.swift` and on a token
   DESIGN.md does not list.
 - **The whole interface is translated** into Bosnian, German, Spanish, French
-  and Brazilian Portuguese: 92 entries, with plural forms for the dashboard
+  and Brazilian Portuguese: 147 entries, with plural forms for the dashboard
   counts (Bosnian gets its paucal).
 
 ### Fixed

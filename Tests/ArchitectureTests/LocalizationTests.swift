@@ -40,9 +40,10 @@ final class LocalizationTests: XCTestCase {
 
     // MARK: - Reading the two sources
 
-    /// The literal passed to every `catalog.text("…")` and `catalog.format("…"`.
+    /// The literal passed to every `catalog.text("…")` and `catalog.format("…"`,
+    /// however the formatter wrapped the call across lines.
     private static func keysUsed(in source: String) throws -> Set<String> {
-        let regex = try NSRegularExpression(pattern: #"catalog\.(?:text|format)\("((?:[^"\\]|\\.)*)""#)
+        let regex = try NSRegularExpression(pattern: #"catalog\s*\.\s*(?:text|format)\s*\(\s*"((?:[^"\\]|\\.)*)""#)
         let matches = regex.matches(in: source, range: NSRange(source.startIndex..., in: source))
         return Set(matches.compactMap { match in Range(match.range(at: 1), in: source).map { String(source[$0]) } })
     }

@@ -21,11 +21,13 @@ describing another.
   from your Mac, over your own network, to the satellite you paired with. It
   does not stream to any TinkerNorth-operated server. TinkerNorth does not
   operate a server for Dish at all.
-- **Nothing leaves your network.** This version makes no update check and
+- **Nothing leaves your network except the update check.** With the switch
+  in Settings on (the default), the app fetches one small file from
+  github.com at startup and every few hours to learn the newest version; it
+  carries nothing about you, and section 2.3 lists what GitHub sees. The app
   sends no crash reports. There is no analytics SDK, no telemetry, no
-  advertising identifier, no usage reporting and no account. The only
-  outbound connections the app opens go to the satellite you chose, by its
-  local address.
+  advertising identifier, no usage reporting and no account. Every other
+  outbound connection goes to the satellite you chose, by its local address.
 - Settings, remembered satellites and certificate pins live in your own
   preferences; pairing keys live in your login keychain. Nothing is synced to
   a cloud account by the app.
@@ -47,6 +49,10 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 | `wifi_list` | The remembered satellites: display name, IP address, UDP and HTTPS ports, and the satellite's own machine id | Reconnecting to satellites you already paired with, also after their address changed |
 | `cert_pin:<address>` | The SHA-256 fingerprint of the TLS certificate each satellite presented on first contact | Refusing a satellite whose certificate later changes (trust on first use) |
 | `feature_motion_enabled`, `feature_rumble_enabled`, `feature_touchpad_enabled`, `feature_lightbar_mode` | Your forwarding switches | Deciding which controller features to forward or act on |
+| `theme_mode` | `system`, `light` or `dark` | Drawing the window in the appearance you chose |
+| `background_run_enabled`, `background_notice_shown` | Whether closing the window keeps Dish running, and whether the one-time notice about it was shown | The close-to-background rule |
+| `keep_awake_mode`, `keep_awake_timeout_minutes`, `keep_awake_display` | Your keep-awake mode, its stillness window and whether the display is held too | Deciding when to hold a power-management assertion |
+| `updates_check_enabled`, `updates_skipped_version`, `updates_last_check_utc_ms` | Whether automatic update checks run, a version you chose to skip, and when the last check completed | The update check and its schedule |
 
 Pairing keys are the long-lived trust root of the protocol and are not kept
 in preferences. Each one is a login-keychain item with the service name
@@ -71,13 +77,29 @@ typed in.
 
 ### 2.3 Sent to TinkerNorth or a third party
 
-Nothing. There is no TinkerNorth server for this app to talk to, no crash
-reporter and no update check in this version. If a future version adds either,
-this policy will say so before it ships, with the switch that turns it off.
+**The update check** is the one request this app makes beyond your network.
+At startup and every few hours, and when you press "Check for updates", the
+app fetches
+`https://github.com/TinkerNorth/dish-mac/releases/latest/download/latest.json`,
+a small file published with each release that names the newest version, its
+publication date, the oldest version still supported and a link to the release
+notes. The request is a plain HTTPS GET with no body, no cookies and no
+identifier of yours; like every web request it carries your IP address and the
+system's standard user-agent header, and GitHub receives them under GitHub's
+own privacy statement. The app reads the version and the link, and nothing is
+downloaded or installed: the release page opens in your browser only when you
+ask. The switch "Check for updates automatically" in Settings stops the
+scheduled checks; the manual button fetches only when pressed. The time of the
+last completed check and a version you chose to skip stay in your preferences
+(section 2.1).
 
-The only way this app causes a request to a TinkerNorth or third-party address
-is if you click a link, which hands the URL to your default browser and is then
-between you and that site.
+There is no TinkerNorth server for this app to talk to and no crash reporter.
+If a future version adds one, this policy will say so before it ships, with
+the switch that turns it off.
+
+The only other way this app causes a request to a TinkerNorth or third-party
+address is if you click a link, which hands the URL to your default browser and
+is then between you and that site.
 
 ---
 
@@ -97,7 +119,8 @@ at that moment, so treat it as sensitive before attaching it to a public issue.
 | Local network access and Bonjour (`_satellite._udp`) | Finding satellites and talking to the one you chose. Everything stays on your LAN. |
 | GameController framework | Reading controller input, and writing rumble and light-bar output back to the controller. |
 | Keychain | Storing the pairing key of each satellite. |
-| A power-management assertion (IOKit) | Keeping the display awake while a controller is actively streaming, released when streaming stops. |
+| A power-management assertion (IOKit) | Keeping the Mac awake while a bound controller is being used, or for as long as one is connected, as your keep-awake mode says; the display too only if you ask. Released when the condition ends. |
+| User notifications | One notice, the first time closing the window leaves Dish running behind the menu-bar item. macOS asks you for permission before it is shown. |
 | Host battery readout (IOKit) | Reporting your Mac's battery to the satellite in place of a pad that reports none. |
 
 The app runs unsandboxed and asks for no other permission.
@@ -110,6 +133,10 @@ The app runs unsandboxed and asks for no other permission.
   the satellite is told to drop this device.
 - **Switch off a forwarded feature** in Settings: motion, rumble, the
   touchpad and the light bar each have their own switch.
+- **Switch off automatic update checks** in Settings; nothing then leaves
+  your network until you press "Check for updates" yourself.
+- **Quit from the menu-bar item**, or switch off "Keep running in the
+  background" so closing the window quits.
 - **Reset everything** by deleting the app's preferences domain and the
   keychain items with the service name above.
 
@@ -122,7 +149,9 @@ information from anyone, and no account exists.
 
 ## 7. International transfers
 
-No data leaves your own network, so none is transferred anywhere.
+The update check reaches GitHub's servers, wherever GitHub serves the file
+from, and carries no personal data beyond the IP address every web request
+has. Everything else stays on your own network.
 
 ## 8. Changes to this policy
 

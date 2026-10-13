@@ -16,8 +16,13 @@ package final class AppModel: ObservableObject {
     package let wifi: WifiConnectionManager
     let hub: ConnectionHub
     let input: GameControllerInput
-    let wake: ScreenWakeController
+    let wake: WakeStateController
     package let settings: FeatureSettings
+    package let theme: ThemePreferenceStore
+    package let background: BackgroundPreferenceStore
+    package let keepAwake: KeepAwakePreferenceStore
+    package let updatePreferences: UpdatePreferenceStore
+    package let updates: UpdateChecker
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
@@ -32,16 +37,29 @@ package final class AppModel: ObservableObject {
     private let gate = ForwardingGate()
     private let routing: InputRouting
     private let returnPaths: ReturnPathRouter
-    /// Bound slots whose connection streams; the wake controller follows it.
+    /// Bound slots whose connection streams.
     private let streamingCount: Composer<Int>
+    /// Whether a pad was used inside the keep-awake window.
+    let activity: ControllerActivitySource
+    /// How far the machine is held awake, from the count, the activity and
+    /// the preferences; the wake controller follows it.
+    private let wakeState: Composer<WakeState>
     private var cancellables = Set<AnyCancellable>()
 
-    /// The app's entry point: production stores, the host's lifecycle signals.
-    package convenience init(lifecycle: LifecycleSignals) {
-        self.init(inhibitor: nil, store: ConnectionStore(), lifecycle: lifecycle)
+    /// The app's entry point: production stores, the host's lifecycle
+    /// signals, the running build's version for the update check.
+    package convenience init(lifecycle: LifecycleSignals, appVersion: String) {
+        self.init(store: ConnectionStore(), lifecycle: lifecycle, appVersion: appVersion)
     }
 
-    init(inhibitor: DisplaySleepInhibitor? = nil, store: ConnectionStore = ConnectionStore(), lifecycle: LifecycleSignals = .none) {
+    init(
+        inhibitor: WakeInhibitor? = nil,
+        store: ConnectionStore = ConnectionStore(),
+        lifecycle: LifecycleSignals = .none,
+        defaults: UserDefaults = .standard,
+        manifestGateway: ManifestGateway? = nil,
+        appVersion: String = "0.0.0"
+    ) {
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
         let input = GameControllerInput()
@@ -49,10 +67,25 @@ package final class AppModel: ObservableObject {
         self.wifi = wifi
         self.hub = hub
         self.input = input
-        settings = FeatureSettings()
-        let streamingCount = Composer(hub.$bindings, hub.$connections, initial: 0, transform: streamingSlotCount)
-        self.streamingCount = streamingCount
-        wake = ScreenWakeController(upstream: streamingCount.statePublisher, inhibitor: inhibitor ?? IOKitDisplaySleepInhibitor())
+        settings = FeatureSettings(defaults: defaults)
+        theme = ThemePreferenceStore(defaults: defaults)
+        background = BackgroundPreferenceStore(defaults: defaults)
+        let keepAwake = KeepAwakePreferenceStore(defaults: defaults)
+        self.keepAwake = keepAwake
+        let updatePreferences = UpdatePreferenceStore(defaults: defaults)
+        self.updatePreferences = updatePreferences
+        updates = UpdateChecker(
+            preferences: updatePreferences,
+            gateway: manifestGateway ?? Self.releaseManifestGateway(),
+            currentVersion: appVersion
+        )
+        let pipeline = WakePipeline(
+            hub: hub, processor: input.processor, keepAwake: keepAwake, inhibitor: inhibitor ?? IOKitWakeInhibitor()
+        )
+        streamingCount = pipeline.streamingCount
+        activity = pipeline.activity
+        wakeState = pipeline.wakeState
+        wake = pipeline.wake
         routing = InputRouting(gate: gate)
         returnPaths = ReturnPathRouter(input: input, gate: gate, bindings: hub.currentBindings)
         gate.update(settings.flags)
@@ -60,12 +93,21 @@ package final class AppModel: ObservableObject {
         routing.install(on: input.processor)
         observeSlots()
         observeRoutingTable()
-        wake.start()
+        pipeline.start()
+        updates.start()
         observeReturnPathWiring()
         observeSettings()
         observeEvents()
         installLifecycleHandling(lifecycle)
         wifi.autoReconnectAll()
+    }
+
+    /// The release permalink, read through URLSession.
+    private static func releaseManifestGateway() -> ManifestGateway {
+        guard let url = URL(string: UpdateManifest.latestManifestURLString) else {
+            return URLSessionManifestGateway(url: URL(fileURLWithPath: "/dev/null"))
+        }
+        return URLSessionManifestGateway(url: url)
     }
 
     // MARK: - Wiring

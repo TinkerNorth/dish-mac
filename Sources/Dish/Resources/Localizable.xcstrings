@@ -190,6 +190,41 @@
         }
       }
     },
+    "%lld min" : {
+      "comment" : "Minutes label of the idle window.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Min."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld min"
+          }
+        }
+      }
+    },
     "%lld of %lld online" : {
       "comment" : "Dashboard summary: live servers of paired servers.",
       "localizations" : {
@@ -379,6 +414,76 @@
         }
       }
     },
+    "ABOUT" : {
+      "comment" : "Settings section eyebrow, uppercase.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O APLIKACIJI"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "INFO"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ACERCA DE"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À PROPOS"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SOBRE"
+          }
+        }
+      }
+    },
+    "APPEARANCE" : {
+      "comment" : "Settings section eyebrow, uppercase.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IZGLED"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ERSCHEINUNGSBILD"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "APARIENCIA"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "APPARENCE"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "APARÊNCIA"
+          }
+        }
+      }
+    },
     "Add" : {
       "comment" : "Adds the typed address as a server.",
       "localizations" : {
@@ -445,6 +550,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicionar por IP — ex.: 192.168.1.50 ou 192.168.1.50:9876"
+          }
+        }
+      }
+    },
+    "Automatic update checks are off." : {
+      "comment" : "Update status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatska provjera ažuriranja je isključena."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatische Update-Prüfungen sind aus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La comprobación automática de actualizaciones está desactivada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La recherche automatique de mises à jour est désactivée."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A verificação automática de atualizações está desligada."
           }
         }
       }
@@ -764,6 +904,181 @@
         }
       }
     },
+    "Check for updates" : {
+      "comment" : "Button: a manual check.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjeri ažuriranja"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nach Updates suchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher des mises à jour"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificar atualizações"
+          }
+        }
+      }
+    },
+    "Check for updates automatically" : {
+      "comment" : "Settings toggle title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatski provjeravaj ažuriranja"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch nach Updates suchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones automáticamente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher les mises à jour automatiquement"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificar atualizações automaticamente"
+          }
+        }
+      }
+    },
+    "Checking connects to github.com and sends no account data." : {
+      "comment" : "Settings footnote.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjera se povezuje na github.com i ne šalje podatke o nalogu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Prüfung verbindet sich mit github.com und sendet keine Kontodaten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La comprobación se conecta a github.com y no envía datos de cuenta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La vérification se connecte à github.com et n'envoie aucune donnée de compte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A verificação conecta ao github.com e não envia dados de conta."
+          }
+        }
+      }
+    },
+    "Checking for updates…" : {
+      "comment" : "Update status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjera ažuriranja…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche nach Updates…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando actualizaciones…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche de mises à jour…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificando atualizações…"
+          }
+        }
+      }
+    },
+    "Choose how Dish looks. System matches your desktop’s light or dark setting." : {
+      "comment" : "Settings row detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odaberite kako Dish izgleda. Sustav prati postavku svijetlog ili tamnog načina vašeg desktopa."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lege fest, wie Dish aussieht. „System“ übernimmt die Hell-/Dunkel-Einstellung deines Desktops."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige el aspecto de Dish. Sistema sigue el ajuste claro u oscuro de tu escritorio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez l'apparence de Dish. Système suit le réglage clair ou sombre de votre bureau."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha a aparência do Dish. Sistema acompanha a configuração clara ou escura do seu desktop."
+          }
+        }
+      }
+    },
     "Close" : {
       "comment" : "Collapses the bind picker.",
       "localizations" : {
@@ -795,6 +1110,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fechar"
+          }
+        }
+      }
+    },
+    "Closing the window keeps controllers streaming. Quit from the menu bar icon." : {
+      "comment" : "Settings toggle detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zatvaranje prozora ostavlja kontrolere da strimaju. Izađite preko ikone u traci menija."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Schließen des Fensters streamen die Controller weiter. Beenden geht über das Menüleistensymbol."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al cerrar la ventana los mandos siguen transmitiendo. Sal desde el icono de la barra de menús."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer la fenêtre laisse les manettes diffuser. Quittez depuis l'icône de la barre des menus."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechar a janela mantém os controles transmitindo. Saia pelo ícone da barra de menus."
+          }
+        }
+      }
+    },
+    "Concepts, performance tips, and troubleshooting." : {
+      "comment" : "About link detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koncepti, savjeti za performanse i rješavanje problema."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konzepte, Performance-Tipps und Fehlerbehebung."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conceptos, consejos de rendimiento y solución de problemas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concepts, conseils de performance et dépannage."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conceitos, dicas de desempenho e solução de problemas."
           }
         }
       }
@@ -904,6 +1289,76 @@
         }
       }
     },
+    "Controllers keep streaming. Quit from the menu bar icon." : {
+      "comment" : "System notification body on the first close to the background.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroleri nastavljaju strimati. Izađite preko ikone u traci menija."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller streamen weiter. Beenden geht über das Menüleistensymbol."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los mandos siguen transmitiendo. Sal desde el icono de la barra de menús."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les manettes continuent de diffuser. Quittez depuis l'icône de la barre des menus."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os controles continuam transmitindo. Saia pelo ícone da barra de menus."
+          }
+        }
+      }
+    },
+    "Dark" : {
+      "comment" : "Theme mode.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tamno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dunkel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oscuro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sombre"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escuro"
+          }
+        }
+      }
+    },
     "Disconnect" : {
       "comment" : "Per-row disconnect button. Maps to Android `action_disconnect`.",
       "localizations" : {
@@ -935,6 +1390,181 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desconectar"
+          }
+        }
+      }
+    },
+    "Dish %@ is available." : {
+      "comment" : "Update status line; the argument is the version.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ je dostupan."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ ist verfügbar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ está disponible."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ est disponible."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish %@ está disponível."
+          }
+        }
+      }
+    },
+    "Dish %@ · TinkerNorth · LGPL-3.0" : {
+      "comment" : "About line; the argument is the version.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · TinkerNorth · LGPL-3.0"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · TinkerNorth · LGPL-3.0"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · TinkerNorth · LGPL-3.0"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · TinkerNorth · LGPL-3.0"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · TinkerNorth · LGPL-3.0"
+          }
+        }
+      }
+    },
+    "Dish %@ · last checked %@" : {
+      "comment" : "Update status line; the running version and when the last check completed.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · zadnja provjera %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · zuletzt geprüft %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · última comprobación %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · dernière vérification %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@ · última verificação %@"
+          }
+        }
+      }
+    },
+    "Dish asks GitHub for the newest release at startup and every few hours. See the privacy policy for what is sent." : {
+      "comment" : "Settings toggle detail (the sibling sentence, tightened to fit a line).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish pri pokretanju i svakih nekoliko sati pita GitHub za najnovije izdanje. Šta se šalje, pročitajte u politici privatnosti."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish fragt beim Start und alle paar Stunden bei GitHub nach der neuesten Version. Was gesendet wird, steht in der Datenschutzerklärung."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish pregunta a GitHub por la versión más reciente al iniciarse y cada pocas horas. Consulta la política de privacidad para saber qué se envía."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish demande à GitHub la version la plus récente au démarrage, puis toutes les quelques heures. La politique de confidentialité détaille ce qui est envoyé."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish consulta o GitHub em busca da versão mais recente ao iniciar e a cada poucas horas. Veja na política de privacidade o que é enviado."
+          }
+        }
+      }
+    },
+    "Dish is still running" : {
+      "comment" : "System notification title on the first close to the background.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish i dalje radi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish läuft noch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish sigue en ejecución"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish est toujours en cours d'exécution"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish continua em execução"
           }
         }
       }
@@ -974,6 +1604,41 @@
         }
       }
     },
+    "Dish uses no third-party code. SwiftFormat and SwiftLint are build-time tools under the MIT license." : {
+      "comment" : "About link detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish ne koristi kod trećih strana. SwiftFormat i SwiftLint su alati za izgradnju pod MIT licencom."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish verwendet keinen Fremdcode. SwiftFormat und SwiftLint sind Build-Werkzeuge unter MIT-Lizenz."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish no usa código de terceros. SwiftFormat y SwiftLint son herramientas de compilación bajo licencia MIT."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish n'utilise aucun code tiers. SwiftFormat et SwiftLint sont des outils de compilation sous licence MIT."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish não usa código de terceiros. SwiftFormat e SwiftLint são ferramentas de compilação sob a licença MIT."
+          }
+        }
+      }
+    },
     "Dismiss" : {
       "comment" : "Tooltip of a toast's close cross.",
       "localizations" : {
@@ -1005,6 +1670,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dispensar"
+          }
+        }
+      }
+    },
+    "Donate via GitHub Sponsors, Ko-fi, or Buy Me a Coffee." : {
+      "comment" : "About link detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Donirajte preko GitHub Sponsors, Ko-fija ili Buy Me a Coffeeja."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spende über GitHub Sponsors, Ko-fi oder Buy Me a Coffee."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dona a través de GitHub Sponsors, Ko-fi o Buy Me a Coffee."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faites un don via GitHub Sponsors, Ko-fi ou Buy Me a Coffee."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doe pelo GitHub Sponsors, Ko-fi ou Buy Me a Coffee."
           }
         }
       }
@@ -1394,6 +2094,41 @@
         }
       }
     },
+    "Forwarding a controller needs the machine, not the screen, so this is off unless a game is being watched on this display." : {
+      "comment" : "Settings toggle detail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prosljeđivanje kontrolera treba računar, a ne ekran, pa je ovo isključeno osim ako se igra gleda na ovom ekranu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zum Weiterleiten eines Controllers wird der Rechner gebraucht, nicht der Bildschirm — daher ist das aus, solange nicht ein Spiel auf dieser Anzeige verfolgt wird."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reenviar un mando necesita el equipo, no la pantalla, así que esto está desactivado salvo que estés viendo un juego en esta pantalla."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmettre une manette nécessite la machine, pas l'écran, donc ceci est désactivé sauf si vous regardez un jeu sur cet écran."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encaminhar um controle precisa da máquina, não da tela, então isto fica desligado a menos que você esteja assistindo a um jogo neste monitor."
+          }
+        }
+      }
+    },
     "Found" : {
       "comment" : "LinkState chip — discovered but unpaired. Maps to Android `chip_status_found`.",
       "localizations" : {
@@ -1530,6 +2265,216 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Giroscópio"
+          }
+        }
+      }
+    },
+    "Help & FAQ" : {
+      "comment" : "About link title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pomoć i česta pitanja"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hilfe & FAQ"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ayuda y preguntas frecuentes"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aide et FAQ"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuda e perguntas frequentes"
+          }
+        }
+      }
+    },
+    "Keep running in the background" : {
+      "comment" : "Settings toggle title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nastavi raditi u pozadini"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Im Hintergrund weiterlaufen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir en segundo plano"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer à s'exécuter en arrière-plan"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar em execução em segundo plano"
+          }
+        }
+      }
+    },
+    "Keep the computer awake" : {
+      "comment" : "Settings picker title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drži računar budnim"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Computer wach halten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantener el equipo activo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenir l'ordinateur éveillé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manter o computador ativo"
+          }
+        }
+      }
+    },
+    "Keep the display awake too" : {
+      "comment" : "Settings toggle title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drži i ekran budnim"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auch die Anzeige wach halten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mantener también la pantalla activa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Maintenir aussi l'écran allumé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manter também a tela ativa"
+          }
+        }
+      }
+    },
+    "Let go after this much stillness" : {
+      "comment" : "Settings stepper title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pusti nakon ovoliko mirovanja"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Freigeben nach dieser Ruhezeit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soltar tras este tiempo de inactividad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relâcher après ce temps d'inactivité"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liberar após este tempo parado"
+          }
+        }
+      }
+    },
+    "Light" : {
+      "comment" : "Theme mode.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svijetlo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hell"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clair"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Claro"
           }
         }
       }
@@ -2059,6 +3004,41 @@
         }
       }
     },
+    "No update information yet." : {
+      "comment" : "Update status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još nema informacija o ažuriranju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Update-Informationen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay información de actualizaciones."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune information de mise à jour pour l'instant."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não há informações de atualização."
+          }
+        }
+      }
+    },
     "Off" : {
       "comment" : "Light-bar mode: leave the LED alone.",
       "localizations" : {
@@ -2164,6 +3144,76 @@
         }
       }
     },
+    "Open release page" : {
+      "comment" : "Button: opens the release on GitHub.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otvori stranicu izdanja"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Release-Seite öffnen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir la página de la versión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvrir la page de publication"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abrir página da versão"
+          }
+        }
+      }
+    },
+    "Open source licenses" : {
+      "comment" : "About link title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licence otvorenog koda"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open-Source-Lizenzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licencias de código abierto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licences open source"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Licenças de código aberto"
+          }
+        }
+      }
+    },
     "PIN" : {
       "comment" : "PIN field placeholder. Maps to Android `pair_dialog_pin_hint`.",
       "localizations" : {
@@ -2195,6 +3245,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "PIN"
+          }
+        }
+      }
+    },
+    "POWER" : {
+      "comment" : "Settings section eyebrow, uppercase.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "NAPAJANJE"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ENERGIE"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ENERGÍA"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ALIMENTATION"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ENERGIA"
           }
         }
       }
@@ -2405,6 +3490,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Press Scan to look for servers on your LAN"
+          }
+        }
+      }
+    },
+    "Privacy policy" : {
+      "comment" : "About link title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Politika privatnosti"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datenschutzerklärung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Política de privacidad"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Politique de confidentialité"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Política de privacidade"
+          }
+        }
+      }
+    },
+    "Quit" : {
+      "comment" : "Menu-bar item: quits.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izađi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sair"
           }
         }
       }
@@ -2724,6 +3879,146 @@
         }
       }
     },
+    "Show Dish" : {
+      "comment" : "Menu-bar item: reopens the window.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prikaži Dish"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish anzeigen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar Dish"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher Dish"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mostrar o Dish"
+          }
+        }
+      }
+    },
+    "Skip this version" : {
+      "comment" : "Button: mutes the offered version.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preskoči ovu verziju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Version überspringen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Omitir esta versión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ignorer cette version"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pular esta versão"
+          }
+        }
+      }
+    },
+    "Support Dish" : {
+      "comment" : "About link title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podržite Dish"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish unterstützen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apoyar Dish"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soutenir Dish"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apoiar o Dish"
+          }
+        }
+      }
+    },
+    "System" : {
+      "comment" : "Theme mode.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sustav"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "System"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Système"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sistema"
+          }
+        }
+      }
+    },
     "Tap Manage to add one" : {
       "comment" : "Dashboard summary hint when no connections exist. Maps to Android `status_tap_manage`.",
       "localizations" : {
@@ -2755,6 +4050,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tap Manage to add one"
+          }
+        }
+      }
+    },
+    "The release information didn't parse. Dish will retry automatically." : {
+      "comment" : "Update status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podatke o izdanju nije bilo moguće obraditi. Dish će pokušati ponovo automatski."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Release-Informationen konnten nicht gelesen werden. Dish versucht es automatisch erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo interpretar la información de la versión. Dish lo reintentará automáticamente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les informations de version n'ont pas pu être analysées. Dish réessaiera automatiquement."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível interpretar as informações da versão. O Dish tentará novamente."
           }
         }
       }
@@ -2825,6 +4155,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O satélite recusou o pedido de pareamento."
+          }
+        }
+      }
+    },
+    "The update check failed. Dish will retry automatically." : {
+      "comment" : "Update status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjera ažuriranja nije uspjela. Dish će pokušati ponovo automatski."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Update-Prüfung ist fehlgeschlagen. Dish versucht es automatisch erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La comprobación de actualizaciones falló. Dish lo reintentará automáticamente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La recherche de mise à jour a échoué. Dish réessaiera automatiquement."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A verificação de atualizações falhou. O Dish tentará novamente."
+          }
+        }
+      }
+    },
+    "Theme" : {
+      "comment" : "Settings row title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Design"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Thème"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tema"
           }
         }
       }
@@ -3004,6 +4404,41 @@
         }
       }
     },
+    "This version of Dish is no longer supported. Please update." : {
+      "comment" : "Toast and status line when the build is below the supported floor.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ova verzija Disha više nije podržana. Ažurirajte je."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diese Dish-Version wird nicht mehr unterstützt. Bitte aktualisieren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versión de Dish ya no tiene soporte. Actualiza."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette version de Dish n'est plus prise en charge. Veuillez la mettre à jour."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta versão do Dish não é mais suportada. Atualize."
+          }
+        }
+      }
+    },
     "Touchpad" : {
       "comment" : "Capability chip and Settings toggle title.",
       "localizations" : {
@@ -3070,6 +4505,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transmissão UDP"
+          }
+        }
+      }
+    },
+    "UPDATES" : {
+      "comment" : "Settings section eyebrow, uppercase.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "AŽURIRANJA"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "UPDATES"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ACTUALIZACIONES"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MISES À JOUR"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ATUALIZAÇÕES"
           }
         }
       }
@@ -3144,6 +4614,41 @@
         }
       }
     },
+    "Update available: Dish %@. See Settings for the release." : {
+      "comment" : "Toast when a newer release exists.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dostupno ažuriranje: Dish %@. Izdanje potražite u Podešavanjima."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update verfügbar: Dish %@. Die Version findest du in den Einstellungen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualización disponible: Dish %@. Consulta Ajustes para ver la versión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mise à jour disponible : Dish %@. Voir la publication dans Paramètres."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atualização disponível: Dish %@. Veja a versão em Configurações."
+          }
+        }
+      }
+    },
     "WI-FI SERVERS" : {
       "comment" : "Section header on the Connections sheet. Mac-specific surface (Android uses SATELLITES); marked new for localization.",
       "localizations" : {
@@ -3179,6 +4684,146 @@
         }
       }
     },
+    "WINDOW" : {
+      "comment" : "Settings section eyebrow, uppercase.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PROZOR"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FENSTER"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "VENTANA"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FENÊTRE"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "JANELA"
+          }
+        }
+      }
+    },
+    "While connected" : {
+      "comment" : "Keep-awake mode.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dok je povezan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange verbunden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mientras esté conectado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendant la connexion"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enquanto conectado"
+          }
+        }
+      }
+    },
+    "While playing" : {
+      "comment" : "Keep-awake mode.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dok se igra"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beim Spielen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mientras juegues"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendant le jeu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enquanto joga"
+          }
+        }
+      }
+    },
+    "While playing: only while a bound controller is in use. While connected: as long as a controller streams, even idle." : {
+      "comment" : "Settings picker detail (the sibling sentence, tightened to fit a line).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dok se igra: samo dok se povezani kontroler koristi. Dok je povezan: sve dok kontroler strima, čak i kad miruje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "„Beim Spielen“: nur solange ein zugeordneter Controller benutzt wird. „Solange verbunden“: solange ein Controller streamt, auch wenn er still liegt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mientras juegues: solo mientras se usa un mando vinculado. Mientras esté conectado: todo el tiempo que un mando transmita, aunque esté quieto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendant le jeu : uniquement pendant qu'une manette liée est utilisée. Pendant la connexion : tant qu'une manette diffuse, même immobile."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enquanto joga: apenas enquanto um controle vinculado estiver em uso. Enquanto conectado: enquanto um controle estiver transmitindo, mesmo parado."
+          }
+        }
+      }
+    },
     "Working" : {
       "comment" : "Accessibility label of the pulsing dots.",
       "localizations" : {
@@ -3210,6 +4855,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Processando"
+          }
+        }
+      }
+    },
+    "You're offline. Dish will retry automatically." : {
+      "comment" : "Update status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niste na mreži. Dish će pokušati ponovo automatski."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du bist offline. Dish versucht es automatisch erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estás sin conexión. Dish lo reintentará automáticamente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous êtes hors ligne. Dish réessaiera automatiquement."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você está off-line. O Dish tentará novamente."
+          }
+        }
+      }
+    },
+    "You're on the latest version." : {
+      "comment" : "Update status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Imate najnoviju verziju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Du hast die neueste Version."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tienes la versión más reciente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vous avez la dernière version."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Você está na versão mais recente."
           }
         }
       }
@@ -3350,6 +5065,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "mDNS + transmissão"
+          }
+        }
+      }
+    },
+    "never" : {
+      "comment" : "The last-check time when no check completed.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nikada"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nie"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nunca"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "jamais"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nunca"
           }
         }
       }
