@@ -38,6 +38,9 @@ protocol-1 satellite; see [Protocol](#protocol).
 - Emulates each pad as the type its satellite offers for it, or the one you
   pick, and shows what carries end to end: the pad, this Mac, the type and
   the host, feature by feature.
+- Opens a Diagnostics window with each session's own account of itself, each
+  controller down to the wire, and a log of what changed; keeps a local crash
+  log you review, redacted, before choosing to send it.
 - Speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
 
 What the other clients have that this one does not yet is tracked, row by
@@ -113,7 +116,8 @@ dish-mac/
 │   ├── Network/                  # discovery, pairing, REST, UDP, TOFU, stores
 │   ├── Input/                    # the GameController bridge and the hot path
 │   ├── Update/                   # the release manifest check
-│   └── Util/                     # leaf helpers (the keep-awake pipeline, hex, locks)
+│   ├── Diagnostics/              # the session facts, the flight recorder, the window's source
+│   └── Util/                     # leaf helpers (the keep-awake pipeline, the crash handler, hex, locks)
 ├── Sources/Dish/
 │   ├── DishApp.swift             # @main
 │   ├── L10n/                     # every word, and the one reader of the catalog

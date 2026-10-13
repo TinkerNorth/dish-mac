@@ -64,10 +64,24 @@ public struct LatencyWindow: Equatable, Sendable {
     /// for even n), so the clients render identical figures from identical
     /// samples.
     public func p50OneWayMs() -> Double? {
+        quantileRttMs(0.5).map { $0 / 2.0 }
+    }
+
+    /// The round trips the Diagnostics window shows beside the one-way
+    /// figure: the median and the 99th percentile over the window, nearest
+    /// rank, nil while the window is empty.
+    public func summary() -> LatencySummary {
+        LatencySummary(p50RttMs: quantileRttMs(0.5), p99RttMs: quantileRttMs(0.99), samples: sampleCount, capacity: Self.capacity)
+    }
+
+    /// The nearest-rank quantile of the window: index round(q × (n − 1)) of
+    /// the sorted samples, upper-middle for an even median, so the clients
+    /// render identical figures from identical samples.
+    func quantileRttMs(_ quantile: Double) -> Double? {
         guard sampleCount > 0 else { return nil }
         let sorted = samples[0 ..< sampleCount].sorted()
-        let index = Int((0.5 * Double(sampleCount - 1)).rounded())
-        return sorted[index] / 2.0
+        let index = Int((quantile * Double(sampleCount - 1)).rounded())
+        return sorted[index]
     }
 
     /// Whether the heartbeat sender may stamp a fresh ping clock. Keep an
@@ -115,4 +129,19 @@ public func formatLatencyMs(_ oneWayMs: Double) -> String {
     guard oneWayMs.isFinite, oneWayMs > 0.0 else { return "~0.0 ms" }
     let tenths = Int((oneWayMs * 10.0).rounded())
     return "~\(tenths / 10).\(tenths % 10) ms"
+}
+
+/// The window's round-trip figures as the Diagnostics window reads them.
+public struct LatencySummary: Equatable, Sendable {
+    public let p50RttMs: Double?
+    public let p99RttMs: Double?
+    public let samples: Int
+    public let capacity: Int
+
+    public init(p50RttMs: Double?, p99RttMs: Double?, samples: Int, capacity: Int) {
+        self.p50RttMs = p50RttMs
+        self.p99RttMs = p99RttMs
+        self.samples = samples
+        self.capacity = capacity
+    }
 }

@@ -203,6 +203,7 @@ extension WifiConnectionManager {
         clearStale(id)
         clearRetry(id)
         recordSlotOutcome(response, conn: conn)
+        conn.setMouseControlGranted(response.mouseControl.granted)
         await fetchCatalog(id: id, server: server)
         await fetchCapabilities(id: id, server: server)
         conn.markConnected(client: client, connectionId: grant.connectionId, epoch: response.epoch, hooks: makeHooks(id: id))

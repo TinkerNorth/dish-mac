@@ -89,6 +89,15 @@ final class AtomicBool: @unchecked Sendable {
         value = initial
     }
 
+    /// Stores `newValue` and returns what was there, as one step.
+    func getAndSet(_ newValue: Bool) -> Bool {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        let previous = value
+        value = newValue
+        return previous
+    }
+
     func set(_ newValue: Bool) {
         os_unfair_lock_lock(&lock)
         value = newValue

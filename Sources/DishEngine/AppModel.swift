@@ -23,6 +23,12 @@ package final class AppModel: ObservableObject {
     package let keepAwake: KeepAwakePreferenceStore
     package let updatePreferences: UpdatePreferenceStore
     package let updates: UpdateChecker
+    /// What the Diagnostics window reads, ticking while it is open.
+    package let diagnostics: DiagnosticsSource
+    /// The flight recorder's lines.
+    package let diagnosticsLog = DiagnosticsLogStore()
+    /// The crash log an earlier run may have left.
+    package let crashLog: CrashLog
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
@@ -44,12 +50,13 @@ package final class AppModel: ObservableObject {
     /// How far the machine is held awake, from the count, the activity and
     /// the preferences; the wake controller follows it.
     private let wakeState: Composer<WakeState>
+    private let recorder: DiagnosticsRecorder
     private var cancellables = Set<AnyCancellable>()
 
     /// The app's entry point: production stores, the host's lifecycle
     /// signals, the running build's version for the update check.
-    package convenience init(lifecycle: LifecycleSignals, appVersion: String) {
-        self.init(store: ConnectionStore(), lifecycle: lifecycle, appVersion: appVersion)
+    package convenience init(lifecycle: LifecycleSignals, appVersion: String, crashLog: CrashLog) {
+        self.init(store: ConnectionStore(), lifecycle: lifecycle, appVersion: appVersion, crashLog: crashLog)
     }
 
     init(
@@ -58,7 +65,8 @@ package final class AppModel: ObservableObject {
         lifecycle: LifecycleSignals = .none,
         defaults: UserDefaults = .standard,
         manifestGateway: ManifestGateway? = nil,
-        appVersion: String = "0.0.0"
+        appVersion: String = "0.0.0",
+        crashLog: CrashLog = CrashLog(url: URL(fileURLWithPath: "/dev/null"))
     ) {
         let wifi = WifiConnectionManager(store: store)
         let hub = ConnectionHub(wifi: wifi, store: store)
@@ -86,6 +94,9 @@ package final class AppModel: ObservableObject {
         activity = pipeline.activity
         wakeState = pipeline.wakeState
         wake = pipeline.wake
+        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub)
+        recorder = DiagnosticsRecorder(store: diagnosticsLog)
+        self.crashLog = crashLog
         routing = InputRouting(gate: gate)
         returnPaths = ReturnPathRouter(input: input, gate: gate, bindings: hub.currentBindings)
         gate.update(settings.flags)
@@ -93,6 +104,7 @@ package final class AppModel: ObservableObject {
         routing.install(on: input.processor)
         observeSlots()
         observeRoutingTable()
+        observeDiagnostics()
         pipeline.start()
         updates.start()
         observeReturnPathWiring()
@@ -118,6 +130,18 @@ package final class AppModel: ObservableObject {
             .sink { [weak self] gcSlots, connections, bindings, picks in
                 self?.rebuildSlots(gcSlots: gcSlots, connections: connections, bindings: bindings, overrides: picks.0, motion: picks.1)
             }
+            .store(in: &cancellables)
+    }
+
+    /// The flight recorder reads what the UI renders; the window's source
+    /// reads the slot list the same way.
+    private func observeDiagnostics() {
+        diagnostics.useSlots { [weak self] in self?.slots ?? [] }
+        hub.$connections
+            .sink { [weak self] rows in self?.recorder.observeLinks(rows) }
+            .store(in: &cancellables)
+        $slots
+            .sink { [weak self] slots in self?.recorder.observeSlots(slots) }
             .store(in: &cancellables)
     }
 

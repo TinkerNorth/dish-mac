@@ -72,6 +72,29 @@ struct StepperRow: View {
 }
 
 /// A row that opens a web page.
+/// A row that acts inside the app, its glyph on the right.
+struct ActionRow: View {
+
+    let title: String
+    let detail: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(alignment: .top) {
+                RowText(title: title, detail: detail)
+                Spacer()
+                Image(systemName: systemImage)
+                    .font(DishFont.icon)
+                    .foregroundColor(DishTheme.primary)
+            }
+            .settingsCard()
+        }
+        .buttonStyle(.plain)
+    }
+}
+
 struct LinkRow: View {
 
     let title: String
