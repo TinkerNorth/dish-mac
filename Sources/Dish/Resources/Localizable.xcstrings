@@ -36,6 +36,41 @@
         }
       }
     },
+    "%@ across, %@ down" : {
+      "comment" : "Inspector: a finger's place on the pad.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ vodoravno, %@ okomito"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ horizontal, %@ vertikal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ en horizontal, %@ en vertical"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ en largeur, %@ en hauteur"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ na horizontal, %@ na vertical"
+          }
+        }
+      }
+    },
     "%@ detected — forwarding to the host is on" : {
       "comment" : "Chip tooltip; the argument is the feature name.",
       "localizations" : {
@@ -870,7 +905,7 @@
       }
     },
     "%lld%%" : {
-      "comment" : "Battery pill percentage.",
+      "comment" : "A whole percent.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -900,6 +935,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%lld %%"
+          }
+        }
+      }
+    },
+    "A" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A"
           }
         }
       }
@@ -974,6 +1044,41 @@
         }
       }
     },
+    "A short buzz straight to the controller, whatever its rumble switch says." : {
+      "comment" : "Inspector note.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kratka vibracija direktno na kontroler, bez obzira na prekidač vibracije."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein kurzes Vibrieren direkt am Controller, unabhängig vom Vibrationsschalter."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una vibración corta directa al mando, diga lo que diga su interruptor de vibración."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une courte vibration envoyée directement à la manette, quel que soit son réglage de vibration."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma vibração curta direto no controle, seja qual for a chave de vibração."
+          }
+        }
+      }
+    },
     "ABOUT" : {
       "comment" : "Settings section eyebrow, uppercase.",
       "localizations" : {
@@ -1040,6 +1145,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "APARÊNCIA"
+          }
+        }
+      }
+    },
+    "Accel: %@ · %@ · %@ g" : {
+      "comment" : "Inspector line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akcel: %@ · %@ · %@ g"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beschl.: %@ · %@ · %@ g"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acel: %@ · %@ · %@ g"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accél : %@ · %@ · %@ g"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Acel: %@ · %@ · %@ g"
           }
         }
       }
@@ -1324,6 +1464,41 @@
         }
       }
     },
+    "Audio tests" : {
+      "comment" : "Inspector section.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audio testovi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Audiotests"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pruebas de audio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tests audio"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testes de áudio"
+          }
+        }
+      }
+    },
     "Auto" : {
       "comment" : "Picker choice: the pad's own family picks the type.",
       "localizations" : {
@@ -1425,6 +1600,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A verificação automática de atualizações está desligada."
+          }
+        }
+      }
+    },
+    "B" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "B"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "B"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "B"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "B"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "B"
+          }
+        }
+      }
+    },
+    "Back" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Natrag"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zurück"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atrás"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retour"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voltar"
           }
         }
       }
@@ -1779,6 +2024,41 @@
         }
       }
     },
+    "Both" : {
+      "comment" : "Rumble bench button.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oboje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beide"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les deux"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambos"
+          }
+        }
+      }
+    },
     "CONTROLLERS" : {
       "comment" : "Dashboard section header for the controller list. Maps to Android `section_controllers`.",
       "localizations" : {
@@ -1845,6 +2125,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cancelar"
+          }
+        }
+      }
+    },
+    "Capturing… %lld s" : {
+      "comment" : "Inspector: a running test's countdown.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mjerenje… %lld s"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Messung läuft… %lld s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Midiendo… %lld s"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mesure… %lld s"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Medindo… %lld s"
           }
         }
       }
@@ -2444,6 +2759,41 @@
         }
       }
     },
+    "Controller inspector" : {
+      "comment" : "Inspector sheet title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspektor kontrolera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller-Inspektor"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspector de mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspecteur de manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspetor de controle"
+          }
+        }
+      }
+    },
     "Controllers" : {
       "comment" : "Diagnostics section; also the host card's controllers line.",
       "localizations" : {
@@ -2580,6 +2930,146 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Relatório de falha"
+          }
+        }
+      }
+    },
+    "D-pad down" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D-pad dolje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steuerkreuz unten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cruceta abajo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Croix bas"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direcional para baixo"
+          }
+        }
+      }
+    },
+    "D-pad left" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D-pad lijevo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steuerkreuz links"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cruceta izquierda"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Croix gauche"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direcional para a esquerda"
+          }
+        }
+      }
+    },
+    "D-pad right" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D-pad desno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steuerkreuz rechts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cruceta derecha"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Croix droite"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direcional para a direita"
+          }
+        }
+      }
+    },
+    "D-pad up" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D-pad gore"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Steuerkreuz oben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cruceta arriba"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Croix haut"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direcional para cima"
           }
         }
       }
@@ -3144,6 +3634,41 @@
         }
       }
     },
+    "Drift test (hands off the sticks)" : {
+      "comment" : "Inspector button.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test drifta (ne dirajte palice)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drift-Test (Sticks nicht berühren)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba de deriva (no toques los sticks)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test de dérive (ne touchez pas les sticks)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teste de deriva (não toque nos analógicos)"
+          }
+        }
+      }
+    },
     "Each host's session, each controller down to the wire, and a log of what changed." : {
       "comment" : "Diagnostics intro and the Settings row detail.",
       "localizations" : {
@@ -3599,6 +4124,41 @@
         }
       }
     },
+    "Finger 1: %@ · Finger 2: %@ · Click: %@" : {
+      "comment" : "Inspector line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prst 1: %@ · Prst 2: %@ · Klik: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Finger 1: %@ · Finger 2: %@ · Klick: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dedo 1: %@ · Dedo 2: %@ · Clic: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doigt 1 : %@ · Doigt 2 : %@ · Clic : %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dedo 1: %@ · Dedo 2: %@ · Clique: %@"
+          }
+        }
+      }
+    },
     "Follow game" : {
       "comment" : "Light-bar mode: apply the host game's colour.",
       "localizations" : {
@@ -4019,6 +4579,41 @@
         }
       }
     },
+    "Guide" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guide"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guide"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guía"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guide"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guia"
+          }
+        }
+      }
+    },
     "Gyro" : {
       "comment" : "Capability chip: the pad has an IMU.",
       "localizations" : {
@@ -4050,6 +4645,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Giroscópio"
+          }
+        }
+      }
+    },
+    "Gyro: %@ · %@ · %@ deg/s" : {
+      "comment" : "Inspector line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Žiroskop: %@ · %@ · %@ °/s"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gyro: %@ · %@ · %@ °/s"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giro: %@ · %@ · %@ °/s"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gyro : %@ · %@ · %@ °/s"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Giro: %@ · %@ · %@ °/s"
           }
         }
       }
@@ -4194,6 +4824,76 @@
         }
       }
     },
+    "Input rate: %lld Hz" : {
+      "comment" : "Inspector: reports per second.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Učestalost unosa: %lld Hz"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingaberate: %lld Hz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frecuencia de entrada: %lld Hz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fréquence d’entrée : %lld Hz"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taxa de entrada: %lld Hz"
+          }
+        }
+      }
+    },
+    "Inspect input" : {
+      "comment" : "Button on a controller's Diagnostics card.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pregledaj unos"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingabe prüfen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspeccionar entrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspecter l'entrée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inspecionar entrada"
+          }
+        }
+      }
+    },
     "Keep running in the background" : {
       "comment" : "Settings toggle title.",
       "localizations" : {
@@ -4299,6 +4999,146 @@
         }
       }
     },
+    "L3" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L3"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L3"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L3"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L3"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L3"
+          }
+        }
+      }
+    },
+    "LB" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LB"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LB"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LB"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LB"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "LB"
+          }
+        }
+      }
+    },
+    "Left stick" : {
+      "comment" : "Inspector label.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lijeva palica"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linker Stick"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stick izquierdo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stick gauche"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analógico esquerdo"
+          }
+        }
+      }
+    },
+    "Left trigger" : {
+      "comment" : "Inspector label.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lijevi okidač"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Linker Trigger"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatillo izquierdo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gâchette gauche"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatilho esquerdo"
+          }
+        }
+      }
+    },
     "Let go after this much stillness" : {
       "comment" : "Settings stepper title.",
       "localizations" : {
@@ -4330,6 +5170,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Liberar após este tempo parado"
+          }
+        }
+      }
+    },
+    "Level %lld%% · peak %lld%%" : {
+      "comment" : "Inspector: the meter's reading.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nivo %lld%% · vrh %lld%%"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pegel %lld%% · Spitze %lld%%"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nivel %lld%% · pico %lld%%"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Niveau %lld%% · crête %lld%%"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nível %lld%% · pico %lld%%"
           }
         }
       }
@@ -4435,6 +5310,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Barra de luz"
+          }
+        }
+      }
+    },
+    "Listening… speak into the microphone." : {
+      "comment" : "Inspector: the meter hears nothing yet.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slušam… govorite u mikrofon."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Höre zu… sprich ins Mikrofon."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escuchando… habla al micrófono."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Écoute… parlez dans le micro."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvindo… fale no microfone."
+          }
+        }
+      }
+    },
+    "Live input" : {
+      "comment" : "Inspector section.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unos uživo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Live-Eingabe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrada en vivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrée en direct"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrada ao vivo"
           }
         }
       }
@@ -4894,6 +5839,41 @@
         }
       }
     },
+    "Motion and touch" : {
+      "comment" : "Inspector section.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret i dodir"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung und Touch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento y tacto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement et tactile"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento e toque"
+          }
+        }
+      }
+    },
     "Motion not available — this controller has no gyroscope or accelerometer." : {
       "comment" : "Tooltip of the \"No gyro\" chip.",
       "localizations" : {
@@ -5209,6 +6189,41 @@
         }
       }
     },
+    "Mute" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Utišaj"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stumm"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Silencio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Muet"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mudo"
+          }
+        }
+      }
+    },
     "Mute mic" : {
       "comment" : "Header chip tooltip: the click mutes every armed microphone.",
       "localizations" : {
@@ -5275,6 +6290,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Parear novamente"
+          }
+        }
+      }
+    },
+    "No audio endpoints on this path." : {
+      "comment" : "Inspector note.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema audio priključaka na ovoj putanji."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Audio-Endpunkte auf diesem Pfad."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay puntos de audio en esta ruta."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun point audio sur ce chemin."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem pontos de áudio neste caminho."
+          }
+        }
+      }
+    },
+    "No audio output for this controller." : {
+      "comment" : "Inspector note.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema audio izlaza za ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Audioausgabe für diesen Controller."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay salida de audio para este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune sortie audio pour cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem saída de áudio para este controle."
           }
         }
       }
@@ -5415,6 +6500,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sem giroscópio"
+          }
+        }
+      }
+    },
+    "No motion data from this controller." : {
+      "comment" : "Inspector line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema podataka o pokretu s ovog kontrolera."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Bewegungsdaten von diesem Controller."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay datos de movimiento de este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de données de mouvement de cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem dados de movimento deste controle."
           }
         }
       }
@@ -5590,6 +6710,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sem chave compartilhada — é preciso parear de novo"
+          }
+        }
+      }
+    },
+    "No touch data from this controller." : {
+      "comment" : "Inspector line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema podataka o dodiru s ovog kontrolera."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Touch-Daten von diesem Controller."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay datos táctiles de este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de données tactiles de cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem dados de toque deste controle."
           }
         }
       }
@@ -6259,6 +7414,41 @@
         }
       }
     },
+    "Play tone" : {
+      "comment" : "Inspector button: the test tone on the pad's speaker.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pusti ton"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ton abspielen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reproducir tono"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jouer le son"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocar tom"
+          }
+        }
+      }
+    },
     "Play vibration the host game sends back on your controller." : {
       "comment" : "Settings toggle detail.",
       "localizations" : {
@@ -6329,6 +7519,41 @@
         }
       }
     },
+    "Playing…" : {
+      "comment" : "Inspector: the tone plays.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reprodukcija…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird abgespielt…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reproduciendo…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tocando…"
+          }
+        }
+      }
+    },
     "Press Scan to look for servers on your LAN" : {
       "comment" : "Connections sheet empty-state hint. Mac-specific copy.",
       "localizations" : {
@@ -6360,6 +7585,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Press Scan to look for servers on your LAN"
+          }
+        }
+      }
+    },
+    "Pressed: %@" : {
+      "comment" : "Inspector: the buttons held, joined with middle dots.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pritisnuto: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gedrückt: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsados: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appuyés : %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pressionados: %@"
           }
         }
       }
@@ -6504,6 +7764,146 @@
         }
       }
     },
+    "R3" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R3"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R3"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R3"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R3"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "R3"
+          }
+        }
+      }
+    },
+    "RB" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RB"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RB"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RB"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RB"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "RB"
+          }
+        }
+      }
+    },
+    "Range test (sweep full circles)" : {
+      "comment" : "Inspector button.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test dometa (pravite pune krugove)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereichstest (volle Kreise ziehen)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba de recorrido (dibuja círculos completos)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test de course (faites des cercles complets)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teste de alcance (faça círculos completos)"
+          }
+        }
+      }
+    },
+    "Reach: L %@ · R %@. Circularity error: L %@ · R %@." : {
+      "comment" : "Inspector result.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Domet: L %@ · R %@. Greška kružnosti: L %@ · R %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ausschlag: L %@ · R %@. Rundheitsfehler: L %@ · R %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recorrido: L %@ · R %@. Error de circularidad: L %@ · R %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Course : L %@ · R %@. Erreur de circularité : L %@ · R %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Alcance: L %@ · R %@. Erro de circularidade: L %@ · R %@."
+          }
+        }
+      }
+    },
     "Ready" : {
       "comment" : "LinkState chip — paired and seen, no live session. Maps to Android `chip_status_ready`.",
       "localizations" : {
@@ -6609,6 +8009,41 @@
         }
       }
     },
+    "Resting drift: L %@ · R %@. Suggested dead zone: %@." : {
+      "comment" : "Inspector result.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drift u mirovanju: L %@ · R %@. Predložena mrtva zona: %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruhe-Drift: L %@ · R %@. Empfohlene Totzone: %@."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deriva en reposo: L %@ · R %@. Zona muerta sugerida: %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dérive au repos : L %@ · R %@. Zone morte suggérée : %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deriva em repouso: L %@ · R %@. Zona morta sugerida: %@."
+          }
+        }
+      }
+    },
     "Review" : {
       "comment" : "Button: opens the crash report.",
       "localizations" : {
@@ -6640,6 +8075,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Revisar"
+          }
+        }
+      }
+    },
+    "Right stick" : {
+      "comment" : "Inspector label.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desna palica"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechter Stick"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stick derecho"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stick droit"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analógico direito"
+          }
+        }
+      }
+    },
+    "Right trigger" : {
+      "comment" : "Inspector label.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desni okidač"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechter Trigger"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatillo derecho"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gâchette droite"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gatilho direito"
           }
         }
       }
@@ -6710,6 +8215,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Vibração"
+          }
+        }
+      }
+    },
+    "Rumble test" : {
+      "comment" : "Inspector section.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test vibracije"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibrationstest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba de vibración"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test de vibration"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teste de vibração"
           }
         }
       }
@@ -7169,6 +8709,111 @@
         }
       }
     },
+    "Start" : {
+      "comment" : "A button name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        }
+      }
+    },
+    "Stick tests" : {
+      "comment" : "Inspector section.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testovi palica"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stick-Tests"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pruebas de stick"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tests des sticks"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testes de analógico"
+          }
+        }
+      }
+    },
+    "Stop" : {
+      "comment" : "Inspector button: stops the microphone meter.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaustavi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stoppen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Detener"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Arrêter"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar"
+          }
+        }
+      }
+    },
     "Streaming" : {
       "comment" : "Controller card line key.",
       "localizations" : {
@@ -7200,6 +8845,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transmitindo"
+          }
+        }
+      }
+    },
+    "Strong" : {
+      "comment" : "Rumble bench button.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jako"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stark"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fuerte"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fort"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Forte"
           }
         }
       }
@@ -7379,6 +9059,76 @@
         }
       }
     },
+    "Test microphone" : {
+      "comment" : "Inspector button.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testiraj mikrofon"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon testen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probar micrófono"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tester le micro"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testar microfone"
+          }
+        }
+      }
+    },
+    "The controller sent nothing during the test." : {
+      "comment" : "Inspector result.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroler tokom testa nije poslao ništa."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Controller hat während des Tests nichts gesendet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mando no envió nada durante la prueba."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La manette n'a rien envoyé pendant le test."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O controle não enviou nada durante o teste."
+          }
+        }
+      }
+    },
     "The host doesn’t carry %@." : {
       "comment" : "Capability help, the host layer; the argument is the feature.",
       "localizations" : {
@@ -7410,6 +9160,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O host não transmite %@."
+          }
+        }
+      }
+    },
+    "The microphone could not be opened." : {
+      "comment" : "Inspector note.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mikrofon se nije mogao otvoriti."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Mikrofon konnte nicht geöffnet werden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo abrir el micrófono."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible d'ouvrir le micro."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível abrir o microfone."
           }
         }
       }
@@ -7659,6 +9444,41 @@
         }
       }
     },
+    "The tests read the sticks as the controller sends them, before the dead zones." : {
+      "comment" : "Inspector note.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testovi čitaju palice onako kako ih kontroler šalje, prije mrtvih zona."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Tests lesen die Sticks so, wie der Controller sie sendet, vor den Totzonen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las pruebas leen los sticks tal como los envía el mando, antes de las zonas muertas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les tests lisent les sticks tels que la manette les envoie, avant les zones mortes."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Os testes leem os analógicos como o controle os envia, antes das zonas mortas."
+          }
+        }
+      }
+    },
     "The touchpad moves the host’s mouse; the pad’s click is the left button." : {
       "comment" : "Touchpad picker detail and chip tooltip: the mouse.",
       "localizations" : {
@@ -7795,6 +9615,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Este app e o satélite falam versões diferentes do protocolo. Atualize ambos para a versão mais recente."
+          }
+        }
+      }
+    },
+    "This controller has no rumble motors on the path it is on now." : {
+      "comment" : "Inspector note.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovaj kontroler nema motore za vibraciju na putu na kojem je sada."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Controller hat auf seinem jetzigen Pfad keine Vibrationsmotoren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este mando no tiene motores de vibración en la vía que usa ahora."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cette manette n'a pas de moteurs de vibration sur la voie qu'elle utilise."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este controle não tem motores de vibração no caminho que está usando agora."
+          }
+        }
+      }
+    },
+    "This is the input as it goes to the host, after the dead zones." : {
+      "comment" : "Inspector note.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovo je unos kakav ide hostu, nakon mrtvih zona."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "So geht die Eingabe an den Host, nach den Totzonen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Así va la entrada al host, después de las zonas muertas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voici l'entrée telle qu'elle part vers l'hôte, après les zones mortes."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esta é a entrada como vai para o host, depois das zonas mortas."
           }
         }
       }
@@ -8569,6 +10459,41 @@
         }
       }
     },
+    "Waiting for this controller's first report. Move a stick or press a button." : {
+      "comment" : "Inspector: no report yet.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeka se prvi izvještaj ovog kontrolera. Pomjerite palicu ili pritisnite dugme."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf den ersten Report dieses Controllers. Bewege einen Stick oder drücke eine Taste."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando el primer informe de este mando. Mueve un stick o pulsa un botón."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente du premier rapport de cette manette. Bougez un stick ou appuyez sur un bouton."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando o primeiro relatório deste controle. Mova um analógico ou pressione um botão."
+          }
+        }
+      }
+    },
     "Waiting on the type…" : {
       "comment" : "Picker detail before the catalog is read.",
       "localizations" : {
@@ -8600,6 +10525,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Aguardando o tipo…"
+          }
+        }
+      }
+    },
+    "Weak" : {
+      "comment" : "Rumble bench button.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slabo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schwach"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suave"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Faible"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fraco"
           }
         }
       }
@@ -8775,6 +10735,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Processando"
+          }
+        }
+      }
+    },
+    "X" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X"
+          }
+        }
+      }
+    },
+    "X %@ · Y %@" : {
+      "comment" : "Inspector: a stick's two axes in percent.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %@ · Y %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %@ · Y %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %@ · Y %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %@ · Y %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "X %@ · Y %@"
+          }
+        }
+      }
+    },
+    "Y" : {
+      "comment" : "A button name, the same in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Y"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Y"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Y"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Y"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Y"
           }
         }
       }
@@ -9199,6 +11264,41 @@
         }
       }
     },
+    "lifted" : {
+      "comment" : "Inspector: no finger.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "podignut"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "angehoben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "levantado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "levé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "levantado"
+          }
+        }
+      }
+    },
     "mDNS" : {
       "comment" : "Discovery path: Bonjour.",
       "localizations" : {
@@ -9374,6 +11474,41 @@
         }
       }
     },
+    "n/a" : {
+      "comment" : "Inspector: no circularity verdict.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "n/d"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "k. A."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "n/d"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "n/d"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "n/d"
+          }
+        }
+      }
+    },
     "never" : {
       "comment" : "The last-check time when no check completed.",
       "localizations" : {
@@ -9515,7 +11650,7 @@
       }
     },
     "none" : {
-      "comment" : "An empty index list.",
+      "comment" : "Inspector: no button held.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -9825,6 +11960,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "tocando"
+          }
+        }
+      }
+    },
+    "pressed" : {
+      "comment" : "Inspector: the touchpad click.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pritisnut"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gedrückt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pulsado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "appuyé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pressionado"
+          }
+        }
+      }
+    },
+    "released" : {
+      "comment" : "Inspector: the touchpad click.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "otpušten"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "losgelassen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "suelto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "relâché"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "solto"
           }
         }
       }

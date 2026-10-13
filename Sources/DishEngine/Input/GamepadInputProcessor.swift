@@ -41,6 +41,12 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// Called on the caller's thread for every touchpad sample, with the
     /// sender-side uptime stamp the frame carries.
     typealias TouchpadSender = (_ deviceId: DeviceId, _ sample: TouchpadSample, _ eventTimeMs: UInt32) -> Void
+    /// The inspector's taps, on the caller's thread: every report as the pad
+    /// sent it and as it left for the host, every admitted motion sample,
+    /// every touchpad sample.
+    typealias ReportTap = (_ deviceId: DeviceId, _ raw: GamepadReport, _ filtered: GamepadReport) -> Void
+    typealias MotionTap = (_ deviceId: DeviceId, _ sample: MotionSample) -> Void
+    typealias TouchpadTap = (_ deviceId: DeviceId, _ sample: TouchpadSample) -> Void
 
     /// Per-axis dead zones: a stick at or below `stickFlat` and a trigger at
     /// or below `triggerFlat` read as zero.
@@ -63,6 +69,9 @@ final class GamepadInputProcessor: @unchecked Sendable {
     private let motionSenderBox = LockedBox<MotionSender?>(nil)
     private let batterySenderBox = LockedBox<BatterySender?>(nil)
     private let touchpadSenderBox = LockedBox<TouchpadSender?>(nil)
+    private let reportTapBox = LockedBox<ReportTap?>(nil)
+    private let motionTapBox = LockedBox<MotionTap?>(nil)
+    private let touchpadTapBox = LockedBox<TouchpadTap?>(nil)
 
     private var states: [DeviceId: GamepadReport] = [:]
     private var deadzones: [DeviceId: Deadzones] = [:]
@@ -89,6 +98,21 @@ final class GamepadInputProcessor: @unchecked Sendable {
         set { touchpadSenderBox.set(newValue) }
     }
 
+    var reportTap: ReportTap? {
+        get { reportTapBox.get() }
+        set { reportTapBox.set(newValue) }
+    }
+
+    var motionTap: MotionTap? {
+        get { motionTapBox.get() }
+        set { motionTapBox.set(newValue) }
+    }
+
+    var touchpadTap: TouchpadTap? {
+        get { touchpadTapBox.get() }
+        set { touchpadTapBox.set(newValue) }
+    }
+
     // MARK: - Reports
 
     func setDeadzones(deviceId: DeviceId, _ zones: Deadzones) {
@@ -106,6 +130,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
         states[deviceId] = filtered
         lock.unlock()
         lastInputMs.set(Int(uptimeMs()))
+        reportTap?(deviceId, state, filtered)
         reportSender?(deviceId, filtered)
     }
 
@@ -138,6 +163,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// pushes the deadline forward.
     func publishMotion(deviceId: DeviceId, sample: MotionSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         guard let deltaUs = admitMotion(deviceId: deviceId, nowNs: nowNs) else { return }
+        motionTap?(deviceId, sample)
         motionSender?(deviceId, sample, deltaUs)
     }
 
@@ -167,6 +193,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// Forward a touchpad sample stamped with the publish instant: the
     /// framework surfaces no per-event timestamp.
     func publishTouchpad(deviceId: DeviceId, sample: TouchpadSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
+        touchpadTap?(deviceId, sample)
         touchpadSender?(deviceId, sample, UInt32(truncatingIfNeeded: nowNs / 1_000_000))
     }
 }
