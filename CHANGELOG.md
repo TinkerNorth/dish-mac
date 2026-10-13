@@ -85,6 +85,12 @@ the repos share a version number.
 
 ### Changed
 
+- **The dish faces its signal.** The brand's dish glyph aimed up and to the
+  left while its signal arcs sat at the upper right; as redrawn across the
+  fleet, the reflector is mirrored to +28° and the arcs are concentric on
+  the feed horn, aimed down the boresight. The app icon is re-rendered from
+  the shared mark by `scripts/render-icon.sh`, and the in-app glyph takes
+  the same tilt and lock-on point.
 - **The machine is held awake, not the display.** The display-sleep assertion
   that followed the streaming count has become the keep-awake pipeline: a
   system-sleep assertion by default, the display only when the switch says
