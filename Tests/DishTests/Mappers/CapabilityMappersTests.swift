@@ -197,12 +197,12 @@ final class CapabilityMappersTests: XCTestCase {
         XCTAssertEqual(chip.label, "Gyro")
         XCTAssertFalse(chip.on)
         XCTAssertTrue(chip.warning)
-        XCTAssertEqual(chip.help, "Motion: host can’t receive")
+        XCTAssertEqual(chip.help, "Motion: host can’t receive Click to turn it off for this controller.")
         slot.motionStatus = nil
         let streaming = try XCTUnwrap(capabilityChips(for: slot, ForwardingFlags()).first)
         XCTAssertTrue(streaming.on)
         XCTAssertFalse(streaming.warning)
-        XCTAssertEqual(streaming.help, "Motion: streaming")
+        XCTAssertEqual(streaming.help, "Motion: streaming Click to turn it off for this controller.")
     }
 
     func testAnUnboundSlotKeepsTheDetectedChip() throws {
@@ -210,7 +210,7 @@ final class CapabilityMappersTests: XCTestCase {
         slot.boundConnectionId = nil
         slot.boundStatus = nil
         let chip = try XCTUnwrap(capabilityChips(for: slot, ForwardingFlags()).first)
-        XCTAssertEqual(chip.help, "Motion detected — forwarding to the host is on")
+        XCTAssertEqual(chip.help, "Motion detected — forwarding to the host is on Click to turn it off for this controller.")
         XCTAssertFalse(chip.warning)
     }
 

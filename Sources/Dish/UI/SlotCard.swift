@@ -70,7 +70,16 @@ struct SlotCard: View {
     private var capabilityRow: some View {
         HStack(spacing: 6) {
             ForEach(capabilityChips(for: slot, settings.flags), id: \.label) { chip in
-                CapabilityChipView(chip: chip)
+                if chip.toggle, let feature = chip.switch {
+                    Button {
+                        model.setSlotSwitch(feature, on: !chip.on, slotId: slot.id)
+                    } label: {
+                        CapabilityChipView(chip: chip)
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    CapabilityChipView(chip: chip)
+                }
             }
             Spacer(minLength: 0)
             if let battery = slot.battery {
@@ -111,7 +120,7 @@ struct SlotCard: View {
     private var capabilityTableView: some View {
         DisclosureGroup(isExpanded: $showCapabilities) {
             VStack(spacing: 4) {
-                ForEach(capabilityTable(slot, settings.flags)) { row in
+                ForEach(capabilityTable(slot, effectiveFlags(global: settings.flags, slot: slot.preferences))) { row in
                     capabilityTableRow(row)
                 }
             }

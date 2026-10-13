@@ -49,6 +49,7 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 | `wifi_list` | The remembered satellites: display name, IP address, UDP and HTTPS ports, and the satellite's own machine id | Reconnecting to satellites you already paired with, also after their address changed |
 | `cert_pin:<address>` | The SHA-256 fingerprint of the TLS certificate each satellite presented on first contact | Refusing a satellite whose certificate later changes (trust on first use) |
 | `feature_motion_enabled`, `feature_rumble_enabled`, `feature_touchpad_enabled`, `feature_lightbar_mode` | Your forwarding switches | Deciding which controller features to forward or act on |
+| `motion_preferences`, `rumble_preferences`, `touchpad_preferences` | Each controller's own switches, by the controller's vendor and kind (no serial number) | Deciding the same per controller |
 | `theme_mode` | `system`, `light` or `dark` | Drawing the window in the appearance you chose |
 | `background_run_enabled`, `background_notice_shown` | Whether closing the window keeps Dish running, and whether the one-time notice about it was shown | The close-to-background rule |
 | `keep_awake_mode`, `keep_awake_timeout_minutes`, `keep_awake_display` | Your keep-awake mode, its stillness window and whether the display is held too | Deciding when to hold a power-management assertion |

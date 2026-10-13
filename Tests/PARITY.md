@@ -32,6 +32,7 @@
 | Capability verdict word "Supported" | ✅ | ✅ | ✅ | ✅ "What carries" on every bound slot: pad ∩ Mac ∩ type ∩ host, Off and Pending distinct |
 | Pairing secrets stored encrypted | ✅ Moonlight key · ❌ Satellite key | ✅ DPAPI | ✅ Secret Service | ✅ Keychain |
 | Six languages (en, bs, de, es, fr, pt-BR) | ✅ | ✅ | ✅ | ✅ every word, plural forms included |
+| Per-controller motion, rumble and touchpad switches | ✅ | ✅ | ✅ | ✅ the chips on the slot card; the light bar stays global, as on the desktops |
 | Light, dark and system theme | ✅ | ✅ | ✅ | ✅ |
 | Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ✅ Auto (the family's type from `emulates`) or a pick, held for the run |
 
@@ -81,11 +82,11 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. Desktop UX, the rest: per-slot switches, and the Diagnostics extras the
-   Linux client has (the input inspector, the stick drift test, the rumble
-   bench). (Theme, background mode, keep-awake modes, the update check,
-   About, the Emulate picker, "What carries", the motion word, the link
-   tier, Diagnostics and the crash log shipped.)
+1. The Diagnostics extras the Linux client has: the input inspector, the
+   stick drift test and the rumble bench. (Theme, background mode,
+   keep-awake modes, the update check, About, the Emulate picker, "What
+   carries", the motion word, the link tier, Diagnostics, the crash log and
+   the per-controller switches shipped.)
 2. Controller audio and HD haptics over the DualSense's USB audio function,
    where Core Audio exposes it; the mic lamp rides the same work.
 3. Moonlight hosts.

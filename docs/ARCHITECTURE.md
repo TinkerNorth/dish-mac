@@ -147,14 +147,17 @@ state and `WifiConnectionManager` performs the effects.
 
 Every controller event takes one path: the GameController callback thread
 builds a `GamepadReport`, the processor applies the dead zones under its lock,
-`InputRouting` reads the slot-to-connection table under one `os_unfair_lock`,
-and `SatelliteClient` seals and sends under its own lock. No `Task`, no
-`await`, no main-actor hop, no Combine on that path. Session material lives in
-one `LockedBox`, so a re-key swaps key, token and counter as one generation.
+`InputRouting` reads the slot's route (its live connection and the switches
+in force for that controller, global and per-controller already folded on
+the main actor) under one `os_unfair_lock`, and `SatelliteClient` seals and
+sends under its own lock. No `Task`, no `await`, no main-actor hop, no
+Combine on that path. Session material lives in one `LockedBox`, so a re-key
+swaps key, token and counter as one generation.
 
 The return paths hop the other way: a `RumbleCommand` or `LightbarCommand`
-arrives on the receive queue, the gate decision is pure and runs there, and
-`ReturnPathRouter` hops to the main actor for the binding lookup and the
+arrives on the receive queue, the gate decision is pure and runs there (the
+rumble switch read off the same routing table by connection, the light bar's
+off the global gate), and `ReturnPathRouter` hops to the main actor for the
 actuation, coalesced per controller by `ReturnPathApplier`.
 
 The main actor owns every published property. `LifecycleSignals` carries the
@@ -191,10 +194,6 @@ Each entry names the decided shape, so a change lands on it.
 - **The coordinators publish several properties each.** `WifiConnectionManager`
   and `ConnectionHub` should become single-state sources with composers over
   them; the hot-path tables stay as they are.
-- **One switch per feature, not per slot.** Motion, rumble, the touchpad and
-  the light bar are global; the other clients gate them per binding. The
-  shape is a per-`SlotKey` store beside `ControllerTypeStore`, folded into
-  `descriptorCaps` and the capability table's user gates.
 - **The crash log is local and the handler is process state.** `CrashHandler`
   holds its buffers in one process-wide `let`, because a C signal handler
   takes no context; the install step is its only writer. The report is
