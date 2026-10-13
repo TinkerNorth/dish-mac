@@ -59,7 +59,9 @@ in preferences. Each one is a login-keychain item with the service name
 `com.tinkernorth.dish.pairing-key` and the satellite's id as its account name.
 Forgetting a satellite deletes its key, its pin and its row.
 
-Nothing else is written. The app keeps no log file and no crash file.
+Nothing else is written, with one exception: if the app crashes, a backtrace
+is appended to `~/Library/Logs/Dish/crash.log` on your Mac (section 3). The
+app keeps no other log file.
 
 ### 2.2 Sent to your own LAN, not to TinkerNorth
 
@@ -105,10 +107,20 @@ is then between you and that site.
 
 ## 3. Crash reports
 
-None are written and none are sent. If the app crashes, macOS's own crash
-reporter may write a report under `~/Library/Logs/DiagnosticReports`; that
-file belongs to the system, not to Dish, and may contain whatever the app held
-at that moment, so treat it as sensitive before attaching it to a public issue.
+None are sent. If the app crashes, it appends a backtrace to
+`~/Library/Logs/Dish/crash.log` and stops; the next launch shows "Crash
+report" in Settings. The report you see there has your home folder collapsed
+to `~`, IP addresses and `.local` names replaced, and any long hexadecimal
+run (what a key or an identifier looks like on a stack) removed. From there
+you can copy it, open a prefilled issue in your browser with "Report on
+GitHub", or discard the file. Nothing happens until you choose, and nothing
+leaves this Mac unless you submit the issue yourself. Discarding deletes the
+file; it is never read again.
+
+macOS's own crash reporter may also write a report under
+`~/Library/Logs/DiagnosticReports`; that file belongs to the system, not to
+Dish, is not redacted, and may contain whatever the app held at that moment,
+so treat it as sensitive before attaching it to a public issue.
 
 ---
 
@@ -135,6 +147,8 @@ The app runs unsandboxed and asks for no other permission.
   touchpad and the light bar each have their own switch.
 - **Switch off automatic update checks** in Settings; nothing then leaves
   your network until you press "Check for updates" yourself.
+- **Discard a crash log** from the "Crash report" row in Settings, or delete
+  `~/Library/Logs/Dish/crash.log` yourself; the report is never sent for you.
 - **Quit from the menu-bar item**, or switch off "Keep running in the
   background" so closing the window quits.
 - **Reset everything** by deleting the app's preferences domain and the

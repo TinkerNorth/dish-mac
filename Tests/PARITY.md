@@ -20,12 +20,12 @@
 | DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ❌ |
 | Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ❌ mic lamp (no controller audio) |
 | Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery (pad, else the host Mac's) |
-| Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ❌ |
+| Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ⚠️ a local crash log the user reviews, redacted, and sends as a GitHub issue; nothing uploads |
 | Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ✅ `latest.json` from the release permalink; once per version, skippable, floor warning |
 | Runs in the background / window closed | ⚠️ | ✅ tray | ✅ tray | ✅ menu-bar item (closing the window keeps streaming; off in Settings quits) |
 | Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite (release-all on sleep, reconnect on wake) |
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional |
-| Diagnostics screen | ✅ | ✅ | ✅ | ❌ |
+| Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts, each controller down to the wire, the flight recorder |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ every host is a satellite, so every row reads Fastest |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
 | App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | – no controller audio yet |
@@ -81,11 +81,11 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. Desktop UX, the rest: Diagnostics (session facts, slot wire facts, the
-   flight recorder), a local crash log the user sends as an issue, and
-   per-slot switches. (Theme, background mode, keep-awake modes, the update
-   check, About, the Emulate picker, "What carries", the motion word and the
-   link tier shipped.)
+1. Desktop UX, the rest: per-slot switches, and the Diagnostics extras the
+   Linux client has (the input inspector, the stick drift test, the rumble
+   bench). (Theme, background mode, keep-awake modes, the update check,
+   About, the Emulate picker, "What carries", the motion word, the link
+   tier, Diagnostics and the crash log shipped.)
 2. Controller audio and HD haptics over the DualSense's USB audio function,
    where Core Audio exposes it; the mic lamp rides the same work.
 3. Moonlight hosts.

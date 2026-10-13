@@ -16,6 +16,10 @@ struct SettingsView: View {
     @EnvironmentObject var keepAwake: KeepAwakePreferenceStore
     @EnvironmentObject var updatePreferences: UpdatePreferenceStore
     @EnvironmentObject var updates: UpdateChecker
+    @EnvironmentObject var model: AppModel
+    @Environment(\.openWindow) private var openWindow
+    @State private var crashLogPresent = false
+    @State private var showCrashReport = false
     @Environment(\.dismiss) private var dismiss
 
     private let words = L10n.app
@@ -159,9 +163,24 @@ struct SettingsView: View {
             LinkRow(title: words.supportDish, detail: words.supportDetail, destination: DishLinks.support)
             LinkRow(title: words.privacyPolicy, detail: "", destination: DishLinks.privacy)
             LinkRow(title: words.openSourceLicenses, detail: words.licensesDetail, destination: DishLinks.license)
+            ActionRow(title: words.diagnostics, detail: words.diagnosticsDetail, systemImage: "waveform.path.ecg") {
+                openWindow(id: DishWindow.diagnostics)
+            }
+            if crashLogPresent {
+                ActionRow(title: words.crashReport, detail: words.crashLogLeft, systemImage: "exclamationmark.triangle") {
+                    showCrashReport = true
+                }
+            }
             Text(words.aboutLine(updates.state.currentVersion))
                 .font(DishFont.caption)
                 .foregroundColor(DishTheme.muted)
+        }
+        .onAppear { crashLogPresent = model.crashLog.exists }
+        .sheet(isPresented: $showCrashReport) {
+            CrashReportSheet(report: crashReportText(model.crashLog, appVersion: updates.state.currentVersion)) {
+                model.crashLog.discard()
+                crashLogPresent = false
+            }
         }
     }
 }
