@@ -73,6 +73,12 @@ package final class WifiConnection: ObservableObject, Identifiable {
     /// Whether the satellite confirmed the bound slot plugged. The desire can
     /// exist before the bitmap bit does, and that gap is not drift.
     private(set) var slotApplied = false
+    /// How many times the satellite has confirmed the slot plugged, this
+    /// session or an earlier one: each is a fresh pad on its side, with the
+    /// audio lanes' sequence numbers started over, so the receiver's windows
+    /// start over too. Monotonic, so the count is never mistaken for a new
+    /// bind when it only rewound.
+    @Published private(set) var slotApplyCount = 0
 
     /// What the last negotiation said about the satellite's version.
     @Published private(set) var protocolCompat: ProtocolCompat = .unknown
@@ -337,7 +343,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
     // MARK: - Reconcile state
 
     func markSlotApplied() {
-        if boundSlotId != nil { slotApplied = true }
+        guard boundSlotId != nil else { return }
+        slotApplied = true
+        slotApplyCount += 1
     }
 
     func setLastAppliedEpoch(_ epoch: Int) {
