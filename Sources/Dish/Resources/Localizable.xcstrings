@@ -1919,6 +1919,76 @@
         }
       }
     },
+    "Click to turn it off for this controller." : {
+      "comment" : "Chip tooltip hint.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kliknite da ga isključite za ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicken, um es für diesen Controller auszuschalten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz clic para desactivarlo para este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cliquez pour le désactiver pour cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique para desligá-lo para este controle."
+          }
+        }
+      }
+    },
+    "Click to turn it on for this controller." : {
+      "comment" : "Chip tooltip hint.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kliknite da ga uključite za ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Klicken, um es für diesen Controller einzuschalten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haz clic para activarlo para este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cliquez pour l’activer pour cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Clique para ligá-lo para este controle."
+          }
+        }
+      }
+    },
     "Close" : {
       "comment" : "Collapses the bind picker.",
       "localizations" : {
@@ -7235,6 +7305,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Touchpad para o host"
+          }
+        }
+      }
+    },
+    "Turned off for this controller." : {
+      "comment" : "Chip tooltip: the controller's own switch is off.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isključeno za ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für diesen Controller ausgeschaltet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivado para este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé pour cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desligado para este controle."
           }
         }
       }

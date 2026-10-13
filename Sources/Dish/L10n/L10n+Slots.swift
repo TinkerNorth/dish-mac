@@ -125,3 +125,20 @@ extension L10n {
         catalog.format("Battery %lld%% — charging", level)
     }
 }
+
+extension L10n {
+
+    // MARK: - The per-controller switches
+
+    var turnedOffForThisController: String {
+        catalog.text("Turned off for this controller.")
+    }
+
+    var clickToTurnOffForThisController: String {
+        catalog.text("Click to turn it off for this controller.")
+    }
+
+    var clickToTurnOnForThisController: String {
+        catalog.text("Click to turn it on for this controller.")
+    }
+}

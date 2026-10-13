@@ -69,6 +69,12 @@ the repos share a version number.
   backend status drive the gyro chip: streaming, host can't receive, server
   can't deliver.
 - **The link tier.** Satellite rows wear the fleet's "Fastest" cue.
+- **Per-controller switches.** Each controller's motion, rumble and touchpad
+  chips are its own switches, beneath the global ones in Settings, kept in
+  the fleet's keys (`motion_preferences`, `rumble_preferences`,
+  `touchpad_preferences`); the light bar stays global, as on the other
+  desktop clients. The switches in force fold both and reach the descriptor,
+  the hot path and the rumble return path through one routing table.
 - **Diagnostics.** A window, from Settings or the menu bar, with each
   satellite session's own account of itself (the settled and offered
   protocol, the epoch and the controller bitmap against what this client
