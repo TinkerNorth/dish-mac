@@ -286,6 +286,32 @@ final class FakeSatellite {
         udp.sendToActive(opcode: FakeSatelliteOpcode.playerLeds, payload: Data([ctrlIdx, mask]))
     }
 
+    /// Version 2: one 20 ms Opus packet for the pad's speaker.
+    @discardableResult
+    func injectSpeakerAudio(ctrlIdx: UInt8, seq: UInt16, opus: Data) -> Bool {
+        udp.sendToActive(opcode: FakeSatelliteOpcode.speakerAudio, payload: Data([ctrlIdx]) + FakeSatelliteCrypto.be16(seq) + opus)
+    }
+
+    /// Version 3: one 20 ms Opus packet of the haptics lanes.
+    @discardableResult
+    func injectHapticAudio(ctrlIdx: UInt8, seq: UInt16, opus: Data) -> Bool {
+        udp.sendToActive(opcode: FakeSatelliteOpcode.hapticAudio, payload: Data([ctrlIdx]) + FakeSatelliteCrypto.be16(seq) + opus)
+    }
+
+    /// Version 2: the mic-mute lamp state the game asked for.
+    @discardableResult
+    func injectMicLed(ctrlIdx: UInt8, state: UInt8) -> Bool {
+        udp.sendToActive(opcode: FakeSatelliteOpcode.micLed, payload: Data([ctrlIdx, state]))
+    }
+
+    /// Every MIC_AUDIO frame the data plane decrypted, in order.
+    var micFrames: [(seq: UInt16, opus: Data)] {
+        frames.compactMap { frame in
+            if case let .micAudio(_, seq, opus) = frame.detail { return (seq, opus) }
+            return nil
+        }
+    }
+
     // MARK: - State inspection
 
     var epoch: UInt16 {

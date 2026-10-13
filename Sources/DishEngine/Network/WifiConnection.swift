@@ -95,10 +95,8 @@ package final class WifiConnection: ObservableObject, Identifiable {
     /// emulated as when a catalog or a pick arrives.
     private(set) var boundFamily: PadFamily = .other
     private var forwardingFlags = ForwardingFlags()
-    private var rumbleHandler: ((RumbleCommand) -> Void)?
-    private var lightbarHandler: ((LightbarCommand) -> Void)?
-    private var triggerEffectsHandler: ((TriggerEffectsCommand) -> Void)?
-    private var playerLedsHandler: ((PlayerLedsCommand) -> Void)?
+    /// Cached so a reconnect's fresh client gets every handler again.
+    var returnPaths = ReturnPathHandlers()
 
     nonisolated static let defaultCtrlIndex = 0
 
@@ -187,10 +185,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
     }
 
     private func installClientHandlers(_ client: SatelliteClient) {
-        client.onRumble = rumbleHandler
-        client.onLightbar = lightbarHandler
-        client.onTriggerEffects = triggerEffectsHandler
-        client.onPlayerLeds = playerLedsHandler
+        returnPaths.install(on: client)
         client.onSessionClose = { [weak self] reason in
             Task { @MainActor [weak self] in
                 self?.onSessionClose?(reason)
@@ -405,43 +400,10 @@ package final class WifiConnection: ObservableObject, Identifiable {
         live.sendTouchpad(controllerIndex: Self.defaultCtrlIndex, sample: sample, eventTimeMs: eventTimeMs)
     }
 
-    // MARK: - Return paths
-
-    /// Cached so a reconnect's fresh client gets the handler again.
-    func setRumbleHandler(_ handler: @escaping (RumbleCommand) -> Void) {
-        rumbleHandler = handler
-        clientRef.get()?.onRumble = handler
-    }
-
-    func setLightbarHandler(_ handler: @escaping (LightbarCommand) -> Void) {
-        lightbarHandler = handler
-        clientRef.get()?.onLightbar = handler
-    }
-
-    func setTriggerEffectsHandler(_ handler: @escaping (TriggerEffectsCommand) -> Void) {
-        triggerEffectsHandler = handler
-        clientRef.get()?.onTriggerEffects = handler
-    }
-
-    func setPlayerLedsHandler(_ handler: @escaping (PlayerLedsCommand) -> Void) {
-        playerLedsHandler = handler
-        clientRef.get()?.onPlayerLeds = handler
-    }
-
-    var hasRumbleHandler: Bool {
-        rumbleHandler != nil
-    }
-
-    var hasLightbarHandler: Bool {
-        lightbarHandler != nil
-    }
-
-    var hasTriggerEffectsHandler: Bool {
-        triggerEffectsHandler != nil
-    }
-
-    var hasPlayerLedsHandler: Bool {
-        playerLedsHandler != nil
+    /// The mic lane, from the capture thread; nothing while no session.
+    nonisolated func sendMicAudio(seq: UInt16, opus: Data) {
+        guard let live = clientRef.get() else { return }
+        live.sendMicAudio(AudioFrame(controllerIndex: UInt8(Self.defaultCtrlIndex), seq: seq, opus: opus))
     }
 }
 

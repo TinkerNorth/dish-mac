@@ -202,6 +202,15 @@ extension SatelliteClient {
         case ProtocolConstants.msgPlayerLeds:
             guard let leds = PlayerLedsCommand.parse(inner.payload) else { return }
             onPlayerLeds?(leds)
+        case ProtocolConstants.msgSpeakerAudio:
+            guard let frame = AudioFrame.parse(inner.payload) else { return }
+            onSpeakerAudio?(frame)
+        case ProtocolConstants.msgHapticAudio:
+            guard let frame = AudioFrame.parse(inner.payload) else { return }
+            onHapticAudio?(frame)
+        case ProtocolConstants.msgMicLed:
+            guard let led = MicLedCommand.parse(inner.payload) else { return }
+            onMicLed?(led)
         case ProtocolConstants.msgSessionClose:
             guard let byte = inner.payload.first else { return }
             // Latch the reason and mark dead NOW: the session is already gone

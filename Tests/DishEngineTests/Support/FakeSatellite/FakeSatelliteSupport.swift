@@ -30,6 +30,10 @@ enum FakeSatelliteOpcode {
     static let sessionClose: UInt16 = 0x000F
     static let triggerEffects: UInt16 = 0x0010
     static let playerLeds: UInt16 = 0x0011
+    static let micAudio: UInt16 = 0x0012
+    static let speakerAudio: UInt16 = 0x0013
+    static let micLed: UInt16 = 0x0014
+    static let hapticAudio: UInt16 = 0x0015
 }
 
 /// Parsed 16-byte touchpad payload (contract §0x000C, version 1), including
@@ -71,6 +75,7 @@ struct FakeSatelliteFrame {
         case battery(ctrlIdx: UInt8, level: UInt8, status: UInt8)
         case touchpad(FakeSatelliteTouchpadFrame)
         case pointer(FakeSatellitePointerFrame)
+        case micAudio(ctrlIdx: UInt8, seq: UInt16, opus: Data)
         case unknown
     }
 
@@ -101,6 +106,9 @@ struct FakeSatelliteFrame {
             return .touchpad(touchpadFrame(payload))
         case FakeSatelliteOpcode.touchpad where payload.count == 19:
             return .pointer(pointerFrame(payload))
+        case FakeSatelliteOpcode.micAudio where payload.count > 3:
+            let seq = UInt16(payload[base + 1]) << 8 | UInt16(payload[base + 2])
+            return .micAudio(ctrlIdx: payload[base], seq: seq, opus: Data(payload.dropFirst(3)))
         default:
             return .unknown
         }

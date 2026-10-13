@@ -46,7 +46,7 @@ frameworks each one may import.
 |---|---|---|---|
 | `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, and the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes) | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
-| `DishEngine` | Everything that does IO or owns state: discovery, pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, and `AppModel`, the one composition root | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, GameController, CoreHaptics, IOKit, Security, os |
+| `DishEngine` | Everything that does IO or owns state: discovery, pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, and `AppModel`, the one composition root | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio |
 | `Dish` | The SwiftUI views, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
 `ImportBoundariesTests` fails the build when a file imports outside its row;
