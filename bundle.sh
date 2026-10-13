@@ -55,6 +55,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSHighResolutionCapable</key> <true/>
     <key>NSLocalNetworkUsageDescription</key>
         <string>Dish discovers Satellite servers on your local network.</string>
+    <key>NSMicrophoneUsageDescription</key>
+        <string>Dish captures a controller’s own microphone and sends it to the satellite you paired with, only while that controller’s mic switch is on.</string>
     <key>NSBonjourServices</key>
         <array><string>_satellite._udp</string></array>
 </dict>

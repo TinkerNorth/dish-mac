@@ -108,6 +108,13 @@ final class FakeSatellite {
 
     // MARK: - Knobs
 
+    /// Version 3: whether the probe's `controllerAudio` block grants the
+    /// mic, the speaker and the haptics lanes, all together.
+    var controllerAudioEnabled: Bool {
+        get { store.with { $0.controllerAudioEnabled } }
+        set { store.with { $0.controllerAudioEnabled = newValue } }
+    }
+
     /// Settable so tests can pre-pair without the PIN dance.
     var pairingKeyHex: String? {
         get { store.with { $0.pairingKeyHex } }

@@ -266,6 +266,12 @@ package struct ControllerCapabilities: Hashable {
     package var hasTriggerEffects = false
     /// The pad has player-indicator LEDs the framework drives by player index.
     package var hasPlayerLeds = false
+    /// The pad's own audio function is reachable on this Mac (USB): a
+    /// microphone to capture from, a speaker to play to, and on a DualSense
+    /// the two haptics lanes.
+    package var hasMic = false
+    package var hasSpeaker = false
+    package var hasHapticLanes = false
 
     package init(
         hasMotion: Bool = false,
@@ -274,7 +280,10 @@ package struct ControllerCapabilities: Hashable {
         hasLightbar: Bool = false,
         hasBattery: Bool = false,
         hasTriggerEffects: Bool = false,
-        hasPlayerLeds: Bool = false
+        hasPlayerLeds: Bool = false,
+        hasMic: Bool = false,
+        hasSpeaker: Bool = false,
+        hasHapticLanes: Bool = false
     ) {
         self.hasMotion = hasMotion
         self.hasTouchpad = hasTouchpad
@@ -283,6 +292,18 @@ package struct ControllerCapabilities: Hashable {
         self.hasBattery = hasBattery
         self.hasTriggerEffects = hasTriggerEffects
         self.hasPlayerLeds = hasPlayerLeds
+        self.hasMic = hasMic
+        self.hasSpeaker = hasSpeaker
+        self.hasHapticLanes = hasHapticLanes
+    }
+
+    /// The pad's audio function folded in, once the route is known.
+    package func withAudio(_ route: PadAudioFunction?) -> ControllerCapabilities {
+        var next = self
+        next.hasMic = route?.hasMic ?? false
+        next.hasSpeaker = route?.hasSpeaker ?? false
+        next.hasHapticLanes = route?.hasHapticLanes ?? false
+        return next
     }
 
     package static let none = ControllerCapabilities()
@@ -327,6 +348,12 @@ package struct ControllerSlot: Identifiable, Hashable {
     package var motionStatus: MotionBackendStatus?
     /// The controller's own switches, beneath the global ones.
     package var preferences = SlotPreferences()
+    /// Where the pad's own audio stands; nil until the audio catalog is read.
+    package var audioRoute: AudioRouteVerdict?
+    /// What the controller's audio is doing; nil unbound.
+    package var audio: ControllerAudioState?
+    /// The user muted this controller's microphone (in memory only).
+    package var micMuted = false
 
     package init(
         id: String,
@@ -339,7 +366,10 @@ package struct ControllerSlot: Identifiable, Hashable {
         typeFeatures: TypeFeatureFacts? = nil,
         hostProbe: HostProbeFacts? = nil,
         motionStatus: MotionBackendStatus? = nil,
-        preferences: SlotPreferences = SlotPreferences()
+        preferences: SlotPreferences = SlotPreferences(),
+        audioRoute: AudioRouteVerdict? = nil,
+        audio: ControllerAudioState? = nil,
+        micMuted: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -352,6 +382,9 @@ package struct ControllerSlot: Identifiable, Hashable {
         self.hostProbe = hostProbe
         self.motionStatus = motionStatus
         self.preferences = preferences
+        self.audioRoute = audioRoute
+        self.audio = audio
+        self.micMuted = micMuted
     }
 }
 

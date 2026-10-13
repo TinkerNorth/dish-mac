@@ -78,6 +78,13 @@ package final class WifiConnection: ObservableObject, Identifiable {
     @Published private(set) var protocolCompat: ProtocolCompat = .unknown
     /// The session grant's word on host mouse control, for the diagnostics.
     private(set) var mouseControlGranted = false
+    /// What the satellite will carry of the pad's audio, from its probe at
+    /// session open; nothing until then.
+    @Published private(set) var hostAudio = HostAudioVerdict.none
+    /// The mic lane's sequence, monotonic for this connection's lifetime:
+    /// across a mute, a re-key and a reconnect, so the satellite's reorder
+    /// window never reads a restart as a burst of late frames.
+    private let micSeq = AtomicInt(0)
     /// The version the live session speaks; the floor while no session.
     private(set) var settledProtocolVersion = ProtocolConstants.protocolVersionMin
     /// The version the next pairing or session PUT offers. A 409 whose range
@@ -307,6 +314,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
         reconcileInFlight = false
         slotApplied = false
         mouseControlGranted = false
+        hostAudio = .none
         hooks = SessionHooks()
         latencyOneWayMs = nil
         latencySamples = 0
@@ -325,6 +333,10 @@ package final class WifiConnection: ObservableObject, Identifiable {
 
     func setMouseControlGranted(_ granted: Bool) {
         mouseControlGranted = granted
+    }
+
+    func setHostAudio(_ verdict: HostAudioVerdict) {
+        hostAudio = verdict
     }
 
     func setReconcileInFlight(_ inFlight: Bool) {
@@ -348,6 +360,15 @@ package final class WifiConnection: ObservableObject, Identifiable {
         pendingCapabilities = capabilities
         boundFamily = family
         if hasLiveSession { onTopologyChanged?() }
+    }
+
+    /// The pad's claims changed: its audio function enumerated after the
+    /// HID did, or left. The descriptor is sent whole, so a changed claim
+    /// re-sends it while the slot is bound and live.
+    func setCapabilities(_ capabilities: ControllerCapabilities) {
+        guard capabilities != pendingCapabilities else { return }
+        pendingCapabilities = capabilities
+        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
     }
 
     /// The type the pad is emulated as changed. The descriptor is sent
@@ -400,9 +421,11 @@ package final class WifiConnection: ObservableObject, Identifiable {
         live.sendTouchpad(controllerIndex: Self.defaultCtrlIndex, sample: sample, eventTimeMs: eventTimeMs)
     }
 
-    /// The mic lane, from the capture thread; nothing while no session.
-    nonisolated func sendMicAudio(seq: UInt16, opus: Data) {
+    /// The mic lane, from the capture thread; nothing while no session. The
+    /// sequence advances only for a packet that goes out.
+    nonisolated func sendMicAudio(opus: Data) {
         guard let live = clientRef.get() else { return }
+        let seq = UInt16(truncatingIfNeeded: micSeq.incrementAndGet() - 1)
         live.sendMicAudio(AudioFrame(controllerIndex: UInt8(Self.defaultCtrlIndex), seq: seq, opus: opus))
     }
 }

@@ -61,7 +61,7 @@ public struct AudioFrame: Equatable, Sendable {
 
 /// The mic-mute lamp state the game asked for (MIC_LED 0x0014), advisory:
 /// the client renders it, last writer wins against its own mute state.
-public enum MicLedState: UInt8, Equatable, Sendable {
+public enum MicLedState: UInt8, Hashable, Sendable {
     case off = 0
     case on = 1
     case pulse = 2

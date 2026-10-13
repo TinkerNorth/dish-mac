@@ -204,6 +204,8 @@ final class FakeSatelliteStore {
         var ackBitmapOverride: UInt16?
         var ackCountOverride: UInt8?
         var ackBackendAvailableOverride: Bool?
+        /// Version 3: the probe grants the mic, the speaker and the haptics lanes.
+        var controllerAudioEnabled = false
         // Records.
         var sessionPuts: [[String: Any]] = []
         var reconcileGets: [String] = []

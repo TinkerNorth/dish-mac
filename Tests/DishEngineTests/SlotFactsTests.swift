@@ -154,6 +154,52 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertNil(slot.typeFeatures)
         XCTAssertNil(slot.hostProbe)
         XCTAssertNil(slot.motionStatus)
+        XCTAssertNil(slot.audio)
+        XCTAssertNil(slot.audioRoute, "no audio catalog read yet")
+    }
+
+    /// The pad's route folds into its capabilities bound or not, the mute
+    /// rides every slot, and the engine's word only a bound one.
+    @MainActor
+    func testTheAudioRouteFoldsIntoTheCapabilitiesAndTheEnginesWordRidesTheBinding() throws {
+        let gc = GameControllerInput.Slot(
+            id: "pad",
+            name: "DualSense",
+            capabilities: ControllerCapabilities(hasMotion: true),
+            family: .dualSense
+        )
+        let device = AudioDeviceFacts(
+            id: 9,
+            uid: "ds",
+            name: "DualSense Wireless Controller",
+            isUSB: true,
+            inputChannels: 1,
+            outputChannels: 4
+        )
+        let function = PadAudioFunction(device: device, family: .dualSense)
+        let state = ControllerAudioState(
+            plan: audioPlan(AudioFacts(routeMic: true, routeSpeaker: true, routeHapticLanes: true)),
+            micLed: .on
+        )
+        let facts = SlotFactsSnapshot(
+            routes: ["pad": PadAudioRoute(verdict: .routed, function: function)],
+            audio: ["pad": state],
+            mutes: ["pad"]
+        )
+        let unbound = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [], bindings: [:], facts: facts).first)
+        XCTAssertEqual(unbound.capabilities, ControllerCapabilities(hasMotion: true, hasMic: true, hasSpeaker: true, hasHapticLanes: true))
+        XCTAssertEqual(unbound.audioRoute, .routed)
+        XCTAssertTrue(unbound.micMuted)
+        XCTAssertNil(unbound.audio, "the engine only speaks for a bound controller")
+
+        let summary = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connected, boundSlotId: "pad")
+        let bound = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"], facts: facts).first)
+        XCTAssertEqual(bound.audio, state)
+
+        let shared = SlotFactsSnapshot(routes: ["pad": PadAudioRoute(verdict: .padNameShared, function: nil)])
+        let unrouted = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [], bindings: [:], facts: shared).first)
+        XCTAssertEqual(unrouted.capabilities, ControllerCapabilities(hasMotion: true), "an unrouted pad claims no audio")
+        XCTAssertEqual(unrouted.audioRoute, .padNameShared)
     }
 
     @MainActor

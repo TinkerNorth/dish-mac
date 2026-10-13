@@ -16,9 +16,9 @@
 | Satellite host, protocol 3 | ✅ | ✅ | ✅ | ✅ offers 3, settles on the satellite's range, re-offers on an overlapping 409 |
 | Moonlight host (Sunshine / Apollo / Wolf) | ✅ | ✅ | ✅ | ❌ |
 | Mouse mode on the host | ✅ | ❌ | ❌ (deferred) | ❌ (deferred, as the desktops) |
-| Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ❌ |
-| DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ❌ |
-| Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ❌ mic lamp (no controller audio) |
+| Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked; not yet verified on a pad |
+| DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; not yet verified on a pad |
+| Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ⚠️ mic lamp as a chip on the slot card (GameController reaches no DualSense lamp) |
 | Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery (pad, else the host Mac's) |
 | Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ⚠️ a local crash log the user reviews, redacted, and sends as a GitHub issue; nothing uploads |
 | Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ✅ `latest.json` from the release permalink; once per version, skippable, floor warning |
@@ -28,7 +28,7 @@
 | Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts, each controller down to the wire, the flight recorder |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ every host is a satellite, so every row reads Fastest |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
-| App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | – no controller audio yet |
+| App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | ✅ header chip: live, muted or hidden; one click mutes or unmutes every armed mic |
 | Capability verdict word "Supported" | ✅ | ✅ | ✅ | ✅ "What carries" on every bound slot: pad ∩ Mac ∩ type ∩ host, Off and Pending distinct |
 | Pairing secrets stored encrypted | ✅ Moonlight key · ❌ Satellite key | ✅ DPAPI | ✅ Secret Service | ✅ Keychain |
 | Six languages (en, bs, de, es, fr, pt-BR) | ✅ | ✅ | ✅ | ✅ every word, plural forms included |
@@ -44,7 +44,7 @@
 | Motion | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (GCMotion on DualSense and DualShock 4) |
 | Touchpad | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (DualSense and DualShock 4 profiles) |
 | Battery | ⚠️ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ |
-| Controller mic | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ❌ · ❌ |
+| Controller mic | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ⚠️ · ❌ (the USB audio function; unverified on a pad) |
 
 The macOS client has one input path: GameController.framework. There is no
 raw-HID "Direct" claim, so the "USB Direct" column the other clients carry
@@ -58,9 +58,9 @@ does not apply here.
 | Lightbar | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (`GCController.light`) |
 | Adaptive triggers | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (the API's shapes; GameController carries them over both links) |
 | Player LEDs | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ✅ (DualSense, by player index) |
-| Mic lamp | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ❌ · ❌ |
-| Controller speaker | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ❌ · ❌ |
-| HD haptics | ⚠️ · ❌ | ⚠️ · ❌ | ⚠️ · ❌ | ❌ · ❌ |
+| Mic lamp | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ⚠️ · ⚠️ (a chip on the slot card, not the pad's lamp) |
+| Controller speaker | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ⚠️ · ❌ (unverified on a pad) |
+| HD haptics | ⚠️ · ❌ | ⚠️ · ❌ | ⚠️ · ❌ | ⚠️ · ❌ (channels 3–4 of the DualSense stream; unverified on a pad) |
 
 ## 4. Decisions, not gaps
 
@@ -76,6 +76,15 @@ does not apply here.
   mode, Play billing, store screenshots) do not apply.
 - **Battery over USB is the host Mac's** when the pad reports none, which is
   what the other desktop clients send too.
+- **Controller audio is the pad's USB audio function**, matched to the pad
+  by family and only when unambiguous (one pad of the family, one function
+  of it), as dish-android matches; two pads of a family route nothing and
+  Diagnostics says why. The mic is off until the user turns it on, mute sends
+  nothing, the mic sequence never restarts within a session, and the host's
+  `controllerAudio` verdict gates every lane per session. Opus is
+  AudioToolbox's codec, so a concealed window is silence. No pad was attached
+  to the Mac this shipped from: the path is proven through fake ports and the
+  fake satellite, and stays ⚠️ until a run on a DualSense confirms it.
 
 ## 5. Decided and in progress
 
@@ -87,6 +96,4 @@ updates the rows above.
    keep-awake modes, the update check, About, the Emulate picker, "What
    carries", the motion word, the link tier, Diagnostics, the crash log and
    the per-controller switches shipped.)
-2. Controller audio and HD haptics over the DualSense's USB audio function,
-   where Core Audio exposes it; the mic lamp rides the same work.
-3. Moonlight hosts.
+2. Moonlight hosts.

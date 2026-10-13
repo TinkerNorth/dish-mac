@@ -29,6 +29,10 @@ protocol-1 satellite; see [Protocol](#protocol).
   its own switch in Settings and, for motion, rumble and the touchpad, by
   the controller's own; on a DualSense it also plays the game's
   adaptive-trigger effects and lights the player indicator.
+- Carries a DualSense's or DualShock 4's own audio over its USB audio
+  function: the pad's microphone to the host, off until you turn it on and
+  muted from one chip, and the host's voice chat and HD haptics to the pad's
+  speaker and actuators.
 - Keeps the Mac awake while a controller is being used or connected, your
   choice in Settings with the display optional; releases every session when
   the Mac sleeps and reconnects when it wakes.
@@ -116,6 +120,7 @@ dish-mac/
 │   ├── Models/                   # the value types the UI binds
 │   ├── Network/                  # discovery, pairing, REST, UDP, TOFU, stores
 │   ├── Input/                    # the GameController bridge and the hot path
+│   ├── Audio/                    # the pad's own audio: routes, the engine, the codec, the HAL units
 │   ├── Update/                   # the release manifest check
 │   ├── Diagnostics/              # the session facts, the flight recorder, the window's source
 │   └── Util/                     # leaf helpers (the keep-awake pipeline, the crash handler, hex, locks)
@@ -154,6 +159,14 @@ bridge actuates `GCController.haptics` (one `CHHapticEngine` per handle) and
 sets `GCController.light`. The two are gated and routed independently, so
 Rumble off in Settings leaves the light bar alone, and a pad without the
 hardware ignores the packet.
+
+Controller audio rides the same socket. `MSG_SPEAKER_AUDIO` (`0x0013`) and
+`MSG_HAPTIC_AUDIO` (`0x0015`) carry 20 ms Opus frames down to the pad's USB
+audio function, the haptics on channels 3–4 of a DualSense's four-channel
+stream; `MSG_MIC_AUDIO` (`0x0012`) carries the pad's microphone up while its
+switch is on and it is not muted; and `MSG_MIC_LED` (`0x0014`) reports the
+lamp the game asked for, shown as a chip. `ControllerAudioEngine` decodes
+through the fleet's jitter window and plays on a Core Audio HAL unit.
 
 ## Protocol
 

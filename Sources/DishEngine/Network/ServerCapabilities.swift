@@ -19,17 +19,27 @@ struct ServerCapabilitiesDTO: Decodable, Equatable {
     var motionAvailable = false
     var host = ServerHostFeatures()
     var controllerAudio = ServerControllerAudio()
+    /// The block was in the body: an older satellite omits it, which reads
+    /// as unknown rather than off.
+    var controllerAudioPresent = false
+    /// Some listed backend is available and builds audio personas.
+    var anyBackendAudio = false
     /// Client-side: a body arrived.
     var reachable = false
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
-        case protocolVersion, serverVersion, maxControllers, backend, motion, host, controllerAudio
+        case protocolVersion, serverVersion, maxControllers, backend, backends, motion, host, controllerAudio
     }
 
     private struct Availability: Decodable {
         var available: Bool?
+    }
+
+    private struct BackendRow: Decodable {
+        var available: Bool?
+        var audio: Bool?
     }
 
     init(from decoder: Decoder) throws {
@@ -42,8 +52,24 @@ struct ServerCapabilitiesDTO: Decodable, Equatable {
         self.backendAvailable = try container.decodeIfPresent(Availability.self, forKey: .backend)?.available ?? false
         self.motionAvailable = try container.decodeIfPresent(Availability.self, forKey: .motion)?.available ?? false
         self.host = try container.decodeIfPresent(ServerHostFeatures.self, forKey: .host) ?? ServerHostFeatures()
-        self.controllerAudio = try container.decodeIfPresent(ServerControllerAudio.self, forKey: .controllerAudio)
-            ?? ServerControllerAudio()
+        let audio = try container.decodeIfPresent(ServerControllerAudio.self, forKey: .controllerAudio)
+        self.controllerAudio = audio ?? ServerControllerAudio()
+        self.controllerAudioPresent = audio != nil
+        let backends = (try? container.decodeIfPresent([BackendRow].self, forKey: .backends)) ?? []
+        self.anyBackendAudio = backends.contains { ($0.available ?? false) && ($0.audio ?? false) }
+    }
+
+    /// What the host will carry of the pad's audio, folded as the fleet
+    /// folds it.
+    var audioVerdict: HostAudioVerdict {
+        hostAudioVerdict(
+            blockPresent: controllerAudioPresent,
+            enabled: controllerAudio.enabled,
+            mic: controllerAudio.mic,
+            speaker: controllerAudio.speaker,
+            hapticAudio: controllerAudio.hapticAudio,
+            anyBackendAudio: anyBackendAudio
+        )
     }
 }
 

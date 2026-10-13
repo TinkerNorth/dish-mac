@@ -293,6 +293,7 @@ extension WifiConnectionManager {
     func cacheCapabilities(_ probe: ServerCapabilitiesDTO, for id: String) {
         guard probe.reachable else { return }
         capabilities[id] = probe
+        connections[id]?.setHostAudio(probe.audioVerdict)
     }
 
     // MARK: - Proactive re-key

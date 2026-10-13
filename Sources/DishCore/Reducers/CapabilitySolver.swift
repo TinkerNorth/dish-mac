@@ -76,6 +76,11 @@ public struct CapabilityInputs: Equatable, Sendable {
     /// This client routes a touchpad as the host's mouse. Without it the link
     /// carries no mouse.
     public var linkRoutesMouse = false
+    /// The pad's own audio reaches this client only through a USB audio
+    /// function it can see; true by default so a link that never looked
+    /// refuses nothing.
+    public var linkRoutesMic = true
+    public var linkRoutesSpeaker = true
 
     /// False means the type layer refuses nothing.
     public var typeResolved = false
@@ -181,11 +186,14 @@ func inputCarries(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
 
 /// GameController forwards everything the pad's profile exposes and reaches
 /// the adaptive triggers and player LEDs through its own DualSense API, so
-/// the mouse is the one thing the link carries conditionally.
+/// the link carries conditionally only the mouse and the pad's audio, which
+/// rides a USB audio function the link may not see.
 func linkCarries(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
     switch feature {
     case .mouse: inputs.linkRoutesMouse
-    case .gamepad, .triggers, .motion, .touchpad, .rumble, .lightbar, .triggerEffects, .playerLeds, .mic, .speaker: true
+    case .mic: inputs.linkRoutesMic
+    case .speaker: inputs.linkRoutesSpeaker
+    case .gamepad, .triggers, .motion, .touchpad, .rumble, .lightbar, .triggerEffects, .playerLeds: true
     }
 }
 
