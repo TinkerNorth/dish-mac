@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import DishCore
 import Foundation
 
 /// How the controller light bar should behave while a slot is bound.
@@ -107,6 +108,9 @@ package struct ForwardingFlags: Equatable {
     /// controller's own, the mic off until asked.
     package var mic = false
     package var speaker = true
+    /// What the touchpad is sent as while `touchpad` is on: the pad's own
+    /// render or the host's mouse. The global switch has no pick of its own.
+    package var touchpadPick = TouchpadPick.pad
 
     package init(
         motion: Bool = true,
@@ -114,7 +118,8 @@ package struct ForwardingFlags: Equatable {
         rumble: Bool = true,
         lightbar: Bool = true,
         mic: Bool = false,
-        speaker: Bool = true
+        speaker: Bool = true,
+        touchpadPick: TouchpadPick = .pad
     ) {
         self.motion = motion
         self.touchpad = touchpad
@@ -122,6 +127,7 @@ package struct ForwardingFlags: Equatable {
         self.lightbar = lightbar
         self.mic = mic
         self.speaker = speaker
+        self.touchpadPick = touchpadPick
     }
 }
 

@@ -97,11 +97,15 @@ extension WifiConnectionManager {
         await converge(conn, to: view, server: server)
     }
 
+    /// The host-feature grant is applied state too: a slot picked as the
+    /// mouse mid-session leaves wants ≠ granted, and a whole PUT heals it
+    /// without tearing the session down.
     private func converge(_ conn: WifiConnection, to view: SessionViewDto, server: DiscoveredServer) async {
         let applied = view.controllers.map(appliedSlot)
         let benignDrift = appliedMatchesDesired(desired: conn.desiredSlots(), applied: applied)
         if benignDrift {
             conn.setLastAppliedEpoch(view.epoch)
+            if view.mouseControl.granted != conn.wantsMouseControl { await rekeySession(conn) }
             return
         }
         conn.markDisconnected()

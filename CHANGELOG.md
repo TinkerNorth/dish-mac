@@ -39,6 +39,17 @@ the repos share a version number.
 - **"What carries" knows the pad's audio**: the pad layer is the pad's
   family, the link layer its USB audio function, and the row says why this
   Mac routes none (Bluetooth, two pads of a name, two devices of a name).
+- **Mouse mode on the host.** The touchpad's per-controller pick, Off, Pad
+  or Mouse, on the slot card; the descriptor declares `touchpadMode` through
+  the fleet's ladder (the pad render needs a type that offers `ds4`, the
+  mouse a host that advertises mouse control, a blocked pick declares off
+  and never the other routing); the session PUT asks for
+  `hostFeatures.mouseControl` whenever a bound pad is picked as the mouse,
+  the probe is read before the first PUT so the first descriptor is right,
+  and a pick flipped mid-session converges the grant through the re-key
+  path without a teardown. The pick is kept beside the older on/off row, so
+  an upgrade keeps every switch. "What carries" routes the touchpad to one
+  of its two rows.
 
 ### Fixed
 

@@ -68,13 +68,15 @@ extension WifiConnectionManager {
             return
         }
         await readCatalogIfUnread(id: id, server: server)
+        await readCapabilitiesIfUnread(id: id, server: server)
         refreshControllerType(conn, id: id)
         let descriptors = conn.desiredDescriptor.map { [$0] } ?? []
         let resp = await putSession(
             server: server,
             pairingKey: pairingKey,
             controllers: descriptors,
-            protocolVersion: conn.offeredProtocolVersion
+            protocolVersion: conn.offeredProtocolVersion,
+            mouseControl: conn.wantsMouseControl
         )
         switch Self.classifyOpen(resp) {
         case .unauthorized:
@@ -94,7 +96,8 @@ extension WifiConnectionManager {
         server: DiscoveredServer,
         pairingKey: Data,
         controllers: [ControllerDescriptor],
-        protocolVersion: Int
+        protocolVersion: Int,
+        mouseControl: Bool
     ) async -> SessionResponse {
         let proof = SessionCrypto.hmacProofHex(pairingKey: pairingKey, deviceId: deviceId)
         return await http.putSession(
@@ -104,7 +107,8 @@ extension WifiConnectionManager {
             deviceName: deviceName,
             hmacProof: proof,
             controllers: controllers,
-            protocolVersion: protocolVersion
+            protocolVersion: protocolVersion,
+            mouseControl: mouseControl
         )
     }
 
@@ -234,9 +238,22 @@ extension WifiConnectionManager {
     /// The descriptor's type is resolved as the PUT is built, against the
     /// newest catalog and the user's pick, so a first contact already
     /// emulates the pad as itself. Never a re-send: the session is not live.
+    /// The type, and the catalog's word on that type's touchpad, which the
+    /// descriptor's mode reads.
     private func refreshControllerType(_ conn: WifiConnection, id: String) {
         guard let slotId = conn.boundSlotId else { return }
-        conn.setControllerType(resolveControllerType(for: id, slotId: slotId, family: conn.boundFamily))
+        let type = resolveControllerType(for: id, slotId: slotId, family: conn.boundFamily)
+        conn.setControllerType(type)
+        var facts = conn.touchpadFacts
+        facts.typeOffersDs4 = typeOffersDs4Touchpad(in: catalogs[id], type: type)
+        conn.setTouchpadFacts(facts)
+    }
+
+    /// The probe is unauthenticated, so a satellite never probed is asked
+    /// once before the first PUT: the descriptor's mouse rung reads it.
+    private func readCapabilitiesIfUnread(id: String, server: DiscoveredServer) async {
+        guard capabilities[id] == nil else { return }
+        await fetchCapabilities(id: id, server: server)
     }
 
     /// The catalog is unauthenticated, so a satellite never seen before is
@@ -293,7 +310,11 @@ extension WifiConnectionManager {
     func cacheCapabilities(_ probe: ServerCapabilitiesDTO, for id: String) {
         guard probe.reachable else { return }
         capabilities[id] = probe
-        connections[id]?.setHostAudio(probe.audioVerdict)
+        guard let conn = connections[id] else { return }
+        conn.setHostAudio(probe.audioVerdict)
+        var facts = conn.touchpadFacts
+        facts.hostMouseControl = probe.host.mouseControl.supported && probe.host.mouseControl.available
+        conn.setTouchpadFacts(facts)
     }
 
     // MARK: - Proactive re-key
@@ -312,7 +333,8 @@ extension WifiConnectionManager {
             server: server,
             pairingKey: pairingKey,
             controllers: descriptors,
-            protocolVersion: conn.offeredProtocolVersion
+            protocolVersion: conn.offeredProtocolVersion,
+            mouseControl: conn.wantsMouseControl
         )
         if resp.unauthorized || resp.verdict == .unauthorized {
             handleTerminalAuth(id, loud: false)
@@ -345,6 +367,7 @@ extension WifiConnectionManager {
         )
         conn.adoptProtocol(negotiated)
         conn.setLastAppliedEpoch(resp.epoch)
+        conn.setMouseControlGranted(resp.mouseControl.granted)
     }
 
     // MARK: - Live slot converge
@@ -362,6 +385,16 @@ extension WifiConnectionManager {
         } else {
             await deleteBoundSlot(conn: conn, connectionId: connectionId)
         }
+        await convergeHostFeatures(conn)
+    }
+
+    /// The grant is computed only at the session PUT (contract
+    /// §hostFeatures), so a pick that changed the session's desire rides a
+    /// whole PUT through the re-key path: the token rotates on the same
+    /// socket and the hot path never blips.
+    private func convergeHostFeatures(_ conn: WifiConnection) async {
+        guard conn.hasLiveSession, conn.wantsMouseControl != conn.mouseControlGranted else { return }
+        await rekeySession(conn)
     }
 
     private func putBoundSlot(_ descriptor: ControllerDescriptor, conn: WifiConnection, connectionId: String) async {
