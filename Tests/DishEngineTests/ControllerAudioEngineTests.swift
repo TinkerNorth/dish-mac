@@ -141,6 +141,39 @@ final class ControllerAudioEngineTests: XCTestCase {
         XCTAssertEqual(engine.state["slot"]?.plan.hapticVoice, false, "the speaker switch covers the lanes")
     }
 
+    /// The satellite starts a slot's lanes over each time it plugs the pad,
+    /// and a new session is a new pad too; the old playhead would read every
+    /// frame of the new stream as late for as long as the old count ran ahead.
+    func testASlotPluggedAgainAndANewConnectionStartTheLanesFresh() async throws {
+        connection.attachSlot("slot", controllerType: 0, capabilities: .none)
+        engine.apply([binding(facts())])
+        let speaker = try encodedTone(channels: 2, bitrate: AudioWire.speakerBitrate)
+        let stream = { (conn: WifiConnection) in
+            for seq in UInt16(0) ..< 3 {
+                conn.returnPaths.speakerAudio?(AudioFrame(controllerIndex: 0, seq: seq, opus: speaker))
+            }
+        }
+        stream(connection)
+        let first = await waitUntil { self.engine.counters(for: "slot")?.speakerPlayed == 3 }
+        XCTAssertTrue(first)
+
+        stream(connection)
+        let replayed = await waitUntil(timeout: 0.3) { self.engine.counters(for: "slot")?.speakerPlayed == 6 }
+        XCTAssertFalse(replayed, "the same numbers again are late behind the playhead")
+
+        connection.markSlotApplied()
+        stream(connection)
+        let pluggedAgain = await waitUntil { self.engine.counters(for: "slot")?.speakerPlayed == 6 }
+        XCTAssertTrue(pluggedAgain, "plugged again: the lanes start over")
+
+        let server = DiscoveredServer(name: "Den", ip: "10.0.0.2", udpPort: 9876, pairPort: 9443, httpPort: 9443, machineId: "den")
+        let other = WifiConnection(id: "den", server: server)
+        engine.apply([AudioBinding(slotId: "slot", connection: other, route: dualSense, facts: facts())])
+        stream(other)
+        let newSession = await waitUntil { self.engine.counters(for: "slot")?.speakerPlayed == 9 }
+        XCTAssertTrue(newSession, "a new session is a new pad")
+    }
+
     // MARK: - The microphone
 
     func testTheMicrophoneCapturesOnlyWhileDeliveringAndMuteLandsWithinAWindow() async throws {

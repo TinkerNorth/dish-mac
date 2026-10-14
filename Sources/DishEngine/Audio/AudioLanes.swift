@@ -126,14 +126,27 @@ final class LanePlayout: @unchecked Sendable {
         queue.async { ring.write(pcm) }
     }
 
-    func clear() {
+    /// A fresh pad on the satellite's side (a slot plugged again, or a new
+    /// session) starts its lanes' sequence numbers over, so the windows start
+    /// over too, or every frame of the new stream would read as late behind
+    /// the old playhead for as long as the old count ran ahead. The decoders
+    /// go with them: a decoder carries the previous stream's filter state and
+    /// concealment history. The lanes stay as the plan set them.
+    func restart() {
         os_unfair_lock_lock(&lock)
         windows = [.speaker: AudioJitterWindow(), .haptic: AudioJitterWindow()]
-        enabled = [.speaker: false, .haptic: false]
+        decoders = [:]
         os_unfair_lock_unlock(&lock)
         for ring in rings.values {
             ring.clear()
         }
+    }
+
+    func clear() {
+        restart()
+        os_unfair_lock_lock(&lock)
+        enabled = [.speaker: false, .haptic: false]
+        os_unfair_lock_unlock(&lock)
     }
 }
 

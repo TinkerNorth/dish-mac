@@ -74,6 +74,14 @@ the repos share a version number.
 
 ### Fixed
 
+- **A slot plugged again starts its audio lanes fresh.** The satellite starts
+  a pad's speaker and haptics sequence numbers over each time it plugs the
+  slot, and a new session is a new pad too; the receiver's jitter windows kept
+  the old playhead, so every frame of the new stream read as late and was
+  dropped for as long as the old count ran ahead, up to ten minutes. The
+  windows and decoders now start over on each confirmation that the slot is
+  plugged (`WifiConnection.slotApplyCount`) and when the binding moves to
+  another connection; the lanes stay as the plan set them.
 - **A full-size audio frame no longer fails the AEAD.** The UDP receive
   buffer was the pre-audio 256 bytes, so every speaker frame was truncated
   and dropped; it is now the contract's 1500-byte datagram ceiling.
