@@ -15,7 +15,9 @@ final class ImportBoundariesTests: XCTestCase {
     }
 
     private static let layers: [Layer] = [
-        Layer(directory: "Sources/DishCore", allowed: ["Foundation", "CryptoKit"]),
+        // CommonCrypto is Apple's C crypto, pure computation: the AES-ECB
+        // block primitive the Moonlight pairing prescribes and CryptoKit lacks.
+        Layer(directory: "Sources/DishCore", allowed: ["Foundation", "CryptoKit", "CommonCrypto"]),
         Layer(directory: "Sources/DishKernel", allowed: ["Foundation", "Combine"]),
         Layer(
             directory: "Sources/DishEngine",

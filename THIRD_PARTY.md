@@ -40,8 +40,9 @@ not copied as code:
 - **The Moonlight (GameStream) host protocol**, under `Sources/DishCore/Moonlight/`,
   learned from the documentation and the MIT-licensed host implementation of
   Wolf (games-on-whales/wolf): the control-packet AES-GCM construction and its
-  IV rule, the CONTROLLER_* and mouse wire layouts, the host event bodies and
-  the media ping. Section 2b records that reuse of adapted logic. The byte-exact
+  IV rule, the CONTROLLER_* and mouse wire layouts, the host event bodies, the
+  media ping, the five-phase PIN pairing algorithm and the RTSP request and
+  response shapes. Section 2b records that reuse of adapted logic. The byte-exact
   fixtures under `Tests/DishCoreTests/Moonlight/` are Wolf's published vectors
   and captures, the same hex dish-android, dish-linux and dish-windows pin. No
   GPL-licensed Moonlight code (moonlight-common-c, moonlight-qt,
@@ -86,12 +87,14 @@ Wolf, SPDX `MIT`. Upstream: <https://github.com/games-on-whales/wolf>.
 
 **No Wolf source is compiled into Dish.** Wolf is an MIT-licensed Moonlight
 *host*; its protocol documentation (`control-specs.adoc`, `input-data.adoc`,
-`http-pairing.adoc`) and source (`control.hpp`) were the reference for this
+`http-pairing.adoc`, `rtsp.adoc`) and source (`control.hpp`, `moonlight.cpp`)
+were the reference for this
 project's own Moonlight *client* implementation under
 `Sources/DishCore/Moonlight/`. Adapted logic includes the control-packet
 AES-GCM IV construction (the low byte of the sequence alone), the encrypted
 frame layout with its tag before the ciphertext, the CONTROLLER_* and mouse
-struct layouts and the host event bodies. These were re-implemented against
+struct layouts, the host event bodies, the five-phase PIN pairing algorithm
+and the RTSP request and response shapes. These were re-implemented against
 Dish's own architecture; the byte-exact test fixtures are Wolf's published
 vectors and captures.
 
