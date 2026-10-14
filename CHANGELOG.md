@@ -82,6 +82,12 @@ the repos share a version number.
   windows and decoders now start over on each confirmation that the slot is
   plugged (`WifiConnection.slotApplyCount`) and when the binding moves to
   another connection; the lanes stay as the plan set them.
+- **The e2e lane's satellite is hermetic.** `scripts/e2e_local.sh` seeds the
+  satellite's isolated home with `autoCheck: false` before launch, so a test
+  lane never phones GitHub for updates. Satellite 2.1.3 also segfaults 31 s
+  after launch when that check runs (its updater's reply pointers are
+  released before the worker thread reads them; fixed upstream on a branch),
+  which turned the lane red whenever the driver's build outlasted the settle.
 - **A full-size audio frame no longer fails the AEAD.** The UDP receive
   buffer was the pre-audio 256 bytes, so every speaker frame was truncated
   and dropped; it is now the contract's 1500-byte datagram ceiling.
