@@ -66,12 +66,18 @@ jobs:
           pkg-config --modversion libsodium
           pkg-config --modversion opus
 
+      # The crash reporter's unused binary slices stay out too: SwiftPM
+      # downloads every xcframework the sentry-cocoa package declares, three
+      # gigabytes unpacked, and the build needs only `Sentry`; a missing
+      # unused artifact is neither re-fetched nor missed.
       - name: Cache SwiftPM
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             .build
             !.build/**/*.bundle
+            !.build/artifacts/sentry-cocoa/Sentry-*
+            !.build/artifacts/sentry-cocoa/SentryObjC-*
           key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/Resources/**') }}
           restore-keys: |
             ${{ runner.os }}-spm-

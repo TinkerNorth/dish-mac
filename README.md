@@ -49,7 +49,9 @@ protocol-1 satellite; see [Protocol](#protocol).
   controller live (its input as the host sees it, motion and touch, a drift
   and a range test on the raw sticks, a rumble bench, a test tone and a
   microphone meter); keeps a local crash log you review, redacted, before
-  choosing to send it.
+  choosing to send it, and, with "Share crash reports" on, sends an
+  anonymous crash report to Sentry like the other clients (official builds
+  only; the policy says what it holds).
 - Speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
 
 What the other clients have that this one does not yet is tracked, row by
@@ -119,6 +121,7 @@ dish-mac/
 ├── Package.swift                 # four modules + five test targets; warnings are errors
 ├── Sources/DishCore/             # ProtocolConstants, Wire/ (codecs, crypto), Reducers/
 ├── Sources/DishKernel/           # StateSource, Composer, Controller, Repository, AsyncState
+├── Sources/DishCrashUpload/      # the Sentry SDK behind the crash-reporting switch, the one third-party import
 ├── Sources/DishEngine/
 │   ├── AppModel.swift            # the composition root
 │   ├── Models/                   # the value types the UI binds

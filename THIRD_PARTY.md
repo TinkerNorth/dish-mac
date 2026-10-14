@@ -19,6 +19,7 @@ is first-party code with its own independently written crypto.
 | Apple system frameworks (Foundation, Combine, SwiftUI, AppKit, Network, Security, CryptoKit, GameController, CoreHaptics, IOKit, os) | the macOS the app runs on | Apple SDK license | Dynamically linked against the user's macOS. Nothing is bundled. | None for redistributors of the app |
 | [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | 0.61.1 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
 | [SwiftLint](https://github.com/realm/SwiftLint) | 0.65.0 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
+| [sentry-cocoa](https://github.com/getsentry/sentry-cocoa) | 9.30.1 | `MIT` | Compiled into the app from the pinned Swift package; armed only by an official release build (the one kind that carries a reporting address) with *Share crash reports* on. See [`PRIVACY.md`](PRIVACY.md), section 3. | Keep the copyright and permission notice below |
 
 Everything under `Resources/` and `Sources/Dish/UI/BrandIcon.swift` is original
 TinkerNorth artwork, covered by this repository's own license.
@@ -36,6 +37,39 @@ not copied as code:
   layouts, the HKDF and HMAC constructions, the AEAD nonce rule and the REST
   surface. The interop vectors in `Tests/DishCoreTests/SessionCryptoVectorTests.swift`
   are the same hex every sibling pins.
+
+## 2a. sentry-cocoa
+
+sentry-cocoa 9.30.1. SPDX `MIT`. Upstream:
+<https://github.com/getsentry/sentry-cocoa>.
+
+The crash reporter behind the *Share crash reports* switch, pinned exactly in
+`Package.swift` and reached only through the `DishCrashUpload` module, so
+the engine never imports it. A build arms it only with an address in its
+`Info.plist`, which only `release.yml` supplies.
+
+```
+Copyright (c) 2015 Sentry (https://sentry.io) and individual contributors.
+All rights reserved.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## 3. Keeping this in sync
 

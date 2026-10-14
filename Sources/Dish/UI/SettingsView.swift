@@ -15,6 +15,7 @@ struct SettingsView: View {
     @EnvironmentObject var background: BackgroundPreferenceStore
     @EnvironmentObject var keepAwake: KeepAwakePreferenceStore
     @EnvironmentObject var updatePreferences: UpdatePreferenceStore
+    @EnvironmentObject var crashReporting: CrashReportingController
     @EnvironmentObject var updates: UpdateChecker
     @EnvironmentObject var model: AppModel
     @Environment(\.openWindow) private var openWindow
@@ -165,6 +166,17 @@ struct SettingsView: View {
             LinkRow(title: words.openSourceLicenses, detail: words.licensesDetail, destination: DishLinks.license)
             ActionRow(title: words.diagnostics, detail: words.diagnosticsDetail, systemImage: "waveform.path.ecg") {
                 openWindow(id: DishWindow.diagnostics)
+            }
+            ToggleRow(
+                title: words.shareCrashReports,
+                detail: words.shareCrashReportsDetail,
+                isOn: Binding(get: { crashReporting.state }, set: crashReporting.setEnabled)
+            )
+            if !crashReporting.uploadPossible {
+                Text(words.crashUploadImpossible)
+                    .font(DishFont.caption)
+                    .foregroundColor(DishTheme.muted)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             if crashLogPresent {
                 ActionRow(title: words.crashReport, detail: words.crashLogLeft, systemImage: "exclamationmark.triangle") {

@@ -39,6 +39,17 @@ the repos share a version number.
 - **"What carries" knows the pad's audio**: the pad layer is the pad's
   family, the link layer its USB audio function, and the row says why this
   Mac routes none (Bluetooth, two pads of a name, two devices of a name).
+- **Crash reports, opt-out, like the other clients.** An official release
+  build that crashes sends one anonymous report to Sentry with "Share crash
+  reports" on (the default, under the fleet's key); the switch closes the
+  SDK at once and restores Dish's own handlers, so the next crash writes
+  only the local log, which is written either way and still reviewed,
+  redacted, before any issue is filed by hand. The SDK (sentry-cocoa,
+  pinned) lives in its own module behind the engine's `CrashUploader` seam,
+  arms only with the address `bundle.sh` writes from the release secret,
+  tracks no sessions, breadcrumbs or network, and names no user or host.
+  Settings says beneath the switch when a build cannot send anything.
+  PRIVACY.md and THIRD_PARTY.md say the rest.
 - **The controller inspector.** From a controller's Diagnostics card: its
   input as the host sees it (the buttons held, the sticks and triggers after
   the dead zones, the report rate), motion in degrees per second and g and

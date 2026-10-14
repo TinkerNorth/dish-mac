@@ -24,9 +24,12 @@ final class ImportBoundariesTests: XCTestCase {
                 "CoreHaptics", "IOKit", "Security", "os", "AudioToolbox", "CoreAudio", "AVFoundation", "DishCore", "DishKernel"
             ]
         ),
+        Layer(directory: "Sources/DishCrashUpload", allowed: ["Foundation", "Sentry", "DishCore", "DishEngine"]),
         Layer(
             directory: "Sources/Dish",
-            allowed: ["Foundation", "Combine", "SwiftUI", "AppKit", "UserNotifications", "DishCore", "DishEngine", "DishKernel"]
+            allowed: [
+                "Foundation", "Combine", "SwiftUI", "AppKit", "UserNotifications", "DishCore", "DishEngine", "DishKernel", "DishCrashUpload"
+            ]
         ),
         Layer(directory: "Tests/Support/DishKernelProbes", allowed: ["Foundation", "Combine", "DishKernel"]),
         Layer(directory: "Tests/Support/LegacyFileKeychain", allowed: ["Foundation", "Security"])

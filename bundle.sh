@@ -59,6 +59,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
         <string>Dish captures a controller’s own microphone and sends it to the satellite you paired with, only while that controller’s mic switch is on.</string>
     <key>NSBonjourServices</key>
         <array><string>_satellite._udp</string></array>
+    <!-- The crash-reporting address, from the release secret; empty means the
+         build cannot send a report whatever the switch says (PRIVACY.md §3). -->
+    <key>DishSentryDSN</key>           <string>${DISH_SENTRY_DSN:-}</string>
 </dict>
 </plist>
 PLIST
