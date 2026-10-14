@@ -26,7 +26,7 @@ TinkerNorth artwork, covered by this repository's own license.
 
 ## 2. Reused facts, not reused code
 
-Two sets of published facts are implemented here from their documentation,
+Three sets of published facts are implemented here from their documentation,
 not copied as code:
 
 - **The XUSB (XInput) gamepad report layout and button bits**, from Microsoft's
@@ -37,6 +37,15 @@ not copied as code:
   layouts, the HKDF and HMAC constructions, the AEAD nonce rule and the REST
   surface. The interop vectors in `Tests/DishCoreTests/SessionCryptoVectorTests.swift`
   are the same hex every sibling pins.
+- **The Moonlight (GameStream) host protocol**, under `Sources/DishCore/Moonlight/`,
+  learned from the documentation and the MIT-licensed host implementation of
+  Wolf (games-on-whales/wolf): the control-packet AES-GCM construction and its
+  IV rule, the CONTROLLER_* and mouse wire layouts, the host event bodies and
+  the media ping. Section 2b records that reuse of adapted logic. The byte-exact
+  fixtures under `Tests/DishCoreTests/Moonlight/` are Wolf's published vectors
+  and captures, the same hex dish-android, dish-linux and dish-windows pin. No
+  GPL-licensed Moonlight code (moonlight-common-c, moonlight-qt,
+  moonlight-android, Sunshine, Apollo) was consulted or copied.
 
 ## 2a. sentry-cocoa
 
@@ -70,6 +79,47 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## 2b. Wolf (Moonlight protocol reference)
+
+Wolf, SPDX `MIT`. Upstream: <https://github.com/games-on-whales/wolf>.
+
+**No Wolf source is compiled into Dish.** Wolf is an MIT-licensed Moonlight
+*host*; its protocol documentation (`control-specs.adoc`, `input-data.adoc`,
+`http-pairing.adoc`) and source (`control.hpp`) were the reference for this
+project's own Moonlight *client* implementation under
+`Sources/DishCore/Moonlight/`. Adapted logic includes the control-packet
+AES-GCM IV construction (the low byte of the sequence alone), the encrypted
+frame layout with its tag before the ciphertext, the CONTROLLER_* and mouse
+struct layouts and the host event bodies. These were re-implemented against
+Dish's own architecture; the byte-exact test fixtures are Wolf's published
+vectors and captures.
+
+```
+Copyright (c) 2021-2024 Games on Whales
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+Deliberately NOT consulted, to keep this LGPL-3.0 project clear of GPL-3.0
+Moonlight code: moonlight-common-c, moonlight-qt, moonlight-android, Sunshine,
+Apollo. Wolf's documentation and MIT source were sufficient.
 
 ## 3. Keeping this in sync
 
