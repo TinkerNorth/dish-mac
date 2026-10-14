@@ -47,7 +47,8 @@ frameworks each one may import.
 | `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, and the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes) | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
 | `DishEngine` | Everything that does IO or owns state: discovery, pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, and `AppModel`, the one composition root | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
-| `Dish` | The SwiftUI views, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
+| `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
+| `Dish` | The SwiftUI views, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three and `DishCrashUpload` | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
 `ImportBoundariesTests` fails the build when a file imports outside its row;
 `PackageGraphTests` fails it when a dependency points the wrong way.

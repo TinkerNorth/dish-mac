@@ -3,6 +3,7 @@
 
 import AppKit
 import DishCore
+import DishCrashUpload
 import DishEngine
 import SwiftUI
 
@@ -15,7 +16,8 @@ struct DishApp: App {
             workspace: NSWorkspace.shared.notificationCenter
         ),
         appVersion: bundleVersion(Bundle.main),
-        crashLog: CrashLog.standard()
+        crashLog: CrashLog.standard(),
+        crashUploader: SentryCrashUploader(dsn: crashReportingAddress(Bundle.main), appVersion: bundleVersion(Bundle.main))
     )
     @StateObject private var notifications = DishNotificationCenter()
     @StateObject private var failureNotifier = FailureNotifier()
@@ -45,6 +47,7 @@ struct DishApp: App {
                 .environmentObject(model.keepAwake)
                 .environmentObject(model.updatePreferences)
                 .environmentObject(model.updates)
+                .environmentObject(model.crashReporting)
                 .environmentObject(notifications)
                 .frame(minWidth: 520, minHeight: 640)
                 .background(DishTheme.background.ignoresSafeArea())
@@ -94,6 +97,13 @@ struct DishApp: App {
 enum DishWindow {
     static let main = "main"
     static let diagnostics = "diagnostics"
+}
+
+/// The crash-reporting address `bundle.sh` wrote into the plist from the
+/// release secret; nil for a bare `swift run` binary, a pull request or a
+/// fork, which can then send nothing.
+func crashReportingAddress(_ bundle: Bundle) -> String? {
+    bundle.object(forInfoDictionaryKey: "DishSentryDSN") as? String
 }
 
 /// The running build as the bundle reports it; a bare `swift run` binary has

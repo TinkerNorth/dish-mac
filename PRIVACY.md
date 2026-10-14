@@ -21,11 +21,14 @@ describing another.
   from your Mac, over your own network, to the satellite you paired with. It
   does not stream to any TinkerNorth-operated server. TinkerNorth does not
   operate a server for Dish at all.
-- **Nothing leaves your network except the update check.** With the switch
-  in Settings on (the default), the app fetches one small file from
-  github.com at startup and every few hours to learn the newest version; it
-  carries nothing about you, and section 2.3 lists what GitHub sees. The app
-  sends no crash reports. There is no analytics SDK, no telemetry, no
+- **Nothing leaves your network except the update check and, with its
+  switch on, a crash report.** With "Check for updates automatically" on
+  (the default), the app fetches one small file from github.com at startup
+  and every few hours to learn the newest version; it carries nothing about
+  you, and section 2.3 lists what GitHub sees. With "Share crash reports" on
+  (the default), an official release build that crashes sends one anonymous
+  report to Sentry; section 3 says exactly what it holds, and the switch
+  stops the very next one. There is no analytics SDK, no telemetry, no
   advertising identifier, no usage reporting and no account. Every other
   outbound connection goes to the satellite you chose, by its local address.
 - **A controller's own microphone** (a DualSense's or DualShock 4's, over
@@ -101,9 +104,10 @@ scheduled checks; the manual button fetches only when pressed. The time of the
 last completed check and a version you chose to skip stay in your preferences
 (section 2.1).
 
-There is no TinkerNorth server for this app to talk to and no crash reporter.
-If a future version adds one, this policy will say so before it ships, with
-the switch that turns it off.
+**A crash report** is the one thing that reaches us, through Sentry, and
+only if you leave "Share crash reports" on. Section 3 describes it.
+
+There is no TinkerNorth server for this app to talk to.
 
 The only other way this app causes a request to a TinkerNorth or third-party
 address is if you click a link, which hands the URL to your default browser and
@@ -113,15 +117,57 @@ is then between you and that site.
 
 ## 3. Crash reports
 
-None are sent. If the app crashes, it appends a backtrace to
-`~/Library/Logs/Dish/crash.log` and stops; the next launch shows "Crash
-report" in Settings. The report you see there has your home folder collapsed
-to `~`, IP addresses and `.local` names replaced, and any long hexadecimal
-run (what a key or an identifier looks like on a stack) removed. From there
-you can copy it, open a prefilled issue in your browser with "Report on
-GitHub", or discard the file. Nothing happens until you choose, and nothing
-leaves this Mac unless you submit the issue yourself. Discarding deletes the
-file; it is never read again.
+This is the part most likely to be misread, so it is stated plainly.
+
+**What is written locally, always.** If the app crashes, its own handler
+appends a backtrace to `~/Library/Logs/Dish/crash.log` and stops; the next
+launch shows "Crash report" in Settings. The report you see there has your
+home folder collapsed to `~`, IP addresses and `.local` names replaced, and
+any long hexadecimal run (what a key or an identifier looks like on a stack)
+removed. From there you can copy it, open a prefilled issue in your browser
+with "Report on GitHub", or discard the file. Nothing happens until you
+choose, and nothing leaves this Mac through that card unless you submit the
+issue yourself. Discarding deletes the file; it is never read again. The
+switch below does not touch any of this: the reporting SDK hands the crash
+on to Dish's own handler, so the local log is written whether the switch is
+on or off.
+
+**What is uploaded, and when.** Settings has a *Share crash reports* switch,
+on by default. With it on, an official release build that crashes sends one
+report to [Sentry](https://sentry.io), a crash-reporting service operated by
+Functional Software, Inc. (San Francisco, USA), which processes it on our
+behalf. The report is produced by the Sentry SDK for Apple platforms, which
+the app arms only after reading your preference, and contains:
+
+- the stack of the crashing thread and the list of loaded modules with their
+  versions, so we can see where it failed;
+- the app version and a build environment label, the macOS version and CPU
+  architecture, the Mac's model name, and a random event id.
+
+It does **not** contain your controller input, your pairings, keys or
+settings, your user name, your Mac's name, or a device identifier, and the
+app never reports launches, sessions, breadcrumbs or usage: the crash is the
+only event. Sentry sees the public IP address of your Mac when it receives
+the report, as any web service does; the app does not attach it and we do
+not use it. Sentry retains crash data for 90 days, then deletes it. We use
+Sentry's US region, so the data is stored in the United States. See Sentry's
+[privacy policy](https://sentry.io/privacy/) for its role as a processor.
+
+**Opting out.** Turn *Share crash reports* off. The switch closes the SDK
+immediately and puts Dish's own handlers back as they were, so it stops the
+very next report, not just later ones, and the choice persists in your
+preferences. Opting out never costs you the local log above.
+
+**Where the SDK keeps its state.** With the switch on, the SDK keeps its run
+state and any report it has not yet sent under
+`~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/`. Delete that folder at
+any time; the app recreates it only while the switch is on.
+
+**Builds that cannot upload.** Only official release builds from this
+repository carry the Sentry address (DSN) that the SDK needs; `bundle.sh`
+writes it into the app's `Info.plist` from a release-time secret. A
+`swift run` binary, a pull-request build or a fork carries none and cannot
+upload, whatever the switch says; Settings says so beneath the switch.
 
 macOS's own crash reporter may also write a report under
 `~/Library/Logs/DiagnosticReports`; that file belongs to the system, not to
@@ -141,6 +187,7 @@ so treat it as sensitive before attaching it to a public issue.
 | User notifications | One notice, the first time closing the window leaves Dish running behind the menu-bar item. macOS asks you for permission before it is shown. |
 | Host battery readout (IOKit) | Reporting your Mac's battery to the satellite in place of a pad that reports none. |
 | Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
+| `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |
 
 The app runs unsandboxed and asks for no other permission.
 
@@ -156,8 +203,10 @@ The app runs unsandboxed and asks for no other permission.
   chip on its card or the one in the header; muted sends no audio at all.
 - **Switch off automatic update checks** in Settings; nothing then leaves
   your network until you press "Check for updates" yourself.
+- **Switch off "Share crash reports"** in Settings; the SDK closes at once
+  and the next crash writes only the local log.
 - **Discard a crash log** from the "Crash report" row in Settings, or delete
-  `~/Library/Logs/Dish/crash.log` yourself; the report is never sent for you.
+  `~/Library/Logs/Dish/crash.log` yourself; that report is never sent for you.
 - **Quit from the menu-bar item**, or switch off "Keep running in the
   background" so closing the window quits.
 - **Reset everything** by deleting the app's preferences domain and the
