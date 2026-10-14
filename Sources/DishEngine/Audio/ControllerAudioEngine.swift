@@ -10,6 +10,7 @@
 // enforced here: a muted controller delivers nothing. The decisions are
 // `audioPlan` in the core; this is the IO that follows them.
 
+import Combine
 import CoreAudio
 import DishCore
 import DishKernel
@@ -172,6 +173,7 @@ private final class SlotAudio {
 
     private let playout: LanePlayout
     private let capture: MicCapture
+    private var applyWatch: AnyCancellable?
     private var output: AudioOutputPort?
     private var input: AudioInputPort?
     private var outputChannels = 0
@@ -202,6 +204,7 @@ private final class SlotAudio {
         let next = audioPlan(binding.facts)
         if connection !== binding.connection {
             connection = binding.connection
+            playout.restart()
             installHandlers(binding.connection)
         }
         reconcileOutput(next)
@@ -210,6 +213,7 @@ private final class SlotAudio {
     }
 
     func close() {
+        applyWatch = nil
         toneTimer?.cancel()
         toneTimer = nil
         tonePlaying = false
@@ -308,8 +312,12 @@ private final class SlotAudio {
         }
     }
 
+    /// The lanes start over each time the satellite confirms the slot plugged
+    /// again: that is a fresh pad on its side, with its sequence numbers
+    /// started over.
     private func installHandlers(_ connection: WifiConnection) {
         let playout = playout
+        applyWatch = connection.$slotApplyCount.dropFirst().sink { _ in playout.restart() }
         connection.setSpeakerAudioHandler { frame in playout.enqueue(.speaker, frame) }
         connection.setHapticAudioHandler { frame in playout.enqueue(.haptic, frame) }
         let slotId = slotId
