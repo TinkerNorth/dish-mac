@@ -44,7 +44,7 @@ frameworks each one may import.
 
 | Module | Role | Depends on | May import |
 |---|---|---|---|
-| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes), and under `Moonlight/` the Moonlight host protocol's constants, input encoders, control seal, event decoder and media ping | nothing | Foundation, CryptoKit |
+| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
 | `DishEngine` | Everything that does IO or owns state: discovery, pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, and `AppModel`, the one composition root | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
