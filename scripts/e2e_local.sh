@@ -101,7 +101,16 @@ cleanup() {
 }
 trap cleanup EXIT
 
-log "starting satellite headless (isolated HOME=${E2E_HOME})"
+# Hermetic: a test lane never phones GitHub for updates. The isolated HOME
+# seeds the satellite's config with the check off. Satellite 2.1.3 also
+# segfaults 31 s after launch when that check runs (its updater's reply
+# pointers are released before the worker thread reads them), which is what
+# turned this lane red whenever the driver's build outlasted the settle.
+SAT_CONFIG_DIR="${E2E_HOME}/Library/Application Support/satellite"
+mkdir -p "${SAT_CONFIG_DIR}"
+printf '{"autoCheck": false, "autoDownload": false}\n' >"${SAT_CONFIG_DIR}/config.json"
+
+log "starting satellite headless (isolated HOME=${E2E_HOME}, update check off)"
 HOME="${E2E_HOME}" "${SATELLITE_BIN}" >"${SAT_LOG}" 2>&1 &
 SAT_PID=$!
 

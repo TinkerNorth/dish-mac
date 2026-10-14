@@ -44,6 +44,18 @@ final class E2EWorkflowTests: XCTestCase {
         XCTAssertTrue(driver.contains("XCTSkipUnless"), "a plain `swift test` skips the driver")
     }
 
+    /// The lane's satellite is hermetic: its isolated home seeds a config
+    /// that turns the update check off before the satellite starts, so the
+    /// lane never phones GitHub, and satellite 2.1.3's updater crash (31 s
+    /// after launch, when that check runs) never reaches it.
+    func testTheScriptSeedsTheSatellitesConfigWithTheUpdateCheckOff() throws {
+        let script = try RepoFiles.read(Self.scriptPath)
+        XCTAssertTrue(script.contains("Library/Application Support/satellite"), "the satellite's config home")
+        let seed = try XCTUnwrap(script.range(of: #""autoCheck": false"#), "no update check from a test lane")
+        let launch = try XCTUnwrap(script.range(of: #"HOME="${E2E_HOME}" "${SATELLITE_BIN}""#))
+        XCTAssertTrue(seed.lowerBound < launch.lowerBound, "seeded before the satellite starts")
+    }
+
     private static func capture(_ pattern: String, in text: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),
