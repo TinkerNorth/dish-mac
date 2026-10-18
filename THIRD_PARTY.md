@@ -20,6 +20,7 @@ is first-party code with its own independently written crypto.
 | [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | 0.61.1 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
 | [SwiftLint](https://github.com/realm/SwiftLint) | 0.65.0 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
 | [sentry-cocoa](https://github.com/getsentry/sentry-cocoa) | 9.30.1 | `MIT` | Compiled into the app from the pinned Swift package; armed only by an official release build (the one kind that carries a reporting address) with *Share crash reports* on. See [`PRIVACY.md`](PRIVACY.md), section 3. | Keep the copyright and permission notice below |
+| [ENet](https://github.com/cgutman/enet) (cgutman fork, commit `44c85e1`) | the fork Wolf pins | `MIT` | No C is compiled. The client subset of its reliable-UDP protocol is ported to Swift under `Sources/DishCore/Moonlight/Enet/`; section 2c. | Keep the copyright and permission notice below |
 
 Everything under `Resources/` and `Sources/Dish/UI/BrandIcon.swift` is original
 TinkerNorth artwork, covered by this repository's own license.
@@ -27,7 +28,7 @@ TinkerNorth artwork, covered by this repository's own license.
 ## 2. Reused facts, not reused code
 
 Three sets of published facts are implemented here from their documentation,
-not copied as code:
+not copied as code, and one protocol is ported as adapted logic (section 2c):
 
 - **The XUSB (XInput) gamepad report layout and button bits**, from Microsoft's
   XInput documentation: the 12-byte report `MSG_INPUT` carries and the
@@ -123,6 +124,49 @@ SOFTWARE.
 Deliberately NOT consulted, to keep this LGPL-3.0 project clear of GPL-3.0
 Moonlight code: moonlight-common-c, moonlight-qt, moonlight-android, Sunshine,
 Apollo. Wolf's documentation and MIT source were sufficient.
+
+## 2c. ENet (the Moonlight control transport)
+
+ENet, SPDX `MIT`. Upstream: <http://enet.bespin.org/>; the fork and commit
+Wolf pins: <https://github.com/cgutman/enet>,
+`44c85e16279553d9c052e572bcbfcd745fb74abf`.
+
+**No ENet C source is compiled into Dish.** `Sources/DishCore/Moonlight/Enet/`
+is a minimal pure-Swift port of the reliable-UDP client subset the Moonlight
+control stream needs: the connect handshake, reliable send and receive on one
+channel, acknowledgements, ping and disconnect. It was ported from the fork's
+`protocol.c`, `peer.c` and `include/enet/protocol.h`: the wire structs and
+`commandSizes` table, the round-trip estimate and retransmission timeout of
+`enet_protocol_handle_acknowledge`, the give-up conditions of
+`enet_protocol_check_timeouts`, the reliable receive window of
+`enet_peer_queue_incoming_command`, and the ping rule of
+`enet_protocol_send_outgoing_commands`. Only the needed subset is reproduced:
+this client never sends a fragmented, unsequenced, throttle or bandwidth
+command and does not compress, but it measures and acknowledges all of them on
+receive, because a peer packs several commands into one datagram and a command
+whose size is unknown costs every command behind it.
+
+```
+Copyright (c) 2002-2020 Lee Salzman
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
 
 ## 3. Keeping this in sync
 
