@@ -86,6 +86,12 @@ struct ByteReader {
         return UInt16(bytes[offset]) | UInt16(bytes[offset + 1]) << 8
     }
 
+    mutating func u16BE() -> UInt16? {
+        guard remaining >= 2 else { return nil }
+        defer { offset += 2 }
+        return UInt16(bytes[offset]) << 8 | UInt16(bytes[offset + 1])
+    }
+
     mutating func u32LE() -> UInt32? {
         guard remaining >= 4 else { return nil }
         defer { offset += 4 }
