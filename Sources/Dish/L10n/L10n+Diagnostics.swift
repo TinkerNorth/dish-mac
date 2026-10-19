@@ -125,6 +125,56 @@ extension L10n {
         catalog.text("Round trip")
     }
 
+    // MARK: - A Moonlight host's card
+
+    var sessionIdle: String {
+        catalog.text("Idle")
+    }
+
+    var sessionLaunching: String {
+        catalog.text("Launching")
+    }
+
+    var sessionLive: String {
+        catalog.text("Live")
+    }
+
+    var sessionEnded: String {
+        catalog.text("Ended")
+    }
+
+    var hostName: String {
+        catalog.text("Host name")
+    }
+
+    var hostApp: String {
+        catalog.text("Host app")
+    }
+
+    var gfeVersion: String {
+        catalog.text("GFE version")
+    }
+
+    var runningApp: String {
+        catalog.text("Running app")
+    }
+
+    var controlRoundTrip: String {
+        catalog.text("Control round trip")
+    }
+
+    func padNumber(_ number: Int) -> String {
+        catalog.format("Pad %lld", number)
+    }
+
+    func wholeMilliseconds(_ ms: Int) -> String {
+        catalog.format("%lld ms", ms)
+    }
+
+    func reportsCount(_ count: Int) -> String {
+        catalog.format("%lld reports", count)
+    }
+
     var noSamplesYet: String {
         catalog.text("no samples yet")
     }

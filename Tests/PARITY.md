@@ -25,7 +25,7 @@
 | Runs in the background / window closed | ⚠️ | ✅ tray | ✅ tray | ✅ menu-bar item (closing the window keeps streaming; off in Settings quits) |
 | Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite (release-all on sleep, reconnect on wake) |
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional |
-| Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts, each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, the rumble bench, the test tone and the microphone meter) |
+| Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts for satellites and Moonlight hosts (the session's standing, the app, the control round trip, each pad's reports), each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, the rumble bench, the test tone and the microphone meter) |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ a satellite reads Fastest, a Moonlight host Fast |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
 | App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | ✅ header chip: live, muted or hidden; one click mutes or unmutes every armed mic |

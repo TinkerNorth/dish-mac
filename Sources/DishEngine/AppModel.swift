@@ -149,7 +149,7 @@ package final class AppModel: ObservableObject {
         activity = pipeline.activity
         wakeState = pipeline.wakeState
         wake = pipeline.wake
-        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub)
+        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight)
         recorder = DiagnosticsRecorder(store: diagnosticsLog)
         self.crashLog = crashLog
         let routing = InputRouting()
