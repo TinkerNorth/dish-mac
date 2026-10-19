@@ -19,7 +19,7 @@ final class MoonlightSessionMachineTests: XCTestCase {
         var reduction = reduce(state, .startRequested)
         XCTAssertEqual(reduction, MoonlightSessionReduction(next: State(phase: .checkingInfo), effects: [.fetchServerInfo]))
         state = reduction.next ?? state
-        reduction = reduce(state, .serverInfoOk(paired: true, currentGame: 0, remembered: true, identityChanged: false))
+        reduction = reduce(state, .serverInfoOk(paired: true, remembered: true, identityChanged: false))
         XCTAssertEqual(reduction, MoonlightSessionReduction(next: State(phase: .launching), effects: [.sendLaunch]))
         state = reduction.next ?? state
         reduction = reduce(state, .launchOk)
@@ -43,26 +43,23 @@ final class MoonlightSessionMachineTests: XCTestCase {
         XCTAssertEqual(reduction, MoonlightSessionReduction(next: State(phase: .streaming), effects: [.startStreaming]))
     }
 
-    func testServerInfoDecidesResumeAndNamesTheTrustFailures() {
+    func testServerInfoLaunchesFirstAndNamesTheTrustFailures() {
         let checking = State(phase: .checkingInfo)
         XCTAssertEqual(
-            reduce(checking, .serverInfoOk(paired: true, currentGame: 7, remembered: true, identityChanged: false)).next,
-            State(phase: .launching, resuming: true)
+            reduce(State(phase: .checkingInfo, resuming: true), .serverInfoOk(paired: true, remembered: true, identityChanged: false)).next,
+            State(phase: .launching, resuming: false),
+            "a running app is asked for with a /launch first; the host says whether it is ours to resume"
         )
         XCTAssertEqual(
-            reduce(checking, .serverInfoOk(paired: true, currentGame: -1, remembered: true, identityChanged: false)).next?.resuming,
-            false
-        )
-        XCTAssertEqual(
-            reduce(checking, .serverInfoOk(paired: false, currentGame: 0, remembered: false, identityChanged: false)).next?.phase,
+            reduce(checking, .serverInfoOk(paired: false, remembered: false, identityChanged: false)).next?.phase,
             .failed(.notPaired)
         )
         XCTAssertEqual(
-            reduce(checking, .serverInfoOk(paired: false, currentGame: 0, remembered: true, identityChanged: false)).next?.phase,
+            reduce(checking, .serverInfoOk(paired: false, remembered: true, identityChanged: false)).next?.phase,
             .failed(.trustLost)
         )
         XCTAssertEqual(
-            reduce(checking, .serverInfoOk(paired: false, currentGame: 0, remembered: true, identityChanged: true)).next?.phase,
+            reduce(checking, .serverInfoOk(paired: false, remembered: true, identityChanged: true)).next?.phase,
             .failed(.hostReplaced),
             "another identity is named before pairing is judged"
         )
@@ -70,6 +67,10 @@ final class MoonlightSessionMachineTests: XCTestCase {
             reduce(checking, .serverInfoFailed),
             MoonlightSessionReduction(next: State(phase: .failed(.unreachable)), effects: [.teardown, .notifyFailure])
         )
+    }
+
+    private func checkingState() -> State {
+        State(phase: .checkingInfo)
     }
 
     func testLaunchBusyResumesOnceThenFails() {
@@ -85,6 +86,8 @@ final class MoonlightSessionMachineTests: XCTestCase {
         XCTAssertEqual(reduce(launching, .launchFailed).next?.phase, .failed(.launchRejected))
         XCTAssertEqual(reduce(State(phase: .launching, resuming: true), .launchFailed).next?.phase, .failed(.resumeFailed))
         XCTAssertEqual(reduce(launching, .noAppsAvailable).next?.phase, .failed(.noApps))
+        XCTAssertEqual(reduce(launching, .pickedAppRemoved).next?.phase, .failed(.appRemoved), "the pick is the user's to change")
+        XCTAssertEqual(reduce(checkingState(), .pickedAppRemoved), .ignored, "only a launch knows the list")
     }
 
     func testTheLaterFailuresKeepTheirNames() {

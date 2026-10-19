@@ -26,7 +26,7 @@ final class MoonlightConnectionTests: XCTestCase {
     /// Every step from idle to the live stream, as the manager would drive it.
     private func stream(_ conn: MoonlightConnection) {
         _ = conn.apply(.startRequested)
-        _ = conn.apply(.serverInfoOk(paired: true, currentGame: 0, remembered: false, identityChanged: false))
+        _ = conn.apply(.serverInfoOk(paired: true, remembered: false, identityChanged: false))
         _ = conn.apply(.launchOk)
         _ = conn.apply(.rtspReady)
         for _ in MoonlightRtspStep.allCases {
@@ -52,8 +52,8 @@ final class MoonlightConnectionTests: XCTestCase {
         XCTAssertTrue(conn.hasSession, "a converge waits on a session coming up instead of opening a second")
         XCTAssertEqual(conn.apply(.launchOk), [], "a stray completion is ignored")
         XCTAssertEqual(conn.phase, .checkingInfo)
-        XCTAssertEqual(conn.apply(.serverInfoOk(paired: true, currentGame: 42, remembered: true, identityChanged: false)), [.sendLaunch])
-        XCTAssertEqual(conn.machine, MoonlightSessionMachineState(phase: .launching, resuming: true))
+        XCTAssertEqual(conn.apply(.serverInfoOk(paired: true, remembered: true, identityChanged: false)), [.sendLaunch])
+        XCTAssertEqual(conn.machine, MoonlightSessionMachineState(phase: .launching, resuming: false))
         XCTAssertEqual(conn.apply(.stopRequested), [.teardown])
         XCTAssertEqual(conn.phase, .idle)
     }
