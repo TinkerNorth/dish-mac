@@ -19,6 +19,16 @@ the repos share a version number.
 
 ## [Unreleased]
 
+### Fixed
+
+- **A failure says itself once.** A scan that found nothing showed its message
+  three times: inline in the Connections sheet, inline at the bottom of the
+  window, and as a toast under them that stretched to the window's full
+  height. The toast is now the one place a failure or a notice appears, over
+  the sheet's bottom while the sheet is open and at the window's bottom
+  otherwise, and it is as tall as its text. The pairing sheet keeps its
+  message under the PIN field, with no toast behind it.
+
 ### Added
 
 - **Moonlight hosts.** Sunshine, Apollo and Wolf as hosts beside the

@@ -5,11 +5,14 @@ import DishEngine
 import SwiftUI
 
 /// The dashboard window: the status row, the controller slot list, and the
-/// Manage button that presents `ConnectionsView` in a sheet.
+/// Manage button that presents `ConnectionsView` in a sheet. Failures and
+/// notices surface once, as toasts at the bottom; while the Connections sheet
+/// is up they show in the sheet instead, since it covers the strip.
 struct MainView: View {
 
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var wifi: WifiConnectionManager
+    @EnvironmentObject var notifications: DishNotificationCenter
     @State private var showConnections = false
     @State private var showSettings = false
 
@@ -21,16 +24,19 @@ struct MainView: View {
             Divider().background(DishTheme.outline)
             slotSection
             Spacer(minLength: 0)
-            if let failure = model.lastFailure {
-                ErrorBanner(message: failureText(failure)) { model.clearFailure() }
-            }
         }
         .padding(20)
+        .overlay(alignment: .bottom) {
+            if !showConnections {
+                NotificationOverlay()
+            }
+        }
         .sheet(isPresented: $showConnections) {
             ConnectionsView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)
                 .environmentObject(model.moonlight)
+                .environmentObject(notifications)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()

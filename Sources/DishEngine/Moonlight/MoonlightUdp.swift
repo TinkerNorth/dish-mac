@@ -20,16 +20,21 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
     /// How long a close waits for the datagrams already handed over before
     /// it cuts the socket anyway.
     static let drainTimeout: TimeInterval = 1
+    /// How long a close keeps the socket after the last datagram was
+    /// processed: processed means handed to the network stack, not yet on
+    /// the wire, and a cancel on its heels can still lose it.
+    static let drainGrace: TimeInterval = 0.1
 
     var onDatagram: ((Data) -> Void)?
     private let connection: NWConnection
     private let queue: DispatchQueue
     private let lock = NSLock()
     private var readyContinuation: CheckedContinuation<Bool, Never>?
-    /// Datagrams handed to the socket and not yet processed, and whether a
-    /// close is waiting on them.
+    /// Datagrams handed to the socket and not yet processed, whether a close
+    /// is waiting on them, and whether its grace has run.
     private var inFlight = 0
     private var closing = false
+    private var graceElapsed = false
 
     init(address: String, port: UInt16, queue: DispatchQueue = DispatchQueue(label: "dish.moonlight.control-udp", qos: .userInteractive)) {
         self.queue = queue
@@ -55,17 +60,20 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
         connection.send(content: datagram, completion: .contentProcessed { [weak self] _ in self?.processed() })
     }
 
-    /// Cuts the socket once every datagram already handed over has left, or
-    /// after `drainTimeout`: a TERMINATION or a DISCONNECT cancelled behind
-    /// is one the host never hears.
+    /// Cuts the socket once every datagram already handed over has been
+    /// processed and `drainGrace` has passed, or after `drainTimeout`
+    /// whatever is still pending: a TERMINATION or a DISCONNECT cancelled
+    /// behind is one the host never hears.
     func close() {
         lock.lock()
         closing = true
-        let idle = inFlight == 0
         lock.unlock()
-        if idle {
-            connection.cancel()
-            return
+        queue.asyncAfter(deadline: .now() + Self.drainGrace) { [weak self] in
+            guard let self else { return }
+            lock.lock()
+            graceElapsed = true
+            lock.unlock()
+            cancelIfDrained()
         }
         queue.asyncAfter(deadline: .now() + Self.drainTimeout) { [weak self] in self?.connection.cancel() }
     }
@@ -73,9 +81,15 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
     private func processed() {
         lock.lock()
         inFlight -= 1
-        let last = closing && inFlight == 0
         lock.unlock()
-        if last { connection.cancel() }
+        cancelIfDrained()
+    }
+
+    private func cancelIfDrained() {
+        lock.lock()
+        let drained = closing && graceElapsed && inFlight == 0
+        lock.unlock()
+        if drained { connection.cancel() }
     }
 
     private func stateChanged(_ state: NWConnection.State) {

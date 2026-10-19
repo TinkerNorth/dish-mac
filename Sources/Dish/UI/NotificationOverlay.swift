@@ -33,7 +33,9 @@ struct NotificationOverlay: View {
 }
 
 /// One toast: a severity rail, a glyph, the title, an optional monospace
-/// body, an optional action, and the close cross.
+/// body, an optional action, and the close cross. As tall as its text and no
+/// taller: the rail is a shape, which would otherwise take whatever height
+/// the window offers.
 struct NotificationToast: View {
 
     let notification: DishNotification
@@ -84,6 +86,7 @@ struct NotificationToast: View {
                 .help(words.dismiss)
             }
         }
+        .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, 8)
         .padding(.horizontal, 10)
         .background(DishTheme.surface)
