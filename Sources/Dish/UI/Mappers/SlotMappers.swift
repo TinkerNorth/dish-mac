@@ -6,10 +6,11 @@ import DishEngine
 import Foundation
 import SwiftUI
 
-/// The connections a slot may bind to: every one not already bound to a
-/// different slot.
+/// The connections a slot may bind to: the one it is bound to, and every one
+/// with room for another slot (a satellite carries one pad, a Moonlight host
+/// four).
 func bindableConnections(for slot: ControllerSlot, in connections: [ConnectionSummary]) -> [ConnectionSummary] {
-    connections.filter { $0.boundSlotId == nil || $0.boundSlotId == slot.id }
+    connections.filter { $0.boundSlotIds.contains(slot.id) || $0.hasRoomForAnotherSlot }
 }
 
 /// Where a slot's input goes, with the bound server's state in brackets

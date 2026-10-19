@@ -12,16 +12,32 @@ import DishCore
 import Foundation
 
 /// A Moonlight host (Sunshine, Apollo, Wolf) as discovery or the user named it.
-struct MoonlightHost: Equatable {
-    var name: String
-    var address: String
-    var httpPort: UInt16 = MoonlightProtocol.httpPort
-    var httpsPort: UInt16 = MoonlightProtocol.httpsPort
+package struct MoonlightHost: Equatable {
+    package var name: String
+    package var address: String
+    package var httpPort: UInt16 = MoonlightProtocol.httpPort
+    package var httpsPort: UInt16 = MoonlightProtocol.httpsPort
     /// What the host answered /serverinfo with; empty until asked.
-    var uniqueId = ""
-    var manual = false
+    package var uniqueId = ""
+    package var manual = false
 
-    var id: String {
+    package init(
+        name: String,
+        address: String,
+        httpPort: UInt16 = MoonlightProtocol.httpPort,
+        httpsPort: UInt16 = MoonlightProtocol.httpsPort,
+        uniqueId: String = "",
+        manual: Bool = false
+    ) {
+        self.name = name
+        self.address = address
+        self.httpPort = httpPort
+        self.httpsPort = httpsPort
+        self.uniqueId = uniqueId
+        self.manual = manual
+    }
+
+    package var id: String {
         MoonlightHostStore.hostId(address: address)
     }
 

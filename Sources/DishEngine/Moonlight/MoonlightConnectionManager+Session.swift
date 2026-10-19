@@ -107,6 +107,17 @@ extension MoonlightConnectionManager {
         await run(conn.apply(.stopRequested), on: conn)
     }
 
+    /// Stop a host's session for the user and keep its pads claimed: the
+    /// app is left running (a resume is the next session's to ask for), and
+    /// the next converge opens again.
+    func disconnect(hostId: String) {
+        serialized { [weak self] in
+            guard let self, let conn = connections[hostId] else { return }
+            await run(conn.apply(.stopRequested), on: conn)
+            publishSessionHosts()
+        }
+    }
+
     /// Tell the host to end the app it runs: the protocol's own way out of
     /// "an app is already running" when the host will not resume it for us.
     /// /cancel answers 200 whether or not anything ran, so nothing is believed from it.

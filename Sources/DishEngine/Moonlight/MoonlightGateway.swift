@@ -23,14 +23,20 @@ protocol MoonlightPinRegistry: AnyObject {
 extension ConnectionStore: MoonlightPinRegistry {}
 
 final class MoonlightGateway {
-    private let identity: MoonlightIdentityStore?
+    /// Minted in the keychain off the main thread at launch and adopted
+    /// here; a secure call before that presents no client certificate.
+    private let identity: LockedBox<MoonlightIdentityStore?>
     private let pins: MoonlightPinRegistry
     private let transport: MoonlightHttpTransport
 
     init(identity: MoonlightIdentityStore?, pins: MoonlightPinRegistry, transport: MoonlightHttpTransport = MoonlightHttpTransport()) {
-        self.identity = identity
+        self.identity = LockedBox(identity)
         self.pins = pins
         self.transport = transport
+    }
+
+    func adoptIdentity(_ store: MoonlightIdentityStore) {
+        identity.set(store)
     }
 
     /// Plain HTTP: /serverinfo on the plaintext port and pairing phases 1 to
@@ -47,7 +53,7 @@ final class MoonlightGateway {
     /// inside the handshake.
     func getSecure(_ request: MoonlightHttpRequest, hostId: String) async -> MoonlightHttpReply {
         let pins = pins
-        let tls = MoonlightTls(identity: identity?.secIdentity()) { leaf in
+        let tls = MoonlightTls(identity: identity.get()?.secIdentity()) { leaf in
             let presented = sha256FingerprintHex(leaf)
             switch tofuVerdict(pinned: pins.certPin(host: hostId), presented: presented) {
             case .trustFirstUse:
@@ -66,7 +72,7 @@ final class MoonlightGateway {
     /// the one phases 1 to 4 proved, for phase 5.
     func getSecureTrusting(_ request: MoonlightHttpRequest, certificateDER: Data) async -> MoonlightHttpReply {
         let expected = sha256FingerprintHex(certificateDER)
-        let tls = MoonlightTls(identity: identity?.secIdentity()) { leaf in sha256FingerprintHex(leaf) == expected }
+        let tls = MoonlightTls(identity: identity.get()?.secIdentity()) { leaf in sha256FingerprintHex(leaf) == expected }
         return await transport.get(request, tls: tls, timeout: MoonlightHttpTransport.tlsTimeout)
     }
 
