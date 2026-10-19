@@ -37,6 +37,8 @@ public enum MoonlightSessionFailure: Equatable, Sendable {
     case hostReplaced
     /// The host lists no app and nothing was picked.
     case noApps
+    /// The app picked for the host is no longer on its list; the pick is the user's to change.
+    case appRemoved
     /// /launch or /resume returned no session.
     case launchRejected
     /// The host holds an app and would not hand it over.
@@ -65,7 +67,8 @@ public enum MoonlightSessionPhase: Equatable, Sendable {
 
 public struct MoonlightSessionMachineState: Equatable, Sendable {
     public var phase: MoonlightSessionPhase = .idle
-    /// From launching on: the launch is a /resume of an app already running.
+    /// The host refused the launch with an app of ours already running and
+    /// offered to hand it back: the next launch is a /resume.
     public var resuming = false
 
     public init(phase: MoonlightSessionPhase = .idle, resuming: Bool = false) {
@@ -76,12 +79,14 @@ public struct MoonlightSessionMachineState: Equatable, Sendable {
 
 public enum MoonlightSessionEvent: Equatable, Sendable {
     case startRequested
-    /// `paired` is PairStatus for this client; a non-zero `currentGame` makes
-    /// the launch a resume; `remembered` is a stored pairing with this host;
-    /// `identityChanged` is a uniqueid that is not the one remembered.
-    case serverInfoOk(paired: Bool, currentGame: Int, remembered: Bool, identityChanged: Bool)
+    /// `paired` is PairStatus for this client over mutual TLS; `remembered`
+    /// is a stored pairing with this host; `identityChanged` is a uniqueid
+    /// that is not the one remembered.
+    case serverInfoOk(paired: Bool, remembered: Bool, identityChanged: Bool)
     case serverInfoFailed
     case noAppsAvailable
+    /// The remembered pick is no longer on the host's list.
+    case pickedAppRemoved
     case launchOk
     case launchFailed
     /// The host refused in the body with an app already running; `resumable` is its `<resume>`.
@@ -178,14 +183,16 @@ private func fromIdle(_ event: MoonlightSessionEvent) -> MoonlightSessionReducti
 
 private func fromCheckingInfo(_ state: MoonlightSessionMachineState, _ event: MoonlightSessionEvent) -> MoonlightSessionReduction {
     switch event {
-    case let .serverInfoOk(paired, currentGame, remembered, identityChanged):
+    case let .serverInfoOk(paired, remembered, identityChanged):
         // A host with another identity is not the one the stored pairing anchors;
         // re-pairing is the only way back, so it is named before pairing is judged.
         if identityChanged { return fail(state, .hostReplaced) }
         if !paired { return fail(state, remembered ? .trustLost : .notPaired) }
         var next = state
         next.phase = .launching
-        next.resuming = currentGame != 0 && currentGame != -1
+        // A running app is asked for with a /launch first, as every client
+        // does: the host says whether it is ours to resume.
+        next.resuming = false
         return MoonlightSessionReduction(next: next, effects: [.sendLaunch])
     case .serverInfoFailed:
         return fail(state, .unreachable)
@@ -213,6 +220,8 @@ private func fromLaunching(_ state: MoonlightSessionMachineState, _ event: Moonl
         return fail(state, state.resuming ? .resumeFailed : .launchRejected)
     case .noAppsAvailable:
         return fail(state, .noApps)
+    case .pickedAppRemoved:
+        return fail(state, .appRemoved)
     default:
         return .ignored
     }
