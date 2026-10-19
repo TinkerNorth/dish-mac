@@ -17,12 +17,19 @@ import Network
 /// host sends on one queue.
 final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable {
     static let readyTimeout: TimeInterval = 5
+    /// How long a close waits for the datagrams already handed over before
+    /// it cuts the socket anyway.
+    static let drainTimeout: TimeInterval = 1
 
     var onDatagram: ((Data) -> Void)?
     private let connection: NWConnection
     private let queue: DispatchQueue
     private let lock = NSLock()
     private var readyContinuation: CheckedContinuation<Bool, Never>?
+    /// Datagrams handed to the socket and not yet processed, and whether a
+    /// close is waiting on them.
+    private var inFlight = 0
+    private var closing = false
 
     init(address: String, port: UInt16, queue: DispatchQueue = DispatchQueue(label: "dish.moonlight.control-udp", qos: .userInteractive)) {
         self.queue = queue
@@ -42,11 +49,33 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
     }
 
     func send(_ datagram: Data) {
-        connection.send(content: datagram, completion: .contentProcessed { _ in })
+        lock.lock()
+        inFlight += 1
+        lock.unlock()
+        connection.send(content: datagram, completion: .contentProcessed { [weak self] _ in self?.processed() })
     }
 
+    /// Cuts the socket once every datagram already handed over has left, or
+    /// after `drainTimeout`: a TERMINATION or a DISCONNECT cancelled behind
+    /// is one the host never hears.
     func close() {
-        connection.cancel()
+        lock.lock()
+        closing = true
+        let idle = inFlight == 0
+        lock.unlock()
+        if idle {
+            connection.cancel()
+            return
+        }
+        queue.asyncAfter(deadline: .now() + Self.drainTimeout) { [weak self] in self?.connection.cancel() }
+    }
+
+    private func processed() {
+        lock.lock()
+        inFlight -= 1
+        let last = closing && inFlight == 0
+        lock.unlock()
+        if last { connection.cancel() }
     }
 
     private func stateChanged(_ state: NWConnection.State) {

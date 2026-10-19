@@ -291,6 +291,12 @@ enum FakeSatelliteThrowawayKeychain {
     private static var resolved = false
     private static var keychain: SecKeychain?
 
+    /// A keychain of its own, for a test that needs two identities at once:
+    /// a host's beside the dish's, each found under the one label.
+    static func another() -> SecKeychain? {
+        create()
+    }
+
     private static func create() -> SecKeychain? {
         let directory = FileManager.default.temporaryDirectory
             .appendingPathComponent("fake-satellite-\(UUID().uuidString)", isDirectory: true)

@@ -11,29 +11,6 @@ import XCTest
 /// whatever is pinned, and two records of one host fold their pins.
 final class MoonlightGatewayTests: XCTestCase {
 
-    private final class MemoryPins: MoonlightPinRegistry {
-        private let lock = NSLock()
-        private var pins: [String: String] = [:]
-
-        func certPin(host: String) -> String? {
-            lock.lock()
-            defer { lock.unlock() }
-            return pins[host]
-        }
-
-        func setCertPin(host: String, fingerprintHex: String) {
-            lock.lock()
-            pins[host] = fingerprintHex
-            lock.unlock()
-        }
-
-        func forgetCertPin(host: String) {
-            lock.lock()
-            pins.removeValue(forKey: host)
-            lock.unlock()
-        }
-    }
-
     private var server: MoonlightLoopbackServer!
     private var pins: MemoryPins!
     private var hostIdentity: FakeSatelliteIdentity!

@@ -231,6 +231,11 @@ Each entry names the decided shape, so a change lands on it.
   never sleeps. `IntegrationLiveSatelliteE2ETests` runs against the real
   satellite binary through `scripts/e2e_local.sh`, locally and in CI's
   `e2e.yml` lane, which builds the satellite from its pinned release tag.
+  `IntegrationMoonlightFakeHostTests` drives the Moonlight manager over the
+  real sockets against `FakeMoonlightHost`, a loopback host that answers the
+  probe and the five pairing phases as Sunshine and Wolf do, hands out its
+  ports over RTSP, and opens every sealed control packet with the launch's
+  key, so the suite reads what a host would have read.
 - **The rules are tested.** `Tests/ArchitectureTests` reads the tree: import
   boundaries, the dependency graph, license headers, suppressions, mutable
   statics, the lint thresholds and the version mirrors.

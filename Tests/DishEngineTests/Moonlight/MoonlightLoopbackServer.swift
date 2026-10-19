@@ -20,6 +20,7 @@ final class MoonlightLoopbackServer: @unchecked Sendable {
 
     private let lock = NSLock()
     private var answers: [String: Answer] = [:]
+    private var responder: ((String) -> Answer?)?
     private var listener: NWListener?
     private var connections: [NWConnection] = []
     private(set) var clientCertificates: [Data] = []
@@ -34,8 +35,20 @@ final class MoonlightLoopbackServer: @unchecked Sendable {
     }
 
     func answer(_ path: String, status: Int, body: String, headers: [String] = []) {
+        answer(path, Self.httpAnswer(status: status, body: body, headers: headers))
+    }
+
+    /// An answer computed from the request target (path and query), asked
+    /// before the canned answers; nil falls through to them.
+    func respond(_ responder: @escaping (String) -> Answer?) {
+        lock.lock()
+        self.responder = responder
+        lock.unlock()
+    }
+
+    static func httpAnswer(status: Int, body: String, headers: [String] = []) -> Answer {
         let head = ["HTTP/1.1 \(status) OK", "Content-Length: \(body.utf8.count)"] + headers
-        answer(path, .bytes(Data((head.joined(separator: "\r\n") + "\r\n\r\n" + body).utf8)))
+        return .bytes(Data((head.joined(separator: "\r\n") + "\r\n\r\n" + body).utf8))
     }
 
     /// Plain, or TLS with `identity`; with `requireClientCertificate` the
@@ -109,8 +122,10 @@ final class MoonlightLoopbackServer: @unchecked Sendable {
             let path = target.split(separator: "?").first.map(String.init) ?? target
             lock.lock()
             requests.append(target)
-            let answer = answers[path]
+            let canned = answers[path]
+            let responder = responder
             lock.unlock()
+            let answer = responder?(target) ?? canned
             switch answer {
             case let .bytes(bytes):
                 connection.send(content: bytes, completion: .contentProcessed { _ in connection.cancel() })
