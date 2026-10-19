@@ -34,6 +34,23 @@ final class MoonlightUdpTests: XCTestCase {
         transport.close()
     }
 
+    func testACloseLetsTheDatagramsHandedOverBeforeItLeave() async throws {
+        // The session's goodbye is two datagrams followed at once by the close;
+        // a socket cut underneath them is a host that never hears it.
+        let listener = MoonlightLoopbackUdp()
+        let port = try listener.start()
+        defer { listener.stop() }
+        let transport = UdpControlTransport(address: "127.0.0.1", port: port)
+        let ready = await transport.start()
+        XCTAssertTrue(ready)
+        transport.send(Data([0x01, 0x09]))
+        transport.send(Data([0x00, 0x04]))
+        transport.close()
+        let both = await waitUntil { listener.count() == 2 }
+        XCTAssertTrue(both, "TERMINATION and DISCONNECT both left before the socket went")
+        XCTAssertEqual(listener.datagrams(), [Data([0x01, 0x09]), Data([0x00, 0x04])])
+    }
+
     func testThePingerSendsThePayloadFormOnBothLanesEveryHalfSecond() async throws {
         let video = MoonlightLoopbackUdp()
         let audio = MoonlightLoopbackUdp()

@@ -274,8 +274,8 @@ final class InMemoryMoonlightIdentity: MoonlightClientIdentity, MoonlightSignatu
 /// manager's /pair requests by the phrase each identifies itself with. A
 /// pairing that ends early still minted a PIN; the next attempt mints its own.
 final class ReferenceMoonlightHost: @unchecked Sendable {
-    private let identity: InMemoryMoonlightIdentity
-    private let client: InMemoryMoonlightIdentity
+    private let identity: MoonlightClientIdentity
+    private let client: MoonlightPairingIdentity
     private let pin: () -> String
     private let lock = NSLock()
     private var aesKey = Data()
@@ -287,14 +287,14 @@ final class ReferenceMoonlightHost: @unchecked Sendable {
     var stopAt: Int?
     private(set) var paired = false
 
-    init(identity: InMemoryMoonlightIdentity, client: InMemoryMoonlightIdentity, pin: @escaping () -> String) {
+    init(identity: MoonlightClientIdentity, client: MoonlightPairingIdentity, pin: @escaping () -> String) {
         self.identity = identity
         self.client = client
         self.pin = pin
     }
 
     var certificateDER: Data {
-        identity.certificateDER
+        MoonlightCertificate.der(fromPem: identity.certificatePem) ?? Data()
     }
 
     func answer(_ request: MoonlightHttpRequest) -> MoonlightHttpReply? {
