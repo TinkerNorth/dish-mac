@@ -6,7 +6,10 @@ import SwiftUI
 
 /// The connection-management sheet: scan, pair, connect, and forget a
 /// remembered satellite, and the Moonlight hosts under their own header. A
-/// manual address is the escape hatch when discovery is dead.
+/// manual address is the escape hatch when discovery is dead. Failures and
+/// notices arrive as toasts over the sheet's bottom, the same strip the
+/// window shows when the sheet is down; only an address the sheet itself
+/// could not read gets an inline banner.
 struct ConnectionsView: View {
 
     @EnvironmentObject var model: AppModel
@@ -43,11 +46,6 @@ struct ConnectionsView: View {
                 }
                 .padding(20)
             }
-            if let failure = model.lastFailure {
-                ErrorBanner(message: failureText(failure)) { model.clearFailure() }
-                    .padding(.horizontal, 20)
-                    .padding(.bottom, 12)
-            }
             if let manualAddressError {
                 ErrorBanner(message: manualAddressError) { self.manualAddressError = nil }
                     .padding(.horizontal, 20)
@@ -56,6 +54,9 @@ struct ConnectionsView: View {
         }
         .frame(minWidth: 480, minHeight: 540)
         .background(DishTheme.background)
+        .overlay(alignment: .bottom) {
+            NotificationOverlay()
+        }
         // SwiftUI cannot activate a second sibling sheet on MainView while
         // this one is up, so pairing is also presented from here.
         .sheet(item: $model.pairingTarget) { server in

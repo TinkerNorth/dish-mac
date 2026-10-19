@@ -53,12 +53,12 @@ struct DishApp: App {
                 .environmentObject(notifications)
                 .frame(minWidth: 520, minHeight: 640)
                 .background(DishTheme.background.ignoresSafeArea())
-                .overlay(alignment: .bottom) {
-                    NotificationOverlay()
-                        .environmentObject(notifications)
-                }
                 .onAppear {
-                    failureNotifier.bind(model: model, center: notifications)
+                    failureNotifier.bind(
+                        failures: model.failures.eraseToAnyPublisher(),
+                        shownInline: { model.pairingTarget != nil },
+                        center: notifications
+                    )
                     moonlightNotifier.bind(events: model.moonlight.events.eraseToAnyPublisher(), center: notifications) { host in
                         model.quitMoonlightApp(host.id)
                     }
