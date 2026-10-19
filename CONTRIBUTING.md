@@ -285,6 +285,9 @@ shape.
 ## Branching & PRs
 
 - All changes land on `main` via pull request: no direct pushes.
+- Commits and PR descriptions name no tool. No `Co-Authored-By` trailer for an
+  assistant, no "Generated with …" footer: the author of record is the person
+  who opened the PR, whatever helped write it.
 - Use the PR template (`.github/pull_request_template.md`) to describe the
   change, the tests that failed before it, the manual test matrix you ran
   (controller types tried, pairing scenarios), and call out anything that
