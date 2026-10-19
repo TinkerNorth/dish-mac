@@ -30,6 +30,7 @@ struct MainView: View {
             ConnectionsView()
                 .environmentObject(model)
                 .environmentObject(model.wifi)
+                .environmentObject(model.moonlight)
         }
         .sheet(isPresented: $showSettings) {
             SettingsView()
@@ -39,6 +40,10 @@ struct MainView: View {
             PairingSheet(server: server)
                 .environmentObject(model)
                 .environmentObject(model.wifi)
+        }
+        .sheet(item: $model.moonlightPin) { prompt in
+            MoonlightPinSheet(prompt: prompt)
+                .environmentObject(model)
         }
     }
 

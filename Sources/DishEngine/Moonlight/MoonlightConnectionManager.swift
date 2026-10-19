@@ -18,7 +18,7 @@ import DishCore
 import Foundation
 
 /// What the manager tells the app, as data; the app words each case.
-enum MoonlightConnectionEvent: Equatable {
+package enum MoonlightConnectionEvent: Equatable {
     /// The dish minted `pin`; the user types it into the host's own page.
     case pairingPinReady(host: MoonlightHost, pin: String)
     case paired(MoonlightHost)
@@ -49,8 +49,8 @@ enum MoonlightConnectionEvent: Equatable {
 
 /// Why a pairing did not end in trust: which phase gave up, how, and the
 /// host's own words when it had any.
-struct MoonlightPairingFailure: Equatable {
-    enum Kind: Equatable {
+package struct MoonlightPairingFailure: Equatable {
+    package enum Kind: Equatable {
         /// This device has no identity to pair with: the keychain refused to mint one.
         case noIdentity
         case noCertificate
@@ -63,10 +63,17 @@ struct MoonlightPairingFailure: Equatable {
         case notConfirmed
     }
 
-    var phase: Int
-    var kind: Kind
-    var httpStatus: Int
-    var hostSaid: String
+    package var phase: Int
+    package var kind: Kind
+    package var httpStatus: Int
+    package var hostSaid: String
+
+    package init(phase: Int, kind: Kind, httpStatus: Int, hostSaid: String) {
+        self.phase = phase
+        self.kind = kind
+        self.httpStatus = httpStatus
+        self.hostSaid = hostSaid
+    }
 }
 
 /// How far a host is trusted, as of the last time it was asked. There is no
@@ -106,20 +113,23 @@ typealias MoonlightPairingIdentity = MoonlightClientIdentity & MoonlightSignatur
 
 /// The published state is written here and by the manager's own extensions, never from outside the engine.
 @MainActor
-final class MoonlightConnectionManager: ObservableObject {
+package final class MoonlightConnectionManager: ObservableObject {
     @Published var connections: [String: MoonlightConnection] = [:]
-    @Published var discoveredHosts: [MoonlightHost] = []
-    @Published private(set) var isScanning = false
+    @Published package var discoveredHosts: [MoonlightHost] = []
+    @Published package private(set) var isScanning = false
     /// Hosts that answered a mutual-TLS call in this process: the only proof
     /// a pairing stands, so a row can say Paired and not merely Remembered.
-    @Published var verifiedHostIds: Set<String> = []
+    @Published package var verifiedHostIds: Set<String> = []
     /// Hosts this device holds a session open for.
-    @Published var sessionHostIds: Set<String> = []
-    @Published var pairingInFlight: Set<String> = []
+    @Published package var sessionHostIds: Set<String> = []
+    @Published package var pairingInFlight: Set<String> = []
     @Published var rememberedHosts: [RememberedMoonlightHost] = []
     /// What each host last said about itself, for the diagnostics.
     @Published var hostFacts: [String: MoonlightServerInfo] = [:]
-    let events = PassthroughSubject<MoonlightConnectionEvent, Never>()
+    /// The apps each host listed the last time a probe read them: what the
+    /// app picker offers.
+    @Published package var hostApps: [String: [MoonlightApp]] = [:]
+    package let events = PassthroughSubject<MoonlightConnectionEvent, Never>()
 
     let store: MoonlightHostStore
     let gateway: MoonlightHostGateway
@@ -159,6 +169,11 @@ final class MoonlightConnectionManager: ObservableObject {
 
     func get(_ id: String) -> MoonlightConnection? {
         connections[id]
+    }
+
+    /// Where a host's session stands, for the row's actions; nil for a host with no session object yet.
+    package func phase(of hostId: String) -> MoonlightSessionPhase? {
+        connections[hostId]?.phase
     }
 
     /// The identity minted off the main thread at launch.

@@ -21,6 +21,7 @@ struct DishApp: App {
     )
     @StateObject private var notifications = DishNotificationCenter()
     @StateObject private var failureNotifier = FailureNotifier()
+    @StateObject private var moonlightNotifier = MoonlightNotifier()
     @StateObject private var updateNotifier = UpdateNotifier()
     @NSApplicationDelegateAdaptor private var delegate: DishAppDelegate
     @Environment(\.openWindow) private var openWindow
@@ -41,6 +42,7 @@ struct DishApp: App {
                 .preferredColorScheme(colorScheme(for: model.theme.state))
                 .environmentObject(model)
                 .environmentObject(model.wifi)
+                .environmentObject(model.moonlight)
                 .environmentObject(model.settings)
                 .environmentObject(model.theme)
                 .environmentObject(model.background)
@@ -57,6 +59,9 @@ struct DishApp: App {
                 }
                 .onAppear {
                     failureNotifier.bind(model: model, center: notifications)
+                    moonlightNotifier.bind(events: model.moonlight.events.eraseToAnyPublisher(), center: notifications) { host in
+                        model.quitMoonlightApp(host.id)
+                    }
                     updateNotifier.bind(checker: model.updates, center: notifications)
                     delegate.bind(background: model.background, announcer: BackgroundAnnouncer())
                 }

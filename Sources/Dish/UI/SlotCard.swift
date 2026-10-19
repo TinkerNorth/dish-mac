@@ -103,21 +103,23 @@ struct SlotCard: View {
         }
     }
 
-    /// The Emulate picker: Auto, then every type the satellite offers.
+    /// The Emulate picker: Auto, then every type the satellite offers, or
+    /// the three a Moonlight host plugs in.
     private func emulateRow(_ emulation: SlotEmulation) -> some View {
-        HStack(spacing: 8) {
+        let picker = emulatePicker(for: slot, emulation)
+        return HStack(spacing: 8) {
             Text(words.emulateAs)
                 .font(DishFont.caption)
                 .foregroundColor(DishTheme.muted)
             Picker("", selection: emulateBinding(emulation)) {
-                ForEach(emulateOptions(emulation)) { option in
+                ForEach(picker.options) { option in
                     Text(option.label).tag(option.id)
                 }
             }
             .labelsHidden()
             .pickerStyle(.menu)
             .frame(maxWidth: 180)
-            Text(emulateDetail(emulation))
+            Text(picker.detail)
                 .font(DishFont.microRegular)
                 .foregroundColor(DishTheme.muted)
             Spacer(minLength: 0)
