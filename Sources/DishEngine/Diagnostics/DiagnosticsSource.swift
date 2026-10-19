@@ -6,15 +6,19 @@ import Foundation
 
 package struct HostDiagnostics: Equatable, Identifiable {
     package let summary: ConnectionSummary
+    /// The satellite session; resting for a host of any other kind.
     package let facts: HostSessionFacts
+    /// The Moonlight session; nil for a satellite.
+    package let moonlight: MoonlightHostDiagnostics?
 
     package var id: String {
         summary.id
     }
 
-    package init(summary: ConnectionSummary, facts: HostSessionFacts) {
+    package init(summary: ConnectionSummary, facts: HostSessionFacts, moonlight: MoonlightHostDiagnostics? = nil) {
         self.summary = summary
         self.facts = facts
+        self.moonlight = moonlight
     }
 }
 
@@ -69,13 +73,15 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
 
     private let wifi: WifiConnectionManager
     private let hub: ConnectionHub
+    private let moonlight: MoonlightConnectionManager?
     private var slots: () -> [ControllerSlot] = { [] }
     private var audio: (String) -> PadAudioDiagnostics? = { _ in nil }
     private var timer: DispatchSourceTimer?
 
-    init(wifi: WifiConnectionManager, hub: ConnectionHub) {
+    init(wifi: WifiConnectionManager, hub: ConnectionHub, moonlight: MoonlightConnectionManager? = nil) {
         self.wifi = wifi
         self.hub = hub
+        self.moonlight = moonlight
         super.init(initial: DiagnosticsSnapshot())
     }
 
@@ -122,12 +128,22 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         let hosts = hub.connections.map { summary in
             HostDiagnostics(
                 summary: summary,
-                facts: wifi.get(summary.id).map(hostSessionFacts) ?? HostSessionFacts.resting(id: summary.id)
+                facts: wifi.get(summary.id).map(hostSessionFacts) ?? HostSessionFacts.resting(id: summary.id),
+                moonlight: moonlightFacts(summary)
             )
         }
         let pads = slots().map { slot in
             PadDiagnostics(slot: slot, wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap(slotWireFacts), audio: audio(slot.id))
         }
         return DiagnosticsSnapshot(hosts: hosts, pads: pads)
+    }
+
+    /// A Moonlight host's session, read off its connection when one exists
+    /// this run and resting on what its probe said when none does.
+    private func moonlightFacts(_ summary: ConnectionSummary) -> MoonlightHostDiagnostics? {
+        guard summary.kind == .moonlight, let moonlight else { return nil }
+        let info = moonlight.hostFacts[summary.id]
+        guard let connection = moonlight.get(summary.id) else { return .resting(info: info) }
+        return .read(connection, info: info)
     }
 }

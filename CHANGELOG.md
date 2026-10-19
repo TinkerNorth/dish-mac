@@ -40,9 +40,10 @@ the repos share a version number.
   the records hold and the session's standing, with the way out of where it
   stands (pair, re-pair, reconnect, retry, close the app the host holds),
   the app picker per host, and every refusal in the host's own words as a
-  banner. The identity is an RSA key born in the keychain; the protocol
-  pieces are pinned byte for byte against Wolf's captures. Not yet verified
-  against a live host (see PARITY).
+  banner, and in Diagnostics each host's session, the app it runs, the
+  control link's round trip and every pad's reports. The identity is an RSA
+  key born in the keychain; the protocol pieces are pinned byte for byte
+  against Wolf's captures. Not yet verified against a live host (see PARITY).
 - **Controller audio.** A DualSense's or DualShock 4's own audio over its USB
   audio function through Core Audio (contract §Controller audio, §Controller
   haptics): the host's speaker and haptics lanes decoded from Opus

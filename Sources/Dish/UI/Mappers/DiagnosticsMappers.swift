@@ -18,7 +18,16 @@ struct FactLine: Equatable, Identifiable {
 
 // MARK: - A host
 
+/// The card's lines by the host's kind: a satellite's session, or a Moonlight
+/// host's. Bluetooth hosts reach no card here.
 func hostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> [FactLine] {
+    switch host.summary.kind {
+    case .moonlight: moonlightHostLines(host, locale: locale, words: words)
+    case .satellite, .bluetooth: satelliteHostLines(host, locale: locale, words: words)
+    }
+}
+
+func satelliteHostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> [FactLine] {
     let facts = host.facts
     let opening = [FactLine(key: words.address, value: host.summary.detail)]
         + (facts.compat == .unknown && !facts.live ? [] : [FactLine(key: words.protocolKey, value: protocolText(facts, words: words))])
@@ -99,6 +108,54 @@ func roundTripText(_ latency: LatencySummary, locale: Locale = .current, words: 
         millisecondsText(p50 / 2, locale: locale)
     )
     return "\(figures) · \(words.pingsOf(latency.samples, latency.capacity))"
+}
+
+// MARK: - A Moonlight host
+
+/// The address, the session's standing, what the host said of itself, the
+/// app running, the control link's round trip, and a line per pad the host
+/// holds; a host nothing opened this run reads idle on its probe alone.
+func moonlightHostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> [FactLine] {
+    let facts = host.moonlight ?? .resting(info: nil)
+    var lines = [
+        FactLine(key: words.address, value: host.summary.detail),
+        FactLine(key: words.session, value: moonlightPhaseText(facts.phase, summary: host.summary, words: words))
+    ]
+    if let info = facts.info {
+        if !info.hostname.isEmpty { lines.append(FactLine(key: words.hostName, value: info.hostname)) }
+        if let version = info.appVersion, !version.isEmpty { lines.append(FactLine(key: words.hostApp, value: version)) }
+        if let version = info.gfeVersion, !version.isEmpty { lines.append(FactLine(key: words.gfeVersion, value: version)) }
+        lines.append(FactLine(key: words.runningApp, value: moonlightRunningAppText(facts, info: info, words: words)))
+    }
+    lines.append(FactLine(key: words.controlRoundTrip, value: moonlightRoundTripText(facts.controlRoundTripMs, words: words)))
+    return lines + facts.pads.map { pad in FactLine(key: words.padNumber(Int(pad.number)), value: moonlightPadText(pad, words: words)) }
+}
+
+/// Idle, launching and live as Android's Diagnostics names them; a failure
+/// in the words the host card already uses for it.
+func moonlightPhaseText(_ phase: MoonlightSessionPhase, summary: ConnectionSummary, words: L10n = .app) -> String {
+    switch phase {
+    case .idle: words.sessionIdle
+    case .checkingInfo, .launching, .rtsp, .controlConnecting: words.sessionLaunching
+    case .streaming: words.sessionLive
+    case .failed: moonlightStatusLine(summary, phase: phase, words: words) ?? words.sessionEnded
+    }
+}
+
+/// The app our session settled on; else the host's own current game, by its
+/// id, since the host names no title in /serverinfo; else none.
+func moonlightRunningAppText(_ facts: MoonlightHostDiagnostics, info: MoonlightServerInfo, words: L10n = .app) -> String {
+    if let app = facts.appName, !app.isEmpty { return app }
+    return info.currentGame == 0 ? words.none : String(info.currentGame)
+}
+
+func moonlightRoundTripText(_ ms: Int64?, words: L10n = .app) -> String {
+    ms.map { words.wholeMilliseconds(Int($0)) } ?? words.unknown
+}
+
+/// The slot the pad belongs to, the type it was plugged in as, and the reports sent on it.
+func moonlightPadText(_ pad: MoonlightPadFacts, words: L10n = .app) -> String {
+    "\(pad.slotId) · \(moonlightTypeName(pad.type, words: words)) · \(words.reportsCount(pad.reports))"
 }
 
 // MARK: - A controller
