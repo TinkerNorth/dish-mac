@@ -96,11 +96,10 @@ func attachBindingFacts(to slot: inout ControllerSlot, gc: GameControllerInput.S
     let key = SlotKey(connectionId: connectionId, slotId: gc.id)
     if let hostType = facts.moonlightHostTypes[connectionId] {
         let pick = facts.overrides[key]
-        slot.emulation = SlotEmulation(
-            type: Int(MoonlightPadRules.migrateStoredType(pick ?? hostType)),
-            isOverride: pick != nil,
-            offered: []
-        )
+        let stored = MoonlightPadRules.migrateStoredType(pick ?? hostType)
+        slot.emulation = SlotEmulation(type: Int(stored), isOverride: pick != nil, offered: [])
+        slot.typeFeatures = moonlightTypeFeatures(MoonlightPadRules.resolveType(picked: stored, sourceHasMotion: gc.capabilities.hasMotion))
+        slot.hostProbe = moonlightHostFacts
         return
     }
     let catalog = facts.catalogs[connectionId]
@@ -111,3 +110,28 @@ func attachBindingFacts(to slot: inout ControllerSlot, gc: GameControllerInput.S
     slot.hostProbe = hostProbeFacts(facts.probes[connectionId])
     slot.motionStatus = facts.motion[key]
 }
+
+/// What a Moonlight host builds a pad of each type with (Wolf's
+/// create_new_joypad): every type carries rumble and the trigger motors;
+/// only a PlayStation pad gets motion, a touchpad and a lamp. No type
+/// carries the pad's audio or the adaptive-trigger shapes, and the player
+/// LEDs are this Mac's own.
+func moonlightTypeFeatures(_ type: UInt8) -> TypeFeatureFacts {
+    let ceiling = MoonlightPadRules.typeCeiling(type)
+    let touchpad = ceiling & MoonlightCapability.touchpad != 0
+    return TypeFeatureFacts(
+        motion: ceiling & MoonlightCapability.gyro != 0,
+        touchpad: touchpad,
+        rumble: true,
+        lightbar: ceiling & MoonlightCapability.rgbLed != 0,
+        triggerEffects: false,
+        playerLeds: true,
+        mic: false,
+        speaker: false,
+        touchpadModes: touchpad ? ["ds4"] : []
+    )
+}
+
+/// A Moonlight host carries rumble and never the mouse or the pad's audio:
+/// the control stream has no lane for either, whatever host answers.
+let moonlightHostFacts = HostProbeFacts(mouseControl: false, rumble: true, mic: false, speaker: false)

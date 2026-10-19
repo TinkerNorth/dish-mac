@@ -38,14 +38,14 @@ package final class AppModel: ObservableObject {
     /// The Share crash reports switch; the uploader behind it is the app's.
     package let crashReporting: CrashReportingController
     /// The Moonlight hosts: discovery, pairing, and the sessions the bindings ask for.
-    let moonlight: MoonlightConnectionManager
+    package let moonlight: MoonlightConnectionManager
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
     /// The satellite that asked for a PIN; the app presents the sheet.
     @Published package var pairingTarget: DiscoveredServer?
     /// The Moonlight host that minted a PIN for the user to type into it; the app presents the sheet.
-    @Published package internal(set) var moonlightPin: MoonlightPinPrompt?
+    @Published package var moonlightPin: MoonlightPinPrompt?
     /// The most recent failure, until the app clears it.
     @Published package internal(set) var lastFailure: ConnectionFailure?
     /// Every failure as it happens, for a banner.

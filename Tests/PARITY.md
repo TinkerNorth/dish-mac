@@ -14,7 +14,7 @@
 | Feature | Android | Windows | Linux | macOS (this) |
 |---|---|---|---|---|
 | Satellite host, protocol 3 | ✅ | ✅ | ✅ | ✅ offers 3, settles on the satellite's range, re-offers on an overlapping 409 |
-| Moonlight host (Sunshine / Apollo / Wolf) | ✅ | ✅ | ✅ | ❌ |
+| Moonlight host (Sunshine / Apollo / Wolf) | ✅ | ✅ | ✅ | ⚠️ discovery, PIN pairing with mutual TLS after, one session per host for up to four pads (launch or resume, RTSP, media pings, the ENet control stream), motion / touch / battery up and rumble / light bar back, the app picker and the Emulate pick per pad; every wire piece pinned against Wolf's captures, not yet run against a live host |
 | Mouse mode on the host | ✅ | ❌ | ❌ (deferred) | ✅ per-controller pick Off / Pad / Mouse; the request rides the session PUT and a flip mid-session converges through the re-key path |
 | Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked; not yet verified on a pad |
 | DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; not yet verified on a pad |
@@ -26,7 +26,7 @@
 | Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite (release-all on sleep, reconnect on wake) |
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional |
 | Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts, each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, the rumble bench, the test tone and the microphone meter) |
-| Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ every host is a satellite, so every row reads Fastest |
+| Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ a satellite reads Fastest, a Moonlight host Fast |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
 | App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | ✅ header chip: live, muted or hidden; one click mutes or unmutes every armed mic |
 | Capability verdict word "Supported" | ✅ | ✅ | ✅ | ✅ "What carries" on every bound slot: pad ∩ Mac ∩ type ∩ host, Off and Pending distinct |
@@ -97,7 +97,9 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. Moonlight hosts. (Theme, background mode, keep-awake modes, the update
-   check, About, the Emulate picker, "What carries", the motion word, the
-   link tier, Diagnostics and its inspector, the crash log, the
-   per-controller switches, controller audio and mouse mode shipped.)
+1. A run against a live Moonlight host: Sunshine and Wolf, a DualSense and
+   an Xbox pad, the resume path and a host that ends the session. (Theme,
+   background mode, keep-awake modes, the update check, About, the Emulate
+   picker, "What carries", the motion word, the link tier, Diagnostics and
+   its inspector, the crash log, the per-controller switches, controller
+   audio, mouse mode and the Moonlight host path shipped.)

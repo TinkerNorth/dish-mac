@@ -22,6 +22,13 @@ protocol-1 satellite; see [Protocol](#protocol).
   a DHCP change keeps it paired.
 - Keeps several satellites paired at once and binds each controller slot to
   one of them.
+- Finds Moonlight hosts (Sunshine, Apollo, Wolf) over mDNS (`_nvstream._tcp`)
+  or by a typed address, pairs with the PIN the host asks for, and streams
+  controller input into the host's own game-streaming session: up to four
+  controllers on one host, each plugged in as the Xbox, PlayStation or
+  Nintendo pad you pick or the one that fits it, with rumble and the light
+  bar coming back. The first controller bound to a host starts the app you
+  picked for it, or the first the host lists; no video or audio is received.
 - Forwards buttons, sticks and triggers from every GameController-framework
   pad, plus motion (gyro and accelerometer) and the touchpad from DualSense
   and DualShock 4 pads, and the battery level; the touchpad reaches the host

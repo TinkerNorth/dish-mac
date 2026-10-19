@@ -141,6 +141,41 @@
         }
       }
     },
+    "%@ did not accept the PIN" : {
+      "comment" : "Banner title; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ nije prihvatio PIN"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die PIN nicht akzeptiert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ no aceptó el PIN"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n'a pas accepté le code"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não aceitou o PIN"
+          }
+        }
+      }
+    },
     "%@ doesn’t carry %@." : {
       "comment" : "Capability help, the type layer; the type's name, then the feature.",
       "localizations" : {
@@ -176,6 +211,216 @@
         }
       }
     },
+    "%@ ended the session" : {
+      "comment" : "Row status line and banner title; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ je završio sesiju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Sitzung beendet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ terminó la sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a mis fin à la session"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ encerrou a sessão"
+          }
+        }
+      }
+    },
+    "%@ is full" : {
+      "comment" : "Banner title: the host already carries four controllers.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ je pun"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ist voll"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ está lleno"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ est complet"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ está cheio"
+          }
+        }
+      }
+    },
+    "%@ is no longer on %@. Pick another app." : {
+      "comment" : "Banner: the picked app, then the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ više nije na %@. Odaberite drugu aplikaciju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ist auf %@ nicht mehr vorhanden. Wähle eine andere App."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ya no está en %@. Elige otra app."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n'est plus sur %@. Choisissez une autre application."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não está mais em %@. Escolha outro app."
+          }
+        }
+      }
+    },
+    "%@ is not answering" : {
+      "comment" : "Row status line; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ne odgovara"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ antwortet nicht"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ no responde"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ne répond pas"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não está respondendo"
+          }
+        }
+      }
+    },
+    "%@ is running an app for another device and will not hand it over. Close it to start a new one, or try again later." : {
+      "comment" : "Banner body; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ vodi aplikaciju za drugi uređaj i neće predati tu sesiju. Zatvorite je da pokrenete novu ili dodajte kontroler pa pokušajte kasnije."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ führt eine App für ein anderes Gerät aus und gibt diese Sitzung nicht ab. Schließe sie, um eine neue zu starten, oder füge den Controller hinzu und versuche es später erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ejecuta una app para otro dispositivo y no cederá esa sesión. Ciérrala para iniciar una nueva, o añade el mando e inténtalo más tarde."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ exécute une appli pour un autre appareil et ne cédera pas cette session. Fermez-la pour en lancer une nouvelle, ou ajoutez la manette et réessayez plus tard."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ está executando um app para outro dispositivo e não vai entregar essa sessão. Feche-a para iniciar uma nova, ou adicione o controle e tente mais tarde."
+          }
+        }
+      }
+    },
+    "%@ no longer recognises this device" : {
+      "comment" : "Row status line; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ više ne prepoznaje ovaj uređaj"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ erkennt dieses Gerät nicht mehr"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ya no reconoce este dispositivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ne reconnaît plus cet appareil"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não reconhece mais este dispositivo"
+          }
+        }
+      }
+    },
     "%@ p50 · %@ p99 · %@ one way" : {
       "comment" : "Round trip figures.",
       "localizations" : {
@@ -207,6 +452,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ p50 · %@ p99 · %@ só ida"
+          }
+        }
+      }
+    },
+    "%@ refused the session" : {
+      "comment" : "Row status line and banner title; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ je odbio sesiju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Sitzung abgelehnt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ rechazó la sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a refusé la session"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ recusou a sessão"
+          }
+        }
+      }
+    },
+    "%@ refused the session: %@" : {
+      "comment" : "Banner title: the host's name, then its own wording.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ je odbio sesiju: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Sitzung abgelehnt: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ rechazó la sesión: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a refusé la session : %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ recusou a sessão: %@"
+          }
+        }
+      }
+    },
+    "%@ was reset" : {
+      "comment" : "Row status line: another machine answers under the address.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ je resetovan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wurde zurückgesetzt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ se restableció"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a été réinitialisé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ foi redefinido"
           }
         }
       }
@@ -568,6 +918,143 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld conexões ativas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld controllers" : {
+      "comment" : "Connections sheet: how many controllers a Moonlight host carries.",
+      "localizations" : {
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld controller"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld controllers"
+                }
+              }
+            }
+          }
+        },
+        "bs" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld kontroler"
+                }
+              },
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld kontrolera"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld kontrolera"
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Controller"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Controllern"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld mando"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld mandos"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld mandos"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld manette"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld manettes"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld manettes"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld controle"
+                }
+              },
+              "many" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld controles"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld controles"
                 }
               }
             }
@@ -1044,6 +1531,41 @@
         }
       }
     },
+    "A session carries four controllers at most, and %@ already has four. Unbind one to make room." : {
+      "comment" : "Banner body; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesija nosi najviše četiri kontrolera, a %@ ih već ima četiri. Odvežite jedan da napravite mjesta."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Sitzung trägt höchstens vier Controller, und %@ hat bereits vier. Löse eine Verknüpfung, um Platz zu schaffen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una sesión admite cuatro mandos como máximo, y %@ ya tiene cuatro. Desvincula uno para hacer sitio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une session porte quatre manettes au maximum, et %@ en a déjà quatre. Déliez-en une pour faire de la place."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma sessão comporta no máximo quatro controles, e %@ já tem quatro. Desvincule um para abrir espaço."
+          }
+        }
+      }
+    },
     "A short buzz straight to the controller, whatever its rumble switch says." : {
       "comment" : "Inspector note.",
       "localizations" : {
@@ -1289,6 +1811,41 @@
         }
       }
     },
+    "Add the controller anyway and Dish will try again the next time you use it." : {
+      "comment" : "Banner body under refused the session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ipak dodajte kontroler pa će Dish pokušati ponovo sljedeći put kada ga upotrijebite."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Füge den Controller trotzdem hinzu; Dish versucht es beim nächsten Mal erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añade el mando igualmente y Dish lo intentará de nuevo la próxima vez que lo uses."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoutez quand même la manette, Dish réessaiera à la prochaine utilisation."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicione o controle mesmo assim e o Dish tentará de novo na próxima vez que você o usar."
+          }
+        }
+      }
+    },
     "Address" : {
       "comment" : "Host card line key.",
       "localizations" : {
@@ -1425,6 +1982,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Gatilhos analógicos"
+          }
+        }
+      }
+    },
+    "Another device is using %@" : {
+      "comment" : "Row status line and banner title; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drugi uređaj koristi %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein anderes Gerät nutzt %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otro dispositivo está usando %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un autre appareil utilise %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outro dispositivo está usando %@"
+          }
+        }
+      }
+    },
+    "App" : {
+      "comment" : "Connections sheet: the label of a Moonlight host's app picker.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplikacija"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appli"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App"
+          }
+        }
+      }
+    },
+    "Asked %@ to close the app it is running." : {
+      "comment" : "Banner: the dish asked the host to close its app.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poslan je zahtjev da %@ zatvori pokrenutu aplikaciju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ wurde gebeten, die laufende App zu schließen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se pidió a %@ que cierre la app que está ejecutando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Demande envoyée à %@ pour fermer l'appli en cours."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pedimos a %@ que feche o app em execução."
           }
         }
       }
@@ -2234,6 +2896,41 @@
         }
       }
     },
+    "Check that the code went into the right host, then try again." : {
+      "comment" : "Banner body under did not accept the PIN.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjerite je li kod unesen na pravi host, pa pokušajte ponovo."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüfe, ob der Code auf dem richtigen Host eingegeben wurde, und versuche es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprueba que el código fue al host correcto e inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifiez que le code a bien été saisi sur le bon hôte, puis réessayez."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Confira se o código foi para o host certo e tente de novo."
+          }
+        }
+      }
+    },
     "Checking connects to github.com and sends no account data." : {
       "comment" : "Settings footnote.",
       "localizations" : {
@@ -2440,6 +3137,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fechar"
+          }
+        }
+      }
+    },
+    "Close the app on %@" : {
+      "comment" : "Row and banner action; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zatvori aplikaciju na %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App auf %@ schließen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar la app en %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer l'appli sur %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechar o app em %@"
           }
         }
       }
@@ -2899,6 +3631,76 @@
         }
       }
     },
+    "Could not finish the session on %@" : {
+      "comment" : "Row status line and banner title; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće dovršiti sesiju na %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sitzung auf %@ konnte nicht abgeschlossen werden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo completar la sesión en %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de finaliser la session sur %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível concluir a sessão em %@"
+          }
+        }
+      }
+    },
+    "Could not rejoin the session on %@" : {
+      "comment" : "Row status line and banner title; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće ponovo ući u sesiju na %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sitzung auf %@ konnte nicht fortgesetzt werden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo volver a la sesión en %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de rejoindre la session sur %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível voltar à sessão em %@"
+          }
+        }
+      }
+    },
     "Crash report" : {
       "comment" : "Settings row title and sheet title.",
       "localizations" : {
@@ -3319,6 +4121,41 @@
         }
       }
     },
+    "Dish asks %@ to plug in this controller. Some hosts override the choice." : {
+      "comment" : "Under the Emulate picker of a Moonlight pad; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish traži od %@ da priključi ovaj kontroler. Neki hostovi zaobiđu taj izbor."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish bittet %@, diesen Controller anzuschließen. Manche Hosts überschreiben die Wahl."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish pide a %@ que conecte este mando. Algunos hosts anulan la elección."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish demande à %@ de brancher cette manette. Certains hôtes remplacent ce choix."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish pede que %@ conecte este controle. Alguns hosts substituem a escolha."
+          }
+        }
+      }
+    },
     "Dish asks GitHub for the newest release at startup and every few hours. See the privacy policy for what is sent." : {
       "comment" : "Settings toggle detail (the sibling sentence, tightened to fit a line).",
       "localizations" : {
@@ -3389,6 +4226,76 @@
         }
       }
     },
+    "Dish deletes its pairing and you will need the PIN again. %@ keeps its own record of this device until you remove it there." : {
+      "comment" : "Tooltip of a Moonlight host's Forget button; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish briše svoje uparivanje i PIN će vam ponovo trebati. %@ zadržava vlastiti zapis o ovom uređaju dok ga tamo ne uklonite."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish löscht die Kopplung und du brauchst die PIN erneut. %@ behält seinen eigenen Eintrag für dieses Gerät, bis du ihn dort entfernst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish borra su vinculación y volverás a necesitar el PIN. %@ conserva su propio registro de este dispositivo hasta que lo elimines allí."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish supprime son association et le code vous sera redemandé. %@ conserve sa propre fiche pour cet appareil tant que vous ne la supprimez pas sur cet hôte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish apaga o pareamento e o PIN será necessário de novo. %@ mantém o próprio registro deste dispositivo até você removê-lo por lá."
+          }
+        }
+      }
+    },
+    "Dish has no pairing identity yet. Try again in a moment." : {
+      "comment" : "Banner body: the keychain has not minted the Moonlight identity yet.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish još nema identitet za uparivanje. Pokušaj ponovo za trenutak."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish hat noch keine Identität zum Koppeln. Versuch es gleich noch einmal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish aún no tiene una identidad para emparejar. Inténtalo de nuevo en un momento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish n’a pas encore d’identité pour l’appairage. Réessaie dans un instant."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish ainda não tem uma identidade para emparelhar. Tente de novo em um instante."
+          }
+        }
+      }
+    },
     "Dish is still running" : {
       "comment" : "System notification title on the first close to the background.",
       "localizations" : {
@@ -3455,6 +4362,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Dish no Mac não transmite %@."
+          }
+        }
+      }
+    },
+    "Dish starts a session on this host as soon as a controller is bound to it." : {
+      "comment" : "Banner body under Paired with.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish pokreće sesiju na ovom hostu čim se kontroler poveže s njim."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish startet auf diesem Host eine Sitzung, sobald ein Controller damit verbunden ist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish inicia una sesión en este host en cuanto le asignas un mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish démarre une session sur cet hôte dès que vous y associez une manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish inicia uma sessão neste host assim que um controle for vinculado a ele."
           }
         }
       }
@@ -3805,6 +4747,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Digite o PIN de 4 dígitos exibido no servidor Satellite."
+          }
+        }
+      }
+    },
+    "Enter the host address" : {
+      "comment" : "Connections sheet: an empty Moonlight address was submitted.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unesite adresu hosta"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host-Adresse eingeben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introduce la dirección del host"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez l'adresse de l'hôte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Insira o endereço do host"
           }
         }
       }
@@ -4789,6 +5766,41 @@
         }
       }
     },
+    "Host IP or name" : {
+      "comment" : "Connections sheet: the placeholder of the Moonlight address field.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP ili naziv hosta"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host-IP oder -Name"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP o nombre del host"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP ou nom de l'hôte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "IP ou nome do host"
+          }
+        }
+      }
+    },
     "Hosts" : {
       "comment" : "Diagnostics section.",
       "localizations" : {
@@ -5419,6 +6431,41 @@
         }
       }
     },
+    "MOONLIGHT HOSTS" : {
+      "comment" : "Connections sheet: the Moonlight section's header.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MOONLIGHT HOSTOVI"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "MOONLIGHT-HOSTS"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HOSTS MOONLIGHT"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HÔTES MOONLIGHT"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HOSTS MOONLIGHT"
+          }
+        }
+      }
+    },
     "Manage" : {
       "comment" : "Dashboard action button — opens the connections sheet. Maps to Android `action_manage`.",
       "localizations" : {
@@ -5765,6 +6812,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sinais de vida perdidos"
+          }
+        }
+      }
+    },
+    "Moonlight host" : {
+      "comment" : "Connections sheet: what a discovered Moonlight host was found as.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moonlight host"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moonlight-Host"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host Moonlight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hôte Moonlight"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host Moonlight"
           }
         }
       }
@@ -6290,6 +7372,216 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Parear novamente"
+          }
+        }
+      }
+    },
+    "New code" : {
+      "comment" : "PIN sheet: mint another PIN.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novi kod"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neuer Code"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Código nuevo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau code"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Novo código"
+          }
+        }
+      }
+    },
+    "Nintendo" : {
+      "comment" : "The Emulate picker: the Nintendo type a Moonlight host plugs in.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nintendo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nintendo"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nintendo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nintendo"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nintendo"
+          }
+        }
+      }
+    },
+    "No Moonlight host answered at %@." : {
+      "comment" : "Banner: a typed address answered nothing.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nijedan Moonlight host nije odgovorio na %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unter %@ hat kein Moonlight-Host geantwortet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ningún host Moonlight respondió en %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun hôte Moonlight n'a répondu à %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum host Moonlight respondeu em %@."
+          }
+        }
+      }
+    },
+    "No Moonlight hosts yet. Scan your network or add one by address." : {
+      "comment" : "Connections sheet: the Moonlight section with nothing in it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još nema Moonlight hostova. Skenirajte mrežu ili dodajte adresu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keine Moonlight-Hosts. Netzwerk scannen oder per Adresse hinzufügen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay hosts Moonlight. Busca en tu red o añade uno por dirección."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun hôte Moonlight. Scannez le réseau ou ajoutez-en un par adresse."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum host Moonlight ainda. Busque na rede ou adicione por endereço."
+          }
+        }
+      }
+    },
+    "No apps available on %@." : {
+      "comment" : "Banner; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema dostupnih aplikacija na %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf %@ sind keine Apps verfügbar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay apps disponibles en %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune appli disponible sur %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum app disponível em %@."
+          }
+        }
+      }
+    },
+    "No apps on this host" : {
+      "comment" : "Row status line of a Moonlight host that lists no app.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema aplikacija na ovom hostu"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Apps auf diesem Host"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay apps en este host"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune appli sur cet hôte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum app neste host"
           }
         }
       }
@@ -6889,6 +8181,76 @@
         }
       }
     },
+    "Not paired" : {
+      "comment" : "The trust word beside a Moonlight host with no pairing.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije upareno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht gekoppelt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin emparejar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non appairé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não pareado"
+          }
+        }
+      }
+    },
+    "Not paired yet" : {
+      "comment" : "Row status line of a Moonlight host with no pairing.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još nije upareno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nicht gekoppelt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún sin emparejar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore appairé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ainda não pareado"
+          }
+        }
+      }
+    },
     "Off" : {
       "comment" : "Light-bar mode: leave the LED alone.",
       "localizations" : {
@@ -7274,6 +8636,41 @@
         }
       }
     },
+    "Pair now" : {
+      "comment" : "Row action: pair with a Moonlight host for the first time.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upari sada"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt koppeln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejar ahora"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairer maintenant"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parear agora"
+          }
+        }
+      }
+    },
     "Pair with %@" : {
       "comment" : "Pairing sheet headline; the argument is the server's name or address.",
       "localizations" : {
@@ -7305,6 +8702,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Parear com %@"
+          }
+        }
+      }
+    },
+    "Paired" : {
+      "comment" : "The trust word beside a Moonlight host the records hold a pairing with.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upareno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gekoppelt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pareado"
+          }
+        }
+      }
+    },
+    "Paired with %@" : {
+      "comment" : "Banner title; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uparen sa %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mit %@ gekoppelt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vinculado con %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Associé à %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pareado com %@"
           }
         }
       }
@@ -7480,6 +8947,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reproduzir no seu controle a vibração que o jogo do host envia de volta."
+          }
+        }
+      }
+    },
+    "PlayStation" : {
+      "comment" : "The Emulate picker: the PlayStation type a Moonlight host plugs in.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PlayStation"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PlayStation"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PlayStation"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PlayStation"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PlayStation"
           }
         }
       }
@@ -7869,6 +9371,41 @@
         }
       }
     },
+    "Re-pair" : {
+      "comment" : "Row action: pair again with a Moonlight host that lost or replaced its pairing.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponovo upari"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu koppeln"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reemparejar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réappairer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reparear"
+          }
+        }
+      }
+    },
     "Reach: L %@ · R %@. Circularity error: L %@ · R %@." : {
       "comment" : "Inspector result.",
       "localizations" : {
@@ -7935,6 +9472,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pronto"
+          }
+        }
+      }
+    },
+    "Reconnect" : {
+      "comment" : "Row action after a dropped Moonlight session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponovo poveži"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neu verbinden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconectar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconnecter"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconectar"
           }
         }
       }
@@ -8040,6 +9612,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Deriva em repouso: L %@ · R %@. Zona morta sugerida: %@."
+          }
+        }
+      }
+    },
+    "Retry" : {
+      "comment" : "Row action after a refused Moonlight session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponovi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederholen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reintentar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relancer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Repetir"
           }
         }
       }
@@ -8569,6 +10176,41 @@
         }
       }
     },
+    "Session on %@ ended" : {
+      "comment" : "Row status line after the control link dropped.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sesija na %@ je završena"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sitzung auf %@ beendet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La sesión en %@ terminó"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La session sur %@ est terminée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A sessão em %@ terminou"
+          }
+        }
+      }
+    },
     "Settings" : {
       "comment" : "Tooltip / title for the settings gear button + sheet. No direct Android equivalent — left for translators.",
       "localizations" : {
@@ -8810,6 +10452,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Start"
+          }
+        }
+      }
+    },
+    "Start a session" : {
+      "comment" : "Row action after the host ended the Moonlight session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokreni sesiju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sitzung starten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar una sesión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer une session"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Iniciar uma sessão"
           }
         }
       }
@@ -9164,6 +10841,76 @@
         }
       }
     },
+    "The app closed on the host. Start a new session to keep using this controller." : {
+      "comment" : "Banner body under ended the session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplikacija je zatvorena na hostu. Pokrenite novu sesiju da nastavite koristiti ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die App wurde auf dem Host geschlossen. Starte eine neue Sitzung, um diesen Controller weiter zu nutzen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La app se cerró en el host. Inicia una sesión nueva para seguir usando este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'appli s'est fermée sur l'hôte. Lancez une nouvelle session pour continuer à utiliser cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O app foi fechado no host. Inicie uma nova sessão para continuar usando este controle."
+          }
+        }
+      }
+    },
+    "The app started but the stream did not come up, so Dish closed it again." : {
+      "comment" : "Banner body under Could not finish the session.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplikacija se pokrenula, ali strim nije podignut, pa ju je Dish opet zatvorio."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die App startete, aber der Stream kam nicht zustande, also hat Dish sie wieder geschlossen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La app arrancó pero la transmisión no se estableció, así que Dish la cerró de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'appli a démarré mais le flux ne s'est pas établi, alors Dish l'a refermée."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O app iniciou, mas a transmissão não subiu, então o Dish o fechou de novo."
+          }
+        }
+      }
+    },
     "The controller sent nothing during the test." : {
       "comment" : "Inspector result.",
       "localizations" : {
@@ -9230,6 +10977,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O host não transmite %@."
+          }
+        }
+      }
+    },
+    "The host has a session but would not hand it back. Close the app on %@ and start a new one." : {
+      "comment" : "Banner body; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host ima sesiju, ali je ne vraća. Zatvorite aplikaciju na %@ i pokrenite novu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Host hat eine Sitzung, gibt sie aber nicht zurück. Schließe die App auf %@ und starte eine neue."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El host tiene una sesión pero no la devuelve. Cierra la app en %@ e inicia una nueva."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'hôte a une session mais refuse de la rendre. Fermez l'appli sur %@ et lancez-en une nouvelle."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O host tem uma sessão, mas não a devolve. Feche o app em %@ e inicie uma nova."
           }
         }
       }
@@ -9759,6 +11541,41 @@
         }
       }
     },
+    "This host has a new identity, so the old pairing no longer works. Pair again to start a session." : {
+      "comment" : "Banner body under was reset.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ovaj host ima novi identitet, pa staro uparivanje više ne vrijedi. Uparite ponovo da biste pokrenuli sesiju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser Host hat eine neue Identität, daher gilt die alte Kopplung nicht mehr. Koppele erneut, um eine Sitzung zu starten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este host tiene una identidad nueva, así que el emparejamiento anterior ya no sirve. Empareja de nuevo para iniciar una sesión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cet hôte a une nouvelle identité, l'ancien appairage ne fonctionne donc plus. Appairez à nouveau pour lancer une session."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Este host tem uma identidade nova, então o pareamento antigo não vale mais. Pareie de novo para iniciar uma sessão."
+          }
+        }
+      }
+    },
     "This is the input as it goes to the host, after the dead zones." : {
       "comment" : "Inspector note.",
       "localizations" : {
@@ -10179,6 +11996,41 @@
         }
       }
     },
+    "Type %@ into the Moonlight or Sunshine page on %@." : {
+      "comment" : "PIN sheet: the PIN, then the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upišite %@ na Moonlight ili Sunshine stranicu na %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib %@ auf der Moonlight- oder Sunshine-Seite von %@ ein."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe %@ en la página de Moonlight o Sunshine de %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez %@ sur la page Moonlight ou Sunshine de %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite %@ na página do Moonlight ou do Sunshine em %@."
+          }
+        }
+      }
+    },
     "Type %lld" : {
       "comment" : "A catalog type the catalog does not name, by its number.",
       "localizations" : {
@@ -10529,6 +12381,41 @@
         }
       }
     },
+    "Waiting for the host to accept the PIN…" : {
+      "comment" : "PIN sheet: phase 1 waits on the human.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čeka se da host prihvati PIN…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf Bestätigung der PIN durch den Host…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando a que el host acepte el PIN…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de la validation du code par l'hôte…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando o host aceitar o PIN…"
+          }
+        }
+      }
+    },
     "Waiting for the host’s catalog and capabilities." : {
       "comment" : "Capability help for Pending.",
       "localizations" : {
@@ -10809,6 +12696,41 @@
         }
       }
     },
+    "Without a pick, Dish starts whatever %@ lists first." : {
+      "comment" : "Under the app picker while no app is picked; the argument is the host's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bez izbora, Dish pokreće ono što %@ prvo navede."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Auswahl startet Dish, was %@ zuerst auflistet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin una elección, Dish inicia lo primero que liste %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans choix, Dish lance ce que %@ liste en premier."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem uma escolha, o Dish inicia o que %@ listar primeiro."
+          }
+        }
+      }
+    },
     "Working" : {
       "comment" : "Accessibility label of the pulsing dots.",
       "localizations" : {
@@ -10910,6 +12832,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "X %@ · Y %@"
+          }
+        }
+      }
+    },
+    "Xbox" : {
+      "comment" : "The Emulate picker: the Xbox type a Moonlight host plugs in.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xbox"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xbox"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xbox"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xbox"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Xbox"
           }
         }
       }

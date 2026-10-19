@@ -62,11 +62,23 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 | `background_run_enabled`, `background_notice_shown` | Whether closing the window keeps Dish running, and whether the one-time notice about it was shown | The close-to-background rule |
 | `keep_awake_mode`, `keep_awake_timeout_minutes`, `keep_awake_display` | Your keep-awake mode, its stillness window and whether the display is held too | Deciding when to hold a power-management assertion |
 | `updates_check_enabled`, `updates_skipped_version`, `updates_last_check_utc_ms` | Whether automatic update checks run, a version you chose to skip, and when the last check completed | The update check and its schedule |
+| `moonlight_host_list` | The remembered Moonlight hosts: name, address, HTTP and HTTPS ports, the id the host answers with, the app picked for it, the controller type picked for it, and whether it ever accepted this device | Pairing with and starting sessions on Moonlight hosts you added or paired with |
+| `moonlight_binding_list` | Which controller is bound to which Moonlight host, by the controller's vendor and kind, and the type it is plugged in as | Putting a controller back on its host |
+| `moonlight_uniqueid` | A random sixteen-character id generated on first use | The name a Moonlight host files this device under; not derived from your hardware or your Apple ID |
+| `cert_pin:moonlight:<address>` | The SHA-256 fingerprint of the certificate each Moonlight host presented on first contact, replaced by the one a pairing proves | Refusing a host whose certificate later changes |
 
 Pairing keys are the long-lived trust root of the protocol and are not kept
 in preferences. Each one is a login-keychain item with the service name
 `com.tinkernorth.dish.pairing-key` and the satellite's id as its account name.
 Forgetting a satellite deletes its key, its pin and its row.
+
+The Moonlight identity, an RSA key and the self-signed certificate around it,
+is minted once in the login keychain (labelled "Dish Moonlight client key" and
+"Dish Moonlight client certificate") and presented to every Moonlight host:
+it is how a host recognises a device it paired with. Forgetting a host deletes
+the host's record, its bindings and its pin on this side; the protocol has no
+unpair verb, so the host keeps its own record of this device until you remove
+it there.
 
 Nothing else is written, with one exception: if the app crashes, a backtrace
 is appended to `~/Library/Logs/Dish/crash.log` on your Mac (section 3). The
@@ -80,11 +92,17 @@ app keeps no other log file.
 | Pairing and the control plane: HTTPS on port 9443 to the satellite you chose | Your `deviceId`, your Mac's name as shown in System Settings (the satellite lists paired devices by it), the PIN you typed or the app generated, the controller type and features you bound, and a proof of possession of the pairing key | The satellite |
 | Streaming: encrypted UDP on port 9876 to the satellite you chose | Controller input (buttons, sticks, triggers), and, when the switches are on and the pad has them, motion samples, touchpad positions and the battery level of the pad or of your Mac; with that controller's mic switch on and not muted, the sound its own microphone hears, as 20 ms Opus frames | The satellite |
 | Return paths over the same UDP channel | Rumble, light-bar, adaptive-trigger, player-LED and mic-lamp commands from the satellite to the pad, and the host's voice chat and haptics audio for the pad's own speaker and actuators | Your Mac |
+| Moonlight discovery: a Bonjour browse for `_nvstream._tcp` | Nothing of yours is sent; the app reads the hosts' announcements | Your local network |
+| Moonlight pairing: HTTP on port 47989 and HTTPS on port 47984 to the host you chose | Your `moonlight_uniqueid`, the device name the protocol fixes (`roth`), the app's certificate, and a salt and challenges derived from the PIN the app showed you; the PIN itself never crosses the wire | The Moonlight host |
+| Moonlight sessions: HTTPS on port 47984 (mutual TLS with the app's certificate), RTSP on the port the host names (48010 by default) and encrypted UDP to the host's control port | The app to start, a key minted per session, the controller type and features each pad is plugged in as, and then controller input (buttons, sticks, triggers), and, when the switches are on and the pad has them, motion samples, touchpad positions and the battery level of the pad or of your Mac | The Moonlight host |
+| Return path over the same UDP channel | Rumble and light-bar commands from the host for the pad | Your Mac |
 
 The streaming channel is encrypted with a key derived per session from the
-pairing key; the HTTPS connection is pinned to the satellite's certificate.
-Every address the app talks to is one it discovered on your network or one you
-typed in.
+pairing key; the HTTPS connection is pinned to the satellite's certificate. A
+Moonlight control stream is encrypted with the key the app minted for that
+session, and the host's certificate is pinned on first contact and replaced
+by the one a pairing proves. Every address the app talks to is one it
+discovered on your network or one you typed in.
 
 ### 2.3 Sent to TinkerNorth or a third party
 

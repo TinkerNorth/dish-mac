@@ -50,6 +50,7 @@ extension MoonlightConnectionManager {
         let apps = await fetchAppList(host)
         if forgottenSince(host.id, epoch) { return .forgotten }
         markVerified(host.id)
+        if let apps { hostApps[host.id] = apps }
         return MoonlightProbe(
             trust: .paired,
             apps: apps ?? [],

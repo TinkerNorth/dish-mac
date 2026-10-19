@@ -47,11 +47,11 @@ extension MoonlightConnectionManager {
         publishRemembered()
     }
 
-    func rememberedAppId(hostId: String) -> String {
+    package func rememberedAppId(hostId: String) -> String {
         store.host(id: hostId)?.lastAppId ?? ""
     }
 
-    func rememberedAppName(hostId: String) -> String {
+    package func rememberedAppName(hostId: String) -> String {
         store.host(id: hostId)?.lastAppName ?? ""
     }
 
