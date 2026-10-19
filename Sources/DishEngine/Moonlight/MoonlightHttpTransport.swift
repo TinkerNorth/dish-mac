@@ -129,9 +129,11 @@ private final class MoonlightHttpExchange: @unchecked Sendable {
                 if error != nil { self?.complete(.unreachable) }
             })
             receive()
-        case .failed, .cancelled:
+        case .failed, .cancelled, .waiting:
+            // Waiting is where a refused or unroutable connect parks until the
+            // network changes; for a host the user named, that is the failure.
             complete(.unreachable)
-        case .setup, .preparing, .waiting:
+        case .setup, .preparing:
             break
         @unknown default:
             break
