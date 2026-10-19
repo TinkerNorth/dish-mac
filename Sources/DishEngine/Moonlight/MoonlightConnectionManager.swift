@@ -123,7 +123,8 @@ final class MoonlightConnectionManager: ObservableObject {
 
     let store: MoonlightHostStore
     let gateway: MoonlightHostGateway
-    let identity: MoonlightPairingIdentity?
+    /// Nil until the keychain has minted one; a pairing before that fails as noIdentity.
+    private(set) var identity: MoonlightPairingIdentity?
     let edges: MoonlightSessionEdges
     let discover: () async -> [MoonlightHost]
     let random: (Int) -> Data
@@ -158,6 +159,11 @@ final class MoonlightConnectionManager: ObservableObject {
 
     func get(_ id: String) -> MoonlightConnection? {
         connections[id]
+    }
+
+    /// The identity minted off the main thread at launch.
+    func adoptIdentity(_ identity: MoonlightPairingIdentity) {
+        self.identity = identity
     }
 
     /// Everything that opens or closes a session runs here, one piece after

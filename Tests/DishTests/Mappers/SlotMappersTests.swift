@@ -20,6 +20,37 @@ final class SlotMappersTests: XCTestCase {
         XCTAssertEqual(bindableConnections(for: slot, in: [free, mine, taken]), [free, mine])
     }
 
+    func testAMoonlightHostStaysBindableUntilItCarriesFourPads() {
+        let three = ConnectionSummary(
+            id: "moonlight:a",
+            label: "PC",
+            detail: "",
+            live: .ready,
+            boundSlotId: "x",
+            kind: .moonlight,
+            boundSlotIds: ["x", "y", "z"]
+        )
+        let four = ConnectionSummary(
+            id: "moonlight:b",
+            label: "PC",
+            detail: "",
+            live: .ready,
+            boundSlotId: "x",
+            kind: .moonlight,
+            boundSlotIds: ["x", "y", "z", "w"]
+        )
+        let mine = ConnectionSummary(
+            id: "moonlight:c",
+            label: "PC",
+            detail: "",
+            live: .ready,
+            boundSlotId: "x",
+            kind: .moonlight,
+            boundSlotIds: ["x", "pad", "z", "w"]
+        )
+        XCTAssertEqual(bindableConnections(for: slot, in: [three, four, mine]), [three, mine])
+    }
+
     func testBindLabelForEveryState() {
         XCTAssertEqual(bindLabel(nil), "unbound")
         XCTAssertEqual(bindLabel(server(.connected)), "→ Desk")

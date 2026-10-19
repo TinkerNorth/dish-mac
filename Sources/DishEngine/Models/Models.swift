@@ -221,8 +221,11 @@ package struct ConnectionSummary: Identifiable, Hashable {
     package var latencyMs: Double?
     /// What the last negotiation said about the satellite's protocol version.
     package var compat: ProtocolCompat
-    /// The kind of link, for the tier cue. Every host here is a satellite.
+    /// The kind of link, for the tier cue: a satellite, or a Moonlight host.
     package var kind: ConnectionKind
+    /// Every slot bound to this connection: one at most for a satellite, up
+    /// to four for a Moonlight host. `boundSlotId` is the first of them.
+    package var boundSlotIds: [String]
 
     package init(
         id: String,
@@ -232,7 +235,8 @@ package struct ConnectionSummary: Identifiable, Hashable {
         boundSlotId: String?,
         latencyMs: Double? = nil,
         compat: ProtocolCompat = .unknown,
-        kind: ConnectionKind = .satellite
+        kind: ConnectionKind = .satellite,
+        boundSlotIds: [String] = []
     ) {
         self.id = id
         self.label = label
@@ -242,6 +246,16 @@ package struct ConnectionSummary: Identifiable, Hashable {
         self.latencyMs = latencyMs
         self.compat = compat
         self.kind = kind
+        self.boundSlotIds = boundSlotIds.isEmpty ? boundSlotId.map { [$0] } ?? [] : boundSlotIds
+    }
+
+    /// Whether one more slot may bind here: a satellite carries one pad, a
+    /// Moonlight session four.
+    package var hasRoomForAnotherSlot: Bool {
+        switch kind {
+        case .satellite, .bluetooth: boundSlotIds.isEmpty
+        case .moonlight: boundSlotIds.count < MoonlightProtocol.maxPads
+        }
     }
 }
 
