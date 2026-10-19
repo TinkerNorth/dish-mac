@@ -4,16 +4,19 @@
 import DishCore
 import Foundation
 
-/// Where a slot's input goes and which of its streams may flow: the live
-/// connection and the switches in force for that controller, global and
-/// per-controller folded together on the main actor.
+/// Where a slot's input goes and which of its streams may flow: the sink
+/// (a satellite session, or a pad on a Moonlight host) and the switches in
+/// force for that controller, global and per-controller folded together on
+/// the main actor.
 struct Route {
-    let connection: WifiConnection
+    let sink: any InputSink
     let flags: ForwardingFlags
 }
 
-/// A connection's side of the same table: the slot bound to it and the
-/// switches in force for that controller, for the return paths.
+/// A satellite's side of the same table: the slot bound to it and the
+/// switches in force for that controller, for the return paths. A Moonlight
+/// host carries up to four pads, so its feedback finds the slot through the
+/// pad number instead and reads the slot's own route.
 struct BoundSlotRoute {
     let slotId: String
     let flags: ForwardingFlags
@@ -68,23 +71,23 @@ final class InputRouting: @unchecked Sendable {
 
     func sendReport(_ deviceId: String, _ report: GamepadReport) {
         guard let route = table.get(deviceId) else { return }
-        route.connection.sendReport(report)
+        route.sink.sendReport(report)
     }
 
     func sendMotion(_ deviceId: String, _ sample: MotionSample, _ timestampDeltaUs: UInt32) {
         guard let route = table.get(deviceId), route.flags.motion else { return }
-        route.connection.sendMotion(sample, timestampDeltaUs: timestampDeltaUs)
+        route.sink.sendMotion(sample, timestampDeltaUs: timestampDeltaUs)
     }
 
     func sendTouchpad(_ deviceId: String, _ sample: TouchpadSample, _ eventTimeMs: UInt32) {
         guard let route = table.get(deviceId), route.flags.touchpad else { return }
-        route.connection.sendTouchpad(sample: sample, eventTimeMs: eventTimeMs)
+        route.sink.sendTouchpad(sample: sample, eventTimeMs: eventTimeMs)
     }
 
     /// An unknown status byte from a future firmware reads as unknown.
     func sendBattery(_ deviceId: String, _ level: UInt8, _ statusRaw: UInt8) {
         guard let route = table.get(deviceId) else { return }
         let status = BatteryStatus(rawValue: statusRaw) ?? .unknown
-        route.connection.sendBattery(level: level, status: status)
+        route.sink.sendBattery(level: level, status: status)
     }
 }
