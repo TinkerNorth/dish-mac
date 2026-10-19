@@ -34,6 +34,7 @@ extension MoonlightConnectionManager {
         }
         gateway.forgetPin(hostId: id)
         hostFacts.removeValue(forKey: id)
+        hostApps.removeValue(forKey: id)
         connections.removeValue(forKey: id)
         attempts.removeValue(forKey: id)
         discoveredHosts.removeAll { $0.id == id }

@@ -21,6 +21,28 @@ the repos share a version number.
 
 ### Added
 
+- **Moonlight hosts.** Sunshine, Apollo and Wolf as hosts beside the
+  satellites, as the other three clients have them: found over mDNS
+  (`_nvstream._tcp`) or added by address under their own header on the
+  Connections sheet; paired with the PIN the dish mints and the user types
+  into the host's page (five phases, mutual TLS after, the host's
+  certificate pinned, a host that already trusts this device recorded
+  without a PIN, a cancel or a forget mid-flight writing nothing); and one
+  session per host owned by the bindings: the first controller bound opens
+  it (the probe, `/launch` or `/resume`, the RTSP handshake, the media
+  pings, the ENet control stream), later ones announce their own pad, up to
+  four, and the last leaving closes an app the host started for us. Each pad
+  is plugged in as the Xbox, PlayStation or Nintendo type picked for it, or
+  the one that fits (a pad with motion is a PlayStation pad); buttons,
+  sticks, triggers, motion at the rate the host asks, touches and the
+  battery go up, rumble (body and triggers, folded per motor) and the light
+  bar come back under the controller's switches. The rows read the trust
+  the records hold and the session's standing, with the way out of where it
+  stands (pair, re-pair, reconnect, retry, close the app the host holds),
+  the app picker per host, and every refusal in the host's own words as a
+  banner. The identity is an RSA key born in the keychain; the protocol
+  pieces are pinned byte for byte against Wolf's captures. Not yet verified
+  against a live host (see PARITY).
 - **Controller audio.** A DualSense's or DualShock 4's own audio over its USB
   audio function through Core Audio (contract §Controller audio, §Controller
   haptics): the host's speaker and haptics lanes decoded from Opus

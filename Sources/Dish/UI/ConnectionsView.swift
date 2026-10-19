@@ -5,8 +5,8 @@ import DishEngine
 import SwiftUI
 
 /// The connection-management sheet: scan, pair, connect, and forget a
-/// remembered server. A manual address is the escape hatch when both
-/// discovery paths are dead.
+/// remembered satellite, and the Moonlight hosts under their own header. A
+/// manual address is the escape hatch when discovery is dead.
 struct ConnectionsView: View {
 
     @EnvironmentObject var model: AppModel
@@ -24,7 +24,7 @@ struct ConnectionsView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     sectionHeader
-                    let rows = connectionRows(known: model.connections, discovered: wifi.discoveredServers)
+                    let rows = connectionRows(known: satelliteSummaries(model.connections), discovered: wifi.discoveredServers)
                     if rows.isEmpty {
                         Text(words.pressScanHint)
                             .font(DishFont.detail)
@@ -36,6 +36,10 @@ struct ConnectionsView: View {
                         }
                     }
                     addByAddressRow
+                    MoonlightHostsSection()
+                        .environmentObject(model)
+                        .environmentObject(model.moonlight)
+                        .padding(.top, 10)
                 }
                 .padding(20)
             }
@@ -58,6 +62,10 @@ struct ConnectionsView: View {
             PairingSheet(server: server)
                 .environmentObject(model)
                 .environmentObject(wifi)
+        }
+        .sheet(item: $model.moonlightPin) { prompt in
+            MoonlightPinSheet(prompt: prompt)
+                .environmentObject(model)
         }
     }
 
