@@ -16,7 +16,7 @@ let package = Package(
         // The crash reporter behind the Share crash reports switch, pinned
         // exactly like the lint tools; it reaches the app only through
         // `DishCrashUpload`, so the engine's dependency list stays Apple-only.
-        .package(url: "https://github.com/getsentry/sentry-cocoa", exact: "9.30.1")
+        .package(url: "https://github.com/getsentry/sentry-cocoa", exact: "9.30.2")
     ],
     targets: [
         // The pure protocol core: wire codecs, crypto, protocol constants and
