@@ -316,6 +316,41 @@
         }
       }
     },
+    "%@ is no longer available. Unplug and reconnect it, then try again." : {
+      "comment" : "The apply overlay's outcome when the pad left; the argument is the pad.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ više nije dostupan. Isključite ga i ponovo povežite, zatim pokušajte ponovo."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ist nicht mehr verfügbar. Trennen und neu verbinden, dann erneut versuchen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ya no está disponible. Desconéctalo y vuelve a conectarlo, luego inténtalo de nuevo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n'est plus disponible. Débranchez-le et reconnectez-le, puis réessayez."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não está mais disponível. Desconecte e reconecte, depois tente novamente."
+          }
+        }
+      }
+    },
     "%@ is no longer on %@. Pick another app." : {
       "comment" : "Banner: the picked app, then the host's name.",
       "localizations" : {
@@ -522,6 +557,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ p50 · %@ p99 · %@ só ida"
+          }
+        }
+      }
+    },
+    "%@ refused the binding." : {
+      "comment" : "The apply overlay's outcome when the host refused; the argument is the host.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ je odbio povezivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Zuordnung abgelehnt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ rechazó el vínculo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ a refusé la liaison."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ recusou o vínculo."
           }
         }
       }
@@ -1804,6 +1874,41 @@
         }
       }
     },
+    "%lld/%lld live" : {
+      "comment" : "Configure binding: how many of What carries' rows carry.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld aktivno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld aktiv"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld activos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld actifs"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld/%lld ativos"
+          }
+        }
+      }
+    },
     "A" : {
       "comment" : "A button name, the same in every language.",
       "localizations" : {
@@ -2609,6 +2714,181 @@
         }
       }
     },
+    "Apply" : {
+      "comment" : "Configure binding: the one write, for a pad the page opened bound.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primijeni"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übernehmen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appliquer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicar"
+          }
+        }
+      }
+    },
+    "Apply cancelled. Nothing was changed." : {
+      "comment" : "The apply overlay's outcome after Cancel.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primjena otkazana. Ništa nije promijenjeno."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übernahme abgebrochen. Es wurde nichts geändert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicación cancelada. No se cambió nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Application annulée. Rien n'a été modifié."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicação cancelada. Nada foi alterado."
+          }
+        }
+      }
+    },
+    "Applying" : {
+      "comment" : "The apply overlay's eyebrow.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primjenjuje se"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Übernahme"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Application en cours"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicando"
+          }
+        }
+      }
+    },
+    "Applying binding…" : {
+      "comment" : "The apply overlay's heading.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primjenjuje se povezivanje…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuordnung wird übernommen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicando el vínculo…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Application de la liaison…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicando o vínculo…"
+          }
+        }
+      }
+    },
+    "Applying on the host" : {
+      "comment" : "The apply overlay's second step: the host has been asked and has not answered.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Primjenjuje se na hostu"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird auf dem Host übernommen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicando en el host"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Application sur l’hôte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aplicando no host"
+          }
+        }
+      }
+    },
     "Approved — connecting…" : {
       "comment" : "Pairing card: the operator approved and the session is opening.",
       "localizations" : {
@@ -3134,6 +3414,41 @@
         }
       }
     },
+    "Battery %lld%% ↑" : {
+      "comment" : "Controllers and Home: the battery chip while it charges.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baterija %lld %% ↑"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Akku %lld %% ↑"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batería %lld %% ↑"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Batterie %lld %% ↑"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bateria %lld %% ↑"
+          }
+        }
+      }
+    },
     "Battery charging" : {
       "comment" : "Battery tooltip, charging without a level.",
       "localizations" : {
@@ -3309,6 +3624,41 @@
         }
       }
     },
+    "Bind…" : {
+      "comment" : "Home: the ghost card of a pad with no binding; Controllers: the button beside \"not bound\".",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poveži…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuordnen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincular…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lier…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vincular…"
+          }
+        }
+      }
+    },
     "Both" : {
       "comment" : "Rumble bench button.",
       "localizations" : {
@@ -3344,6 +3694,41 @@
         }
       }
     },
+    "Bound · %@ ›" : {
+      "comment" : "Controllers: the card's hand-off into Configure binding; the argument is the host.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Povezan · %@ ›"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verknüpft · %@ ›"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enlazado · %@ ›"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Liée · %@ ›"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vinculado · %@ ›"
+          }
+        }
+      }
+    },
     "Buy Me a Coffee" : {
       "comment" : "Support Dish: a way to give, by its service's name.",
       "localizations" : {
@@ -3375,41 +3760,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Buy Me a Coffee"
-          }
-        }
-      }
-    },
-    "CONTROLLERS" : {
-      "comment" : "Dashboard section header for the controller list. Maps to Android `section_controllers`.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "KONTROLERI"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CONTROLLER"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MANDOS"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "MANETTES"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "CONTROLES"
           }
         }
       }
@@ -3834,6 +4184,41 @@
         }
       }
     },
+    "Choose a satellite for this pad" : {
+      "comment" : "Home: under Bind… on the ghost card.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odaberite satelit za ovaj pad"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satelliten für dieses Pad auswählen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un satélite para este mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisir un satellite pour cette manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um satélite para este controle"
+          }
+        }
+      }
+    },
     "Choose how Dish looks. System matches your desktop’s light or dark setting." : {
       "comment" : "Settings row detail.",
       "localizations" : {
@@ -4149,6 +4534,41 @@
         }
       }
     },
+    "Configure binding" : {
+      "comment" : "The pushed page's title, and the Edit button's accessibility label.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podesi povezivanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zuordnung konfigurieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar vínculo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer la liaison"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar vínculo"
+          }
+        }
+      }
+    },
     "Configure keep-awake" : {
       "comment" : "The accessible name of the Configure button beside the streaming pill.",
       "localizations" : {
@@ -4250,6 +4670,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conectar"
+          }
+        }
+      }
+    },
+    "Connect a controller to adjust its dead zones." : {
+      "comment" : "Dead zones: the pad left.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Povežite kontroler da podesite njegove mrtve zone."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbinde einen Controller, um seine Totzonen anzupassen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conecta un mando para ajustar sus zonas muertas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connectez une manette pour régler ses zones mortes."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conecte um controle para ajustar as zonas mortas dele."
           }
         }
       }
@@ -4429,6 +4884,41 @@
         }
       }
     },
+    "Controller bound — %@ is live on %@." : {
+      "comment" : "The apply overlay's outcome: the pad, then the host.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroler povezan — %@ je aktivan na %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller verknüpft — %@ ist auf %@ aktiv."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mando enlazado — %@ está activo en %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manette liée — %@ est actif sur %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controle vinculado — %@ está ativo em %@."
+          }
+        }
+      }
+    },
     "Controller index" : {
       "comment" : "Controller card line key.",
       "localizations" : {
@@ -4495,6 +4985,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inspetor de controle"
+          }
+        }
+      }
+    },
+    "Controller sound" : {
+      "comment" : "Configure binding: the speaker switch.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zvuk kontrolera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller-Ton"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sonido del mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son de la manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Som do controle"
           }
         }
       }
@@ -4950,6 +5475,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Escuro"
+          }
+        }
+      }
+    },
+    "Dead zones & motion" : {
+      "comment" : "The pushed page's title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mrtve zone i pokret"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Totzonen & Bewegung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zonas muertas y movimiento"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zones mortes et mouvement"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zonas mortas e movimento"
+          }
+        }
+      }
+    },
+    "Dead zones…" : {
+      "comment" : "Controllers: the card's button into the pad's Dead zones & motion page.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mrtve zone…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Totzonen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zonas muertas…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zones mortes…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zonas mortas…"
+          }
+        }
+      }
+    },
+    "Destination" : {
+      "comment" : "Configure binding: the section where the host is picked.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odredište"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ziel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destino"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destination"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Destino"
           }
         }
       }
@@ -5689,6 +6319,41 @@
         }
       }
     },
+    "Done" : {
+      "comment" : "The apply overlay's button once the binding landed.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gotovo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fertig"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Terminé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Concluído"
+          }
+        }
+      }
+    },
     "Drift test (hands off the sticks)" : {
       "comment" : "Inspector button.",
       "localizations" : {
@@ -5755,6 +6420,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A sessão de cada host, cada controle até a conexão e um registro do que mudou."
+          }
+        }
+      }
+    },
+    "Edit ›" : {
+      "comment" : "Home: the binding strip's button into Configure binding.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uredi ›"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bearbeiten ›"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar ›"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier ›"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Editar ›"
           }
         }
       }
@@ -6319,6 +7019,41 @@
         }
       }
     },
+    "Feedback from the host drives the pad’s motors." : {
+      "comment" : "Configure binding: under the Rumble switch.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Povratna informacija s hosta pokreće motore pada."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rückmeldung vom Host treibt die Motoren des Pads an."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La vibración enviada por el host acciona los motores del mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le retour de l'hôte pilote les moteurs de la manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O retorno do host aciona os motores do controle."
+          }
+        }
+      }
+    },
     "Finger 1: %@ · Finger 2: %@ · Click: %@" : {
       "comment" : "Inspector line.",
       "localizations" : {
@@ -6529,6 +7264,41 @@
         }
       }
     },
+    "Forward motion (gyro)" : {
+      "comment" : "Dead zones: the pad's motion switch.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prosljeđivanje pokreta (žiro)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung weiterleiten (Gyro)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reenviar movimiento (giro)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmettre le mouvement (gyro)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encaminhar movimento (giroscópio)"
+          }
+        }
+      }
+    },
     "Forward the DualSense / DualShock 4 touchpad. Controllers without a touchpad ignore this." : {
       "comment" : "Settings toggle detail.",
       "localizations" : {
@@ -6599,41 +7369,6 @@
         }
       }
     },
-    "Forwards this pad’s touchpad to the game as a touchpad." : {
-      "comment" : "Touchpad picker detail: the pad render.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Prosljeđuje dodirnu ploču ovog pada igri kao dodirnu ploču."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Leitet das Touchpad dieses Pads als Touchpad an das Spiel weiter."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reenvía el panel táctil de este mando al juego como panel táctil."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Transmet le pavé tactile de cette manette au jeu comme pavé tactile."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Encaminha o touchpad deste controle ao jogo como touchpad."
-          }
-        }
-      }
-    },
     "Found" : {
       "comment" : "LinkState chip — discovered but unpaired. Maps to Android `chip_status_found`.",
       "localizations" : {
@@ -6665,6 +7400,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Encontrado"
+          }
+        }
+      }
+    },
+    "Functions" : {
+      "comment" : "Configure binding: the section of the controller's own switches.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funkcije"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funktionen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funciones"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fonctions"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funções"
           }
         }
       }
@@ -6770,41 +7540,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Controle"
-          }
-        }
-      }
-    },
-    "Gamepad • %@" : {
-      "comment" : "Slot subtitle; the argument is where the input goes.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gamepad • %@"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gamepad • %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mando • %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Manette • %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Controle • %@"
           }
         }
       }
@@ -7334,6 +8069,41 @@
         }
       }
     },
+    "Input" : {
+      "comment" : "Configure binding: the section naming the pad.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ulaz"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingabe"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrada"
+          }
+        }
+      }
+    },
     "Input rate: %lld Hz" : {
       "comment" : "Inspector: reports per second.",
       "localizations" : {
@@ -7435,6 +8205,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A chave de pareamento dele é apagada — você vai precisar do PIN de novo."
+          }
+        }
+      }
+    },
+    "Keep editing" : {
+      "comment" : "Configure binding: the leave guard's way back to the page.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nastavi uređivanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weiter bearbeiten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seguir editando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer l'édition"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar editando"
           }
         }
       }
@@ -7680,6 +8485,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Iniciando"
+          }
+        }
+      }
+    },
+    "Leave without applying?" : {
+      "comment" : "Configure binding: the leave guard's question.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izaći bez primjene?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ohne Übernehmen verlassen?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Salir sin aplicar?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quitter sans appliquer ?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sair sem aplicar?"
           }
         }
       }
@@ -8139,6 +8979,41 @@
         }
       }
     },
+    "Manage destinations ›" : {
+      "comment" : "Configure binding: the way to the Connections page.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upravljaj odredištima ›"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ziele verwalten ›"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gestionar destinos ›"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gérer les destinations ›"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gerenciar destinos ›"
+          }
+        }
+      }
+    },
     "Mic" : {
       "comment" : "Chip label: the controller's microphone switch.",
       "localizations" : {
@@ -8489,6 +9364,41 @@
         }
       }
     },
+    "Moonlight host · %@" : {
+      "comment" : "Configure binding: a Moonlight destination's line; the argument is its address.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moonlight host · %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moonlight-Host · %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host de Moonlight · %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hôte Moonlight · %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host Moonlight · %@"
+          }
+        }
+      }
+    },
     "Moonlight hosts" : {
       "comment" : "Connections: the row that opens the Moonlight hosts page, and that page's title.",
       "localizations" : {
@@ -8594,6 +9504,41 @@
         }
       }
     },
+    "Motion %lld Hz" : {
+      "comment" : "Controllers: the pad's measured motion rate.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokret %lld Hz"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegung %lld Hz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimiento %lld Hz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mouvement %lld Hz"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Movimento %lld Hz"
+          }
+        }
+      }
+    },
     "Motion (gyro)" : {
       "comment" : "Settings toggle title.",
       "localizations" : {
@@ -8660,6 +9605,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Movimento e toque"
+          }
+        }
+      }
+    },
+    "Motion forwarding unavailable — this device has no gyroscope." : {
+      "comment" : "Dead zones: a pad without a gyroscope.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prosljeđivanje pokreta nije dostupno — ovaj uređaj nema žiroskop."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bewegungsweiterleitung nicht verfügbar — dieses Gerät hat kein Gyroskop."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reenvío de movimiento no disponible — este dispositivo no tiene giroscopio."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmission du mouvement indisponible — cet appareil n'a pas de gyroscope."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encaminhamento de movimento indisponível — este dispositivo não tem giroscópio."
           }
         }
       }
@@ -9399,41 +10379,6 @@
         }
       }
     },
-    "No connections — add one from Manage" : {
-      "comment" : "Bind picker empty state.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nema veza — dodajte jednu u Upravljanju"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Verbindungen — füge eine unter Verwalten hinzu"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sin conexiones — añade una desde Gestionar"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune connexion — ajoutez-en une via Gérer"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nenhuma conexão — adicione uma em Gerenciar"
-          }
-        }
-      }
-    },
     "No controllers connected" : {
       "comment" : "Slot list empty-state. Mac-specific copy — marked new.",
       "localizations" : {
@@ -9500,6 +10445,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sem giroscópio"
+          }
+        }
+      }
+    },
+    "No hosts found" : {
+      "comment" : "Configure binding: nothing paired to bind to.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema pronađenih hostova"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Hosts gefunden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontraron hosts"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun hôte trouvé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum host encontrado"
           }
         }
       }
@@ -9819,6 +10799,41 @@
         }
       }
     },
+    "No touchpad" : {
+      "comment" : "Controllers: the chip of a pad without a touchpad.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema dodirne ploče"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Touchpad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin panel táctil"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sans pavé tactile"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem touchpad"
+          }
+        }
+      }
+    },
     "No update information yet." : {
       "comment" : "Update status line.",
       "localizations" : {
@@ -10064,6 +11079,76 @@
         }
       }
     },
+    "Nothing has been sent yet. Your changes will be discarded." : {
+      "comment" : "Configure binding: under the leave guard's question.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ništa još nije poslano. Vaše promjene bit će odbačene."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es wurde noch nichts gesendet. Deine Änderungen werden verworfen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Todavía no se ha enviado nada. Se descartarán tus cambios."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'a encore été envoyé. Vos modifications seront abandonnées."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada foi enviado ainda. Suas alterações serão descartadas."
+          }
+        }
+      }
+    },
+    "Nothing is sent until you apply." : {
+      "comment" : "Configure binding: the bar's hint once a host is picked.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ništa se ne šalje dok ne primijenite."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Es wird nichts gesendet, bis du übernimmst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se envía nada hasta que apliques."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'est envoyé tant que vous n'appliquez pas."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada é enviado até você aplicar."
+          }
+        }
+      }
+    },
     "Nothing paired yet" : {
       "comment" : "Connections: the PAIRED list's title while it is empty.",
       "localizations" : {
@@ -10130,6 +11215,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nada configurado ainda"
+          }
+        }
+      }
+    },
+    "Nothing to tune for this combination — see why on the right. The pad is ready to bind." : {
+      "comment" : "Configure binding: a pad with no switch of its own.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema šta podesiti za ovu kombinaciju — razlog vidite desno. Pad je spreman za povezivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Für diese Kombination gibt es nichts einzustellen — warum, steht rechts. Das Pad ist bereit zum Verknüpfen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No hay nada que ajustar para esta combinación — mira por qué a la derecha. El mando está listo para vincular."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien à régler pour cette combinaison — voyez pourquoi à droite. La manette est prête à être liée."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada a ajustar nesta combinação — veja o motivo à direita. O controle está pronto para vincular."
           }
         }
       }
@@ -10414,6 +11534,41 @@
         }
       }
     },
+    "Overrides are stored per device and take effect immediately." : {
+      "comment" : "Dead zones: the page's footnote.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prilagodbe se čuvaju po uređaju i odmah stupaju na snagu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anpassungen werden pro Gerät gespeichert und wirken sofort."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los valores personalizados se guardan por dispositivo y se aplican de inmediato."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les valeurs personnalisées sont enregistrées par appareil et prennent effet immédiatement."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As personalizações são salvas por dispositivo e entram em vigor imediatamente."
+          }
+        }
+      }
+    },
     "POWER" : {
       "comment" : "Settings section eyebrow, uppercase.",
       "localizations" : {
@@ -10550,6 +11705,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Parear"
+          }
+        }
+      }
+    },
+    "Pair a Satellite or a Moonlight host on Connections, then come back to bind %@." : {
+      "comment" : "Configure binding: the empty destination list; the argument is the pad.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uparite Satelit ili Moonlight host na stranici Veze, pa se vratite da povežete %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppele einen Satelliten oder einen Moonlight-Host unter Verbindungen und komm dann zurück, um %@ zuzuordnen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empareja un Satélite o un host de Moonlight en Conexiones y vuelve para vincular %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairez un Satellite ou un hôte Moonlight dans Connexions, puis revenez pour lier %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pareie um Satélite ou um host Moonlight em Conexões e volte para vincular %@."
           }
         }
       }
@@ -10935,6 +12125,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pendente"
+          }
+        }
+      }
+    },
+    "Pick a destination to continue." : {
+      "comment" : "Configure binding: the bar's hint before a host is picked.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odaberite odredište za nastavak."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wähle ein Ziel, um fortzufahren."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Elige un destino para continuar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisissez une destination pour continuer."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escolha um destino para continuar."
           }
         }
       }
@@ -11849,6 +13074,111 @@
         }
       }
     },
+    "Report rate: measured. Latency: median round-trip ÷ 2 over the last 64 pings." : {
+      "comment" : "Home: the wire's tooltip.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Učestalost izvještaja: izmjereno. Kašnjenje: medijan povratnog vremena ÷ 2 kroz zadnjih 64 pinga."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Abfragerate: gemessen. Latenz: Median der Umlaufzeit ÷ 2 über die letzten 64 Pings."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frecuencia de informes: medida. Latencia: mediana del tiempo de ida y vuelta ÷ 2 en los últimos 64 pings."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fréquence de rapport : mesurée. Latence : aller-retour médian ÷ 2 sur les 64 derniers pings."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taxa de relatórios: medida. Latência: mediana do tempo de ida e volta ÷ 2 nos últimos 64 pings."
+          }
+        }
+      }
+    },
+    "Reset dead zones for %@" : {
+      "comment" : "Dead zones: the reset's accessibility label; the argument is the pad.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetuj mrtve zone za %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Totzonen für %@ zurücksetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer las zonas muertas de %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réinitialiser les zones mortes de %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar zonas mortas de %@"
+          }
+        }
+      }
+    },
+    "Reset to defaults" : {
+      "comment" : "Dead zones: forget the pad's tuning.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resetuj na zadano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf Standard zurücksetzen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restablecer valores por defecto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rétablir les valeurs par défaut"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Restaurar padrões"
+          }
+        }
+      }
+    },
     "Resting drift: L %@ · R %@. Suggested dead zone: %@." : {
       "comment" : "Inspector result.",
       "localizations" : {
@@ -12444,37 +13774,72 @@
         }
       }
     },
-    "Send the touchpad as a touchpad, or route it as a mouse." : {
-      "comment" : "Touchpad picker tooltip.",
+    "Send gyroscope and accelerometer readings to the host." : {
+      "comment" : "Dead zones: under the motion switch.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pošaljite dodirnu ploču kao dodirnu ploču ili je preusmjerite kao miš."
+            "value" : "Šalje očitanja žiroskopa i akcelerometra hostu."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sende das Touchpad als Touchpad oder leite es als Maus weiter."
+            "value" : "Sendet Gyroskop- und Beschleunigungsmesswerte an den Host."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envía el panel táctil como panel táctil o dirígelo como ratón."
+            "value" : "Envía las lecturas del giroscopio y del acelerómetro al host."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envoie le pavé tactile en tant que pavé, ou le redirige comme souris."
+            "value" : "Envoie les relevés du gyroscope et de l'accéléromètre à l'hôte."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Envie o touchpad como touchpad ou direcione-o como mouse."
+            "value" : "Enviar as leituras do giroscópio e do acelerômetro para o host."
+          }
+        }
+      }
+    },
+    "Sending each setting to the host." : {
+      "comment" : "The apply overlay's line under the heading.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Šalje se svaka postavka hostu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jede Einstellung wird an den Host gesendet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando cada ajuste al host."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Envoi de chaque paramètre à l'hôte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enviando cada configuração ao host."
           }
         }
       }
@@ -12615,6 +13980,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A sessão em %@ terminou"
+          }
+        }
+      }
+    },
+    "Set up a controller" : {
+      "comment" : "Home: the invitation row; it opens Configure binding for the first pad with no binding.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Postavi kontroler"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller einrichten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar un mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer une manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar um controle"
           }
         }
       }
@@ -12930,6 +14330,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Iniciar uma sessão"
+          }
+        }
+      }
+    },
+    "Stick dead zone" : {
+      "comment" : "Dead zones: the stick slider.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mrtva zona palice"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Stick-Totzone"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zona muerta del stick"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zone morte des sticks"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zona morta do analógico"
           }
         }
       }
@@ -14544,6 +15979,41 @@
         }
       }
     },
+    "Tilt and gyro aiming on the host." : {
+      "comment" : "Configure binding: under the Motion switch.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nagib i žiro nišanjenje na hostu."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Neigung und Gyro-Zielen auf dem Host."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclinación y puntería con giro en el host."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Visée gyro et inclinaison sur l'hôte."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclinação e mira giroscópica no host."
+          }
+        }
+      }
+    },
     "Tip jar. Buy us a coffee, no account required — Ko-fi takes no cut on one-time tips." : {
       "comment" : "Support Dish: what Ko-fi is.",
       "localizations" : {
@@ -14649,37 +16119,37 @@
         }
       }
     },
-    "Touchpad routing is off for this binding." : {
-      "comment" : "Touchpad picker detail: off.",
+    "Trigger dead zone" : {
+      "comment" : "Dead zones: the trigger slider.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prosljeđivanje dodirne ploče je isključeno za ovo povezivanje."
+            "value" : "Mrtva zona okidača"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Touchpad-Weiterleitung ist für diese Zuordnung aus."
+            "value" : "Trigger-Totzone"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El enrutado del panel táctil está desactivado para este vínculo."
+            "value" : "Zona muerta del gatillo"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'acheminement du pavé tactile est désactivé pour cette liaison."
+            "value" : "Zone morte des gâchettes"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O roteamento do touchpad está desligado para este vínculo."
+            "value" : "Zona morta do gatilho"
           }
         }
       }
@@ -14995,6 +16465,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desvincular"
+          }
+        }
+      }
+    },
+    "Unbound" : {
+      "comment" : "Home: the pad node's line while the pad has no binding.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije povezano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht verknüpft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin vincular"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Non liée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem vínculo"
           }
         }
       }
@@ -15874,6 +17379,41 @@
         }
       }
     },
+    "as %@" : {
+      "comment" : "Home: the binding strip's first chip; the argument is the emulated type's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "kao %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "als %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "como %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "comme %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "como %@"
+          }
+        }
+      }
+    },
     "available" : {
       "comment" : "Backend word.",
       "localizations" : {
@@ -16014,6 +17554,41 @@
         }
       }
     },
+    "events/s %lld   sends/s %lld" : {
+      "comment" : "Home and Controllers footer: reports read and reports sent per second.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "događaji/s %lld   slanja/s %lld"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ereignisse/s %lld   Sendungen/s %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "eventos/s %lld   envíos/s %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "évén./s %lld   envois/s %lld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "eventos/s %lld   envios/s %lld"
+          }
+        }
+      }
+    },
     "granted" : {
       "comment" : "Grant word.",
       "localizations" : {
@@ -16150,6 +17725,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "levantado"
+          }
+        }
+      }
+    },
+    "live" : {
+      "comment" : "Home: the wire's caption on a live link with nothing measured yet.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aktivan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aktiv"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "activo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "active"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ativo"
           }
         }
       }
@@ -16580,6 +18190,41 @@
         }
       }
     },
+    "not bound" : {
+      "comment" : "Controllers: the card's word beside Bind… for a pad with no binding.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nije povezano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nicht zugeordnet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sin vincular"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "non liée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "sem vínculo"
+          }
+        }
+      }
+    },
     "not granted" : {
       "comment" : "Grant word.",
       "localizations" : {
@@ -16860,6 +18505,41 @@
         }
       }
     },
+    "pending" : {
+      "comment" : "Configure binding: What carries while the host or its catalog is unresolved.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "na čekanju"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ausstehend"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pendiente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "en attente"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "pendente"
+          }
+        }
+      }
+    },
     "playing" : {
       "comment" : "Diagnostics value: a lane.",
       "localizations" : {
@@ -16961,6 +18641,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "solto"
+          }
+        }
+      }
+    },
+    "slot %lld of %lld" : {
+      "comment" : "Home: the host node's line; which of the host's slots this pad holds, and how many it has.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "slot %lld od %lld"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Slot %lld von %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ranura %lld de %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "emplacement %lld sur %lld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "slot %lld de %lld"
+          }
+        }
+      }
+    },
+    "total %lld" : {
+      "comment" : "Home and Controllers footer: every report sent this run.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ukupno %lld"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "gesamt %lld"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "total %lld"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "total %lld"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "total %lld"
           }
         }
       }
@@ -17241,181 +18991,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "~2 min"
-          }
-        }
-      }
-    },
-    "→ %@" : {
-      "comment" : "Slot binding, server live.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@"
-          }
-        }
-      }
-    },
-    "→ %@ (connecting…)" : {
-      "comment" : "Slot binding, session opening.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (povezivanje…)"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (verbindet…)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (conectando…)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (connexion…)"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (conectando…)"
-          }
-        }
-      }
-    },
-    "→ %@ (offline)" : {
-      "comment" : "Slot binding, server out of reach.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (van veze)"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (offline)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (desconectado)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (hors ligne)"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (off-line)"
-          }
-        }
-      }
-    },
-    "→ %@ (ready)" : {
-      "comment" : "Slot binding, server seen but no session.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (spreman)"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (bereit)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (listo)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (prête)"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (pronto)"
-          }
-        }
-      }
-    },
-    "→ %@ (unsteady)" : {
-      "comment" : "Slot binding, server faltering.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (nestabilno)"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (instabil)"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (inestable)"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (instable)"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "→ %@ (instável)"
           }
         }
       }

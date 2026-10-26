@@ -13,35 +13,28 @@ func bindableConnections(for slot: ControllerSlot, in connections: [ConnectionSu
     connections.filter { $0.boundSlotIds.contains(slot.id) || $0.hasRoomForAnotherSlot }
 }
 
-/// Where a slot's input goes, with the bound server's state in brackets
-/// unless it is plainly online.
-func bindLabel(_ bound: ConnectionSummary?, words: L10n = .app) -> String {
-    guard let bound else { return words.unbound }
-    switch bound.live {
-    case .connected: return words.boundTo(connectionTitle(bound))
-    case .unstable: return words.boundUnsteady(connectionTitle(bound))
-    case .connecting: return words.boundConnecting(connectionTitle(bound))
-    case .ready: return words.boundReady(connectionTitle(bound))
-    case .saved, .found, .stale: return words.boundOffline(connectionTitle(bound))
-    }
-}
-
-func slotSubtitle(_ slot: ControllerSlot, words: L10n = .app) -> String {
-    words.gamepadSubtitle(bindLabel(slot.boundStatus, words: words))
-}
-
-/// An unbound slot shows the muted dot and the plain satellite glyph.
+/// An unbound slot shows the muted dot.
 func slotDotColor(_ slot: ControllerSlot) -> Color {
     guard let bound = slot.boundStatus else { return DishTheme.muted }
     return linkDotColor(bound.live)
 }
 
-func slotIconState(_ slot: ControllerSlot) -> BrandIconState {
-    brandIconState(for: slot.boundStatus?.live ?? .saved)
+/// GameController keeps the transport to itself, so a pad's link reads as
+/// its family; a pad the framework does not name reads as the framework.
+func padFamilyName(_ family: PadFamily) -> String {
+    switch family {
+    case .dualSense: "DualSense"
+    case .dualShock4: "DualShock 4"
+    case .xbox: "Xbox"
+    case .other: "GameController"
+    }
 }
 
-func bindButtonTitle(expanded: Bool, words: L10n = .app) -> String {
-    expanded ? words.close : words.bind
+/// How a capability pill is drawn: the warning tone first, then on and off;
+/// absent hardware is outlined dashed.
+func capabilityChipLook(_ chip: CapabilityChipModel) -> CapabilityChipLook {
+    let ink = chip.warning ? DishTheme.warning : (chip.on ? DishTheme.primary : DishTheme.muted)
+    return CapabilityChipLook(ink: ink, on: chip.on, absent: !chip.available)
 }
 
 /// One capability pill. Three states a player can tell apart: available and
@@ -156,17 +149,6 @@ func touchpadPickOffered(_ pick: TouchpadPick, _ slot: ControllerSlot) -> Bool {
     switch pick {
     case .off, .pad: true
     case .mouse: slot.hostProbe?.mouseControl == true
-    }
-}
-
-/// The line under the picker: where the touchpad goes, or why it goes
-/// nowhere.
-func touchpadPickDetail(_ slot: ControllerSlot, _ global: ForwardingFlags, words: L10n = .app) -> String {
-    guard global.touchpad else { return words.switchedOffInSettings }
-    switch slot.preferences.touchpad {
-    case .off: return words.touchpadRoutingOff
-    case .pad: return words.touchpadForwardedAsTouchpad
-    case .mouse: return touchpadPickOffered(.mouse, slot) ? words.touchpadMovesTheMouse : words.hostLacks(words.mouse)
     }
 }
 

@@ -21,6 +21,35 @@ the repos share a version number.
 
 ### Added
 
+- **Home draws the signal path.** A boxed row per controller: the pad, a wire
+  captioned with the measured report rate and the link's latency (dashed and
+  idle until the link is live, crawling while it comes up), and the host with
+  its address, its link chip and "slot n of 4" (a satellite's "slot 1 of 1");
+  under it the binding as chips, the emulated type first and the controller's
+  own switches clickable in place, and an Edit button into Configure binding.
+  A pad with nowhere to go is a ghost "Bind…" card, "Set up a controller"
+  opens the first such pad, and the events, sends and total sent per second
+  are pinned under the page, as on the desktops.
+- **Controllers get their cards.** A card per pad: its dot and name, its
+  family and measured rate (GameController keeps the transport to itself),
+  "Bound · host ›" or "not bound · Bind…", the Gyro, Touchpad, Lightbar and
+  battery chips, the microphone's live or muted button, the motion rate and
+  "Dead zones…".
+- **A binding is configured on its own page.** Configure binding holds every
+  answer as a draft (the destination among the paired satellites and
+  Moonlight hosts, the motion, rumble, touchpad, microphone and speaker
+  switches, the type it is emulated as, and "What carries" for that choice)
+  until one Apply writes them together. "Applying binding…" shows its steps
+  over the page ("Binding", "Applying on the host", then done or why not),
+  may be cancelled while the host's link is still coming up, and gives the
+  host eight seconds to answer, as the desktops do. Leaving with changes
+  unapplied asks "Leave without applying?" first; Unbind is on the same bar.
+- **Dead zones are per pad.** "Dead zones & motion" sets a pad's stick and
+  trigger dead zones on sliders with live readouts, applied to the pad at
+  once and kept under the desktops' key (`deadzone:<id>`, their
+  `{"s":…,"t":…}` shape), with "Reset to defaults" and the pad's own motion
+  switch. The 10 % stick and 5 % trigger floors stay the defaults.
+
 - **Pairing asks the satellite's operator first; the PIN stays typeable.**
   Pairing a satellite opens its row into a pairing card instead of a PIN
   sheet. The card shows a four-digit code and files it with the satellite at
@@ -66,6 +95,10 @@ the repos share a version number.
   binding it drops.
 
 ### Changed
+
+- The Emulate picker, the touchpad picker and the inline Bind list leave the
+  controller cards: the type and the destination are chosen on Configure
+  binding, and the strip's chips stay the controller's own switches.
 
 - **Connections is the desktops' page.** It scans as it opens, quietly: an
   empty network is said by the page ("No satellites found", with the

@@ -19,6 +19,8 @@ enum Page: Hashable {
     case crashReport
     case licenses
     case moonlightHosts
+    case configureBinding(slotId: String)
+    case deadZones(slotId: String)
 }
 
 /// Where a page lives when something outside the window asks for it.
@@ -26,6 +28,8 @@ func homeDestination(of page: Page) -> Destination {
     switch page {
     case .diagnostics, .inspector, .crashReport, .licenses: .settings
     case .moonlightHosts: .connections
+    case .configureBinding: .home
+    case .deadZones: .controllers
     }
 }
 

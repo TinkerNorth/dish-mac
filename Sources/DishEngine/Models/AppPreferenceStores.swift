@@ -13,6 +13,7 @@ struct AppPreferenceStores {
     let keepAwake: KeepAwakePreferenceStore
     let updates: UpdatePreferenceStore
     let slots: SlotPreferenceStore
+    let deadzones: DeadzonePreferenceStore
 
     @MainActor
     init(defaults: UserDefaults) {
@@ -22,5 +23,6 @@ struct AppPreferenceStores {
         keepAwake = KeepAwakePreferenceStore(defaults: defaults)
         updates = UpdatePreferenceStore(defaults: defaults)
         slots = SlotPreferenceStore(defaults: defaults)
+        deadzones = DeadzonePreferenceStore(defaults: defaults)
     }
 }

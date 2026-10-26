@@ -49,6 +49,7 @@ Fills derived from the palette, named so no view multiplies an alpha itself
 | `DishTheme.shadow` | black @ 35 % | `0x0C1430` @ 35 % | A toast's drop shadow |
 | `DishTheme.railActiveFill` | accent @ 14 % | accent @ 14 % | The rail item of the destination on screen |
 | `DishTheme.pillFill` | accent @ 14 % | accent @ 14 % | The shell's streaming pill |
+| `DishTheme.scrim` | black @ 45 % | `0x0C1430` @ 45 % | The wash under the "Applying binding…" overlay |
 
 The one hue beyond the accent, kept for donations (the desktops' `pulse`):
 
@@ -111,6 +112,12 @@ The window's sizes and the rail's are the desktops' (`AppShell.qml`,
 | `DishSize.buttonSpinner` | 12 | A spinner inside a button or beside an eyebrow |
 | `DishSize.chipRadius` | 6 | A chip's, the pill's and a rail item's corner |
 | `DishSize.cardRadius` | 8 | A card's corner |
+| `DishSize.chipDash` | 3 | The dashed outline of a capability the pad lacks |
+| `DishSize.wireStroke` | 2 | The pad-to-host wire on Home |
+| `DishSize.wireDash` | 4 | The wire's dash while the link is not live |
+| `DishSize.wireGlyph` | 20 | The dish glyph riding the wire |
+| `DishSize.nodeMinWidth` | 200 | A pad or host node's narrowest width on Home |
+| `DishSize.overlayWidth` | 380 | The apply overlay's card |
 
 ## Spacing (`DishSpace`)
 

@@ -25,6 +25,12 @@ package final class AppModel: ObservableObject {
     package let updates: UpdateChecker
     /// The per-controller switches beneath the global ones.
     package let slotPreferences: SlotPreferenceStore
+    /// Each pad's dead zones, handed to the processor as the pad attaches.
+    package let deadzonePreferences: DeadzonePreferenceStore
+    /// Events, sends and each pad's rates, ticking while Home or Controllers shows.
+    package let telemetry = TelemetrySource()
+    /// The one binding apply's ears and clock.
+    let bindingWatch = BindingApplyWatch()
     /// What the Diagnostics page reads, ticking while it shows.
     package let diagnostics: DiagnosticsSource
     /// The flight recorder's lines.
@@ -60,7 +66,7 @@ package final class AppModel: ObservableObject {
 
     /// Thread-safe mirror of `settings` for the callback threads.
     private let gate = ForwardingGate()
-    private let routing: InputRouting
+    let routing = InputRouting()
     private let returnPaths: ReturnPathRouter
     /// A host's rumble and lamp onto the pad bound to the number it names.
     let moonlightFeedback: MoonlightFeedbackRouter
@@ -146,6 +152,7 @@ package final class AppModel: ObservableObject {
         keepAwake = prefs.keepAwake
         updatePreferences = prefs.updates
         slotPreferences = prefs.slots
+        deadzonePreferences = prefs.deadzones
         updates = Self.updateChecker(preferences: prefs.updates, manifestGateway: manifestGateway, appVersion: appVersion)
         let pipeline = WakePipeline(
             hub: hub,
@@ -160,8 +167,6 @@ package final class AppModel: ObservableObject {
         diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight)
         recorder = DiagnosticsRecorder(store: diagnosticsLog)
         self.crashLog = crashLog
-        let routing = InputRouting()
-        self.routing = routing
         returnPaths = ReturnPathRouter(input: input, gate: gate, table: routing.table)
         moonlightFeedback = MoonlightFeedbackRouter(actuators: .live(input), gate: gate, table: routing.table)
         audio = AudioPipeline(
@@ -185,6 +190,7 @@ package final class AppModel: ObservableObject {
         gate.update(settings.flags)
         routing.install(on: input.processor)
         observeSlots()
+        observeDeadzones()
         observeRoutingTable()
         observeMoonlight()
         observeDiagnostics()

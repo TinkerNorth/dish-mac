@@ -79,6 +79,7 @@ func composeSlots(
         slot.preferences = facts.preferences[gc.id] ?? SlotPreferences()
         slot.audioRoute = route?.verdict
         slot.micMuted = facts.mutes.contains(gc.id)
+        slot.family = gc.family
         guard let connectionId = bindings[gc.id] else { return slot }
         slot.boundConnectionId = connectionId
         slot.boundStatus = connections.first { $0.id == connectionId }

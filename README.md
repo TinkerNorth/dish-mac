@@ -73,9 +73,24 @@ protocol-1 satellite; see [Protocol](#protocol).
   appearance or a chosen light or dark theme.
 - Checks GitHub for a newer release at startup and every few hours, says so
   once per version, and lets one switch turn the check off.
-- Emulates each pad as the type its satellite offers for it, or the one you
-  pick, and shows what carries end to end: the pad, this Mac, the type and
-  the host, feature by feature.
+- Draws Home as the signal path, the desktops' wiring diagram: a boxed row
+  per controller from the pad, along a wire captioned with its measured
+  report rate and the link's latency, to the host and the slot it holds
+  there, with the binding printed underneath as chips (the emulated type,
+  then motion, touchpad, rumble, microphone, speaker and light bar, the
+  controller's own switches clickable in place) and an Edit button; a pad
+  with nowhere to go is a "Bind…" card, and the live events, sends and total
+  sit under the diagram. Controllers lists a card per pad with its family
+  and rate, its capability chips, the microphone's mute, its motion rate,
+  "Bound · host ›" and its dead zones.
+- Configures each binding on its own page: where the pad goes (paired
+  satellites and Moonlight hosts with their link chips), its motion,
+  rumble, touchpad, microphone and speaker switches, the type it is emulated
+  as (the satellite's catalog, or Auto / Xbox / PlayStation / Nintendo on a
+  Moonlight host) and what carries end to end, feature by feature, all held
+  as a draft until one Apply, which shows its steps and asks before you
+  leave with changes unapplied. Each pad's stick and trigger dead zones are
+  sliders of their own, kept per pad under the desktops' key.
 - Shows a Diagnostics page with each session's own account of itself, each
   controller down to the wire, and a log of what changed; inspects one
   controller live (its input as the host sees it, motion and touch, a drift

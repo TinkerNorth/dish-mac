@@ -48,6 +48,8 @@ final class ShellMappersTests: XCTestCase {
         XCTAssertEqual(pageTitle(NavigationState(destination: .settings, path: [.crashReport])), "Crash report")
         XCTAssertEqual(pageTitle(NavigationState(destination: .settings, path: [.licenses])), "Open source licenses")
         XCTAssertEqual(pageTitle(NavigationState(destination: .connections, path: [.moonlightHosts])), "Moonlight hosts")
+        XCTAssertEqual(pageTitle(NavigationState(destination: .home, path: [.configureBinding(slotId: "a")])), "Configure binding")
+        XCTAssertEqual(pageTitle(NavigationState(destination: .controllers, path: [.deadZones(slotId: "a")])), "Dead zones & motion")
     }
 
     func testTheBackChevronShowsOnlyOverAPushedPage() {

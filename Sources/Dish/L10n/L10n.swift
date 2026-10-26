@@ -28,10 +28,6 @@ extension L10n {
         catalog.text("Settings")
     }
 
-    var controllersSection: String {
-        catalog.text("CONTROLLERS")
-    }
-
     var noControllersConnected: String {
         catalog.text("No controllers connected")
     }

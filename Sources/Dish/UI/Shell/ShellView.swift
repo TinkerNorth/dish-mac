@@ -70,6 +70,8 @@ struct ShellView: View {
         case .crashReport: CrashReportPage().shellPage()
         case .licenses: LicensesPage(state: licensesState).shellPage()
         case .moonlightHosts: MoonlightHostsPage().shellPage()
+        case let .configureBinding(slotId): ConfigureBindingPage(slotId: slotId).shellPage()
+        case let .deadZones(slotId): DeadZonesPage(slotId: slotId).shellPage()
         }
     }
 

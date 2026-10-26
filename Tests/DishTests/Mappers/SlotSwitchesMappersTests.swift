@@ -200,20 +200,4 @@ final class SlotSwitchesMappersTests: XCTestCase {
         bound.hostProbe = probed(mouseControl: false)
         XCTAssertEqual(touchpadPickOptions(bound).map(\.enabled), [true, true, false])
     }
-
-    func testTheDetailSaysWhereTheTouchpadGoes() {
-        var bound = slot()
-        bound.hostProbe = probed(mouseControl: false)
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "Forwards this pad’s touchpad to the game as a touchpad.")
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags(touchpad: false)), "Switched off in Settings.")
-        bound.preferences.touchpad = .off
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "Touchpad routing is off for this binding.")
-        bound.preferences.touchpad = .mouse
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "The host doesn’t carry Mouse.")
-        bound.hostProbe = probed(mouseControl: true)
-        XCTAssertEqual(
-            touchpadPickDetail(bound, ForwardingFlags()),
-            "The touchpad moves the host’s mouse; the pad’s click is the left button."
-        )
-    }
 }

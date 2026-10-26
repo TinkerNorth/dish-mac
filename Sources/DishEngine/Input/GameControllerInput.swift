@@ -8,11 +8,6 @@ import Foundation
 import GameController
 import os
 
-/// About 10 % of the stick range and 5 % of the trigger range: a noise floor
-/// that keeps a cheap pad from twitching at rest without clipping deliberate
-/// small inputs.
-let kDefaultStickFlat: Int16 = 3277
-let kDefaultTriggerFlat: UInt8 = 13
 /// MSG_BATTERY is a fixed 30 s cadence; the first sample waits for the
 /// controller-add to settle.
 let kBatteryPollIntervalSec = 30
@@ -148,14 +143,14 @@ final class GameControllerInput: ObservableObject {
     // MARK: - Attach / detach
 
     /// The queue is the controller's before any handler is, so no event
-    /// lands on the main queue first.
+    /// lands on the main queue first. Recording the slot is what hands the
+    /// pad its dead zones (`observeDeadzones`), before its first report.
     private func attach(_ controller: GCController) {
         Self.monitorBackgroundEvents()
         guard let pad = controller.extendedGamepad else { return }
         let id = slotId(for: controller)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
-        processor.setDeadzones(deviceId: id, .init(stickFlat: kDefaultStickFlat, triggerFlat: kDefaultTriggerFlat))
         controller.handlerQueue = inputQueue
         installReportHandler(id: id, pad: pad)
         installMotionHandler(id: id, controller: controller)

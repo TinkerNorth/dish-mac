@@ -4,29 +4,66 @@
 import DishEngine
 import SwiftUI
 
-/// Home: every controller and where it goes.
+/// Home: the signal-path wiring diagram. One boxed row per pad, pad node to
+/// wire to host node with the binding printed underneath, a ghost "Bind…"
+/// card for a pad with nowhere to go, the invitation to set one up, and the
+/// live figures pinned under it all.
 struct HomePage: View {
 
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var wifi: WifiConnectionManager
+    @EnvironmentObject var navigation: NavigationStore
 
     private var state: HomePageState {
-        homePageState(slots: model.slots, registering: wifi.anyControllerRegistering)
+        homePageState(HomeInputs(
+            slots: model.slots,
+            facts: model.shellFacts,
+            registering: model.shellFacts.controllerRegistering,
+            micPermitted: model.micPermitted
+        ))
     }
 
     var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: DishSpace.s5) {
-                HStack(spacing: DishSpace.s4) {
-                    SectionHeader(title: state.section)
+        let state = state
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: DishSpace.s8) {
                     if state.registering {
                         DishSpinner(size: DishSize.buttonSpinner)
                     }
-                    Spacer()
+                    content(state.content)
+                    if let setUp = state.setUp {
+                        SetUpRow(state: setUp, open: configure)
+                    }
                 }
-                SlotList(state: state.list)
+                .padding(DishSpace.page)
             }
-            .padding(DishSpace.page)
+            TelemetryFooter(rates: state.footer.rates, total: state.footer.total)
+        }
+        .onAppear { model.pageAppeared(.home) }
+        .onDisappear { model.pageDisappeared(.home) }
+    }
+
+    @ViewBuilder
+    private func content(_ content: HomeContent) -> some View {
+        switch content {
+        case let .empty(title, body):
+            EmptyStateCard(title: title, message: body)
+        case let .rows(rows):
+            ForEach(rows) { row in
+                SignalRow(state: row, perform: perform, edit: configure)
+            }
+        }
+    }
+
+    private func configure(_ slotId: String) {
+        navigation.send(.push(.configureBinding(slotId: slotId)))
+    }
+
+    /// A strip chip's click: one of the controller's switches, or its mic's mute.
+    private func perform(_ action: SlotChipAction, slotId: String) {
+        switch action {
+        case let .setSwitch(feature, on): model.setSlotSwitch(feature, on: on, slotId: slotId)
+        case let .setMicMuted(muted): model.setMicMuted(muted, slotId: slotId)
         }
     }
 }

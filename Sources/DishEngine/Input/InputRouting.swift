@@ -60,6 +60,8 @@ final class RoutingTable: @unchecked Sendable {
 /// the switches in force for the controller, already folded into its route.
 final class InputRouting: @unchecked Sendable {
     let table = RoutingTable()
+    /// Every report handed to a sink, for the telemetry's sends.
+    let sent = AtomicCounter()
 
     /// Point the processor's senders at this router.
     func install(on processor: GamepadInputProcessor) {
@@ -71,6 +73,7 @@ final class InputRouting: @unchecked Sendable {
 
     func sendReport(_ deviceId: String, _ report: GamepadReport) {
         guard let route = table.get(deviceId) else { return }
+        sent.increment()
         route.sink.sendReport(report)
     }
 

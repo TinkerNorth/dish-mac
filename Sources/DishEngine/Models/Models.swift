@@ -376,6 +376,8 @@ package struct ControllerSlot: Identifiable, Hashable {
     package var audio: ControllerAudioState?
     /// The user muted this controller's microphone (in memory only).
     package var micMuted = false
+    /// The pad's family, the word the Controllers card shows for its link.
+    package var family = PadFamily.other
 
     package init(
         id: String,
@@ -391,7 +393,8 @@ package struct ControllerSlot: Identifiable, Hashable {
         preferences: SlotPreferences = SlotPreferences(),
         audioRoute: AudioRouteVerdict? = nil,
         audio: ControllerAudioState? = nil,
-        micMuted: Bool = false
+        micMuted: Bool = false,
+        family: PadFamily = .other
     ) {
         self.id = id
         self.name = name
@@ -407,6 +410,7 @@ package struct ControllerSlot: Identifiable, Hashable {
         self.audioRoute = audioRoute
         self.audio = audio
         self.micMuted = micMuted
+        self.family = family
     }
 }
 

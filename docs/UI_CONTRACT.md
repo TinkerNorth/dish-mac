@@ -35,8 +35,11 @@ the top, then Support Dish and Settings pinned to the footer over the version
 label. The space between the two groups is where the Set up action goes; it
 is an action, not a destination. Pushed pages today: Diagnostics, the
 controller inspector (pushed from Diagnostics), the crash report and the open
-source licenses (pushed from Settings), and Moonlight hosts (pushed from
-Connections; a PIN a host mints elsewhere shows it with `external(.showPage)`).
+source licenses (pushed from Settings), Moonlight hosts (pushed from
+Connections; a PIN a host mints elsewhere shows it with `external(.showPage)`),
+Configure binding (`Page.configureBinding(slotId:)`, pushed from a Home row
+or a Controllers card onto the destination that asked, home `Home`) and Dead
+zones & motion (`Page.deadZones(slotId:)`, pushed from a Controllers card).
 
 ### The header
 
@@ -59,7 +62,9 @@ never draws its own title bar.
 
 ### The leave guard
 
-A page with a draft arms the guard (`guardLeave(true)`) while it shows. Any
+A page with a draft arms the guard (`guardLeave(true)`) while it shows:
+today Configure binding, whenever its draft differs from what it opened
+with, asking "Leave without applying?" (Discard / Keep editing). Any
 move that would replace or unwind the stack from outside the page (a rail
 click, the chevron, ⌘[, the menu-bar item) is then held as
 `pendingLeaveGuard` until the page answers `.stay` or `.leave`; a request
@@ -77,7 +82,10 @@ page never adds its own.
 Only short confirmations macOS expects as alert sheets may be modal, raised
 with `confirmationDialog` from a view state the model drives: today, Forget
 (`requestForget` / `confirmForget` / `cancelForget`, the dialog's words from
-`forgetDialog`). There is no `.sheet` anywhere under `Sources/Dish`.
+`forgetDialog`) and the leave guard's "Leave without applying?", shown while
+`pendingLeaveGuard` holds a move. There is no `.sheet` anywhere under
+`Sources/Dish`; "Applying binding…" is an in-page overlay (`ApplyOverlay`),
+not a modal.
 
 Everything else that would have been a sheet is an **inline card inside the
 row that started it**: the satellite pairing card under its FOUND row or
@@ -141,6 +149,52 @@ name, address and port as data; `connectionTitle` and
   `perform(_:onHost:)`), Forget behind ⋯ for a host the records know, the
   inline add form (`addByAddress(.moonlight, _)`) and the PIN card.
 
+## The controller pages
+
+Home, Controllers, Configure binding and Dead zones are drawn from the
+model's slots and connections and from four parts of `ShellFacts`: the
+global switches (`forwarding`), the stored dead zones (`deadzones`), the
+live rates (`telemetry`, a `TelemetrySource` that ticks while Home or
+Controllers shows: `pageAppeared(.home / .controllers)`) and the binding
+being configured (`binding`). No page holds an engine environment object.
+
+- **Home** ([`HomeMappers.swift`](../Sources/Dish/UI/Mappers/HomeMappers.swift)):
+  the desktops' signal-path diagram. A boxed row per pad: the pad node (its
+  name; its family, battery and "Unbound"), the `WireLine` (live only on a
+  session that is up, captioned with the pad's measured rate and the link's
+  latency, else "live"; "idle" and dashed otherwise; crawling while the link
+  comes up or an apply runs for it), and the host node (name, address, "slot n
+  of 4", "slot 1 of 1" on a satellite, the link chip); under it the
+  `BindingStrip`: the emulated type as a fact, then the controller's chips,
+  the switches among them clickable in place (`SlotChipAction`), the mic's
+  word and lamp, and Edit › into `Page.configureBinding`. A pad with no
+  binding is a ghost "Bind…" card that pushes the same page; "Set up a
+  controller" pushes it for the first pad with no binding and is absent when
+  there is none. The `TelemetryFooter` carries events/s, sends/s and the total.
+- **Controllers** ([`ControllersMappers.swift`](../Sources/Dish/UI/Mappers/ControllersMappers.swift)):
+  a card per pad with its dot, name, family and measured rate (GameController
+  keeps the transport to itself, so there is no Bluetooth / USB word and no
+  Poll Hz, which is the Direct path's), "Bound · host ›" or "not bound" with
+  Bind…, the Gyro / Touchpad / Lightbar / battery chips, the mic's live or
+  muted button, the motion rate, and Dead zones… into `Page.deadZones`.
+- **Configure binding** ([`BindingMappers.swift`](../Sources/Dish/UI/Mappers/BindingMappers.swift)):
+  `pageAppeared(.configureBinding(slotId:))` opens a `BindingDraft` (DishCore)
+  seeded from the binding, the type pick and the controller's switches, and
+  the engine keeps the *candidate*, the pad as the draft would bind it, which
+  the type picker and "What carries" read. Every control sends
+  `editBinding(_:)`; nothing is written until `applyBinding(draft)`, which
+  writes the switches, the type and the binding together and follows the run
+  as `ApplyProgress`: a Moonlight binding is a durable intent and is done at
+  once; a satellite in session takes the PUT at once ("Applying on the
+  host"); one without a session is reached for and waits ("Binding",
+  cancellable with `cancelApply()`, which writes back what was there); the
+  host has 8 s to confirm or refuse. The overlay's Done pops the page; a
+  failure stays with the draft intact. `pageDisappeared` drops the draft.
+- **Dead zones & motion** ([`DeadzoneMappers.swift`](../Sources/Dish/UI/Mappers/DeadzoneMappers.swift)):
+  the pad's stick and trigger flats as `SliderRow`s over 0 to 30 % with
+  their readouts, `setStickDeadzone` / `setTriggerDeadzone` on every move,
+  `resetDeadzones` back to the defaults, and the pad's own motion switch.
+
 ## Kit rules
 
 A kit component lives in `Sources/Dish/UI/Kit/` and is drawn from any page's
@@ -159,7 +213,9 @@ state. The desktops' C1 to C8, adapted:
 
 Today's kit: `ShellHeader` (with `StreamingPill` and `MicChip`), `RailItem`,
 `EmptyStateCard` (with an optional hint and actions), `TwoColumnLayout`,
-`PairingCard`, `PinCells`, `ScanHeader`, `StateChip`.
+`PairingCard`, `PinCells`, `ScanHeader`, `StateChip`, `CapabilityChip`,
+`FlowLayout`, `WireLine`, `BindingStrip`, `ApplyOverlay`, `SliderRow`,
+`TelemetryFooter`.
 
 ## Keyboard
 

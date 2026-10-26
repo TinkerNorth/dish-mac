@@ -108,6 +108,38 @@ final class NavigationMachineTests: XCTestCase {
         XCTAssertEqual(shown.effects, [.activateWindow])
     }
 
+    func testConfigureBindingIsPushedOntoThePageThatAskedAndLivesUnderHome() {
+        let onControllers = step(root, .select(.controllers)).state
+        let editing = step(onControllers, .push(.configureBinding(slotId: "pad"))).state
+        XCTAssertEqual(editing.destination, .controllers, "the card's hand-off stays on Controllers")
+        XCTAssertEqual(editing.path, [.configureBinding(slotId: "pad")])
+        XCTAssertEqual(homeDestination(of: .configureBinding(slotId: "pad")), .home)
+        let shown = step(onControllers, .external(.showPage(.configureBinding(slotId: "pad"))))
+        XCTAssertEqual(shown.state.destination, .home)
+    }
+
+    func testDeadZonesIsPushedOntoControllersAndShownThereFromOutside() {
+        let onControllers = step(root, .select(.controllers)).state
+        let tuning = step(onControllers, .push(.deadZones(slotId: "pad"))).state
+        XCTAssertEqual(tuning.path, [.deadZones(slotId: "pad")])
+        XCTAssertEqual(homeDestination(of: .deadZones(slotId: "pad")), .controllers)
+        let shown = step(root, .external(.showPage(.deadZones(slotId: "pad"))))
+        XCTAssertEqual(shown.state.destination, .controllers)
+        XCTAssertEqual(shown.state.path, [.deadZones(slotId: "pad")])
+    }
+
+    func testADirtyBindingHoldsTheRailUntilThePageAnswers() {
+        var editing = NavigationState(destination: .home, path: [.configureBinding(slotId: "pad")])
+        editing = step(editing, .guardLeave(true)).state
+        let held = step(editing, .select(.connections)).state
+        XCTAssertEqual(held.pendingLeaveGuard, .select(.connections))
+        XCTAssertEqual(held.path, [.configureBinding(slotId: "pad")], "the page stays while it asks")
+        XCTAssertEqual(step(held, .leaveGuard(.stay)).state.path, [.configureBinding(slotId: "pad")])
+        let left = step(held, .leaveGuard(.leave)).state
+        XCTAssertEqual(left.destination, .connections)
+        XCTAssertEqual(left.path, [])
+    }
+
     func testAnAnswerWithNothingHeldChangesNothing() {
         XCTAssertEqual(step(pushed, .leaveGuard(.leave)), NavigationStep(state: pushed, effects: []))
         XCTAssertEqual(step(pushed, .leaveGuard(.stay)), NavigationStep(state: pushed, effects: []))

@@ -65,6 +65,8 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// When the last report left, on the uptime clock; the keep-awake window
     /// reads it.
     let lastInputMs = AtomicInt(0)
+    /// Each pad's reports and admitted motion samples, for the telemetry.
+    let tally = InputTally()
 
     private let reportSenderBox = LockedBox<ReportSender?>(nil)
     private let motionSenderBox = LockedBox<MotionSender?>(nil)
@@ -130,6 +132,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
         let filtered = applyDeadzones(state, zones)
         states[deviceId] = filtered
         lock.unlock()
+        tally.countReport(deviceId)
         lastInputMs.set(Int(uptimeMs()))
         reportTap?(deviceId, state, filtered)
         reportSender?(deviceId, filtered)
@@ -155,6 +158,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
         states.removeValue(forKey: deviceId)
         deadzones.removeValue(forKey: deviceId)
         lastMotionTimestampNs.removeValue(forKey: deviceId)
+        tally.forget(deviceId)
     }
 
     // MARK: - Motion
@@ -164,6 +168,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// pushes the deadline forward.
     func publishMotion(deviceId: DeviceId, sample: MotionSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         guard let deltaUs = admitMotion(deviceId: deviceId, nowNs: nowNs) else { return }
+        tally.countMotion(deviceId)
         motionTap?(deviceId, sample)
         motionSender?(deviceId, sample, deltaUs)
     }

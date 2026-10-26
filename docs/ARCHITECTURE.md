@@ -45,7 +45,7 @@ frameworks each one may import.
 
 | Module | Role | Depends on | May import |
 |---|---|---|---|
-| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock | nothing | Foundation, CryptoKit |
+| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step, the binding draft and its apply, a pad's dead zones), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
 | `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
@@ -91,8 +91,15 @@ Where the kernel is wired today: `WakePipeline` composes the streaming count
 preference into a `Composer<WakeState>` that `WakeStateController`, a
 `Controller<WakeState>`, follows with IOKit assertions; the preference stores
 (`ThemePreferenceStore`, `BackgroundPreferenceStore`, `KeepAwakePreferenceStore`,
-`UpdatePreferenceStore`) are `StateSource`s over `UserDefaults` under the
-fleet's keys; `ControllerTypeStore` and `MotionBackendStatusStore` are
+`UpdatePreferenceStore`, and `DeadzonePreferenceStore` under the desktops'
+`deadzone:<id>`) are `StateSource`s over `UserDefaults` under the
+fleet's keys, and each attached pad gets its stored dead zones as it
+attaches (`observeDeadzones`); `TelemetrySource` turns the processor's
+per-pad tally and the router's send count into the rates Home and
+Controllers show, ticking while one of them is on screen; the Configure
+binding page's draft is the pure `BindingDraft` reducer and its one apply
+the pure `reduceApply` over `ApplyProgress`, fed by `BindingApplyWatch` (the
+host's words and the 8 s budget); `ControllerTypeStore` and `MotionBackendStatusStore` are
 `StateSource`s keyed by binding, the first written by the Emulate picker and
 read as each descriptor is built, the second written from every apply result;
 `PairingAttempts` is a `StateSource` keyed by satellite that holds what the
@@ -298,6 +305,7 @@ Each entry names the decided shape, so a change lands on it.
   statics, the lint thresholds and the version mirrors.
 - **The app layer is tested where it decides.** `Tests/DishTests` covers the
   AppKit signal mapping, the close-to-background rule (with a recording
-  announcer in place of the notification centre), the mappers (the slot card,
-  the capability table, the Diagnostics lines, the crash report) and the
+  announcer in place of the notification centre), the mappers (Home's rows,
+  Controllers' cards, Configure binding and its apply overlay, the dead
+  zones, the capability table, the Diagnostics lines, the crash report) and the
   notification queue.

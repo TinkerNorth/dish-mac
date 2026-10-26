@@ -180,3 +180,49 @@ package final class UpdatePreferenceStore: StateSource<UpdatePreferences> {
         defaults.set(Int(ms), forKey: Self.lastCheckKey)
     }
 }
+
+/// Each pad's dead zones under the desktops' keys: one `deadzone:<slotId>`
+/// entry per pad tuned, in their `{"s":…,"t":…}` shape. A pad never tuned
+/// reads the defaults, and a value that does not read is nothing stored.
+@MainActor
+package final class DeadzonePreferenceStore: StateSource<[String: DeadzoneSetting]> {
+    static let keyPrefix = "deadzone:"
+
+    private let defaults: UserDefaults
+
+    package init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        super.init(initial: Self.read(defaults))
+    }
+
+    package func zones(for slotId: String) -> DeadzoneSetting {
+        state[slotId] ?? .defaults
+    }
+
+    package func setZones(_ zones: DeadzoneSetting, for slotId: String) {
+        guard state[slotId] != zones else { return }
+        defaults.set(zones.storedJson, forKey: Self.keyPrefix + slotId)
+        updateState { var next = $0
+            next[slotId] = zones
+            return next
+        }
+    }
+
+    package func reset(_ slotId: String) {
+        defaults.removeObject(forKey: Self.keyPrefix + slotId)
+        updateState { var next = $0
+            next.removeValue(forKey: slotId)
+            return next
+        }
+    }
+
+    private static func read(_ defaults: UserDefaults) -> [String: DeadzoneSetting] {
+        let stored = defaults.dictionaryRepresentation().filter { $0.key.hasPrefix(keyPrefix) }
+        var all: [String: DeadzoneSetting] = [:]
+        for (key, value) in stored {
+            let slotId = String(key.dropFirst(keyPrefix.count))
+            all[slotId] = DeadzoneSetting(storedJson: value as? String)
+        }
+        return all
+    }
+}

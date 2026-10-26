@@ -39,6 +39,8 @@ enum DishTheme {
     static let railActiveFill = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.14)
     /// The shell's streaming pill.
     static let pillFill = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.14)
+    /// The wash under an in-page overlay.
+    static let scrim = Color(dark: 0x000000, light: 0x0C1430, alpha: 0.45)
     /// The one hue beyond the accent, kept for donations: the rail's heart
     /// and the Support page's call to action.
     static let pulse = Color(dark: 0xFF6FB5, light: 0xC2417F)
@@ -88,6 +90,16 @@ enum DishSize {
     static let chipRadius: CGFloat = 6
     /// A card's corner.
     static let cardRadius: CGFloat = 8
+    /// The dash of an absent capability's outline.
+    static let chipDash: CGFloat = 3
+    /// The pad-to-host wire's stroke, its dash, and the dish glyph on it.
+    static let wireStroke: CGFloat = 2
+    static let wireDash: CGFloat = 4
+    static let wireGlyph: CGFloat = 20
+    /// A signal-path node's narrowest width.
+    static let nodeMinWidth: CGFloat = 200
+    /// The apply overlay's card.
+    static let overlayWidth: CGFloat = 380
 }
 
 /// The spacing scale.

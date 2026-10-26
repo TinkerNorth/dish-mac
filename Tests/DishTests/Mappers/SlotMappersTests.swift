@@ -48,39 +48,32 @@ final class SlotMappersTests: XCTestCase {
         XCTAssertEqual(bindableConnections(for: slot, in: [three, four, mine]), [three, mine])
     }
 
-    func testBindLabelForEveryState() {
-        XCTAssertEqual(bindLabel(nil), "unbound")
-        XCTAssertEqual(bindLabel(server(.connected)), "→ Desk")
-        XCTAssertEqual(bindLabel(server(.unstable)), "→ Desk (unsteady)")
-        XCTAssertEqual(bindLabel(server(.connecting)), "→ Desk (connecting…)")
-        XCTAssertEqual(bindLabel(server(.ready)), "→ Desk (ready)")
-        XCTAssertEqual(bindLabel(server(.saved)), "→ Desk (offline)")
-        XCTAssertEqual(bindLabel(server(.found)), "→ Desk (offline)")
-        XCTAssertEqual(bindLabel(server(.stale)), "→ Desk (offline)")
-    }
-
-    func testSubtitleLeadsWithTheDeviceKind() {
-        XCTAssertEqual(slotSubtitle(slot), "Gamepad • unbound")
-        var bound = slot
-        bound.boundStatus = server(.connected)
-        XCTAssertEqual(slotSubtitle(bound), "Gamepad • → Desk")
-    }
-
-    func testAnUnboundSlotIsMutedWithTheOffGlyph() {
+    func testAnUnboundSlotIsMuted() {
         XCTAssertEqual(slotDotColor(slot), DishTheme.muted)
-        XCTAssertEqual(slotIconState(slot), .off)
     }
 
     func testABoundSlotFollowsItsServer() {
         var bound = slot
         bound.boundStatus = server(.connected)
         XCTAssertEqual(slotDotColor(bound), DishTheme.success)
-        XCTAssertEqual(slotIconState(bound), .connected)
     }
 
-    func testTheBindButtonTitleFlipsWithThePicker() {
-        XCTAssertEqual(bindButtonTitle(expanded: false), "Bind")
-        XCTAssertEqual(bindButtonTitle(expanded: true), "Close")
+    func testAPadsLinkReadsAsItsFamilyBecauseGameControllerHidesTheTransport() {
+        XCTAssertEqual(padFamilyName(.dualSense), "DualSense")
+        XCTAssertEqual(padFamilyName(.dualShock4), "DualShock 4")
+        XCTAssertEqual(padFamilyName(.xbox), "Xbox")
+        XCTAssertEqual(padFamilyName(.other), "GameController")
+    }
+
+    func testAChipReadsWarningFirstThenOnAndOffAndAbsentIsDashed() {
+        let on = CapabilityChipModel(label: "Gyro", on: true, available: true, help: "")
+        XCTAssertEqual(capabilityChipLook(on), CapabilityChipLook(ink: DishTheme.primary, on: true, absent: false))
+        let off = CapabilityChipModel(label: "Gyro", on: false, available: true, help: "")
+        XCTAssertEqual(capabilityChipLook(off), CapabilityChipLook(ink: DishTheme.muted, on: false, absent: false))
+        let absent = CapabilityChipModel(label: "No gyro", on: false, available: false, help: "")
+        XCTAssertEqual(capabilityChipLook(absent), CapabilityChipLook(ink: DishTheme.muted, on: false, absent: true))
+        let warned = CapabilityChipModel(label: "Mic", on: true, available: true, help: "", warning: true)
+        XCTAssertEqual(capabilityChipLook(warned).ink, DishTheme.warning, "the warning outranks on")
     }
 
     func testAPadWithoutAnImuGetsTheAbsentMotionChip() {

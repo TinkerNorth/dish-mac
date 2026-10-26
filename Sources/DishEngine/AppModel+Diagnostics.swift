@@ -16,6 +16,11 @@ package enum ObservedPage: Equatable {
     case connections
     /// Moonlight hosts scans as it opens; leaving it ends the pairing its PIN card waits on.
     case moonlightHosts
+    /// Home and Controllers tick the live rates while they show.
+    case home
+    case controllers
+    /// Configure binding opens a draft of the pad's binding; leaving drops it.
+    case configureBinding(slotId: String)
 }
 
 /// The pages' lifecycle as intents: a view's `onAppear` and `onDisappear`
@@ -29,6 +34,8 @@ package extension AppModel {
         case .settings: refreshCrashLogPresence()
         case .connections: scanAsThePageOpens()
         case .moonlightHosts: scanMoonlightHosts()
+        case .home, .controllers: telemetry.show()
+        case let .configureBinding(slotId): openBindingDraft(slotId: slotId)
         }
     }
 
@@ -40,6 +47,8 @@ package extension AppModel {
         case .settings: break
         case .connections: leftConnections()
         case .moonlightHosts: leftMoonlightHosts()
+        case .home, .controllers: telemetry.hide()
+        case .configureBinding: closeBindingDraft()
         }
     }
 
