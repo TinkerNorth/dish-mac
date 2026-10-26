@@ -57,13 +57,26 @@ jobs:
       action_pin_lint_enabled: true
       allowlist_expiry_enabled: true
 
+  # ─────────────────────────────────────────────────────────────────────
+  # Signing-secret gate. Advisory by default, as the satellite's and the
+  # Windows client's are: with the five Apple secrets the app is signed with
+  # the Developer ID and notarized; without them a stable tag still ships,
+  # UNSIGNED, with a warning. Set the repository variable
+  # ENFORCE_RELEASE_SIGNING=true to make missing secrets fail a stable tag
+  # again. The stable asset names never change either way: latest.json and
+  # the website read dish-mac.zip by name, like Windows' dish-setup.exe.
+  # ─────────────────────────────────────────────────────────────────────
   required-secrets:
     name: Required release secrets gate
     needs: [gates]
     runs-on: ubuntu-24.04
+    outputs:
+      signed: ${{ steps.check.outputs.signed }}
     steps:
       - name: Verify required signing secrets are present for tagged releases
+        id: check
         env:
+          ENFORCE: ${{ vars.ENFORCE_RELEASE_SIGNING }}
           DEVELOPER_ID_APPLICATION_CERT_BASE64: ${{ secrets.DEVELOPER_ID_APPLICATION_CERT_BASE64 }}
           DEVELOPER_ID_PASSWORD: ${{ secrets.DEVELOPER_ID_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -72,21 +85,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ "${{ github.ref_type }}" != "tag" ]; then
-            echo "::notice::Non-tag release run — unsigned fallback permitted."
+          missing=()
+          for name in DEVELOPER_ID_APPLICATION_CERT_BASE64 DEVELOPER_ID_PASSWORD \
+                      APPLE_ID APPLE_TEAM_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            [ -n "${!name:-}" ] || missing+=("$name")
+          done
+          if [ "${#missing[@]}" -eq 0 ]; then
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Apple signing secrets present; Dish.app will be signed and notarized."
             exit 0
           fi
-          missing=()
-          [ -z "${DEVELOPER_ID_APPLICATION_CERT_BASE64:-}" ] && missing+=("DEVELOPER_ID_APPLICATION_CERT_BASE64")
-          [ -z "${DEVELOPER_ID_PASSWORD:-}" ] && missing+=("DEVELOPER_ID_PASSWORD")
-          [ -z "${APPLE_ID:-}" ] && missing+=("APPLE_ID")
-          [ -z "${APPLE_TEAM_ID:-}" ] && missing+=("APPLE_TEAM_ID")
-          [ -z "${APPLE_APP_SPECIFIC_PASSWORD:-}" ] && missing+=("APPLE_APP_SPECIFIC_PASSWORD")
-          if [ "${#missing[@]}" -gt 0 ]; then
-            echo "::error::Tagged release on $GITHUB_REF requires Apple signing secrets, but the following are missing: ${missing[*]}"
-            echo "::error::Add the missing repository secrets and retry the release. Unsigned -unsigned artifacts are NOT permitted for tags."
+          echo "signed=false" >> "$GITHUB_OUTPUT"
+          if [ "${{ github.ref_type }}" != "tag" ]; then
+            echo "::notice::Non-tag release run; unsigned fallback permitted. Missing: ${missing[*]}"
+            exit 0
+          fi
+          case "$GITHUB_REF_NAME" in
+            *-*)
+              echo "::warning::Prerelease tag ${GITHUB_REF_NAME}: Dish.app will be unsigned. Missing: ${missing[*]}"
+              exit 0
+              ;;
+          esac
+          if [ "${ENFORCE:-}" = "true" ]; then
+            echo "::error::Stable tagged release on $GITHUB_REF requires Apple signing secrets, but the following are missing: ${missing[*]}"
+            echo "::error::Add the missing repository secrets, or unset the ENFORCE_RELEASE_SIGNING repository variable to allow an unsigned release."
             exit 1
           fi
+          echo "::warning::Stable tag ${GITHUB_REF_NAME} ships UNSIGNED: no Apple Developer ID yet. Missing: ${missing[*]}"
+          echo "::warning::Gatekeeper warns on first launch; the download page carries the steps and the SHA256. Set ENFORCE_RELEASE_SIGNING=true to forbid this."
 
   release:
     name: Build + sign Dish.app
@@ -200,10 +226,12 @@ jobs:
           if [ "${{ steps.sign.outputs.present }}" != "true" ]; then
             suffix="-unsigned"
           fi
+          # The versioned copy carries the honesty marker when there is no
+          # Developer ID. The stable name is a permanent download URL that
+          # latest.json and the website read by name, so it never changes
+          # shape, signed or not (the Windows client's dish-setup.exe rule).
           ditto -c -k --sequesterRsrc --keepParent Dish.app "dist/dish-${tag}${suffix}.zip"
-          # The stable name is a permanent download URL; the website and any
-          # installed copy build on it, so it never changes shape.
-          cp "dist/dish-${tag}${suffix}.zip" "dist/dish-mac${suffix}.zip"
+          cp "dist/dish-${tag}${suffix}.zip" "dist/dish-mac.zip"
           ls -l dist/
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -422,7 +450,7 @@ jobs:
 
   publish:
     name: Publish to GitHub Releases
-    needs: [harden, provenance]
+    needs: [required-secrets, harden, provenance]
     runs-on: ubuntu-24.04
     steps:
       - name: Download hardened bundle
@@ -440,9 +468,24 @@ jobs:
       - name: Show what we're about to publish
         run: find release -type f -printf '%p\n'
 
+      # An unsigned build says so at the top of its notes, above the generated
+      # list, so nobody learns it from Gatekeeper first.
+      - name: Write the signing note
+        shell: bash
+        env:
+          SIGNED: ${{ needs.required-secrets.outputs.signed }}
+        run: |
+          set -euo pipefail
+          if [ "${SIGNED}" = "true" ]; then
+            printf '%s\n' "Signed with an Apple Developer ID and notarized." > note.md
+          else
+            printf '%s\n' "This build is not signed with an Apple Developer ID yet. macOS warns on the first launch: click Done, then open System Settings › Privacy & Security and choose Open Anyway (on macOS 13 and 14, Control-click Dish.app and choose Open). Verify the download against SHA256SUMS. Releases will be signed and notarized once the Developer ID exists." > note.md
+          fi
+          cat note.md
       - name: Upload to GitHub Releases
         uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
+          body_path: note.md
           generate_release_notes: true
           files: release/**/*

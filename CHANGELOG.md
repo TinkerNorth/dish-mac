@@ -295,6 +295,15 @@ the repos share a version number.
 
 ### Changed
 
+- **Releases ship unsigned until the Developer ID exists.** The release
+  workflow's signing gate is advisory, as the satellite's and the Windows
+  client's are: with the five Apple secrets the app is signed and notarized,
+  without them a stable tag still ships, unsigned, with a note at the top of
+  the release. The first launch of an unsigned build meets Gatekeeper; the
+  README and the download page carry the steps (Privacy & Security › Open
+  Anyway on macOS 15 and later, Control-click › Open on 13 and 14) and the
+  SHA256 to check. `dish-mac.zip` keeps its name either way; the versioned
+  copy says `-unsigned` while it is.
 - **One window with a rail and pages replaces the sheets.** The window is
   the desktops' shell: a rail (Home, Controllers, Connections; Support Dish
   and Settings at the foot, with a dot on Settings while an update waits,

@@ -368,8 +368,9 @@ gitleaks detect --no-banner --redact --source .
 
 ### Verifying a release artifact
 
-Each GitHub Release ships the signed + notarized `dish-X.Y.Z.zip` (and its
-stable-name copy `dish-mac.zip`), `*.sig`/`*.crt` (cosign keyless),
+Each GitHub Release ships `dish-X.Y.Z.zip` (signed and notarized when the
+Apple secrets exist, `dish-X.Y.Z-unsigned.zip` until they do) and its
+stable-name copy `dish-mac.zip`, `*.sig`/`*.crt` (cosign keyless),
 `SHA256SUMS` + `SHA256SUMS.sig`/`*.crt`, the SPDX + CycloneDX SBOMs, and
 `dish-mac.intoto.jsonl` (SLSA L3).
 
@@ -397,10 +398,16 @@ The full cross-repo verification recipe lives in [`SECURITY.md`](SECURITY.md).
 `release.yml` runs on a bare `MAJOR.MINOR.PATCH` tag (no `v` prefix, e.g.
 `1.2.3`) or a `workflow_dispatch` with a tag input. It re-runs the security
 gates against the tagged commit, asserts the tag equals `VERSION`, builds
-Release, signs and notarizes `Dish.app` when the Apple secrets are present
-(a tag without them fails; a dispatch run on a branch produces `-unsigned`
-artifacts for testing the pipeline), scans and signs every artifact, emits the
-SBOMs and the SLSA provenance, and publishes the GitHub Release.
+Release, signs and notarizes `Dish.app` when the five Apple secrets are
+present, scans and signs every artifact, emits the SBOMs and the SLSA
+provenance, and publishes the GitHub Release. The signing gate is advisory,
+as the satellite's and the Windows client's are: without the secrets a stable
+tag still ships, unsigned, with a warning in the run and a note at the top of
+the release; the versioned zip then carries `-unsigned` while `dish-mac.zip`
+keeps its name, because `latest.json` and the website read it by name. Set
+the repository variable `ENFORCE_RELEASE_SIGNING=true` to make missing
+secrets fail a stable tag again. Adding the secrets turns signing on with no
+change to the workflow.
 
 Before you tag:
 
@@ -413,9 +420,12 @@ Before you tag:
   it under the hardened runtime; a new restricted capability (camera, location,
   automation) needs its entitlement there or the signed build is denied it.
 
-After the workflow finishes, download `dish-X.Y.Z.zip`, run
-`spctl --assess --type execute Dish.app`, launch it and pair once. The asset
-names `dish-X.Y.Z.zip`, `dish-mac.zip` and `SHA256SUMS` are a permanent API.
+After the workflow finishes, download `dish-mac.zip`, check it against
+`SHA256SUMS`, run `spctl --assess --type execute Dish.app` (it passes only for
+a signed and notarized build; an unsigned one is opened through System
+Settings › Privacy & Security › Open Anyway), launch it and pair once. The
+asset names `dish-X.Y.Z.zip`, `dish-mac.zip` and `SHA256SUMS` are a permanent
+API.
 
 ## Touching the hot path
 
