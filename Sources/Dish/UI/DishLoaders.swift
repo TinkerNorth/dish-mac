@@ -11,6 +11,7 @@ import SwiftUI
 //   · `DishSpinner` for short, bounded waits (network calls, scans).
 //   · `DishDots` for "thinking" states.
 //   · `DishBar` for whole-area loading.
+//   · `DishCrawl` for a pattern that walks while something is under way.
 
 /// A rotating arc on a 64-unit canvas: the stroke is 6/64 of the size, the
 /// arc covers 50/138 of the ring, and one turn takes 1.2 s.
@@ -101,5 +102,26 @@ struct DishBar: View {
             .clipped()
         }
         .accessibilityLabel(L10n.app.loading)
+    }
+}
+
+/// The share of one period, 0 to 1, handed to its content on the display's
+/// clock while running and parked at 0 otherwise: the wire's dashes crawl
+/// on it at the loaders' pace. The one clock a view may read is this one.
+struct DishCrawl<Content: View>: View {
+
+    let running: Bool
+    var periodSeconds = 1.2
+    @ViewBuilder let content: (CGFloat) -> Content
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: nil, paused: !running)) { timeline in
+            content(share(at: timeline.date.timeIntervalSinceReferenceDate))
+        }
+    }
+
+    private func share(at seconds: TimeInterval) -> CGFloat {
+        guard running else { return 0 }
+        return CGFloat(seconds.truncatingRemainder(dividingBy: periodSeconds) / periodSeconds)
     }
 }

@@ -14,9 +14,6 @@ struct WireLine: View {
     var showsGlyph = true
     var help = ""
 
-    /// One crawl of the dash pattern, the loaders' pace.
-    private static let crawlSeconds = 1.2
-
     var body: some View {
         VStack(spacing: DishSpace.s2) {
             if !label.isEmpty {
@@ -26,9 +23,9 @@ struct WireLine: View {
                     .lineLimit(1)
             }
             ZStack {
-                TimelineView(.animation(minimumInterval: nil, paused: !transmitting)) { timeline in
+                DishCrawl(running: transmitting) { share in
                     WireShape()
-                        .stroke(ink, style: stroke(phase: phase(at: timeline.date)))
+                        .stroke(ink, style: stroke(phase: -share * DishSize.wireDash * 2))
                 }
                 .frame(height: DishSize.wireGlyph)
                 if showsGlyph {
@@ -44,17 +41,10 @@ struct WireLine: View {
         live || transmitting ? DishTheme.primary : DishTheme.muted
     }
 
+    /// The dash phase walks the pattern toward the host while transmitting.
     private func stroke(phase: CGFloat) -> StrokeStyle {
         let dash = live ? [] : [DishSize.wireDash, DishSize.wireDash]
         return StrokeStyle(lineWidth: DishSize.wireStroke, dash: dash, dashPhase: phase)
-    }
-
-    /// Walks the pattern toward the host while transmitting; parked otherwise.
-    private func phase(at date: Date) -> CGFloat {
-        guard transmitting else { return 0 }
-        let elapsed = date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: Self.crawlSeconds)
-        let share = CGFloat(elapsed / Self.crawlSeconds)
-        return -share * DishSize.wireDash * 2
     }
 }
 

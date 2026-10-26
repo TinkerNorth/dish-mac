@@ -245,3 +245,11 @@ func batteryChipText(_ reading: BatteryReading, words: L10n = .app) -> String {
     case (.discharging, nil), (.unknown, nil): words.batteryLevelUnknown
     }
 }
+
+/// A bound row is a card on the surface; the ghost "Bind…" row is only its outline.
+func signalRowFill(_ destination: HomeDestination) -> Color {
+    switch destination {
+    case .bound: DishTheme.surface
+    case .ghost: Color.clear
+    }
+}

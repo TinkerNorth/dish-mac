@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import SwiftUI
 import XCTest
 @testable import Dish
 
@@ -76,5 +77,14 @@ final class LicensesMappersTests: XCTestCase {
         let blocks = licenseBlocks(notice)
         XCTAssertEqual(blocks.first.map(plain), "h1 Third-party notices")
         XCTAssertGreaterThanOrEqual(blocks.filter { if case .code = $0 { true } else { false } }.count, 3, "each licence text stays whole")
+    }
+
+    func testATopHeadingIsATitleAndATablesHeaderStandsOut() {
+        XCTAssertEqual(licenseHeadingFont(1), DishFont.title)
+        XCTAssertEqual(licenseHeadingFont(2), DishFont.body)
+        XCTAssertEqual(licenseCellFont(header: true), DishFont.control)
+        XCTAssertEqual(licenseCellFont(header: false), DishFont.caption)
+        XCTAssertEqual(licenseCellColor(header: true), DishTheme.onSurface)
+        XCTAssertEqual(licenseCellColor(header: false), DishTheme.muted)
     }
 }

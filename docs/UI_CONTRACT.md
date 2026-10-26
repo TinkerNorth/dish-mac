@@ -117,10 +117,75 @@ lines, with its sections as further `View` types in the same folder.
    `NavigationStore`.
 4. **Lifecycle hooks forward.** `onAppear` / `onDisappear` call
    `model.pageAppeared(…)` / `model.pageDisappeared(…)` and nothing else: the
-   Diagnostics source ticks, the inspector is armed and Settings re-reads the
-   crash log there, not in the view.
+   Diagnostics source ticks, the inspector is armed, Settings re-reads the
+   crash log and ticks the update clock, and the crash report reads the log
+   there, not in the view.
 5. **Every word is an `L10n` property**, the desktops' words and
    translations where they have one.
+
+## View purity
+
+A view is layout. The scene root hands the window three objects,
+`AppModel`, `NavigationStore` and `DishNotificationCenter`, and no engine
+object besides; everything else a page draws is a published fact of the
+model (`slots`, `connections`, `micIndicator`, `micPermitted`,
+`pairingTarget`, `moonlightPin`, `shellFacts`, and what the model's
+extensions derive from them), turned into the page's state by its mapper.
+`ShellFacts` carries, beyond the shell's own: the preferences Settings
+draws (`preferences`, with the global switches in `forwarding`), the
+update clock (`updateClock`, re-read every 60 s while Settings shows, so
+"last checked 5 minutes ago" ticks with no clock in a view), the crash
+log's text, the Diagnostics source's snapshot, the flight recorder's lines
+and the inspector's reading. Every setter a page reaches is an intent:
+Settings' are in `AppModel+Preferences.swift` (`setThemeMode`,
+`setRumbleForwarded`, `setKeepAwakeMode`, `checkForUpdatesNow`,
+`skipAvailableUpdate`, …). A copy goes through the `pasteboard` environment
+value, a link through `openURL`.
+
+[`ViewPurityTests`](../Tests/ArchitectureTests/ViewPurityTests.swift) holds
+every file under `Sources/Dish` that declares a `View` to these rules, line
+by line (a whole-line comment is not code):
+
+| # | Rule | Caught by | Where |
+|---|---|---|---|
+| V1 | No clock | `Date()`, `TimelineView` | every view |
+| V2 | No IO | `NSPasteboard`, `NSWorkspace`, `UserDefaults`, `URLSession` | every view |
+| V3 | No waiting | `Task.sleep`, `Timer.`, `DispatchQueue.` | every view |
+| V4 | No subscriptions | `.sink(` | every view |
+| V5 | No formatting | `String(format:`, `.formatted(`, any `…Formatter` | every view |
+| V6 | Three objects observed | an `@EnvironmentObject`, `@ObservedObject` or `@StateObject` of any type but `AppModel`, `NavigationStore`, `DishNotificationCenter` | every view |
+| V7 | No engine objects | `wifi.`, `moonlight.`, `updates.`, `crashLog.`, `diagnostics.`, `diagnosticsLog.`, `inspector.`, `settings.`, `keepAwake.`, `theme.`, `background.`, `updatePreferences.`, `crashReporting.`, `input.`, `hub.` | every view |
+| V8 | The model is facts and intents | `model.<name>` where `<name>` is neither a fact (an `@Published` or computed `var` of an `AppModel` file) nor an intent (a `func` of one) | every view |
+| V9 | No decision on the model | `if` / `guard` / `switch` over a fact, a ternary on `model.…`, a lookup (`.first`, `.filter`, `.contains`, `.isEmpty`, `.count`, `.map`) on a fact; an intent's answer (`if model.addByAddress(…)`) is the model's decision and passes | every view |
+| V10 | No token picked | a ternary between `DishTheme` / `DishFont` tokens or `Color.clear` | pages |
+| V11 | No boolean rules | `&&`, `\|\|` | pages |
+| V12 | No fallback words | `??`, `.isEmpty ?` | pages |
+
+"Pages" are every view but the components, which own their states (K2):
+the kit, the brand glyphs (`BrandIcon*.swift`), the loaders
+(`DishLoaders.swift`) and the theme's button styles (`Theme.swift`). A
+choice a page would have made is a mapper's: a colour or a font is a
+function returning the token (`selectionLook`, `signalRowFill`,
+`licenseHeadingFont`), an enablement rule a flag in the state
+(`InspectorBenchState`, `UpdateRowState.canCheck`), a fallback word the
+state's string.
+
+The allowlist is one entry: `DishLoaders.swift` may use `TimelineView` (V1),
+because the loaders and `DishCrawl` (the wire's crawling dashes) animate on
+the display's clock, which says nothing about the domain; the test fails if
+the allowance is no longer needed. `DishApp.swift`, `AppKitLifecycle.swift`
+and `Sources/Dish/Services` are the scene and its seams, not views: the
+sweep checks they declare none, and they may read the clock, the pasteboard
+and the engine's publishers directly. The scene drives
+`.preferredColorScheme` from `shellFacts.preferences.theme`, so a theme
+change republishes the model and the scene follows it.
+
+[`NavigationCoverageTests`](../Tests/ArchitectureTests/NavigationCoverageTests.swift)
+keeps the map whole: every `Destination` and `Page` case has its title
+worded in `ShellMappers` (`destinationTitle`, `pushedPageTitle`), its
+`Sources/Dish/UI/Pages/<Name>Page.swift`, its
+`Tests/DishTests/Mappers/<Name>MappersTests.swift`, and a branch of the
+shell's root or pushed switch.
 
 ## The Connections pages
 
@@ -177,7 +242,7 @@ being configured (`binding`). No page holds an engine environment object.
   Poll Hz, which is the Direct path's), "Bound · host ›" or "not bound" with
   Bind…, the Gyro / Touchpad / Lightbar / battery chips, the mic's live or
   muted button, the motion rate, and Dead zones… into `Page.deadZones`.
-- **Configure binding** ([`BindingMappers.swift`](../Sources/Dish/UI/Mappers/BindingMappers.swift)):
+- **Configure binding** ([`ConfigureBindingMappers.swift`](../Sources/Dish/UI/Mappers/ConfigureBindingMappers.swift)):
   `pageAppeared(.configureBinding(slotId:))` opens a `BindingDraft` (DishCore)
   seeded from the binding, the type pick and the controller's switches, and
   the engine keeps the *candidate*, the pad as the draft would bind it, which
@@ -190,7 +255,7 @@ being configured (`binding`). No page holds an engine environment object.
   cancellable with `cancelApply()`, which writes back what was there); the
   host has 8 s to confirm or refuse. The overlay's Done pops the page; a
   failure stays with the draft intact. `pageDisappeared` drops the draft.
-- **Dead zones & motion** ([`DeadzoneMappers.swift`](../Sources/Dish/UI/Mappers/DeadzoneMappers.swift)):
+- **Dead zones & motion** ([`DeadZonesMappers.swift`](../Sources/Dish/UI/Mappers/DeadZonesMappers.swift)):
   the pad's stick and trigger flats as `SliderRow`s over 0 to 30 % with
   their readouts, `setStickDeadzone` / `setTriggerDeadzone` on every move,
   `resetDeadzones` back to the defaults, and the pad's own motion switch.

@@ -16,8 +16,8 @@ struct CrashReportPage: View {
 
     private let words = L10n.app
 
-    private var report: String {
-        crashReportText(model.crashLog, appVersion: model.shellFacts.update.currentVersion)
+    private var state: CrashReportPageState {
+        crashReportPageState(facts: model.shellFacts)
     }
 
     var body: some View {
@@ -30,11 +30,12 @@ struct CrashReportPage: View {
             actions
         }
         .padding(DishSpace.page)
+        .onAppear { model.pageAppeared(.crashReport) }
     }
 
     private var reportText: some View {
         ScrollView {
-            Text(report)
+            Text(state.report)
                 .font(DishFont.mono)
                 .foregroundColor(DishTheme.onSurface)
                 .textSelection(.enabled)
@@ -65,7 +66,7 @@ struct CrashReportPage: View {
     }
 
     private func copyReport() {
-        pasteboard.copy(report)
+        pasteboard.copy(state.report)
         copied = true
     }
 
@@ -75,7 +76,7 @@ struct CrashReportPage: View {
     }
 
     private func openIssue() {
-        guard let url = crashIssueURL(report) else { return }
+        guard let url = state.issueURL else { return }
         openURL(url)
     }
 }

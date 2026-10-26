@@ -3,6 +3,7 @@
 
 import DishCore
 import DishEngine
+import SwiftUI
 import XCTest
 @testable import Dish
 
@@ -11,7 +12,7 @@ import XCTest
 /// each feature the pad has, the type once a destination is picked, counts
 /// what carries, words the bar by the binding it opened on, and draws the
 /// apply step by step.
-final class BindingMappersTests: XCTestCase {
+final class ConfigureBindingMappersTests: XCTestCase {
 
     private typealias Fix = MapperFixtures
 
@@ -176,5 +177,13 @@ final class BindingMappersTests: XCTestCase {
     func testTheOverlayNamesTheHostByItsTitle() {
         let picked = reduce(unbound, .chooseDestination("loft"))
         XCTAssertEqual(page(facts(picked, progress: .failed(.rejected))).overlay?.result?.text, "Loft refused the binding.")
+    }
+
+    func testThePickedDestinationIsMarkedInTheAccentAndFilled() {
+        XCTAssertEqual(
+            selectionLook(selected: true),
+            SelectionLook(glyph: "largecircle.fill.circle", ink: DishTheme.primary, fill: DishTheme.chipFill)
+        )
+        XCTAssertEqual(selectionLook(selected: false), SelectionLook(glyph: "circle", ink: DishTheme.muted, fill: DishTheme.surfaceDim))
     }
 }

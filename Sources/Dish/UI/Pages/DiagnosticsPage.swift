@@ -12,12 +12,14 @@ struct DiagnosticsPage: View {
 
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var navigation: NavigationStore
-    @EnvironmentObject var diagnostics: DiagnosticsSource
-    @EnvironmentObject var log: DiagnosticsLogStore
     @Environment(\.pasteboard) private var pasteboard
     @State private var copied = false
 
     private let words = L10n.app
+
+    private var state: DiagnosticsPageState {
+        diagnosticsPageState(facts: model.shellFacts)
+    }
 
     var body: some View {
         ScrollView {
@@ -26,8 +28,8 @@ struct DiagnosticsPage: View {
                     .font(DishFont.detail)
                     .foregroundColor(DishTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                hostsSection
-                controllersSection
+                cardsSection(words.hosts, state.hosts)
+                cardsSection(words.controllers, state.pads)
                 eventsSection
             }
             .padding(DishSpace.page)
@@ -36,37 +38,16 @@ struct DiagnosticsPage: View {
         .onDisappear { model.pageDisappeared(.diagnostics) }
     }
 
-    private var hostsSection: some View {
+    private func cardsSection(_ title: String, _ cards: DiagnosticsCards) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: words.hosts)
-            if diagnostics.state.hosts.isEmpty {
-                emptyNote(words.noSatellitesYet)
-            }
-            ForEach(diagnostics.state.hosts) { host in
-                DiagnosticsCard(
-                    title: connectionTitle(host.summary),
-                    dot: linkDotColor(host.summary.live),
-                    chip: linkStateText(host.summary.live),
-                    lines: hostLines(host)
-                )
-            }
-        }
-    }
-
-    private var controllersSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: words.controllers)
-            if diagnostics.state.pads.isEmpty {
-                emptyNote(words.noControllersConnected)
-            }
-            ForEach(diagnostics.state.pads) { pad in
-                DiagnosticsCard(
-                    title: pad.slot.name,
-                    dot: nil,
-                    chip: nil,
-                    lines: padLines(pad),
-                    action: CardAction(label: words.inspectInput) { navigation.send(.push(.inspector(slotId: pad.slot.id))) }
-                )
+            SectionHeader(title: title)
+            switch cards {
+            case let .empty(note):
+                emptyNote(note)
+            case let .cards(cards):
+                ForEach(cards) { card in
+                    DiagnosticsCard(state: card, inspectLabel: words.inspectInput, inspect: inspect)
+                }
             }
         }
     }
@@ -84,10 +65,10 @@ struct DiagnosticsPage: View {
                 }
                 Button(words.copy, action: copyEvents)
                     .buttonStyle(DishOutlinedButtonStyle())
-                    .disabled(log.state.isEmpty)
+                    .disabled(!state.canCopy)
             }
-            ForEach(recentEvents(log.state)) { event in
-                Text(eventLine(event))
+            ForEach(state.events) { event in
+                Text(event.text)
                     .font(DishFont.mono)
                     .foregroundColor(DishTheme.onSurface)
                     .textSelection(.enabled)
@@ -102,51 +83,47 @@ struct DiagnosticsPage: View {
             .fixedSize(horizontal: false, vertical: true)
     }
 
+    private func inspect(_ slotId: String) {
+        navigation.send(.push(.inspector(slotId: slotId)))
+    }
+
     private func copyEvents() {
-        pasteboard.copy(eventsTranscript(log.state))
+        pasteboard.copy(diagnosticsTranscript(facts: model.shellFacts))
         copied = true
     }
-}
-
-/// A button in a card's headline.
-struct CardAction {
-    let label: String
-    let run: () -> Void
 }
 
 /// One card: a headline with its dot and chip, then one fact per line with
 /// the key in a fixed left column so every card lines up.
 private struct DiagnosticsCard: View {
 
-    let title: String
-    let dot: Color?
-    let chip: String?
-    let lines: [FactLine]
-    var action: CardAction?
+    let state: DiagnosticsCardState
+    let inspectLabel: String
+    let inspect: (String) -> Void
 
     private static let keyColumn: CGFloat = 150
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                if let dot {
+                if let dot = state.dot {
                     StatusDot(color: dot)
                 }
-                Text(title)
+                Text(state.title)
                     .font(DishFont.body)
                     .foregroundColor(DishTheme.onSurface)
                 Spacer()
-                if let chip {
+                if let chip = state.chip {
                     Text(chip)
                         .font(DishFont.monoChip)
                         .foregroundColor(DishTheme.muted)
                 }
-                if let action {
-                    Button(action.label, action: action.run)
+                if let slotId = state.inspects {
+                    Button(inspectLabel) { inspect(slotId) }
                         .buttonStyle(DishOutlinedButtonStyle())
                 }
             }
-            ForEach(lines) { line in
+            ForEach(state.lines) { line in
                 factLine(line)
             }
         }

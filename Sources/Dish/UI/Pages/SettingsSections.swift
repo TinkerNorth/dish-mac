@@ -6,13 +6,14 @@ import DishEngine
 import SwiftUI
 
 struct AppearanceSection: View {
-    @EnvironmentObject var theme: ThemePreferenceStore
+    @EnvironmentObject var model: AppModel
+    let state: SettingsPageState
     private let words = L10n.app
 
     var body: some View {
         SettingsSection(title: words.appearanceSection) {
             PickerRow(title: words.theme, detail: words.themeDetail) {
-                Picker("", selection: Binding(get: { theme.state }, set: theme.setMode)) {
+                Picker("", selection: Binding(get: { state.theme }, set: model.setThemeMode)) {
                     ForEach(ThemeMode.allCases, id: \.self) { mode in
                         Text(themeModeText(mode)).tag(mode)
                     }
@@ -23,15 +24,24 @@ struct AppearanceSection: View {
 }
 
 struct ForwardedFeaturesSection: View {
-    @EnvironmentObject var settings: FeatureSettings
+    @EnvironmentObject var model: AppModel
+    let state: SettingsPageState
     private let words = L10n.app
 
     var body: some View {
         SettingsSection(title: words.forwardedFeaturesSection) {
-            ToggleRow(title: words.rumble, detail: words.rumbleDetail, isOn: $settings.rumbleEnabled)
-            ToggleRow(title: words.touchpad, detail: words.touchpadDetail, isOn: $settings.touchpadEnabled)
+            ToggleRow(
+                title: words.rumble,
+                detail: words.rumbleDetail,
+                isOn: Binding(get: { state.rumble }, set: model.setRumbleForwarded)
+            )
+            ToggleRow(
+                title: words.touchpad,
+                detail: words.touchpadDetail,
+                isOn: Binding(get: { state.touchpad }, set: model.setTouchpadForwarded)
+            )
             PickerRow(title: words.lightBar, detail: words.lightbarDetail) {
-                Picker("", selection: $settings.lightbarMode) {
+                Picker("", selection: Binding(get: { state.lightbar }, set: model.setLightbarMode)) {
                     ForEach(LightbarMode.allCases) { mode in
                         Text(lightbarModeText(mode)).tag(mode)
                     }
@@ -43,18 +53,24 @@ struct ForwardedFeaturesSection: View {
 }
 
 struct ControllerTuningSection: View {
-    @EnvironmentObject var settings: FeatureSettings
+    @EnvironmentObject var model: AppModel
+    let state: SettingsPageState
     private let words = L10n.app
 
     var body: some View {
         SettingsSection(title: words.controllerTuningSection) {
-            ToggleRow(title: words.motionGyro, detail: words.motionDetail, isOn: $settings.motionEnabled)
+            ToggleRow(
+                title: words.motionGyro,
+                detail: words.motionDetail,
+                isOn: Binding(get: { state.motion }, set: model.setMotionForwarded)
+            )
         }
     }
 }
 
 struct WindowSection: View {
-    @EnvironmentObject var background: BackgroundPreferenceStore
+    @EnvironmentObject var model: AppModel
+    let state: SettingsPageState
     private let words = L10n.app
 
     var body: some View {
@@ -62,21 +78,21 @@ struct WindowSection: View {
             ToggleRow(
                 title: words.keepRunningInBackground,
                 detail: words.keepRunningDetail,
-                isOn: Binding(get: { background.state.runInBackground }, set: background.setRunInBackground)
+                isOn: Binding(get: { state.runInBackground }, set: model.setRunInBackground)
             )
         }
     }
 }
 
 struct PowerSection: View {
-    @EnvironmentObject var keepAwake: KeepAwakePreferenceStore
+    @EnvironmentObject var model: AppModel
     let state: SettingsPageState
     private let words = L10n.app
 
     var body: some View {
         SettingsSection(title: words.powerSection) {
             PickerRow(title: words.keepComputerAwake, detail: words.keepAwakeDetail) {
-                Picker("", selection: Binding(get: { keepAwake.state.mode }, set: keepAwake.setMode)) {
+                Picker("", selection: Binding(get: { state.keepAwake.mode }, set: model.setKeepAwakeMode)) {
                     ForEach(KeepAwakeMode.allCases, id: \.self) { mode in
                         Text(keepAwakeModeText(mode)).tag(mode)
                     }
@@ -85,7 +101,7 @@ struct PowerSection: View {
             if state.showsIdleTimeout {
                 StepperRow(
                     title: words.letGoAfterStillness,
-                    value: Binding(get: { keepAwake.state.idleTimeoutMinutes }, set: keepAwake.setIdleTimeoutMinutes),
+                    value: Binding(get: { state.keepAwake.idleTimeoutMinutes }, set: model.setIdleTimeoutMinutes),
                     range: KeepAwakeLimits.minTimeoutMinutes ... KeepAwakeLimits.maxTimeoutMinutes,
                     label: { idleTimeoutText($0) }
                 )
@@ -94,7 +110,7 @@ struct PowerSection: View {
                 ToggleRow(
                     title: words.keepDisplayAwake,
                     detail: words.keepDisplayAwakeDetail,
-                    isOn: Binding(get: { keepAwake.state.keepDisplayAwake }, set: keepAwake.setKeepDisplayAwake)
+                    isOn: Binding(get: { state.keepAwake.keepDisplayAwake }, set: model.setKeepDisplayAwake)
                 )
             }
             SettingsFootnote(text: words.lidStillSleepsTheMac)
@@ -103,7 +119,7 @@ struct PowerSection: View {
 }
 
 struct DiagnosticsSection: View {
-    @EnvironmentObject var crashReporting: CrashReportingController
+    @EnvironmentObject var model: AppModel
     let state: SettingsPageState
     let push: (Page) -> Void
     private let words = L10n.app
@@ -116,7 +132,7 @@ struct DiagnosticsSection: View {
             ToggleRow(
                 title: words.shareCrashReports,
                 detail: words.shareCrashReportsDetail,
-                isOn: Binding(get: { crashReporting.state }, set: crashReporting.setEnabled)
+                isOn: Binding(get: { state.crashReportsShared }, set: model.setCrashReportsShared)
             )
             if state.showsUploadImpossible {
                 SettingsFootnote(text: words.crashUploadImpossible)
@@ -131,16 +147,17 @@ struct DiagnosticsSection: View {
 }
 
 struct UpdatesSection: View {
-    @EnvironmentObject var updatePreferences: UpdatePreferenceStore
+    @EnvironmentObject var model: AppModel
+    let state: SettingsPageState
     private let words = L10n.app
 
     var body: some View {
         SettingsSection(title: words.updatesSection) {
-            UpdateStatusRow()
+            UpdateStatusRow(state: state.update, check: model.checkForUpdatesNow, skip: model.skipAvailableUpdate)
             ToggleRow(
                 title: words.checkForUpdatesAutomatically,
                 detail: words.checkForUpdatesDetail,
-                isOn: Binding(get: { updatePreferences.state.checksEnabled }, set: updatePreferences.setChecksEnabled)
+                isOn: Binding(get: { state.updateChecksEnabled }, set: model.setUpdateChecksEnabled)
             )
             SettingsFootnote(text: words.updatePrivacyFootnote)
         }

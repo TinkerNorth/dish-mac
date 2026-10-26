@@ -46,9 +46,9 @@ private struct DestinationRow: View {
     var body: some View {
         Button(action: pickThis) {
             HStack(spacing: DishSpace.s4) {
-                Image(systemName: state.selected ? "largecircle.fill.circle" : "circle")
+                Image(systemName: state.look.glyph)
                     .font(DishFont.icon)
-                    .foregroundColor(state.selected ? DishTheme.primary : DishTheme.muted)
+                    .foregroundColor(state.look.ink)
                 StatusDot(color: state.dot)
                 VStack(alignment: .leading, spacing: DishSpace.s1) {
                     Text(state.title)
@@ -62,7 +62,7 @@ private struct DestinationRow: View {
                 StateChip(text: state.chip.text, color: state.chip.color)
             }
             .padding(DishSpace.s4)
-            .background(state.selected ? DishTheme.chipFill : DishTheme.surfaceDim)
+            .background(state.look.fill)
             .clipShape(RoundedRectangle(cornerRadius: DishSize.chipRadius))
             .contentShape(Rectangle())
         }

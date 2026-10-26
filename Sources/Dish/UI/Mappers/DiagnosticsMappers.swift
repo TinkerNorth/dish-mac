@@ -4,6 +4,7 @@
 import DishCore
 import DishEngine
 import Foundation
+import SwiftUI
 
 /// One fact of a Diagnostics card: the key in the left column, the value
 /// beside it.
@@ -315,4 +316,77 @@ func eventsTranscript(
 /// The newest `limit` lines, newest first, as the window shows them.
 func recentEvents(_ events: [DiagnosticsEvent], limit: Int = 30) -> [DiagnosticsEvent] {
     Array(events.suffix(limit).reversed())
+}
+
+// MARK: - The page
+
+/// Everything Diagnostics draws: a card per host and per pad, or the word
+/// for none, and the flight recorder's newest lines.
+struct DiagnosticsPageState: Equatable {
+    let hosts: DiagnosticsCards
+    let pads: DiagnosticsCards
+    /// The newest lines, newest first.
+    let events: [DiagnosticsEventLine]
+    /// Copy waits until the recorder holds a line.
+    let canCopy: Bool
+}
+
+enum DiagnosticsCards: Equatable {
+    case empty(String)
+    case cards([DiagnosticsCardState])
+}
+
+/// One card: a headline with its dot and chip, then one fact per line.
+struct DiagnosticsCardState: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let dot: Color?
+    let chip: String?
+    let lines: [FactLine]
+    /// The pad Inspect input opens; nil on a host's card.
+    let inspects: String?
+}
+
+struct DiagnosticsEventLine: Equatable, Identifiable {
+    let id: Int
+    let text: String
+}
+
+func diagnosticsPageState(
+    facts: ShellFacts,
+    locale: Locale = .current,
+    timeZone: TimeZone = .current,
+    words: L10n = .app
+) -> DiagnosticsPageState {
+    let hosts = facts.diagnostics.hosts.map { hostCard($0, locale: locale, words: words) }
+    let pads = facts.diagnostics.pads.map { padCard($0, words: words) }
+    let events = recentEvents(facts.diagnosticsEvents).map { event in
+        DiagnosticsEventLine(id: event.id, text: eventLine(event, locale: locale, timeZone: timeZone, words: words))
+    }
+    return DiagnosticsPageState(
+        hosts: hosts.isEmpty ? .empty(words.noSatellitesYet) : .cards(hosts),
+        pads: pads.isEmpty ? .empty(words.noControllersConnected) : .cards(pads),
+        events: events,
+        canCopy: !facts.diagnosticsEvents.isEmpty
+    )
+}
+
+func hostCard(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> DiagnosticsCardState {
+    DiagnosticsCardState(
+        id: host.id,
+        title: connectionTitle(host.summary),
+        dot: linkDotColor(host.summary.live),
+        chip: linkStateText(host.summary.live, words: words),
+        lines: hostLines(host, locale: locale, words: words),
+        inspects: nil
+    )
+}
+
+func padCard(_ pad: PadDiagnostics, words: L10n = .app) -> DiagnosticsCardState {
+    DiagnosticsCardState(id: pad.id, title: pad.slot.name, dot: nil, chip: nil, lines: padLines(pad, words: words), inspects: pad.slot.id)
+}
+
+/// The whole log for the clipboard, oldest first.
+func diagnosticsTranscript(facts: ShellFacts, locale: Locale = .current, timeZone: TimeZone = .current, words: L10n = .app) -> String {
+    eventsTranscript(facts.diagnosticsEvents, locale: locale, timeZone: timeZone, words: words)
 }

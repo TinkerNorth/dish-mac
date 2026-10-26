@@ -31,14 +31,9 @@ struct SignalRow: View {
             }
         }
         .padding(DishSpace.s6)
-        .background(isGhost ? Color.clear : DishTheme.surface)
+        .background(signalRowFill(state.destination))
         .overlay(RoundedRectangle(cornerRadius: DishSize.cardRadius).stroke(DishTheme.cardStroke, lineWidth: DishSize.hairline))
         .clipShape(RoundedRectangle(cornerRadius: DishSize.cardRadius))
-    }
-
-    private var isGhost: Bool {
-        if case .ghost = state.destination { return true }
-        return false
     }
 
     @ViewBuilder

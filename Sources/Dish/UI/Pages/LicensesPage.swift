@@ -37,7 +37,7 @@ private struct LicenseBlockView: View {
         switch block {
         case let .heading(level, text):
             Text(text)
-                .font(level <= 1 ? DishFont.title : DishFont.body)
+                .font(licenseHeadingFont(level))
                 .foregroundColor(DishTheme.onSurface)
                 .padding(.top, DishSpace.s4)
         case let .paragraph(text):
@@ -57,8 +57,8 @@ private struct LicenseBlockView: View {
             HStack(alignment: .top, spacing: DishSpace.s4) {
                 ForEach(Array(cells.enumerated()), id: \.offset) { cell in
                     Text(cell.element)
-                        .font(header ? DishFont.control : DishFont.caption)
-                        .foregroundColor(header ? DishTheme.onSurface : DishTheme.muted)
+                        .font(licenseCellFont(header: header))
+                        .foregroundColor(licenseCellColor(header: header))
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .fixedSize(horizontal: false, vertical: true)
                 }

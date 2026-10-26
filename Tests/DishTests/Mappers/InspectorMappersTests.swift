@@ -97,3 +97,99 @@ final class InspectorMappersTests: XCTestCase {
         XCTAssertEqual(BuzzMotor.allCases.map { buzzMotorText($0) }, ["Weak", "Strong", "Both"])
     }
 }
+
+/// The inspector page as one state: the pad's name or its id once it has
+/// gone, the live lines after the first report, the test buttons waiting
+/// on a running test, and benches only for an attached pad.
+final class InspectorPageMappersTests: XCTestCase {
+
+    private let english = Locale(identifier: "en_US")
+    private let full = ControllerSlot(
+        id: "pad",
+        name: "DualSense",
+        capabilities: ControllerCapabilities(hasRumble: true, hasMic: true, hasSpeaker: true)
+    )
+
+    private func state(_ slots: [ControllerSlot], inspection: InputInspection = InputInspection(slotId: "pad"), micPermitted: Bool = true)
+        -> InspectorPageState
+    {
+        var facts = ShellFacts()
+        facts.inspection = inspection
+        return inspectorPageState(slotId: "pad", slots: slots, facts: facts, micPermitted: micPermitted, locale: english)
+    }
+
+    func testAPadThatLeftIsNamedByItsIdAndHasNoBenches() {
+        let page = state([])
+        XCTAssertEqual(page.title, "pad")
+        XCTAssertNil(page.benches)
+    }
+
+    func testBeforeTheFirstReportThereAreNoLiveLines() {
+        let page = state([full])
+        XCTAssertEqual(page.title, "DualSense")
+        XCTAssertNil(page.live)
+        XCTAssertEqual(page.gyro, "No motion data from this controller.")
+        XCTAssertEqual(page.touch, touchText(nil))
+    }
+
+    func testAReportReadsAsLiveLines() throws {
+        let snapshot = InputSnapshot(
+            buttons: 0x1000,
+            leftStick: StickSample(x: 0.5, y: -0.25),
+            rightStick: .centre,
+            leftTrigger: 1,
+            rightTrigger: 0.5,
+            rawLeft: .centre,
+            rawRight: .centre,
+            motion: nil,
+            touch: nil
+        )
+        let live = try XCTUnwrap(state([full], inspection: InputInspection(slotId: "pad", snapshot: snapshot, reportsHz: 250)).live)
+        XCTAssertEqual(live.pressed, "Pressed: A")
+        XCTAssertEqual(live.leftStick, stickText(StickSample(x: 0.5, y: -0.25)))
+        XCTAssertEqual(live.leftTrigger, TriggerReadoutState(fraction: 1, text: "100%"))
+        XCTAssertEqual(live.rightTrigger, TriggerReadoutState(fraction: 0.5, text: "50%"))
+        XCTAssertEqual(live.rate, inputRateText(250))
+    }
+
+    func testTheStickTestsWaitWhileOneRuns() {
+        var bench = StickBench()
+        XCTAssertTrue(state([full], inspection: InputInspection(slotId: "pad", bench: bench)).stickTestsEnabled)
+        bench.start(.drift, nowMs: 0)
+        let running = state([full], inspection: InputInspection(slotId: "pad", bench: bench, secondsLeft: 3))
+        XCTAssertFalse(running.stickTestsEnabled)
+        XCTAssertEqual(running.stickTestStatus, stickTestText(InputInspection(slotId: "pad", bench: bench, secondsLeft: 3)))
+    }
+
+    func testAReadyPadOffersEveryBench() throws {
+        let benches = try XCTUnwrap(state([full]).benches)
+        XCTAssertTrue(benches.rumbleEnabled)
+        XCTAssertTrue(benches.toneEnabled)
+        XCTAssertEqual(benches.mic, .start(enabled: true))
+        XCTAssertNil(benches.micLevel)
+    }
+
+    func testABarePadOffersNoBench() throws {
+        let benches = try XCTUnwrap(state([ControllerSlot(id: "pad", name: "Pad")]).benches)
+        XCTAssertFalse(benches.rumbleEnabled)
+        XCTAssertFalse(benches.toneEnabled)
+        XCTAssertEqual(benches.mic, .start(enabled: false))
+        XCTAssertEqual(benches.rumbleNote, rumbleBenchNote(ControllerSlot(id: "pad", name: "Pad")))
+    }
+
+    func testAMicrophoneTheSystemWithholdsCannotStart() throws {
+        let benches = try XCTUnwrap(state([full], micPermitted: false).benches)
+        XCTAssertEqual(benches.mic, .start(enabled: false))
+        XCTAssertEqual(benches.micNote, micMeterNote(full, micPermitted: false))
+    }
+
+    func testAPlayingToneWaitsAndAListeningMeterStops() throws {
+        var busy = full
+        busy.audio = ControllerAudioState(tonePlaying: true, micMeter: MicLevel(levelPercent: 40, peakPercent: 60))
+        let benches = try XCTUnwrap(state([busy]).benches)
+        XCTAssertFalse(benches.toneEnabled)
+        XCTAssertEqual(benches.toneNote, "Playing…")
+        XCTAssertEqual(benches.mic, .stop)
+        XCTAssertEqual(benches.micLevel, 0.4)
+    }
+}

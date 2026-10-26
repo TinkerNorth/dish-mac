@@ -9,7 +9,7 @@ import XCTest
 /// Dead zones & motion: the sliders read what is stored or the defaults,
 /// the readouts are percentages, a pad without a gyroscope says so, and a
 /// pad that left is named missing.
-final class DeadzoneMappersTests: XCTestCase {
+final class DeadZonesMappersTests: XCTestCase {
 
     private typealias Fix = MapperFixtures
 

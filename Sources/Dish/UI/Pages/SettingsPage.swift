@@ -13,28 +13,27 @@ struct SettingsPage: View {
 
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var navigation: NavigationStore
-    @EnvironmentObject var keepAwake: KeepAwakePreferenceStore
-    @EnvironmentObject var crashReporting: CrashReportingController
 
     private var state: SettingsPageState {
-        settingsPageState(keepAwake: keepAwake.state, uploadPossible: crashReporting.uploadPossible, facts: model.shellFacts)
+        settingsPageState(facts: model.shellFacts)
     }
 
     var body: some View {
         ScrollView {
             TwoColumnLayout(breakpoint: DishSize.wideBreakpoint, leading: 2, spacing: DishSpace.page) {
-                AppearanceSection()
-                ForwardedFeaturesSection()
-                ControllerTuningSection()
-                WindowSection()
+                AppearanceSection(state: state)
+                ForwardedFeaturesSection(state: state)
+                ControllerTuningSection(state: state)
+                WindowSection(state: state)
                 PowerSection(state: state)
                 DiagnosticsSection(state: state, push: push)
-                UpdatesSection()
+                UpdatesSection(state: state)
                 AboutSection(state: state, push: push, select: select)
             }
             .padding(DishSpace.page)
         }
         .onAppear { model.pageAppeared(.settings) }
+        .onDisappear { model.pageDisappeared(.settings) }
     }
 
     private func push(_ page: Page) {

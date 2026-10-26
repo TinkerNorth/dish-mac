@@ -120,39 +120,37 @@ struct LinkRow: View {
     }
 }
 
-/// The Updates section's status line and its two actions.
+/// The Updates section's status line and its actions, as the mapper words them.
 struct UpdateStatusRow: View {
 
-    @EnvironmentObject var updates: UpdateChecker
+    let state: UpdateRowState
+    let check: () -> Void
+    let skip: () -> Void
     @Environment(\.openURL) private var openURL
 
     private let words = L10n.app
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(updateStatusText(updates.state, lastCheckMs: updates.lastCheckMs, now: Date()))
+            Text(state.status)
                 .font(DishFont.detail)
-                .foregroundColor(updates.state.required ? DishTheme.error : DishTheme.onSurface)
+                .foregroundColor(state.statusColor)
                 .fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                Button(words.checkForUpdates) { updates.checkNow() }
+                Button(words.checkForUpdates, action: check)
                     .buttonStyle(DishOutlinedButtonStyle())
-                    .disabled(updates.state.phase == .checking || updates.state.phase == .disabled)
-                if showsReleasePage(updates.state) {
-                    Button(words.openReleasePage, action: openReleasePage)
+                    .disabled(!state.canCheck)
+                if let releasePage = state.releasePage {
+                    Button(words.openReleasePage) { openURL(releasePage) }
                         .buttonStyle(DishOutlinedButtonStyle())
-                    if !updates.state.required {
-                        Button(words.skipThisVersion) { updates.skipAvailableVersion() }
-                            .buttonStyle(DishOutlinedButtonStyle())
-                    }
+                }
+                if state.offersSkip {
+                    Button(words.skipThisVersion, action: skip)
+                        .buttonStyle(DishOutlinedButtonStyle())
                 }
             }
         }
         .settingsCard()
-    }
-
-    private func openReleasePage() {
-        if let url = URL(string: updates.state.notesUrl) { openURL(url) }
     }
 }
 

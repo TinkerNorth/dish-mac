@@ -36,17 +36,22 @@ func idleTimeoutText(_ minutes: Int, words: L10n = .app) -> String {
     words.minutes(minutes)
 }
 
-/// The Updates section's one status line, from the checker's state.
-func updateStatusText(_ status: UpdateStatus, lastCheckMs: Int64, now: Date, words: L10n = .app) -> String {
+/// The Updates section's one status line, from the checker's state and
+/// the clock that ticks while Settings shows.
+func updateStatusText(_ status: UpdateStatus, time: UpdateCheckTime, words: L10n = .app) -> String {
     switch status.phase {
     case .disabled: words.updateChecksOff
     case .checking: words.checkingForUpdates
     case .available: words.updateAvailable(status.availableVersion)
     case .upToDate: words.onLatestVersion
-    case .idle: lastCheckMs > 0 ? words.lastChecked(status.currentVersion, lastCheckText(lastCheckMs, now: now, words: words)) : words
-        .noUpdateInformation
+    case .idle: idleUpdateText(status, time: time, words: words)
     case .failed: updateFailureText(status.error, words: words)
     }
+}
+
+private func idleUpdateText(_ status: UpdateStatus, time: UpdateCheckTime, words: L10n) -> String {
+    guard time.lastCheckMs > 0 else { return words.noUpdateInformation }
+    return words.lastChecked(status.currentVersion, lastCheckText(time, words: words))
 }
 
 func updateFailureText(_ error: UpdateError, words: L10n = .app) -> String {
@@ -57,16 +62,28 @@ func updateFailureText(_ error: UpdateError, words: L10n = .app) -> String {
     }
 }
 
-/// When the last check completed, relative to now.
-func lastCheckText(_ lastCheckMs: Int64, now: Date, words: L10n = .app) -> String {
-    guard lastCheckMs > 0 else { return words.never }
+/// When the last check completed, relative to the clock's now.
+func lastCheckText(_ time: UpdateCheckTime, words: L10n = .app) -> String {
+    guard time.lastCheckMs > 0 else { return words.never }
     let formatter = RelativeDateTimeFormatter()
     formatter.locale = words.catalog.locale
     formatter.unitsStyle = .full
-    return formatter.localizedString(for: Date(timeIntervalSince1970: TimeInterval(lastCheckMs) / 1000), relativeTo: now)
+    return formatter.localizedString(for: epochDate(time.lastCheckMs), relativeTo: epochDate(time.nowMs))
+}
+
+private func epochDate(_ ms: Int64) -> Date {
+    Date(timeIntervalSince1970: TimeInterval(ms) / 1000)
 }
 
 /// Whether the Updates section offers the release page.
 func showsReleasePage(_ status: UpdateStatus) -> Bool {
     status.phase == .available && !status.notesUrl.isEmpty
+}
+
+/// Check for updates waits while a check runs and while checks are off.
+func updateCheckAllowed(_ phase: UpdatePhase) -> Bool {
+    switch phase {
+    case .checking, .disabled: false
+    case .idle, .upToDate, .available, .failed: true
+    }
 }

@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Foundation
+import SwiftUI
 
 /// One block of the third-party notice as the page draws it.
 enum LicenseBlock: Equatable {
@@ -144,4 +145,20 @@ private func tableKind(_ line: String) -> LicenseLineKind {
 func inlineMarkdown(_ text: String) -> AttributedString {
     let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
     return (try? AttributedString(markdown: text, options: options)) ?? AttributedString(text)
+}
+
+// MARK: - Type
+
+/// A top-level heading reads as a title, a deeper one as body text.
+func licenseHeadingFont(_ level: Int) -> Font {
+    level <= 1 ? DishFont.title : DishFont.body
+}
+
+/// A table's header row stands out from its cells.
+func licenseCellFont(header: Bool) -> Font {
+    header ? DishFont.control : DishFont.caption
+}
+
+func licenseCellColor(header: Bool) -> Color {
+    header ? DishTheme.onSurface : DishTheme.muted
 }

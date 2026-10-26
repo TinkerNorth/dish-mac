@@ -55,6 +55,8 @@ package final class UpdateChecker: StateSource<UpdateStatus> {
 
     /// Edge-detected, at most once per version per session.
     package let notices = PassthroughSubject<UpdateNoticeEvent, Never>()
+    /// The last completed check against the time, for the words that say when.
+    let clock: UpdateCheckClock
 
     private let preferences: UpdatePreferenceStore
     private let gateway: ManifestGateway
@@ -77,6 +79,7 @@ package final class UpdateChecker: StateSource<UpdateStatus> {
         self.preferences = preferences
         self.gateway = gateway
         self.now = now
+        clock = UpdateCheckClock(lastCheckMs: { preferences.lastCheckMs }, now: now)
         super.init(initial: UpdateStatus(phase: .idle, currentVersion: currentVersion, checksEnabled: preferences.state.checksEnabled))
     }
 
@@ -162,6 +165,7 @@ package final class UpdateChecker: StateSource<UpdateStatus> {
             schedule(delayMs: delayMs, trigger: state.phase == .failed ? .retry : .periodic)
         case .persistLastCheck:
             preferences.setLastCheckMs(now())
+            clock.refresh()
         case let .notify(notice, version):
             announce(notice, version: version)
         }

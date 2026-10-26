@@ -96,6 +96,19 @@ the repos share a version number.
 
 ### Changed
 
+- **Views are layout only, and a test keeps them that way.** Every page
+  draws one state built by a pure mapper from the model's published facts
+  and acts only through `AppModel` intents: Settings writes its preferences
+  through `AppModel+Preferences.swift` instead of binding the stores, the
+  Diagnostics and inspector pages read the source, the flight recorder and
+  the inspector through the model, the crash report reads the log the model
+  read, and the colours, fonts, enablement rules and fallback words the
+  pages chose are the mappers'. The window's scene hands its pages the
+  model, the navigation store and the toast centre and no engine object.
+  "Last checked …" under Updates now ticks every minute while Settings
+  shows.
+  `ViewPurityTests` and `NavigationCoverageTests` pin the rules
+  (`docs/UI_CONTRACT.md`, "View purity").
 - The Emulate picker, the touchpad picker and the inline Bind list leave the
   controller cards: the type and the destination are chosen on Configure
   binding, and the strip's chips stay the controller's own switches.

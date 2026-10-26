@@ -12,13 +12,12 @@ import SwiftUI
 struct InspectorPage: View {
 
     @EnvironmentObject var model: AppModel
-    @EnvironmentObject var inspector: InputInspector
     let slotId: String
 
     private let words = L10n.app
 
-    private var slot: ControllerSlot? {
-        model.slots.first { $0.id == slotId }
+    private var state: InspectorPageState {
+        inspectorPageState(slotId: slotId, slots: model.slots, facts: model.shellFacts, micPermitted: model.micPermitted)
     }
 
     var body: some View {
@@ -38,7 +37,7 @@ struct InspectorPage: View {
     }
 
     private var header: some View {
-        Text(slot?.name ?? slotId)
+        Text(state.title)
             .font(DishFont.body)
             .foregroundColor(DishTheme.onSurface)
     }
@@ -49,8 +48,8 @@ struct InspectorPage: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: words.liveInput)
             InspectorCard {
-                if let snapshot = inspector.state.snapshot {
-                    liveInput(snapshot)
+                if let live = state.live {
+                    liveInput(live)
                 } else {
                     note(words.waitingForFirstReport)
                 }
@@ -59,30 +58,30 @@ struct InspectorPage: View {
         }
     }
 
-    private func liveInput(_ snapshot: InputSnapshot) -> some View {
+    private func liveInput(_ live: LiveInputState) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(pressedText(snapshot))
+            Text(live.pressed)
                 .font(DishFont.mono)
                 .foregroundColor(DishTheme.onSurface)
-            factLine(words.leftStick, stickText(snapshot.leftStick))
-            factLine(words.rightStick, stickText(snapshot.rightStick))
-            triggerLine(words.leftTrigger, snapshot.leftTrigger)
-            triggerLine(words.rightTrigger, snapshot.rightTrigger)
-            Text(inputRateText(inspector.state.reportsHz))
+            factLine(words.leftStick, live.leftStick)
+            factLine(words.rightStick, live.rightStick)
+            triggerLine(words.leftTrigger, live.leftTrigger)
+            triggerLine(words.rightTrigger, live.rightTrigger)
+            Text(live.rate)
                 .font(DishFont.caption)
                 .foregroundColor(DishTheme.muted)
         }
     }
 
-    private func triggerLine(_ label: String, _ fraction: Float) -> some View {
+    private func triggerLine(_ label: String, _ trigger: TriggerReadoutState) -> some View {
         HStack(spacing: 8) {
             Text(label)
                 .font(DishFont.caption)
                 .foregroundColor(DishTheme.muted)
                 .frame(width: 110, alignment: .leading)
-            ProgressView(value: Double(fraction))
+            ProgressView(value: trigger.fraction)
                 .tint(DishTheme.primary)
-            Text(percentText(fraction))
+            Text(trigger.text)
                 .font(DishFont.mono)
                 .foregroundColor(DishTheme.onSurface)
                 .frame(width: 48, alignment: .trailing)
@@ -95,9 +94,9 @@ struct InspectorPage: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: words.motionAndTouch)
             InspectorCard {
-                monoLine(gyroText(inspector.state.snapshot?.motion))
-                monoLine(accelText(inspector.state.snapshot?.motion))
-                monoLine(touchText(inspector.state.snapshot?.touch))
+                monoLine(state.gyro)
+                monoLine(state.accel)
+                monoLine(state.touch)
             }
         }
     }
@@ -115,8 +114,8 @@ struct InspectorPage: View {
                     Button(words.rangeTestButton) { model.startStickTest(.range) }
                         .buttonStyle(DishOutlinedButtonStyle())
                 }
-                .disabled(inspector.state.bench.phase == .running)
-                if let status = stickTestText(inspector.state) {
+                .disabled(!state.stickTestsEnabled)
+                if let status = state.stickTestStatus {
                     monoLine(status)
                 }
             }
@@ -129,15 +128,15 @@ struct InspectorPage: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: words.rumbleTest)
             InspectorCard {
-                if let slot {
-                    note(rumbleBenchNote(slot))
+                if let benches = state.benches {
+                    note(benches.rumbleNote)
                     HStack(spacing: 8) {
                         ForEach(BuzzMotor.allCases, id: \.self) { motor in
                             Button(buzzMotorText(motor)) { model.testRumble(slotId: slotId, motor: motor) }
                                 .buttonStyle(DishOutlinedButtonStyle())
                         }
                     }
-                    .disabled(!slot.capabilities.hasRumble)
+                    .disabled(!benches.rumbleEnabled)
                 }
             }
         }
@@ -149,20 +148,20 @@ struct InspectorPage: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: words.audioTests)
             InspectorCard {
-                if let slot {
-                    toneRow(slot)
-                    micRow(slot)
+                if let benches = state.benches {
+                    toneRow(benches)
+                    micRow(benches)
                 }
             }
         }
     }
 
-    private func toneRow(_ slot: ControllerSlot) -> some View {
+    private func toneRow(_ benches: InspectorBenchState) -> some View {
         HStack(spacing: 8) {
             Button(words.playTone) { model.playTestTone(slotId: slotId) }
                 .buttonStyle(DishOutlinedButtonStyle())
-                .disabled(!slot.capabilities.hasSpeaker || slot.audio?.tonePlaying == true)
-            if let note = toneNote(slot) {
+                .disabled(!benches.toneEnabled)
+            if let note = benches.toneNote {
                 Text(note)
                     .font(DishFont.caption)
                     .foregroundColor(DishTheme.muted)
@@ -171,28 +170,34 @@ struct InspectorPage: View {
         }
     }
 
-    private func micRow(_ slot: ControllerSlot) -> some View {
+    private func micRow(_ benches: InspectorBenchState) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                if slot.audio?.micMeter != nil {
-                    Button(words.stopWord) { model.stopMicMeter(slotId: slotId) }
-                        .buttonStyle(DishOutlinedButtonStyle())
-                } else {
-                    Button(words.testMicrophone) { model.startMicMeter(slotId: slotId) }
-                        .buttonStyle(DishOutlinedButtonStyle())
-                        .disabled(!slot.capabilities.hasMic || !model.micPermitted)
-                }
-                if let note = micMeterNote(slot, micPermitted: model.micPermitted) {
+                micButton(benches.mic)
+                if let note = benches.micNote {
                     Text(note)
                         .font(DishFont.caption)
                         .foregroundColor(DishTheme.muted)
                 }
                 Spacer(minLength: 0)
             }
-            if let meter = slot.audio?.micMeter {
-                ProgressView(value: Double(meter.levelPercent) / 100)
+            if let level = benches.micLevel {
+                ProgressView(value: level)
                     .tint(DishTheme.primary)
             }
+        }
+    }
+
+    @ViewBuilder
+    private func micButton(_ button: MicTestButton) -> some View {
+        switch button {
+        case .stop:
+            Button(words.stopWord) { model.stopMicMeter(slotId: slotId) }
+                .buttonStyle(DishOutlinedButtonStyle())
+        case let .start(enabled):
+            Button(words.testMicrophone) { model.startMicMeter(slotId: slotId) }
+                .buttonStyle(DishOutlinedButtonStyle())
+                .disabled(!enabled)
         }
     }
 

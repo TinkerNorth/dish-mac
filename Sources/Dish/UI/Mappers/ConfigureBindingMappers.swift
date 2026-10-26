@@ -74,6 +74,20 @@ struct DestinationRowState: Equatable, Identifiable {
     let chip: ChipState
     let dot: Color
     let selected: Bool
+    let look: SelectionLook
+}
+
+/// A pickable row's radio glyph, its ink and the row's fill, by whether it is picked.
+struct SelectionLook: Equatable {
+    let glyph: String
+    let ink: Color
+    let fill: Color
+}
+
+func selectionLook(selected: Bool) -> SelectionLook {
+    selected
+        ? SelectionLook(glyph: "largecircle.fill.circle", ink: DishTheme.primary, fill: DishTheme.chipFill)
+        : SelectionLook(glyph: "circle", ink: DishTheme.muted, fill: DishTheme.surfaceDim)
 }
 
 struct FunctionsSectionState: Equatable {
@@ -222,7 +236,8 @@ private func destinationRow(_ summary: ConnectionSummary, selected: Bool, words:
         subtitle: subtitle,
         chip: ChipState(text: linkStateText(summary.live, words: words), color: linkDotColor(summary.live)),
         dot: linkDotColor(summary.live),
-        selected: selected
+        selected: selected,
+        look: selectionLook(selected: selected)
     )
 }
 

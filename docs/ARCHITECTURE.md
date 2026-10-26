@@ -145,7 +145,17 @@ state and `WifiConnectionManager` performs the effects.
    per-field back channels that can miss a transition.
 5. **Distinct-until-changed everywhere.** Every state value is `Equatable`.
 6. **Commands flow the other way, explicitly.** The UI calls an intent on
-   `AppModel`; the resulting state flows back out.
+   `AppModel` (`AppModel+<Topic>.swift`; Settings' store setters are
+   `AppModel+Preferences.swift`); the resulting state flows back out as a
+   published fact (`slots`, `connections`, `shellFacts`, …), which a page's
+   mapper turns into its view state. A view holds no engine object: the
+   scene root hands its pages `AppModel`, `NavigationStore` and the toast
+   centre and nothing else, and the preferences, the update clock, the crash
+   log, the Diagnostics source, the flight recorder and the inspector reach
+   a page through `ShellFacts`. `ViewPurityTests` enforces it, rule by rule
+   ([UI_CONTRACT.md](UI_CONTRACT.md), "View purity"); the scene
+   (`DishApp.swift`) and its seams (`Sources/Dish/Services`) are not views
+   and wire the engine's publishers to the notifiers directly.
 7. **The engine vends data, the app vends words.** A failure is a
    `ConnectionFailure` case; `failureText` in the app is the one place it is
    worded, `L10n` is the one place a key becomes a word, and the String
@@ -175,8 +185,9 @@ state and `WifiConnectionManager` performs the effects.
 10. **A page's lifecycle is an intent.** A page's `onAppear` and
    `onDisappear` forward `pageAppeared` / `pageDisappeared` to `AppModel`
    (`AppModel+Diagnostics.swift`), which starts and stops the Diagnostics
-   source, arms and disarms the inspector, and re-reads the crash log; the
-   view does nothing else there.
+   source, arms and disarms the inspector, re-reads the crash log, and
+   ticks the update clock while Settings shows; the view does nothing else
+   there.
 11. **A failure is told in one place.** A pairing attempt's failure is keyed
    to its satellite (`ConnectionEvent.pairingFailed`); while that
    satellite's pairing card is open the card shows it, and `AppModel` hands
@@ -269,9 +280,11 @@ Each entry names the decided shape, so a change lands on it.
   holds its buffers in one process-wide `let`, because a C signal handler
   takes no context; the install step is its only writer. The report is
   redacted by `CrashReport` in the core and sent only by the user's browser.
-- **Diagnostics shows the facts, not the bench.** The input inspector, the
-  stick drift test and the rumble bench the Linux client has are pending; the
-  page reads the facts the engine already holds.
+- **Diagnostics shows the facts it holds.** The page reads what the engine
+  already acts on; the input inspector (pushed from a controller's card)
+  adds the live input, the stick drift and range tests, the rumble bench and
+  the audio tests. The radios section and the other input devices the
+  siblings list are not there yet.
 - **The update check downloads nothing.** It reads the release manifest,
   says so once per version and opens the release page; installing stays
   manual, as on the other desktop clients.
@@ -302,7 +315,10 @@ Each entry names the decided shape, so a change lands on it.
   key, so the suite reads what a host would have read.
 - **The rules are tested.** `Tests/ArchitectureTests` reads the tree: import
   boundaries, the dependency graph, license headers, suppressions, mutable
-  statics, the lint thresholds and the version mirrors.
+  statics, the lint thresholds, the version mirrors, the view purity rules
+  (`ViewPurityTests`) and the navigation's coverage (`NavigationCoverageTests`:
+  every destination and page has its title, its page file, its mapper tests
+  and its branch of the shell's switch).
 - **The app layer is tested where it decides.** `Tests/DishTests` covers the
   AppKit signal mapping, the close-to-background rule (with a recording
   announcer in place of the notification centre), the mappers (Home's rows,

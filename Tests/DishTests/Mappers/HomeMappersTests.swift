@@ -3,6 +3,7 @@
 
 import DishCore
 import DishEngine
+import SwiftUI
 import XCTest
 @testable import Dish
 
@@ -150,5 +151,11 @@ final class HomeMappersTests: XCTestCase {
 
     func testARegisteringSatelliteShowsTheSpinner() {
         XCTAssertTrue(homePageState(HomeInputs(slots: [], facts: ShellFacts(), registering: true)).registering)
+    }
+
+    func testABoundRowIsACardAndTheGhostOnlyItsOutline() throws {
+        let bound = try row(Fix.pad(boundTo: Fix.den))
+        XCTAssertEqual(signalRowFill(bound.destination), DishTheme.surface)
+        XCTAssertEqual(signalRowFill(.ghost(GhostCardState(title: "Bind…", subtitle: ""))), Color.clear)
     }
 }
