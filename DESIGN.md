@@ -62,12 +62,12 @@ The brand glyphs (`BrandIcon`) use the brand book's colours, not the accent:
 
 | Token | Size / weight / design | Role |
 |---|---|---|
+| `DishFont.pinDigit` | 22 semibold monospaced | A PIN cell's digit on the pairing card |
 | `DishFont.windowTitle` | 18 semibold | The Connections sheet's headline |
 | `DishFont.title` | 17 semibold | The dashboard status line, the Settings headline |
-| `DishFont.sheetTitle` | 16 semibold | The pairing sheet's headline |
+| `DishFont.sheetTitle` | 16 semibold | The Moonlight PIN sheet's headline |
 | `DishFont.body` | 14 medium | A row's name, a toggle's title |
 | `DishFont.icon` | 14 | An icon-only button's glyph |
-| `DishFont.monoField` | 14 monospaced | The PIN field |
 | `DishFont.toastGlyph` | 14 semibold | A toast's leading glyph |
 | `DishFont.toastTitle` | 13 semibold | A toast's headline |
 | `DishFont.detail` | 12 | Secondary copy, hints, text fields |

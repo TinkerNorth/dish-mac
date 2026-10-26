@@ -7,7 +7,8 @@
 // never depends on an external process.
 //
 // What this proves that the FakeSatellite suites can't: the actual C++
-// satellite accepts this client's pairing (path A, real rotating PIN), pins
+// satellite accepts this client's pairing (path A, real rotating PIN; path B,
+// the operator's approval or decline sent the way its dashboard sends it), pins
 // its real self-signed TLS cert, applies the declarative session PUT, and —
 // the load-bearing bit — advances its own liveness state machine on this
 // client's UDP frames, which only happens when the HKDF/AEAD bytes
@@ -86,8 +87,10 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
 
     private var failures: [ConnectionFailure] {
         events.compactMap {
-            if case let .failure(failure) = $0 { return failure }
-            return nil
+            switch $0 {
+            case let .failure(failure), let .pairingFailed(_, failure): failure
+            case .pairingRequired: nil
+            }
         }
     }
 
@@ -146,6 +149,75 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
         return try await check()
+    }
+
+    // MARK: - Path B: the operator answers on the admin surface
+
+    /// `/api/pair/requests` answers a bare array of `{"deviceId":…, "pin":…}` rows.
+    private func adminPairRequest(deviceId: String) async throws -> [String: Any]? {
+        let raw = try await adminJSON("/api/pair/requests")
+        let rows = try XCTUnwrap(raw as? [[String: Any]])
+        return rows.first { ($0["deviceId"] as? String) == deviceId }
+    }
+
+    /// The operator's Accept or Reject as the dashboard sends it. The admin
+    /// surface refuses a mutating call from a foreign Origin, so the
+    /// loopback one is sent explicitly.
+    private func respondToPairRequest(deviceId: String, accept: Bool) async throws {
+        let url = try XCTUnwrap(URL(string: "http://\(host):\(adminPort)/api/pair/respond"))
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("http://\(host):\(adminPort)", forHTTPHeaderField: "Origin")
+        request.httpBody = try JSONSerialization.data(withJSONObject: ["deviceId": deviceId, "accept": accept])
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let http = try XCTUnwrap(response as? HTTPURLResponse)
+        XCTAssertEqual(http.statusCode, 200, "the admin surface must take the operator's answer")
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        XCTAssertEqual(json["ok"] as? Bool, true, "the answer must find the request: \(json)")
+    }
+
+    /// Dish files the request; the satellite lists it for its operator with
+    /// the PIN the card shows.
+    private func fileTheRequest(clientPin: String, deviceId: String) async throws {
+        manager.pairWithClientPin(server, clientPin: clientPin)
+        let listed = try await waitForAdmin {
+            let row = try await self.adminPairRequest(deviceId: deviceId)
+            return (row?["pin"] as? String) == clientPin
+        }
+        XCTAssertTrue(listed, "the satellite must list the request with this Mac's PIN")
+    }
+
+    func testTheOperatorApprovesTheRequestAndTheSessionOpens() async throws {
+        let id = server.id
+        let deviceId = store.getOrCreateDeviceId()
+        try await fileTheRequest(clientPin: "4081", deviceId: deviceId)
+        try await respondToPairRequest(deviceId: deviceId, accept: true)
+        let live = await waitUntil { self.manager.get(id)?.state == .live }
+        XCTAssertTrue(live, "the approval must land the key and open the session: \(failures)")
+        XCTAssertNotNil(store.sharedKey(for: id))
+        XCTAssertNil(manager.pairingAttempts.state[id], "the session took over from the card")
+        let paired = try await waitForAdmin { try await self.adminDeviceIds().contains(deviceId) }
+        XCTAssertTrue(paired, "the operator's list holds the approved device")
+
+        manager.forget(id: id)
+        let unpaired = try await waitForAdmin {
+            try await !self.adminDeviceIds().contains(deviceId)
+        }
+        XCTAssertTrue(unpaired, "forget leaves the operator's list as it found it")
+    }
+
+    func testTheOperatorDeclinesTheRequestAndThePairingSaysSo() async throws {
+        let id = server.id
+        let deviceId = store.getOrCreateDeviceId()
+        try await fileTheRequest(clientPin: "7090", deviceId: deviceId)
+        try await respondToPairRequest(deviceId: deviceId, accept: false)
+        let declined = await waitUntil { self.manager.pairingAttempts.state[id]?.phase == .declined }
+        XCTAssertTrue(declined, "a decline erases the request, and the poll reads that as declined")
+        XCTAssertTrue(failures.contains(.approvalDeclined))
+        XCTAssertNil(store.sharedKey(for: id), "a declined request mints no trust")
+        let deviceIds = try await adminDeviceIds()
+        XCTAssertFalse(deviceIds.contains(deviceId))
     }
 
     // MARK: - The journey

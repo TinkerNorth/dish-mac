@@ -44,7 +44,7 @@ frameworks each one may import.
 
 | Module | Role | Depends on | May import |
 |---|---|---|---|
-| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock | nothing | Foundation, CryptoKit |
+| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
 | `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
@@ -94,6 +94,10 @@ preference into a `Composer<WakeState>` that `WakeStateController`, a
 fleet's keys; `ControllerTypeStore` and `MotionBackendStatusStore` are
 `StateSource`s keyed by binding, the first written by the Emulate picker and
 read as each descriptor is built, the second written from every apply result;
+`PairingAttempts` is a `StateSource` keyed by satellite that holds what the
+pairing card shows (the client PIN, the approval phase, the typed PIN's
+rejections), written by the two pairing paths and ended when a session takes
+over or the user cancels;
 `UpdateChecker` is a `StateSource<UpdateState>` that runs the
 pure `UpdateMachine` reducer and performs the effects it returns; the
 notification queue is a `StateSource<[DishNotification]>`; `DiagnosticsSource`
@@ -144,6 +148,15 @@ state and `WifiConnectionManager` performs the effects.
    the motion indicator's fold, is a reducer in `DishCore`; the mapper only
    builds its inputs from the slot's facts and the user's switches and words
    its output.
+8. **A kit component reads no domain.** Anything under `Sources/Dish/UI/Kit`
+   (the pairing card, the PIN cells) takes only its view state, tokens and
+   closures; a host view beside the page maps the engine's value into that
+   state and forwards the closures as intents. `ImportBoundariesTests` pins
+   it: a kit file imports only SwiftUI and Foundation and observes no model.
+9. **A failure is told in one place.** A pairing attempt's failure is keyed
+   to its satellite (`ConnectionEvent.pairingFailed`); while that
+   satellite's pairing card is open the card shows it, and `AppModel` hands
+   only the others to the toast.
 
 ## Threading and the hot path
 

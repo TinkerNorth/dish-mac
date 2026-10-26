@@ -17,6 +17,12 @@
 #      → latency window seeds from real acks
 #      → graceful DELETE (admin row drains) → self-unpair (device row gone).
 #
+#  and the operator's side of pairing (path B): Dish files a request with
+#  its client PIN, the driver answers it on the admin API the way the
+#  dashboard does (POST /api/pair/respond {deviceId, accept} with a loopback
+#  Origin), and the approval opens the session while a decline reads as
+#  declined.
+#
 #  WHAT THIS VERIFIES (unentitled satellite build — the default here):
 #    real-binary interop of pairing, TOFU TLS pinning, hmacProof auth, the
 #    declarative session/controller REST surface, HKDF/ChaCha20-Poly1305
@@ -150,6 +156,7 @@ echo
 if [ "${status}" -eq 0 ]; then
     log "PASS — verified against the real satellite binary:"
     log "  pairing (path A, rotating PIN) · TOFU pin of the real cert"
+    log "  pairing (path B, operator approval and decline on the admin API)"
     log "  hmacProof auth · declarative PUT + slot descriptor"
     log "  HKDF/AEAD UDP both directions (server marked session ACTIVE)"
     log "  latency seeding · graceful DELETE · self-unpair"

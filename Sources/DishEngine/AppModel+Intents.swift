@@ -51,10 +51,6 @@ package extension AppModel {
         moonlight.startDiscovery()
     }
 
-    func pairWithPin(_ server: DiscoveredServer, pin: String) {
-        wifi.pairWithPin(server, pin: pin)
-    }
-
     /// The bound pad's detected capabilities, with its audio route folded
     /// in, become the descriptor's claims, and its family picks the catalog
     /// type it is emulated as.

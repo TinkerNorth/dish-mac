@@ -21,6 +21,20 @@ the repos share a version number.
 
 ### Added
 
+- **Pairing asks the satellite's operator first; the PIN stays typeable.**
+  Pairing a satellite opens its row into a pairing card instead of a PIN
+  sheet. The card shows a four-digit code and files it with the satellite at
+  once, and the satellite's operator approves it there; the card says
+  "Waiting for approval on the satellite…" for about two minutes, then
+  "Approved — connecting…", "The operator declined the pairing." or "No
+  approval — the code expired.", and after a decline or an expiry offers a
+  new code. The satellite's own rotating four-digit PIN can be typed into
+  four cells on the same card at the same time (a pasted PIN lands whole);
+  whichever lands first opens the session and stops the other. A refused
+  PIN is explained on the card, and from the third refusal on it adds that
+  the code changes when the satellite's screen is refreshed. A row that
+  needs pairing gets a Pair button. Cancel, or closing the Connections
+  sheet, stops the request.
 - **Guide reaches the host.** A pad's Home button now presses the XUSB Guide
   button (`0x0400`) on a satellite and on a Moonlight host. XUSB has no Share
   button and no paddles, so those stay unmapped, as on the other clients.
@@ -51,6 +65,10 @@ the repos share a version number.
 
 ### Fixed
 
+- **Failures are no longer hidden while pairing.** Every failure used to be
+  held back while the PIN sheet was up, including ones about other
+  satellites. Now only the pairing card's own failures stay on the card;
+  everything else still shows as a toast.
 - **A stick pushed all the way up reads as up, not down, on both links.**
   GameController reports a stick pushed up as positive, like the XUSB report
   every client sends, and Dish negated it, so both sticks read upside down on

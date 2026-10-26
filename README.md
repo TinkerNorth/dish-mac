@@ -17,9 +17,13 @@ protocol-1 satellite; see [Protocol](#protocol).
 
 - Finds satellites over mDNS (`_satellite._udp`) and the legacy `:9879`
   beacon, or takes an address typed in when both are blocked.
-- Pairs with the satellite's rotating four-digit PIN, or waits for the
-  operator's approval, and remembers the satellite by its stable identity so
-  a DHCP change keeps it paired.
+- Pairs by asking the satellite's operator first: the satellite's row opens
+  into a pairing card that shows a four-digit code and files it with the
+  satellite, whose operator accepts it there (the request waits about two
+  minutes; a decline or an expiry offers a new code). The satellite's own
+  rotating four-digit PIN can be typed into the same card at the same time,
+  and whichever lands first pairs. Dish remembers the satellite by its stable
+  identity so a DHCP change keeps it paired.
 - Keeps several satellites paired at once and binds each controller slot to
   one of them.
 - Finds Moonlight hosts (Sunshine, Apollo, Wolf) over mDNS (`_nvstream._tcp`)

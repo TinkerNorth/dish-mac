@@ -12,6 +12,9 @@ import os
 package enum ConnectionEvent: Equatable {
     case pairingRequired(DiscoveredServer)
     case failure(ConnectionFailure)
+    /// A pairing attempt's failure, which the pairing card for that satellite
+    /// shows itself.
+    case pairingFailed(serverId: String, failure: ConnectionFailure)
 }
 
 /// Hosts whose presented TLS certificate mismatched the stored TOFU pin. The
@@ -83,6 +86,11 @@ package final class WifiConnectionManager: ObservableObject {
     /// In-flight path-B approval polls by connection id, so a re-issued
     /// request supersedes the prior poll and forget or disconnect cancels it.
     var approvalPolls: [String: Task<Void, Never>] = [:]
+    /// In-flight path-A PIN submissions by connection id, so an approval
+    /// landing first can stop the one it beat.
+    var pinSubmissions: [String: Task<Void, Never>] = [:]
+    /// Each satellite's pairing as the card shows it.
+    package let pairingAttempts = PairingAttempts()
     /// Per-connection reconnect throttle on the backoff curve.
     var retry: [String: RetryState] = [:]
     var retryTasks: [String: Task<Void, Never>] = [:]
@@ -260,7 +268,7 @@ package final class WifiConnectionManager: ObservableObject {
     /// survive, and no scheduled retry resurrects a session the user closed.
     func disconnect(id: String) {
         guard let conn = connections[id] else { return }
-        cancelApprovalPoll(id)
+        dropPairing(id)
         let server = conn.server
         let connectionId = conn.connectionId
         let did = deviceId
@@ -284,7 +292,7 @@ package final class WifiConnectionManager: ObservableObject {
     /// dropped, because the proof needs the key; then the row, the key, the
     /// pin, the catalog and every retry marker go.
     func forget(id: String) {
-        cancelApprovalPoll(id)
+        dropPairing(id)
         selfUnpair(id)
         disconnect(id: id)
         store.forget(id)

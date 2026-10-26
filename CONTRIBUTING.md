@@ -189,8 +189,9 @@ shape.
 
 - **A chain of `if`s over one byte is a table.** A per-bit or per-index
   mapping belongs in an array the code reads, not in a run of `if`s the
-  reader has to diff against its twin: the GameController button word is a
-  table of key paths and bits, read by `buttonWord`.
+  reader has to diff against its twin: the GameController buttons are a
+  table of key paths and wire buttons, read by `heldButtons` into one
+  `WireButtonWord`.
 
 - **A callback with a body gets a name.** A closure is fine as a
   one-expression forward (`{ [weak self] in self?.releaseAllInputs() }`), as
@@ -314,8 +315,10 @@ Build + style:
 - `e2e.yml`, on `macos-26`: checks out the satellite at the release tag the
   workflow pins (`SATELLITE_TAG`), builds it from source and runs
   `scripts/e2e_local.sh`, the same loopback end-to-end a developer runs:
-  pairing, the TOFU pin, the session PUT, encrypted UDP both ways, the
-  graceful close and the self-unpair against the real binary. The runner is
+  pairing (the typed PIN, and the operator's approval and decline answered
+  on the satellite's admin API), the TOFU pin, the session PUT, encrypted
+  UDP both ways, the graceful close and the self-unpair against the real
+  binary. The runner is
   unentitled, so the slot applies as `backendUnavailable` and the driver
   asserts that honest path.
 

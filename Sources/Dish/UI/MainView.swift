@@ -38,19 +38,21 @@ struct MainView: View {
                 .environmentObject(model.moonlight)
                 .environmentObject(notifications)
         }
+        .onChange(of: model.pairingTarget?.id, perform: showConnectionsForPairing)
         .sheet(isPresented: $showSettings) {
             SettingsView()
                 .environmentObject(model.settings)
-        }
-        .sheet(item: $model.pairingTarget) { server in
-            PairingSheet(server: server)
-                .environmentObject(model)
-                .environmentObject(model.wifi)
         }
         .sheet(item: $model.moonlightPin) { prompt in
             MoonlightPinSheet(prompt: prompt)
                 .environmentObject(model)
         }
+    }
+
+    /// A pairing card lives on its row in the Connections sheet, so a
+    /// satellite that asks to pair brings the sheet up.
+    private func showConnectionsForPairing(_ serverId: String?) {
+        if serverId != nil { showConnections = true }
     }
 
     // MARK: - Header

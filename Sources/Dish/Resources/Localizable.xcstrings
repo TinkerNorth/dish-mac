@@ -246,6 +246,41 @@
         }
       }
     },
+    "%@ hasn’t approved the pairing yet." : {
+      "comment" : "Pairing card: the satellite answered the typed PIN with pending; the argument is its name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ još nije odobrio uparivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ hat die Kopplung noch nicht bestätigt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ aún no ha aprobado el emparejamiento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ n'a pas encore approuvé l'appairage."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ainda não aprovou o pareamento."
+          }
+        }
+      }
+    },
     "%@ is full" : {
       "comment" : "Banner title: the host already carries four controllers.",
       "localizations" : {
@@ -347,6 +382,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@ não está respondendo"
+          }
+        }
+      }
+    },
+    "%@ is running a different Satellite version. Update both, then pair again." : {
+      "comment" : "Pairing card: no protocol version both ends speak; the argument is the satellite's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ pokreće drugu verziju aplikacije Satellite. Ažurirajte obje strane, pa ponovo uparite."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf %@ läuft eine andere Satellite-Version. Aktualisiere beide und koppele dann erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ejecuta una versión distinta de Satellite. Actualiza ambos y vuelve a emparejar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ exécute une version différente de Satellite. Mettez les deux à jour, puis appairez de nouveau."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ está executando uma versão diferente do Satellite. Atualize os dois e pareie de novo."
           }
         }
       }
@@ -2210,6 +2280,41 @@
         }
       }
     },
+    "Approved — connecting…" : {
+      "comment" : "Pairing card: the operator approved and the session is opening.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odobreno — povezivanje…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bestätigt — verbindet…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprobado — conectando…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Approuvé — connexion…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aprovado — conectando…"
+          }
+        }
+      }
+    },
     "Asked %@ to close the app it is running." : {
       "comment" : "Banner: the dish asked the host to close its app.",
       "localizations" : {
@@ -3960,6 +4065,41 @@
         }
       }
     },
+    "Couldn’t reach %@. Make sure it’s on and on your network." : {
+      "comment" : "Pairing card: the typed PIN got no answer; the argument is the satellite's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije moguće dosegnuti %@. Provjerite je li uključen i na vašoj mreži."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ nicht erreichbar. Stelle sicher, dass es eingeschaltet und im Netzwerk ist."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudo conectar con %@. Comprueba que esté encendido y en tu red."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Impossible de joindre %@. Vérifiez qu'il est allumé et sur votre réseau."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível alcançar %@. Verifique se está ligado e na sua rede."
+          }
+        }
+      }
+    },
     "Crash report" : {
       "comment" : "Settings row title and sheet title.",
       "localizations" : {
@@ -5010,37 +5150,37 @@
         }
       }
     },
-    "Enter the 4-digit PIN shown on the Satellite server." : {
-      "comment" : "Pairing sheet instruction. The satellite rotates four-digit PINs.",
+    "Enter the 4-digit PIN shown on the Satellite’s screen." : {
+      "comment" : "Pairing card: the prompt above the four PIN cells.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Unesite četverocifreni PIN prikazan na Satellite serveru."
+            "value" : "Unesite četvorocifreni PIN prikazan na ekranu satelita."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gib den 4-stelligen PIN ein, der auf dem Satellite-Server angezeigt wird."
+            "value" : "Gib den 4-stelligen PIN ein, der auf dem Bildschirm des Satelliten angezeigt wird."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Introduce el PIN de 4 dígitos que aparece en el servidor Satellite."
+            "value" : "Introduce el PIN de 4 dígitos que aparece en la pantalla de Satellite."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Saisissez le PIN à 4 chiffres affiché sur le serveur Satellite."
+            "value" : "Saisissez le PIN à 4 chiffres affiché sur l'écran de Satellite."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Digite o PIN de 4 dígitos exibido no servidor Satellite."
+            "value" : "Digite o PIN de 4 dígitos exibido na tela do Satellite."
           }
         }
       }
@@ -8020,6 +8160,41 @@
         }
       }
     },
+    "No approval — the code expired." : {
+      "comment" : "Pairing card: the request expired with no answer.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema odobrenja — kod je istekao."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Bestätigung — der Code ist abgelaufen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin aprobación — el código ha expirado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune approbation — le code a expiré."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem aprovação — o código expirou."
+          }
+        }
+      }
+    },
     "No apps available on %@." : {
       "comment" : "Banner; the argument is the host's name.",
       "localizations" : {
@@ -9000,41 +9175,6 @@
         }
       }
     },
-    "PIN" : {
-      "comment" : "PIN field placeholder. Maps to Android `pair_dialog_pin_hint`.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PIN"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PIN"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PIN"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PIN"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "PIN"
-          }
-        }
-      }
-    },
     "POWER" : {
       "comment" : "Settings section eyebrow, uppercase.",
       "localizations" : {
@@ -9311,6 +9451,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pareado com %@"
+          }
+        }
+      }
+    },
+    "Pairing PIN, 4 digits" : {
+      "comment" : "Pairing card: the PIN field's accessibility label.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN za uparivanje, 4 cifre"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kopplungs-PIN, 4 Stellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN de emparejamiento, 4 dígitos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN d'appairage, 4 chiffres"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PIN de pareamento, 4 dígitos"
           }
         }
       }
@@ -11450,6 +11625,41 @@
         }
       }
     },
+    "That PIN wasn’t accepted. Check the code on %@ and try again." : {
+      "comment" : "Pairing card: the satellite refused the typed PIN; the argument is its name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Taj PIN nije prihvaćen. Provjerite kod na %@ i pokušajte ponovo."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dieser PIN wurde nicht akzeptiert. Prüfe den Code auf %@ und versuche es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ese PIN no se aceptó. Comprueba el código en %@ y vuelve a intentarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ce PIN n'a pas été accepté. Vérifiez le code sur %@ et réessayez."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esse PIN não foi aceito. Confira o código em %@ e tente novamente."
+          }
+        }
+      }
+    },
     "The app closed on the host. Start a new session to keep using this controller." : {
       "comment" : "Banner body under ended the session.",
       "localizations" : {
@@ -11516,6 +11726,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O app iniciou, mas a transmissão não subiu, então o Dish o fechou de novo."
+          }
+        }
+      }
+    },
+    "The code changes if the Satellite screen was refreshed." : {
+      "comment" : "Pairing card: added to the error from the third refused PIN on.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kod se mijenja ako je ekran na satelitu osvježen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Code ändert sich, wenn der Bildschirm des Satelliten aktualisiert wurde."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El código cambia si se actualizó la pantalla de Satellite."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le code change si l'écran de Satellite a été actualisé."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O código muda se a tela do Satellite foi atualizada."
           }
         }
       }
@@ -11656,6 +11901,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não foi possível abrir o microfone."
+          }
+        }
+      }
+    },
+    "The operator declined the pairing." : {
+      "comment" : "Pairing card: the operator declined the request on the satellite.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Operater je odbio uparivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Kopplung wurde am Satelliten abgelehnt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El operador rechazó el emparejamiento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L'opérateur a refusé l'appairage."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O operador recusou o pareamento."
           }
         }
       }
@@ -12675,6 +12955,41 @@
         }
       }
     },
+    "Type this PIN on %@ to approve the pairing." : {
+      "comment" : "Pairing card: above the client PIN; the argument is the satellite's name or address.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upišite ovaj PIN na %@ da odobrite uparivanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib diesen PIN auf %@ ein, um die Kopplung zu bestätigen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Escribe este PIN en %@ para aprobar el emparejamiento."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez ce PIN sur %@ pour approuver l'appairage."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite este PIN em %@ para aprovar o pareamento."
+          }
+        }
+      }
+    },
     "UDP broadcast" : {
       "comment" : "Discovery path: the legacy UDP beacon.",
       "localizations" : {
@@ -12986,6 +13301,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "JANELA"
+          }
+        }
+      }
+    },
+    "Waiting for approval on the satellite…" : {
+      "comment" : "Pairing card: the operator request is filed and unanswered.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Čekanje odobrenja na satelitu…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Warte auf die Bestätigung am Satelliten…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esperando la aprobación en el satélite…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En attente de l'approbation sur le satellite…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aguardando aprovação no satélite…"
           }
         }
       }
@@ -14571,6 +14921,41 @@
         }
       }
     },
+    "or" : {
+      "comment" : "Pairing card: the divider between typing the satellite's PIN and approving this Mac's PIN there.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ili"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "oder"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "o"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ou"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ou"
+          }
+        }
+      }
+    },
     "out of step" : {
       "comment" : "Agreement word.",
       "localizations" : {
@@ -14987,6 +15372,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "sim"
+          }
+        }
+      }
+    },
+    "~2 min" : {
+      "comment" : "Pairing card: how long the request waits for the operator.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~2 min"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~2 Min."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~2 min"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~2 min"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "~2 min"
           }
         }
       }

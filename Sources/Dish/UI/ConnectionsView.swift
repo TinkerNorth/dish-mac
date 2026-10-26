@@ -6,10 +6,12 @@ import SwiftUI
 
 /// The connection-management sheet: scan, pair, connect, and forget a
 /// remembered satellite, and the Moonlight hosts under their own header. A
-/// manual address is the escape hatch when discovery is dead. Failures and
-/// notices arrive as toasts over the sheet's bottom, the same strip the
-/// window shows when the sheet is down; only an address the sheet itself
-/// could not read gets an inline banner.
+/// manual address is the escape hatch when discovery is dead. A satellite
+/// that pairs opens its row into the pairing card, which shows its own
+/// errors; closing the sheet cancels the pairing. Other failures and notices
+/// arrive as toasts over the sheet's bottom, the same strip the window shows
+/// when the sheet is down; only an address the sheet itself could not read
+/// gets an inline banner.
 struct ConnectionsView: View {
 
     @EnvironmentObject var model: AppModel
@@ -57,13 +59,7 @@ struct ConnectionsView: View {
         .overlay(alignment: .bottom) {
             NotificationOverlay()
         }
-        // SwiftUI cannot activate a second sibling sheet on MainView while
-        // this one is up, so pairing is also presented from here.
-        .sheet(item: $model.pairingTarget) { server in
-            PairingSheet(server: server)
-                .environmentObject(model)
-                .environmentObject(wifi)
-        }
+        .onDisappear(perform: model.leftConnections)
         .sheet(item: $model.moonlightPin) { prompt in
             MoonlightPinSheet(prompt: prompt)
                 .environmentObject(model)
@@ -139,12 +135,17 @@ struct ConnectionsView: View {
 
     // MARK: - Rows
 
-    @ViewBuilder
     private func rowView(_ row: ConnectionRow) -> some View {
-        switch row {
-        case let .known(summary): knownRow(summary)
-        case let .discovered(server): discoveredRow(server)
+        VStack(alignment: .leading, spacing: 10) {
+            switch row {
+            case let .known(summary): knownRow(summary)
+            case let .discovered(server): discoveredRow(server)
+            }
+            if let open = model.openPairing, open.server.id == row.key {
+                PairingCardHost(server: open.server, attempt: open.attempt)
+            }
         }
+        .rowBackground()
     }
 
     private func knownRow(_ summary: ConnectionSummary) -> some View {
@@ -178,7 +179,6 @@ struct ConnectionsView: View {
             Button(words.forget) { model.forget(summary.id) }
                 .buttonStyle(DishOutlinedButtonStyle())
         }
-        .rowBackground()
     }
 
     private func discoveredRow(_ server: DiscoveredServer) -> some View {
@@ -208,7 +208,6 @@ struct ConnectionsView: View {
             .buttonStyle(DishOutlinedButtonStyle())
             .disabled(pairing)
         }
-        .rowBackground()
     }
 
     /// The row's main action. Pairing in flight and the session opening both
@@ -227,7 +226,15 @@ struct ConnectionsView: View {
             }
             .buttonStyle(DishOutlinedButtonStyle())
             .disabled(true)
-        case .found, .stale, .saved, .ready:
+        case .stale:
+            Button {
+                model.beginPairing(serverId: summary.id)
+            } label: {
+                workingLabel(words.pair, working: words.pairing, isWorking: pairing)
+            }
+            .buttonStyle(DishOutlinedButtonStyle())
+            .disabled(pairing)
+        case .found, .saved, .ready:
             Button {
                 connectRemembered(summary.id)
             } label: {

@@ -19,7 +19,7 @@ extension WifiConnectionManager {
     /// A stored key skips the handshake and opens the session directly, so a
     /// moved or offline satellite fails fast instead of trapping the user
     /// behind a PIN prompt. Without a key, only a user-initiated connect may
-    /// probe and pop the PIN sheet.
+    /// probe and open the pairing card.
     func pairAndConnect(conn: WifiConnection, server: DiscoveredServer, intent: ConnectIntent) async {
         let id = WifiConnection.idFor(server)
         let hasStoredKey = store.sharedKey(for: id)?.count == 64
@@ -37,7 +37,7 @@ extension WifiConnectionManager {
 
     /// An empty-PIN pair is the reachability and version probe: the
     /// protocol has no PIN-free path, so a reachable satellite answers
-    /// "PIN required" and the sheet opens.
+    /// "PIN required" and the pairing card opens.
     private func probeAndOpen(conn: WifiConnection, server: DiscoveredServer) async {
         beginPairing(conn.id)
         defer { endPairing(conn.id) }
@@ -65,7 +65,7 @@ extension WifiConnectionManager {
     }
 
     /// Store the key the satellite handed back and open the session.
-    private func adoptPairedKey(_ sharedKey: String, conn: WifiConnection, server: DiscoveredServer) async {
+    func adoptPairedKey(_ sharedKey: String, conn: WifiConnection, server: DiscoveredServer) async {
         store.setSharedKey(sharedKey, for: conn.id)
         clearStale(conn.id)
         await openSession(conn: conn, server: server, intent: .userInitiated)
@@ -74,6 +74,12 @@ extension WifiConnectionManager {
     private func failPairing(_ conn: WifiConnection, _ failure: ConnectionFailure) {
         conn.markDisconnected()
         events.send(.failure(failure))
+    }
+
+    /// A failure the pairing card shows, keyed to its satellite.
+    func reportPairingFailure(_ conn: WifiConnection, _ failure: ConnectionFailure) {
+        conn.markDisconnected()
+        events.send(.pairingFailed(serverId: conn.id, failure: failure))
     }
 
     /// A transport abort after a TOFU mismatch is an identity problem, not a
@@ -88,12 +94,16 @@ extension WifiConnectionManager {
     // MARK: - Path A (operator PIN)
 
     /// The satellite shows a PIN, the user types it here, and the response
-    /// carries the shared key.
+    /// carries the shared key. It runs beside an operator request on the
+    /// same satellite; whichever lands first stops the other.
     func pairWithPin(_ server: DiscoveredServer, pin: String) {
         let conn = pooledConnection(for: server)
-        cancelApprovalPoll(conn.id)
         conn.markConnecting()
-        Task { await submitPin(conn: conn, server: server, pin: pin) }
+        cancelPinSubmission(conn.id)
+        pairingAttempts.startSubmission(conn.id)
+        pinSubmissions[conn.id] = Task { [weak self] in
+            await self?.submitPin(conn: conn, server: server, pin: pin)
+        }
     }
 
     /// One PIN submission. A 409 whose range still overlaps ours submits
@@ -109,118 +119,52 @@ extension WifiConnectionManager {
             pin: pin,
             protocolVersion: conn.offeredProtocolVersion
         )
+        if Task.isCancelled { return }
         switch PairingClient.classify(pair) {
         case let .success(sharedKey):
-            await adoptPairedKey(sharedKey, conn: conn, server: server)
-        case .authRequired, .pendingApproval:
-            failPairing(conn, .pairingRejected(detail: pair.error))
-        case let .versionMismatch(supported, supportedMin):
-            if lowerOfferOrFail(conn, intent: .userInitiated, supported: supported, supportedMin: supportedMin) {
-                await submitPin(conn: conn, server: server, pin: pin)
-            }
-        case let .unreachable(detail):
-            failPairing(conn, unreachableFailure(server, detail: detail))
-        }
-    }
-
-    // MARK: - Path B (client PIN + approval poll)
-
-    /// This dish shows `clientPin`; the operator accepts it on the satellite.
-    /// Submit, then poll until approved, declined or timed out: the key only
-    /// arrives through the poll. A re-issued request supersedes the prior
-    /// poll so two polls cannot race to open one session.
-    func pairWithClientPin(_ server: DiscoveredServer, clientPin: String) {
-        let conn = pooledConnection(for: server)
-        conn.updateServer(server)
-        conn.markConnecting()
-        cancelApprovalPoll(conn.id)
-        approvalPolls[conn.id] = Task { [weak self] in
-            await self?.runApprovalFlow(conn: conn, server: server, clientPin: clientPin)
-        }
-    }
-
-    private func runApprovalFlow(conn: WifiConnection, server: DiscoveredServer, clientPin: String) async {
-        beginPairing(conn.id)
-        defer { endPairing(conn.id) }
-        let submitted = await pairing.pair(
-            ip: server.ip,
-            port: server.pairPort,
-            deviceId: deviceId,
-            deviceName: deviceName,
-            pin: "",
-            clientPin: clientPin,
-            protocolVersion: conn.offeredProtocolVersion
-        )
-        if Task.isCancelled { return }
-        guard await submissionNeedsPolling(submitted, conn: conn, server: server, clientPin: clientPin) else { return }
-        await pollApproval(conn: conn, server: server)
-    }
-
-    /// Resolve the submit reply. True when the satellite parked the request
-    /// for the operator and the poll must run. A 409 whose range still
-    /// overlaps ours runs the whole flow again at the lower offer.
-    private func submissionNeedsPolling(
-        _ submitted: PairResponse,
-        conn: WifiConnection,
-        server: DiscoveredServer,
-        clientPin: String
-    ) async -> Bool {
-        switch PairingClient.classify(submitted) {
-        case .pendingApproval:
-            return true
-        case let .success(sharedKey):
-            await adoptPairedKey(sharedKey, conn: conn, server: server)
-        case let .versionMismatch(supported, supportedMin):
-            if lowerOfferOrFail(conn, intent: .userInitiated, supported: supported, supportedMin: supportedMin) {
-                await runApprovalFlow(conn: conn, server: server, clientPin: clientPin)
-            }
+            await adoptPinPairing(sharedKey, conn: conn, server: server)
         case .authRequired:
-            failPairing(conn, .pairingRejected(detail: submitted.error))
+            rejectPin(conn, .wrongPin, failure: .pairingRejected(detail: pair.error))
+        case .pendingApproval:
+            rejectPin(conn, .pending, failure: .pairingRejected(detail: pair.error))
+        case let .versionMismatch(supported, supportedMin):
+            await settlePinOffer(conn: conn, server: server, pin: pin, supported: supported, supportedMin: supportedMin)
         case let .unreachable(detail):
-            failPairing(conn, unreachableFailure(server, detail: detail))
-        }
-        return false
-    }
-
-    /// Poll `/api/pair/status` until a terminal answer or the timeout. A PIN
-    /// pairing on the same connection may win first, in which case the poll
-    /// must leave the live session alone.
-    private func pollApproval(conn: WifiConnection, server: DiscoveredServer) async {
-        var waitedMs = 0
-        while waitedMs < approvalPolling.timeoutMs, !Task.isCancelled {
-            if conn.state == .live { return }
-            try? await Task.sleep(nanoseconds: UInt64(approvalPolling.intervalMs) * 1_000_000)
-            if Task.isCancelled { return }
-            waitedMs += approvalPolling.intervalMs
-            let status = await pairing.pairStatus(ip: server.ip, port: server.httpPort, deviceId: deviceId)
-            if !status.reachable { continue }
-            if conn.state == .live || Task.isCancelled { return }
-            if await handleApprovalStatus(status, conn: conn, server: server) == .finished { return }
-        }
-        if !Task.isCancelled, conn.state != .live {
-            failPairing(conn, .approvalTimedOut)
+            rejectUnreachablePin(conn, server: server, detail: detail)
         }
     }
 
-    private enum PollStep {
-        case keepPolling
-        case finished
-    }
-
-    private func handleApprovalStatus(_ status: PairStatusResponse, conn: WifiConnection, server: DiscoveredServer) async -> PollStep {
-        switch PairingClient.classifyStatus(status) {
-        case let .approved(sharedKeyHex):
-            await adoptPairedKey(sharedKeyHex, conn: conn, server: server)
-            return .finished
-        case .pending:
-            return .keepPolling
-        case .declined:
-            failPairing(conn, .approvalDeclined)
-            return .finished
+    private func settlePinOffer(conn: WifiConnection, server: DiscoveredServer, pin: String, supported: Int, supportedMin: Int) async {
+        switch settleOffer(conn, supported: supported, supportedMin: supportedMin) {
+        case .retryLower:
+            await submitPin(conn: conn, server: server, pin: pin)
+        case let .failed(failure):
+            rejectPin(conn, .versionMismatch, failure: failure)
         }
     }
 
-    func cancelApprovalPoll(_ id: String) {
-        approvalPolls.removeValue(forKey: id)?.cancel()
+    private func rejectUnreachablePin(_ conn: WifiConnection, server: DiscoveredServer, detail: String) {
+        let failure = unreachableFailure(server, detail: detail)
+        let rejection: PinRejection = failure == .identityChanged ? .identityChanged : .unreachable
+        rejectPin(conn, rejection, failure: failure)
+    }
+
+    private func rejectPin(_ conn: WifiConnection, _ rejection: PinRejection, failure: ConnectionFailure) {
+        pinSubmissions.removeValue(forKey: conn.id)
+        pairingAttempts.reject(conn.id, rejection)
+        reportPairingFailure(conn, failure)
+    }
+
+    /// The typed PIN landed first: the operator request stops and the
+    /// session takes over from the card.
+    private func adoptPinPairing(_ sharedKey: String, conn: WifiConnection, server: DiscoveredServer) async {
+        pinSubmissions.removeValue(forKey: conn.id)
+        cancelApprovalPoll(conn.id)
+        pairingAttempts.end(conn.id)
+        await adoptPairedKey(sharedKey, conn: conn, server: server)
+    }
+
+    func cancelPinSubmission(_ id: String) {
+        pinSubmissions.removeValue(forKey: id)?.cancel()
     }
 }

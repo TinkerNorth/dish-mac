@@ -114,21 +114,37 @@ extension WifiConnectionManager {
 
     // MARK: - Version negotiation (contract §Versioning)
 
-    /// Reads a 409's range. True when the attempt may go on with the lower
-    /// offer now stored on the connection; false when the attempt is over,
-    /// the row's chip says which end must update, and the failure is
-    /// reported. A satellite that repeats a range it already rejected us at
-    /// cannot lower the offer further and reads as unreadable.
-    func lowerOfferOrFail(_ conn: WifiConnection, intent: ConnectIntent, supported: Int, supportedMin: Int) -> Bool {
+    /// What a 409's range leaves of an attempt.
+    enum OfferStep: Equatable {
+        /// The lower offer now stored on the connection may go on.
+        case retryLower
+        /// The attempt is over and the row's chip says which end must update.
+        case failed(ConnectionFailure)
+    }
+
+    /// Reads a 409's range. A satellite that repeats a range it already
+    /// rejected us at cannot lower the offer further and reads as unreadable.
+    func settleOffer(_ conn: WifiConnection, supported: Int, supportedMin: Int) -> OfferStep {
         let outcome = settleRejected(supported: supported, supportedMin: supportedMin)
         if outcome.verdict == .retryLower, outcome.settledVersion < conn.offeredProtocolVersion {
             conn.setOfferedProtocolVersion(outcome.settledVersion)
-            return true
+            return .retryLower
         }
         conn.setProtocolCompat(compatForOutcome(outcome))
         conn.markDisconnected()
-        emitFailureIfUserInitiated(intent, Self.versionFailure(for: outcome.verdict))
-        return false
+        return .failed(Self.versionFailure(for: outcome.verdict))
+    }
+
+    /// True when the attempt may go on with the lower offer; false when it
+    /// is over and the failure is reported.
+    func lowerOfferOrFail(_ conn: WifiConnection, intent: ConnectIntent, supported: Int, supportedMin: Int) -> Bool {
+        switch settleOffer(conn, supported: supported, supportedMin: supportedMin) {
+        case .retryLower:
+            return true
+        case let .failed(failure):
+            emitFailureIfUserInitiated(intent, failure)
+            return false
+        }
     }
 
     /// The failure a 409 surfaces once the attempt is over.

@@ -134,14 +134,14 @@ extension L10n {
 
 extension L10n {
 
-    // MARK: - Pairing sheet
+    // MARK: - Pairing card
 
-    var enterPin: String {
-        catalog.text("Enter the 4-digit PIN shown on the Satellite server.")
+    var enterSatellitePin: String {
+        catalog.text("Enter the 4-digit PIN shown on the Satellite’s screen.")
     }
 
-    var pin: String {
-        catalog.text("PIN")
+    var pairingPinField: String {
+        catalog.text("Pairing PIN, 4 digits")
     }
 
     var cancel: String {
@@ -154,5 +154,53 @@ extension L10n {
 
     func pairWith(_ name: String) -> String {
         catalog.format("Pair with %@", name)
+    }
+
+    var orWord: String {
+        catalog.text("or")
+    }
+
+    func typePinOnSatellite(_ name: String) -> String {
+        catalog.format("Type this PIN on %@ to approve the pairing.", name)
+    }
+
+    var waitingForApproval: String {
+        catalog.text("Waiting for approval on the satellite…")
+    }
+
+    var approvedConnecting: String {
+        catalog.text("Approved — connecting…")
+    }
+
+    var operatorDeclined: String {
+        catalog.text("The operator declined the pairing.")
+    }
+
+    var noApprovalCodeExpired: String {
+        catalog.text("No approval — the code expired.")
+    }
+
+    var aboutTwoMinutes: String {
+        catalog.text("~2 min")
+    }
+
+    func differentSatelliteVersion(_ name: String) -> String {
+        catalog.format("%@ is running a different Satellite version. Update both, then pair again.", name)
+    }
+
+    func couldNotReach(_ name: String) -> String {
+        catalog.format("Couldn’t reach %@. Make sure it’s on and on your network.", name)
+    }
+
+    func notApprovedYet(_ name: String) -> String {
+        catalog.format("%@ hasn’t approved the pairing yet.", name)
+    }
+
+    func pinNotAccepted(_ name: String) -> String {
+        catalog.format("That PIN wasn’t accepted. Check the code on %@ and try again.", name)
+    }
+
+    var codeChangesOnRefresh: String {
+        catalog.text("The code changes if the Satellite screen was refreshed.")
     }
 }

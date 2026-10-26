@@ -37,6 +37,10 @@ extension FakeSatelliteRest {
         if let rotated = rotateIfProofValid(body, deviceId: deviceId, deviceName: deviceName) { return rotated }
         let pin = body["pin"] as? String ?? ""
         let clientPin = body["clientPin"] as? String ?? ""
+        let answersPending = store.with { $0.answerPinWithPending }
+        if !pin.isEmpty, answersPending {
+            return FakeSatelliteHttp.json(200, ["ok": false, "pending": true, "message": "awaiting approval on the satellite"])
+        }
         if !pin.isEmpty, pin == operatorPin {
             let minted = FakeSatelliteRandom.hex(32)
             let settled = store.with { state in
@@ -55,7 +59,6 @@ extension FakeSatelliteRest {
         if !clientPin.isEmpty {
             store.with { state in
                 state.lastClientPin = clientPin
-                state.clientPinDenied = false
                 if state.pairedDeviceId == nil { state.pairedDeviceId = deviceId }
             }
             return FakeSatelliteHttp.json(200, ["ok": false, "pending": true, "message": "awaiting approval on the satellite"])
@@ -98,19 +101,21 @@ extension FakeSatelliteRest {
     }
 
     /// Path-B poll: pending until `approveClientPin()` stages a key, which is
-    /// then handed back exactly once (single-use staged key, per contract).
+    /// then handed back exactly once (single-use staged key, per contract);
+    /// "none" once the request is fulfilled, declined or never filed.
     func pairStatus(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response {
         store.with { state -> FakeSatelliteHttp.Response in
             state.pairStatusPolls += 1
+            if state.pairStatusBlips > 0 {
+                state.pairStatusBlips -= 1
+                return FakeSatelliteHttp.Response(status: 500, headers: [], body: Data())
+            }
             if let staged = state.stagedApprovalKeyHex {
                 state.stagedApprovalKeyHex = nil
                 state.pairingKeyHex = staged
                 state.lastClientPin = nil // request fulfilled; later polls report none
                 if state.pairedDeviceId == nil { state.pairedDeviceId = request.query["deviceId"] }
                 return FakeSatelliteHttp.json(200, ["ok": true, "status": "approved", "sharedKey": staged])
-            }
-            if state.clientPinDenied {
-                return FakeSatelliteHttp.json(200, ["ok": false, "status": "denied"])
             }
             if state.lastClientPin != nil {
                 return FakeSatelliteHttp.json(200, ["ok": false, "status": "pending"])

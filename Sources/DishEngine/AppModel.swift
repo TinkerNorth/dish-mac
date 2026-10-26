@@ -42,8 +42,8 @@ package final class AppModel: ObservableObject {
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
-    /// The satellite that asked for a PIN; the app presents the sheet.
-    @Published package var pairingTarget: DiscoveredServer?
+    /// The satellite whose row shows the pairing card.
+    @Published package internal(set) var pairingTarget: DiscoveredServer?
     /// The Moonlight host that minted a PIN for the user to type into it; the app presents the sheet.
     @Published package var moonlightPin: MoonlightPinPrompt?
     /// The most recent failure, until the app clears it.
@@ -124,9 +124,10 @@ package final class AppModel: ObservableObject {
         crashUploader: CrashUploader? = nil,
         moonlight: MoonlightConnectionManager? = nil,
         clamshell: ClamshellStateReading? = nil,
-        discovery: WifiConnectionManager.DiscoveryPaths = .live
+        discovery: WifiConnectionManager.DiscoveryPaths = .live,
+        approvalPolling: WifiConnectionManager.ApprovalPolling = .standard
     ) {
-        let wifi = WifiConnectionManager(store: store, discovery: discovery)
+        let wifi = WifiConnectionManager(store: store, approvalPolling: approvalPolling, discovery: discovery)
         let moonlight = moonlight ?? Self.defaultMoonlight(defaults: defaults, store: store)
         let hub = ConnectionHub(wifi: wifi, store: store, moonlight: moonlight)
         let input = GameControllerInput()
@@ -191,6 +192,7 @@ package final class AppModel: ObservableObject {
         observeReturnPathWiring()
         observeSettings()
         observeEvents()
+        observePairing()
         installLifecycleHandling(lifecycle)
         wifi.autoReconnectAll()
     }
@@ -336,12 +338,15 @@ package final class AppModel: ObservableObject {
 
     private func handle(_ event: ConnectionEvent) {
         switch event {
-        case let .pairingRequired(server):
-            pairingTarget = server
-        case let .failure(failure):
-            lastFailure = failure
-            failures.send(failure)
+        case let .pairingRequired(server): beginPairing(server)
+        case let .failure(failure): report(failure)
+        case let .pairingFailed(serverId, failure): reportPairingFailure(serverId: serverId, failure)
         }
+    }
+
+    func report(_ failure: ConnectionFailure) {
+        lastFailure = failure
+        failures.send(failure)
     }
 
     // MARK: - Slots

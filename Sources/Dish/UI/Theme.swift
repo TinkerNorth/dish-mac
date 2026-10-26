@@ -56,14 +56,14 @@ enum DishFont {
     static let windowTitle = Font.system(size: 18, weight: .semibold)
     /// The dashboard status line and the Settings headline.
     static let title = Font.system(size: 17, weight: .semibold)
-    /// The pairing sheet's headline.
+    /// The Moonlight PIN sheet's headline.
     static let sheetTitle = Font.system(size: 16, weight: .semibold)
     /// A row's name or a toggle's title.
     static let body = Font.system(size: 14, weight: .medium)
     /// An icon-only button's glyph.
     static let icon = Font.system(size: 14)
-    /// The PIN field.
-    static let monoField = Font.system(size: 14, design: .monospaced)
+    /// A PIN cell's digit on the pairing card.
+    static let pinDigit = Font.system(size: 22, weight: .semibold, design: .monospaced)
     /// A toast's leading glyph.
     static let toastGlyph = Font.system(size: 14, weight: .semibold)
     /// A toast's headline.
