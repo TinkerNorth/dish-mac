@@ -17,37 +17,7 @@ the repos share a version number.
 
 ---
 
-## [Unreleased]
-
-### Fixed
-
-- **A satellite on a dual-stack host is found.** The Bonjour browse resolved
-  each satellite with a connection that took whichever address the host's name
-  answered with. A Windows host also answers its own name over IPv6, so the
-  satellite resolved to a link-local IPv6 address, was dropped as one the data
-  plane cannot dial, and the scan reported nothing. The resolving connection
-  now asks for IPv4 only, the address the data plane dials.
-- **Local builds are no longer blocked from the network, and a blocked one
-  says so.** macOS enforces the Local Network permission in the kernel, flow
-  by flow, against the app's signing identifier. `bundle.sh` left the
-  executable with the linker's ad hoc signature, whose identifier is `Dish`, so
-  the rule granted to `com.tinkernorth.dish.mac` never matched a local build:
-  every satellite resolved to nothing and every beacon went unheard, which
-  read as "No servers found" while Privacy & Security listed Dish as allowed.
-  The bundle is now signed as a whole (ad hoc), with the bundle identifier as
-  its signing identifier as in a release build; on the same Mac the next scan
-  heard the satellite on both paths. For a Mac whose switch is off, a scan
-  also opens one flow to the default gateway, and a refusal there is reported
-  as macOS blocking Dish from the local network, with the pane to check and
-  the add-by-address fallback. `NSBonjourServices` names `_nvstream._tcp`
-  beside `_satellite._udp`.
-- **A failure says itself once.** A scan that found nothing showed its message
-  three times: inline in the Connections sheet, inline at the bottom of the
-  window, and as a toast under them that stretched to the window's full
-  height. The toast is now the one place a failure or a notice appears, over
-  the sheet's bottom while the sheet is open and at the window's bottom
-  otherwise, and it is as tall as its text. The pairing sheet keeps its
-  message under the PIN field, with no toast behind it.
+## [1.0.0] - 2026-10-26
 
 ### Added
 
@@ -124,30 +94,6 @@ the repos share a version number.
   path without a teardown. The pick is kept beside the older on/off row, so
   an upgrade keeps every switch. "What carries" routes the touchpad to one
   of its two rows.
-
-### Fixed
-
-- **A slot plugged again starts its audio lanes fresh.** The satellite starts
-  a pad's speaker and haptics sequence numbers over each time it plugs the
-  slot, and a new session is a new pad too; the receiver's jitter windows kept
-  the old playhead, so every frame of the new stream read as late and was
-  dropped for as long as the old count ran ahead, up to ten minutes. The
-  windows and decoders now start over on each confirmation that the slot is
-  plugged (`WifiConnection.slotApplyCount`) and when the binding moves to
-  another connection; the lanes stay as the plan set them.
-- **The e2e lane's satellite is hermetic.** `scripts/e2e_local.sh` seeds the
-  satellite's isolated home with `autoCheck: false` before launch, so a test
-  lane never phones GitHub for updates. Satellite 2.1.3 also segfaults 31 s
-  after launch when that check runs (its updater's reply pointers are
-  released before the worker thread reads them; fixed upstream on a branch),
-  which turned the lane red whenever the driver's build outlasted the settle.
-- **A full-size audio frame no longer fails the AEAD.** The UDP receive
-  buffer was the pre-audio 256 bytes, so every speaker frame was truncated
-  and dropped; it is now the contract's 1500-byte datagram ceiling.
-
-## [1.0.0] - 2026-10-13
-
-### Added
 
 - **Protocol 3.** Every pairing and session request offers version 3 and
   settles on what the satellite speaks (contract §Versioning): an older
@@ -278,6 +224,53 @@ the repos share a version number.
 
 ### Fixed
 
+- **A satellite on a dual-stack host is found.** The Bonjour browse resolved
+  each satellite with a connection that took whichever address the host's name
+  answered with. A Windows host also answers its own name over IPv6, so the
+  satellite resolved to a link-local IPv6 address, was dropped as one the data
+  plane cannot dial, and the scan reported nothing. The resolving connection
+  now asks for IPv4 only, the address the data plane dials.
+- **Local builds are no longer blocked from the network, and a blocked one
+  says so.** macOS enforces the Local Network permission in the kernel, flow
+  by flow, against the app's signing identifier. `bundle.sh` left the
+  executable with the linker's ad hoc signature, whose identifier is `Dish`, so
+  the rule granted to `com.tinkernorth.dish.mac` never matched a local build:
+  every satellite resolved to nothing and every beacon went unheard, which
+  read as "No servers found" while Privacy & Security listed Dish as allowed.
+  The bundle is now signed as a whole (ad hoc), with the bundle identifier as
+  its signing identifier as in a release build; on the same Mac the next scan
+  heard the satellite on both paths. For a Mac whose switch is off, a scan
+  also opens one flow to the default gateway, and a refusal there is reported
+  as macOS blocking Dish from the local network, with the pane to check and
+  the add-by-address fallback. `NSBonjourServices` names `_nvstream._tcp`
+  beside `_satellite._udp`.
+- **A failure says itself once.** A scan that found nothing showed its message
+  three times: inline in the Connections sheet, inline at the bottom of the
+  window, and as a toast under them that stretched to the window's full
+  height. The toast is now the one place a failure or a notice appears, over
+  the sheet's bottom while the sheet is open and at the window's bottom
+  otherwise, and it is as tall as its text. The pairing sheet keeps its
+  message under the PIN field, with no toast behind it.
+
+
+- **A slot plugged again starts its audio lanes fresh.** The satellite starts
+  a pad's speaker and haptics sequence numbers over each time it plugs the
+  slot, and a new session is a new pad too; the receiver's jitter windows kept
+  the old playhead, so every frame of the new stream read as late and was
+  dropped for as long as the old count ran ahead, up to ten minutes. The
+  windows and decoders now start over on each confirmation that the slot is
+  plugged (`WifiConnection.slotApplyCount`) and when the binding moves to
+  another connection; the lanes stay as the plan set them.
+- **The e2e lane's satellite is hermetic.** `scripts/e2e_local.sh` seeds the
+  satellite's isolated home with `autoCheck: false` before launch, so a test
+  lane never phones GitHub for updates. Satellite 2.1.3 also segfaults 31 s
+  after launch when that check runs (its updater's reply pointers are
+  released before the worker thread reads them; fixed upstream on a branch),
+  which turned the lane red whenever the driver's build outlasted the settle.
+- **A full-size audio frame no longer fails the AEAD.** The UDP receive
+  buffer was the pre-audio 256 bytes, so every speaker frame was truncated
+  and dropped; it is now the contract's 1500-byte datagram ceiling.
+
 - **The app builds on Swift 6.4.** The hand-maintained `.lproj` string tables
   duplicated what SwiftPM compiles from the String Catalog, and the newer
   build system refused the duplicate outputs. The catalog is the one source.
@@ -299,5 +292,4 @@ the repos share a version number.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
-[Unreleased]: https://github.com/TinkerNorth/dish-mac/compare/1.0.0...main
 [1.0.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.0
