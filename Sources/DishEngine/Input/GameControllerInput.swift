@@ -304,10 +304,15 @@ final class GameControllerInput: ObservableObject {
         )
     }
 
-    nonisolated static func heldButtons(_ pad: GCExtendedGamepad) -> Set<WireButton> {
-        let required = requiredButtons.filter { entry in pad[keyPath: entry.0].isPressed }
-        let optional = optionalButtons.filter { entry in pad[keyPath: entry.0]?.isPressed == true }
-        return Set(required.map(\.1) + optional.map(\.1))
+    nonisolated static func heldButtons(_ pad: GCExtendedGamepad) -> WireButtonWord {
+        var word = WireButtonWord()
+        for (input, button) in requiredButtons where pad[keyPath: input].isPressed {
+            word.insert(button)
+        }
+        for (input, button) in optionalButtons where pad[keyPath: input]?.isPressed == true {
+            word.insert(button)
+        }
+        return word
     }
 
     // MARK: - Identity

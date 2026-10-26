@@ -57,8 +57,26 @@ final class WireReportTests: XCTestCase {
         for (button, bit) in mapped {
             XCTAssertEqual(wireReport(PadSample(pressed: [button])).buttons, bit, "\(button)")
         }
-        let all = wireReport(PadSample(pressed: Set(mapped.map(\.0))))
+        let all = wireReport(PadSample(pressed: WireButtonWord(mapped.map(\.0))))
         XCTAssertEqual(all.buttons, 0xF7FF, "every mapped bit, and the mic-mute slot left clear")
+    }
+
+    func testAButtonWordHoldsExactlyTheButtonsInsertedIntoIt() {
+        var word = WireButtonWord()
+        word.insert(.faceB)
+        word.insert(.dpadLeft)
+        word.insert(.faceB)
+        XCTAssertEqual(word.rawValue, 0x2004, "an insert ORs one bit and a repeat is a no-op")
+        XCTAssertTrue(word.contains(.faceB))
+        XCTAssertTrue(word.contains(.dpadLeft))
+        XCTAssertFalse(word.contains(.faceA))
+        XCTAssertEqual(word, [.dpadLeft, .faceB], "the literal and the inserts build the same word")
+    }
+
+    func testAnEmptyWordHoldsNoButton() {
+        let word = WireButtonWord()
+        XCTAssertEqual(word.rawValue, 0)
+        XCTAssertTrue(WireButton.allCases.allSatisfy { !word.contains($0) })
     }
 
     func testAcrossTheWholeTravelTheWireKeepsTheStickYSign() {

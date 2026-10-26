@@ -1,6 +1,33 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+/// The buttons a pad holds down as the XUSB word itself: one bit per
+/// `WireButton`, so a sample taken at controller polling rate never builds a
+/// collection.
+public struct WireButtonWord: Equatable, Sendable, ExpressibleByArrayLiteral {
+    public private(set) var rawValue: UInt16
+
+    public init() {
+        rawValue = 0
+    }
+
+    public init(_ buttons: [WireButton]) {
+        rawValue = buttons.reduce(UInt16(0)) { word, button in word | button.bit }
+    }
+
+    public init(arrayLiteral buttons: WireButton...) {
+        self.init(buttons)
+    }
+
+    public mutating func insert(_ button: WireButton) {
+        rawValue |= button.bit
+    }
+
+    public func contains(_ button: WireButton) -> Bool {
+        rawValue & button.bit != 0
+    }
+}
+
 /// One reading of a pad in the units the controller framework reports:
 /// sticks -1...1 with y positive when the stick is pushed up, triggers
 /// 0...1, and the buttons held down. The desktops' `GamepadSnapshot`.
@@ -11,7 +38,7 @@ public struct PadSample: Equatable, Sendable {
     public var rightY: Float
     public var leftTrigger: Float
     public var rightTrigger: Float
-    public var pressed: Set<WireButton>
+    public var pressed: WireButtonWord
 
     public init(
         leftX: Float = 0,
@@ -20,7 +47,7 @@ public struct PadSample: Equatable, Sendable {
         rightY: Float = 0,
         leftTrigger: Float = 0,
         rightTrigger: Float = 0,
-        pressed: Set<WireButton> = []
+        pressed: WireButtonWord = WireButtonWord()
     ) {
         self.leftX = leftX
         self.leftY = leftY
@@ -40,9 +67,8 @@ public let wireStickMax: Float = 32767
 /// four axes. The wire is up-positive like the framework, so Y passes
 /// through with its sign. The desktops' `mapGamepad`.
 public func wireReport(_ sample: PadSample) -> GamepadReport {
-    let buttons = sample.pressed.reduce(UInt16(0)) { word, button in word | button.bit }
-    return GamepadReport(
-        buttons: buttons,
+    GamepadReport(
+        buttons: sample.pressed.rawValue,
         lt: scaleTrigger(sample.leftTrigger),
         rt: scaleTrigger(sample.rightTrigger),
         lx: scaleAxis(sample.leftX, max: wireStickMax),
