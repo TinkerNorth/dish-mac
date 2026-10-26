@@ -149,6 +149,13 @@ then asks; if the permission was refused, the empty list and its notice open
 Privacy & Security › Local Network. Set up is in the rail any time, in Settings
 ▸ Setup & help beside Help & FAQ, and behind a controller's "Bind…" on Home.
 
+Releases are not yet signed with an Apple Developer ID, so the first launch of
+a downloaded `Dish.app` meets Gatekeeper: on macOS 15 and later click Done on
+the "Apple could not verify" dialog, then open System Settings › Privacy &
+Security and choose Open Anyway; on macOS 13 and 14, Control-click `Dish.app`
+and choose Open. Check the download against the release's `SHA256SUMS` first.
+Releases sign and notarize themselves as soon as the Developer ID exists.
+
 ## Architecture
 
 Four SwiftPM modules carry the layering, so the compiler enforces it:
@@ -343,6 +350,48 @@ Vulnerability disclosure: [`SECURITY.md`](SECURITY.md). Every release ships
 cosign keyless signatures, SHA256SUMS, SBOMs (SPDX and CycloneDX) and SLSA L3
 provenance; the verification recipe is in
 [`CONTRIBUTING.md#security`](CONTRIBUTING.md#security).
+
+## Code signing policy
+
+Releases are not yet signed with an Apple Developer ID: the Apple Developer
+Program is a yearly fee the project has not taken on. Until it does,
+`dish-mac.zip` carries only an ad-hoc signature (identifier
+`com.tinkernorth.dish.mac`, no team) and is not notarized, so the first launch
+meets Gatekeeper; the steps are under *Getting started*. Verify a download
+against `SHA256SUMS`, its cosign signature and the SLSA provenance
+([CONTRIBUTING, "Verifying a release artifact"](CONTRIBUTING.md#verifying-a-release-artifact)).
+
+**Team.** Committers, reviewers and approvers: Emir Hasanbegovic
+([@emir-hasanbegovic](https://github.com/emir-hasanbegovic)), owner of the
+TinkerNorth organisation
+([organisation owners](https://github.com/orgs/TinkerNorth/people?query=role%3Aowner)).
+
+**What is signed, and when.** Only the release workflow,
+[`release.yml`](.github/workflows/release.yml), signs, only when it runs from
+a tagged commit of this repository, and only once the five Apple secrets exist:
+`Dish.app` is then signed with the Developer ID under the hardened runtime with
+[`packaging/Dish.entitlements`](packaging/Dish.entitlements) and notarized, with
+no change to the workflow. Nothing built locally, on a pull request or from a
+fork is ever signed with it. The artifact is the `Dish.app` bundle alone: one
+executable, its resource bundle and the icon.
+
+**Privacy.** [`PRIVACY.md`](PRIVACY.md) is the policy. Two things can leave
+the Mac: an update check against GitHub (one request for `latest.json` on this
+project's releases page, with no identifier attached) and, when the app
+crashes and *Share crash reports* is on, one crash report to Sentry from an
+official build (a locally built app carries no address). Both can be turned
+off in Settings. There is no analytics, no telemetry and no account. macOS
+asks for Local Network access on the first scan and for the microphone the
+first time a controller's microphone is switched on.
+
+**Third-party components in the bundle.** sentry-cocoa (MIT), linked
+statically for the crash reporter, which sends nothing unless *Share crash
+reports* is on and the build carries a Sentry address. The Moonlight protocol
+follows Wolf's reference (MIT) and the ENet client is a port of the fork
+Moonlight uses (MIT), both re-implemented in first-party Swift; everything else
+is Apple's frameworks. Versions and licences are in
+[`THIRD_PARTY.md`](THIRD_PARTY.md), which also ships inside the app under
+Settings › About › Licenses.
 
 ## License
 

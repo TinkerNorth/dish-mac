@@ -45,6 +45,16 @@ final class ReleaseManifestTests: XCTestCase {
         }
     }
 
+    // MARK: - The signing gate is advisory until the Developer ID exists
+
+    func testTheSigningGateIsAdvisoryAndTheStableNameNeverCarriesASuffix() throws {
+        let workflow = try RepoFiles.read(Self.workflowPath)
+        XCTAssertTrue(workflow.contains("ENFORCE: ${{ vars.ENFORCE_RELEASE_SIGNING }}"), "the hard gate is a repository variable")
+        XCTAssertTrue(workflow.contains("signed: ${{ steps.check.outputs.signed }}"), "later jobs learn whether the app is signed")
+        XCTAssertTrue(workflow.contains("\"dist/dish-mac.zip\""), "the stable asset keeps its name, signed or not")
+        XCTAssertFalse(workflow.contains("dish-mac${suffix}.zip"), "the stable asset never carries the -unsigned suffix")
+    }
+
     func testTheWorkflowReadsTheFloorFromThePolicyFile() throws {
         let workflow = try RepoFiles.read(Self.workflowPath)
         XCTAssertTrue(workflow.contains("json.load(open(\"\(Self.policyPath)\"))[\"minimumSupportedVersion\"]"))
