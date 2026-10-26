@@ -17,7 +17,7 @@ the repos share a version number.
 
 ---
 
-## [Unreleased]
+## [1.0.0] - 2026-10-26
 
 ### Added
 
@@ -143,70 +143,6 @@ the repos share a version number.
   closed", and Settings ▸ Power says that closing the lid still sleeps the
   Mac unless a display and power are connected: macOS has no API that keeps
   a lidded Mac awake.
-
-### Changed
-
-- **One window with a rail and pages replaces the sheets.** The window is
-  the desktops' shell: a rail (Home, Controllers, Connections; Support Dish
-  and Settings at the foot, with a dot on Settings while an update waits,
-  and the version) that collapses to an icon strip and stays collapsed
-  across launches, and a content column whose header carries the page
-  title, a back chevron on a pushed page, the streaming pill ("Streaming ·
-  computer kept awake" or "… display kept awake") with a Configure button,
-  the app-wide microphone chip and the status line. Connections, Settings,
-  the crash report and the input inspector were sheets, nested up to three
-  deep, and Diagnostics was a second window; they are now pages of the one
-  window, so it moves wherever a page is open. Settings follows the
-  desktops' order in two columns on a wide window. Support Dish lists
-  GitHub Sponsors, Ko-fi and Buy Me a Coffee, and Open source licenses shows
-  the bundled third-party notice. The window opens at 980×640 (at least
-  900×620); ⌘, opens Settings, ⌘1 to ⌘3 the top destinations and ⌘[ goes
-  back; the menu-bar item's Diagnostics opens the window on that page.
-  Every toast shows in one place above every page.
-- **Connections is the desktops' page.** Once the Local Network prompt has
-  been explained, it scans as it opens, quietly: an empty network is said by
-  the page ("No satellites found", with the
-  local-network refusal when macOS is the reason, Get Satellite ↗ and Scan
-  again), and only the Scan button's sweep still says "No servers found" as
-  a toast. FOUND lists what the sweep heard with a Pair… button whose
-  pairing card opens under the row. PAIRED holds a card per remembered
-  satellite: its name, `ip • UDP port`, latency, the tier, protocol and link
-  chips, every pad it carries ("DualSense — as DS4"), Disconnect, Pair… or
-  Connect by the link's state, and Forget behind ⋯. The add-by-address field
-  stays at the foot.
-- **The type, the touchpad pick and the destination are chosen on Configure
-  binding.** The Emulate picker, the touchpad picker and the inline Bind
-  list leave the controller cards; the chips stay the controller's own
-  switches.
-- **Sleep closes every session cleanly and wake reopens it.** Going to sleep
-  releases every held input, closes each satellite session with its `DELETE`
-  and stops each Moonlight session with its pads kept; waking reopens both
-  and scans the network again, because a laptop may wake on another one. The
-  scan after a wake stays quiet when it hears nothing.
-- **Controller input no longer waits on the window.** Every controller's
-  handlers run on their own high-priority queue, so a busy window never
-  delays a report.
-- **Views are layout only, and a test keeps them that way.** Every page draws
-  one state built from the model's published facts and acts only through the
-  model's intents; `ViewPurityTests` and `NavigationCoverageTests` pin the
-  rules (`docs/UI_CONTRACT.md`, "View purity").
-
-### Fixed
-
-- **A stick pushed all the way up reads as up, not down, on both links.**
-  GameController reports a stick pushed up as positive, like the XUSB report
-  every client sends, and Dish negated it, so both sticks read upside down on
-  a satellite and on a Moonlight host.
-- **Failures are no longer hidden while pairing.** Every failure used to be
-  held back while the PIN sheet was up, including ones about other
-  satellites. Now only the pairing card's own failures stay on the card;
-  everything else still shows as a toast.
-- **"Last checked …" under Updates ticks.** It was read once per draw; it
-  now moves every minute while Settings shows.
-
-## [1.0.0] - 2026-10-26
-
-### Added
 
 - **Moonlight hosts.** Sunshine, Apollo and Wolf as hosts beside the
   satellites, as the other three clients have them: found over mDNS
@@ -359,6 +295,51 @@ the repos share a version number.
 
 ### Changed
 
+- **One window with a rail and pages replaces the sheets.** The window is
+  the desktops' shell: a rail (Home, Controllers, Connections; Support Dish
+  and Settings at the foot, with a dot on Settings while an update waits,
+  and the version) that collapses to an icon strip and stays collapsed
+  across launches, and a content column whose header carries the page
+  title, a back chevron on a pushed page, the streaming pill ("Streaming ·
+  computer kept awake" or "… display kept awake") with a Configure button,
+  the app-wide microphone chip and the status line. Connections, Settings,
+  the crash report and the input inspector were sheets, nested up to three
+  deep, and Diagnostics was a second window; they are now pages of the one
+  window, so it moves wherever a page is open. Settings follows the
+  desktops' order in two columns on a wide window. Support Dish lists
+  GitHub Sponsors, Ko-fi and Buy Me a Coffee, and Open source licenses shows
+  the bundled third-party notice. The window opens at 980×640 (at least
+  900×620); ⌘, opens Settings, ⌘1 to ⌘3 the top destinations and ⌘[ goes
+  back; the menu-bar item's Diagnostics opens the window on that page.
+  Every toast shows in one place above every page.
+- **Connections is the desktops' page.** Once the Local Network prompt has
+  been explained, it scans as it opens, quietly: an empty network is said by
+  the page ("No satellites found", with the
+  local-network refusal when macOS is the reason, Get Satellite ↗ and Scan
+  again), and only the Scan button's sweep still says "No servers found" as
+  a toast. FOUND lists what the sweep heard with a Pair… button whose
+  pairing card opens under the row. PAIRED holds a card per remembered
+  satellite: its name, `ip • UDP port`, latency, the tier, protocol and link
+  chips, every pad it carries ("DualSense — as DS4"), Disconnect, Pair… or
+  Connect by the link's state, and Forget behind ⋯. The add-by-address field
+  stays at the foot.
+- **The type, the touchpad pick and the destination are chosen on Configure
+  binding.** The Emulate picker, the touchpad picker and the inline Bind
+  list leave the controller cards; the chips stay the controller's own
+  switches.
+- **Sleep closes every session cleanly and wake reopens it.** Going to sleep
+  releases every held input, closes each satellite session with its `DELETE`
+  and stops each Moonlight session with its pads kept; waking reopens both
+  and scans the network again, because a laptop may wake on another one. The
+  scan after a wake stays quiet when it hears nothing.
+- **Controller input no longer waits on the window.** Every controller's
+  handlers run on their own high-priority queue, so a busy window never
+  delays a report.
+- **Views are layout only, and a test keeps them that way.** Every page draws
+  one state built from the model's published facts and acts only through the
+  model's intents; `ViewPurityTests` and `NavigationCoverageTests` pin the
+  rules (`docs/UI_CONTRACT.md`, "View purity").
+
 - **The dish faces its signal.** The brand's dish glyph aimed up and to the
   left while its signal arcs sat at the upper right; as redrawn across the
   fleet, the reflector is mirrored to +28° and the arcs are concentric on
@@ -410,6 +391,17 @@ the repos share a version number.
   counts (Bosnian gets its paucal).
 
 ### Fixed
+
+- **A stick pushed all the way up reads as up, not down, on both links.**
+  GameController reports a stick pushed up as positive, like the XUSB report
+  every client sends, and Dish negated it, so both sticks read upside down on
+  a satellite and on a Moonlight host.
+- **Failures are no longer hidden while pairing.** Every failure used to be
+  held back while the PIN sheet was up, including ones about other
+  satellites. Now only the pairing card's own failures stay on the card;
+  everything else still shows as a toast.
+- **"Last checked …" under Updates ticks.** It was read once per draw; it
+  now moves every minute while Settings shows.
 
 - **A signed build keeps the controller's microphone.** The release signature
   runs under the hardened runtime, which denies every audio-input API without
