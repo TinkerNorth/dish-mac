@@ -6,28 +6,65 @@ import Foundation
 
 extension WifiConnectionManager {
 
-    /// Run the two discovery paths in parallel: the legacy UDP beacon and
-    /// mDNS. mDNS reaches subnets that drop broadcast; the beacon stays for
-    /// satellites that predate the responder. One scan at a time.
-    func startDiscovery() {
-        guard markScanStarted() else { return }
-        Task.detached(priority: .userInitiated) { [weak self] in
+    /// The LAN as one call: the legacy UDP beacon, the Bonjour browse and the
+    /// local-network probe in parallel. mDNS reaches subnets that drop
+    /// broadcast; the beacon stays for satellites that predate the responder;
+    /// the probe names a refusal the other two can only fall silent on. The
+    /// app runs the live paths; tests script a LAN.
+    struct DiscoveryPaths {
+        let scan: @Sendable () async -> ScanResult
+
+        static let live = DiscoveryPaths {
             async let broadcast = Task.detached { LANDiscovery.discover() }.value
             async let mdns = MdnsBrowser.discover()
-            let scan = await ScanResult(broadcast: broadcast, mdns: mdns)
+            async let refused = LocalNetworkProbe.isDenied()
+            return await ScanResult(broadcast: broadcast, mdns: mdns, localNetworkDenied: refused)
+        }
+    }
+
+    /// Run the discovery paths and adopt what they heard. One scan at a time.
+    func startDiscovery() {
+        guard markScanStarted() else { return }
+        let paths = discovery
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let scan = await paths.scan()
             await MainActor.run { [weak self] in
                 self?.adoptScan(scan)
             }
         }
     }
 
-    /// Both discovery paths' raw results, merged lazily by stable id.
+    /// Both discovery paths' raw results, merged lazily by stable id, and
+    /// whether macOS refused this app the local network while they ran.
     struct ScanResult {
         let broadcast: [DiscoveredServer]
         let mdns: [DiscoveredServer]
+        let localNetworkDenied: Bool
+
+        init(broadcast: [DiscoveredServer], mdns: [DiscoveredServer], localNetworkDenied: Bool = false) {
+            self.broadcast = broadcast
+            self.mdns = mdns
+            self.localNetworkDenied = localNetworkDenied
+        }
+
+        init(broadcast: [DiscoveredServer], mdns: BonjourScan.Outcome<DiscoveredServer>, localNetworkDenied: Bool) {
+            self.init(
+                broadcast: broadcast,
+                mdns: mdns.found,
+                localNetworkDenied: localNetworkDenied || mdns.localNetworkDenied
+            )
+        }
 
         var merged: [DiscoveredServer] {
             mergeDiscovered(broadcast: broadcast, mdns: mdns)
+        }
+
+        /// What the scan tells the user: a refusal first, since nothing heard
+        /// can be reached; else that nothing answered; nil when something was
+        /// heard on an open network.
+        var failure: ConnectionFailure? {
+            if localNetworkDenied { return .localNetworkDenied }
+            return merged.isEmpty ? .noServersFound : nil
         }
     }
 
@@ -36,12 +73,13 @@ extension WifiConnectionManager {
     private func adoptScan(_ scan: ScanResult) {
         let merged = scan.merged
         let summary = "broadcast=\(scan.broadcast.count) mdns=\(scan.mdns.count) merged=\(merged.count)"
+            + " localNetworkDenied=\(scan.localNetworkDenied)"
         Self.discoveryLog.info("discovery scan: \(summary, privacy: .public)")
         publishScan(merged)
         store.refreshFromDiscovery(merged)
         rehomeIdleConnections(to: merged)
-        if merged.isEmpty {
-            events.send(.failure(.noServersFound))
+        if let failure = scan.failure {
+            events.send(.failure(failure))
         }
     }
 

@@ -57,6 +57,10 @@ final class WordMappersTests: XCTestCase {
         XCTAssertEqual(failureText(.controllerNotApplied), "Server could not apply the controller")
         XCTAssertEqual(failureText(.noServersFound), "No servers found — check your network")
         XCTAssertEqual(
+            failureText(.localNetworkDenied),
+            "macOS is blocking Dish from the local network. Check Privacy & Security › Local Network, or add the satellite by address."
+        )
+        XCTAssertEqual(
             failureText(.dishUpdateRequired),
             "This satellite needs a newer version of Dish. Update the app and retry."
         )

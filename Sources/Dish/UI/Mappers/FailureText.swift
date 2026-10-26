@@ -23,6 +23,7 @@ func failureText(_ failure: ConnectionFailure, words: L10n = .app) -> String {
     case .sessionLinkFailed: words.sessionLinkFailed
     case .controllerNotApplied: words.controllerNotApplied
     case .noServersFound: words.noServersFound
+    case .localNetworkDenied: words.localNetworkDenied
     case let .pairingRejected(detail): detail ?? words.pairingFailed
     }
 }

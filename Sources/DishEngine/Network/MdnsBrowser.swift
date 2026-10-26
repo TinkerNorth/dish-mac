@@ -17,8 +17,9 @@ enum MdnsBrowser {
     static let txtKeys = ["udp", "pair", "http", "mid"]
 
     /// Browse for `timeoutMs`, resolving every advertised satellite to a
-    /// `DiscoveredServer`. Never throws; an empty LAN yields an empty array.
-    static func discover(timeoutMs: Int = defaultTimeoutMs) async -> [DiscoveredServer] {
+    /// `DiscoveredServer`, and say whether macOS refused the app the local
+    /// network meanwhile. Never throws; an empty LAN yields no servers.
+    static func discover(timeoutMs: Int = defaultTimeoutMs) async -> BonjourScan.Outcome<DiscoveredServer> {
         await BonjourScan.discover(serviceType: serviceType, txtKeys: txtKeys, timeoutMs: timeoutMs) { name, host, txt in
             let server = makeServer(name: name, host: host, txt: txt)
             return (server.id, server)

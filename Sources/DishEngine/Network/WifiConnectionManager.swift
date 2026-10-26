@@ -73,6 +73,8 @@ package final class WifiConnectionManager: ObservableObject {
     let store: ConnectionStore
     /// Path-B approval poll cadence; tests shrink it.
     let approvalPolling: ApprovalPolling
+    /// The LAN's two discovery paths as one call; tests script a LAN.
+    let discovery: DiscoveryPaths
     lazy var deviceId = store.getOrCreateDeviceId()
     let deviceName = Host.current().localizedName ?? "Mac"
     let pinMismatches = PinMismatchLog()
@@ -98,9 +100,10 @@ package final class WifiConnectionManager: ObservableObject {
     /// cancellation cannot clear the marker its successor holds.
     private var pairingDepth: [String: Int] = [:]
 
-    init(store: ConnectionStore, approvalPolling: ApprovalPolling = .standard) {
+    init(store: ConnectionStore, approvalPolling: ApprovalPolling = .standard, discovery: DiscoveryPaths = .live) {
         self.store = store
         self.approvalPolling = approvalPolling
+        self.discovery = discovery
     }
 
     // MARK: - Pairing-in-flight marker
