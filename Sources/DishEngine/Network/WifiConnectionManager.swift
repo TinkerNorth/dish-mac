@@ -363,6 +363,17 @@ package final class WifiConnectionManager: ObservableObject {
         return existing.state == .idle || existing.state == .stale
     }
 
+    /// The machine is about to sleep: every session closes the graceful way
+    /// (`DELETE`, as the desktops do on suspend) and its row rests, so the
+    /// wake's reconnect is its next attempt. A sleep is not the user asking a
+    /// satellite to stay down, so nothing is suppressed.
+    func closeSessionsForSleep() {
+        let open = connections.values.filter(\.hasSession).map(\.id)
+        for id in open.sorted() {
+            disconnect(id: id)
+        }
+    }
+
     /// After a wake, sockets may be dead and addresses moved: resting rows
     /// reconnect now instead of waiting out the backoff curve. Suppressed
     /// rows (a session the satellite replaced) stay parked for the user.

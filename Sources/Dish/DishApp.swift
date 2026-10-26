@@ -11,10 +11,7 @@ import SwiftUI
 struct DishApp: App {
 
     @StateObject private var model = AppModel(
-        lifecycle: appKitLifecycleSignals(
-            application: .default,
-            workspace: NSWorkspace.shared.notificationCenter
-        ),
+        lifecycle: appKitLifecycleSignals(workspace: NSWorkspace.shared.notificationCenter),
         appVersion: bundleVersion(Bundle.main),
         crashLog: CrashLog.standard(),
         crashUploader: SentryCrashUploader(dsn: crashReportingAddress(Bundle.main), appVersion: bundleVersion(Bundle.main))
@@ -23,6 +20,7 @@ struct DishApp: App {
     @StateObject private var failureNotifier = FailureNotifier()
     @StateObject private var moonlightNotifier = MoonlightNotifier()
     @StateObject private var updateNotifier = UpdateNotifier()
+    @StateObject private var lidNotifier = LidNotifier()
     @NSApplicationDelegateAdaptor private var delegate: DishAppDelegate
     @Environment(\.openWindow) private var openWindow
 
@@ -63,6 +61,7 @@ struct DishApp: App {
                         model.quitMoonlightApp(host.id)
                     }
                     updateNotifier.bind(checker: model.updates, center: notifications)
+                    lidNotifier.bind(lidPausedStreaming: model.lidPausedStreaming, center: notifications)
                     delegate.bind(background: model.background, announcer: BackgroundAnnouncer())
                 }
         }

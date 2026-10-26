@@ -42,15 +42,18 @@ package struct PadDiagnostics: Equatable, Identifiable {
     package let wire: SlotWireFacts?
     /// Nil until the audio catalog has been read.
     package let audio: PadAudioDiagnostics?
+    /// Whether the pad's input reaches Dish while another app is in front.
+    package let backgroundInput: Bool
 
     package var id: String {
         slot.id
     }
 
-    package init(slot: ControllerSlot, wire: SlotWireFacts?, audio: PadAudioDiagnostics? = nil) {
+    package init(slot: ControllerSlot, wire: SlotWireFacts?, audio: PadAudioDiagnostics? = nil, backgroundInput: Bool = false) {
         self.slot = slot
         self.wire = wire
         self.audio = audio
+        self.backgroundInput = backgroundInput
     }
 }
 
@@ -76,6 +79,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     private let moonlight: MoonlightConnectionManager?
     private var slots: () -> [ControllerSlot] = { [] }
     private var audio: (String) -> PadAudioDiagnostics? = { _ in nil }
+    private var backgroundInput: () -> Bool = { false }
     private var timer: DispatchSourceTimer?
 
     init(wifi: WifiConnectionManager, hub: ConnectionHub, moonlight: MoonlightConnectionManager? = nil) {
@@ -93,6 +97,11 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     /// Each pad's audio by slot id, set once the owner has a pipeline.
     func useAudio(_ provider: @escaping (String) -> PadAudioDiagnostics?) {
         audio = provider
+    }
+
+    /// Whether the controller framework delivers input in the background, set once the owner has a bridge.
+    func useBackgroundInput(_ provider: @escaping () -> Bool) {
+        backgroundInput = provider
     }
 
     override package func start() {
@@ -132,8 +141,14 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
                 moonlight: moonlightFacts(summary)
             )
         }
+        let inBackground = backgroundInput()
         let pads = slots().map { slot in
-            PadDiagnostics(slot: slot, wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap(slotWireFacts), audio: audio(slot.id))
+            PadDiagnostics(
+                slot: slot,
+                wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap(slotWireFacts),
+                audio: audio(slot.id),
+                backgroundInput: inBackground
+            )
         }
         return DiagnosticsSnapshot(hosts: hosts, pads: pads)
     }

@@ -88,6 +88,7 @@ final class GamepadInputProcessorTests: XCTestCase {
         XCTAssertEqual(Btn.rightThumb, 0x0080)
         XCTAssertEqual(Btn.leftShoulder, 0x0100)
         XCTAssertEqual(Btn.rightShoulder, 0x0200)
+        XCTAssertEqual(Btn.guide, 0x0400)
         XCTAssertEqual(Btn.faceA, 0x1000)
         XCTAssertEqual(Btn.faceB, 0x2000)
         XCTAssertEqual(Btn.faceX, 0x4000)

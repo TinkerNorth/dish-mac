@@ -147,13 +147,20 @@ state and `WifiConnectionManager` performs the effects.
 
 ## Threading and the hot path
 
-Every controller event takes one path: the GameController callback thread
-builds a `GamepadReport`, the processor applies the dead zones under its lock,
+Every controller event takes one path. GameController calls the pad's
+handlers on `GameControllerInput.inputQueue`, one serial `userInteractive`
+queue (`com.tinkernorth.dish.input`) handed to each controller as its
+`handlerQueue` before any handler is installed, so no event waits behind the
+main thread. The handler samples the pad into the core's `PadSample`,
+`wireReport` turns it into a `GamepadReport` (up-positive sticks, as XUSB and
+every other client have them), the processor applies the dead zones under its lock,
 `InputRouting` reads the slot's route (its live connection and the switches
 in force for that controller, global and per-controller already folded on
 the main actor) under one `os_unfair_lock`, and `SatelliteClient` seals and
 sends under its own lock. No `Task`, no `await`, no main-actor hop, no
-Combine on that path. Session material lives in one `LockedBox`, so a re-key
+Combine on that path. The handler installs are `nonisolated`, so the compiler
+refuses a handler that reaches for main-actor state; the slot bookkeeping
+(attach, detach, the published slot list) stays on the main actor. Session material lives in one `LockedBox`, so a re-key
 swaps key, token and counter as one generation.
 
 The return paths hop the other way: a `RumbleCommand` or `LightbarCommand`
@@ -163,8 +170,10 @@ off the global gate), and `ReturnPathRouter` hops to the main actor for the
 actuation, coalesced per controller by `ReturnPathApplier`.
 
 The main actor owns every published property. `LifecycleSignals` carries the
-host's focus, sleep and wake events into the engine as publishers, so the
-engine never imports AppKit.
+host's sleep and wake into the engine as publishers, so the engine never
+imports AppKit. Losing focus is not a signal: `GCController.shouldMonitorBackgroundEvents`
+is set at the first connect, so input keeps arriving while another app is in
+front and nothing is released when Dish stops being frontmost.
 
 ## How to add a feature
 
@@ -188,6 +197,24 @@ engine never imports AppKit.
 ## Known limitations and not yet implemented
 
 Each entry names the decided shape, so a change lands on it.
+
+- **Dish reads the pad alongside the frontmost app, never instead of it.**
+  Background monitoring lets input reach Dish while another app is in front,
+  and that app still sees the pad too. Taking the pad for Dish alone is not
+  possible through public API: an Apple frameworks engineer confirms an app
+  cannot take a controller away from the OS's game controller support
+  (Apple Developer Forums thread 775975), and seizing the HID device
+  (`kIOHIDOptionsTypeSeizeDevice`) would blind GameController, which is
+  Dish's only input path. macOS 15.4 broke background monitoring for every
+  app; 15.5 fixed it.
+- **A closed lid still sleeps the Mac.** `IOPMLib.h` says
+  `kIOPMAssertionTypePreventSystemSleep` is deprecated and "not supported in
+  any OS X releases"; the user-idle assertions keep-awake holds do not reach
+  the lid, and Apple's clamshell mode needs external power and a display.
+  Sleep releases every held input and closes every session cleanly (a
+  satellite's with its `DELETE`, a Moonlight host's through the session's own
+  stop with its pads kept); wake reopens them, scans again, and, when the lid
+  closed on a stream, says so once.
 
 - **Controller audio is unverified on a pad.** `Audio/` is the route:
   `PadAudioFunctionSource` reads the HAL's USB devices, `padAudioRoutes`

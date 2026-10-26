@@ -29,8 +29,9 @@ protocol-1 satellite; see [Protocol](#protocol).
   Nintendo pad you pick or the one that fits it, with rumble and the light
   bar coming back. The first controller bound to a host starts the app you
   picked for it, or the first the host lists; no video or audio is received.
-- Forwards buttons, sticks and triggers from every GameController-framework
-  pad, plus motion (gyro and accelerometer) and the touchpad from DualSense
+- Forwards buttons (Guide included), sticks and triggers from every
+  GameController-framework pad, and keeps forwarding them while another app
+  is in front, plus motion (gyro and accelerometer) and the touchpad from DualSense
   and DualShock 4 pads, and the battery level; the touchpad reaches the host
   as the pad's own or, picked per controller, as the host's mouse.
 - Plays rumble and sets the light bar as the host game asks, each gated by
@@ -42,8 +43,13 @@ protocol-1 satellite; see [Protocol](#protocol).
   muted from one chip, and the host's voice chat and HD haptics to the pad's
   speaker and actuators.
 - Keeps the Mac awake while a controller is being used or connected, your
-  choice in Settings with the display optional; releases every session when
-  the Mac sleeps and reconnects when it wakes.
+  choice in Settings with the display optional. When the Mac sleeps it
+  releases every held button and closes every session cleanly; when it wakes
+  it reopens them and scans the network again. A closed lid still puts the
+  Mac to sleep: `IOPMLib.h` calls `kIOPMAssertionTypePreventSystemSleep` "not
+  supported in any OS X releases", the idle-sleep assertions Dish holds do
+  not reach the lid, and Apple's clamshell mode needs a display and power
+  connected; when the lid closes mid-stream, Dish says so once on the wake.
 - Keeps streaming when the window is closed, from a menu-bar item; follows
   the system appearance or a chosen light or dark theme.
 - Checks GitHub for a newer release at startup and every few hours, says so
@@ -68,7 +74,9 @@ row, in [`Tests/PARITY.md`](Tests/PARITY.md).
 
 - macOS 13 (Ventura) or newer to run.
 - Xcode 26 (the Swift 6.2 toolchain) to build; CI builds on `macos-26`.
-- A compatible gamepad (Xbox, PlayStation or any MFi controller).
+- A compatible gamepad (Xbox, PlayStation or any MFi controller). Its input
+  keeps flowing when another app is in front; macOS 15.4 broke that for every
+  app and macOS 15.5 fixed it.
 - A Satellite server reachable on your LAN.
 
 ## Build and run

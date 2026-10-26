@@ -79,6 +79,14 @@ extension L10n {
         catalog.text("While connected")
     }
 
+    var lidStillSleepsTheMac: String {
+        catalog.text("Closing the lid still puts the Mac to sleep unless a display and power are connected.")
+    }
+
+    var streamingPausedWhileLidClosed: String {
+        catalog.text("Streaming paused while the lid was closed")
+    }
+
     var keepAwakeDetail: String {
         catalog.text("While playing: only while a bound controller is in use. While connected: as long as a controller streams, even idle.")
     }

@@ -6,14 +6,11 @@ import Combine
 import DishEngine
 import Foundation
 
-/// Builds the engine's lifecycle signals from AppKit's notifications. The
-/// centers are parameters so the mapping is testable without a running app.
-func appKitLifecycleSignals(
-    application: NotificationCenter,
-    workspace: NotificationCenter
-) -> LifecycleSignals {
+/// Builds the engine's lifecycle signals from AppKit's workspace
+/// notifications. The center is a parameter so the mapping is testable
+/// without a running app.
+func appKitLifecycleSignals(workspace: NotificationCenter) -> LifecycleSignals {
     LifecycleSignals(
-        focusLost: voidPublisher(application, NSApplication.didResignActiveNotification),
         willSleep: voidPublisher(workspace, NSWorkspace.willSleepNotification),
         didWake: voidPublisher(workspace, NSWorkspace.didWakeNotification)
     )

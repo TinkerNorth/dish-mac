@@ -213,6 +213,10 @@ extension L10n {
         catalog.text("GameController")
     }
 
+    var backgroundInput: String {
+        catalog.text("Background input")
+    }
+
     var type: String {
         catalog.text("Type")
     }

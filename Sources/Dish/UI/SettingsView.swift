@@ -134,6 +134,10 @@ struct SettingsView: View {
                     isOn: Binding(get: { keepAwake.state.keepDisplayAwake }, set: keepAwake.setKeepDisplayAwake)
                 )
             }
+            Text(words.lidStillSleepsTheMac)
+                .font(DishFont.caption)
+                .foregroundColor(DishTheme.muted)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 

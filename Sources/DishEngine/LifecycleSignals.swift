@@ -5,33 +5,25 @@ import Combine
 import Foundation
 
 /// The host-app events the engine reacts to, as publishers, so the engine
-/// never imports AppKit: the app builds them from `NSApplication` and
-/// `NSWorkspace`, tests drive them with subjects.
+/// never imports AppKit: the app builds them from `NSWorkspace`, tests drive
+/// them with subjects. Losing focus is not one of them: the controller keeps
+/// reaching Dish while another app is in front, so nothing is released then.
 package struct LifecycleSignals {
-    /// The app stopped being the active application: held buttons must be
-    /// released server-side, because the controller callbacks stop reaching
-    /// this process.
-    package let focusLost: AnyPublisher<Void, Never>
-    /// The machine is about to sleep: same release-all, since a forced lid
-    /// close may never deliver a focus loss.
+    /// The machine is about to sleep: held buttons are released on the host,
+    /// every session is closed the graceful way, and the lid is read.
     package let willSleep: AnyPublisher<Void, Never>
-    /// The machine woke: sockets may be dead and addresses moved, so resting
-    /// rows reconnect now rather than waiting out the backoff curve.
+    /// The machine woke: sockets may be dead and the network another, so the
+    /// sessions reopen now rather than waiting out the backoff curve, and the
+    /// LAN is scanned again.
     package let didWake: AnyPublisher<Void, Never>
 
-    package init(
-        focusLost: AnyPublisher<Void, Never>,
-        willSleep: AnyPublisher<Void, Never>,
-        didWake: AnyPublisher<Void, Never>
-    ) {
-        self.focusLost = focusLost
+    package init(willSleep: AnyPublisher<Void, Never>, didWake: AnyPublisher<Void, Never>) {
         self.willSleep = willSleep
         self.didWake = didWake
     }
 
     /// Signals that never fire, for an engine with no host app.
     package static let none = LifecycleSignals(
-        focusLost: Empty().eraseToAnyPublisher(),
         willSleep: Empty().eraseToAnyPublisher(),
         didWake: Empty().eraseToAnyPublisher()
     )

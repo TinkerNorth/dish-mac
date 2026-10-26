@@ -64,13 +64,15 @@ package final class AppModel: ObservableObject {
     /// What the bindings last asked of the hosts, so an unchanged desire converges nothing.
     var lastDesired: [String: [MoonlightPadRequest]] = [:]
     /// Bound slots whose connection streams.
-    private let streamingCount: Composer<Int>
+    let streamingCount: Composer<Int>
     /// Whether a pad was used inside the keep-awake window.
     let activity: ControllerActivitySource
     /// How far the machine is held awake, from the count, the activity and
     /// the preferences; the wake controller follows it.
     private let wakeState: Composer<WakeState>
     private let recorder: DiagnosticsRecorder
+    /// Whether the lid closed on a stream, across one sleep.
+    let lidWatch: LidWatch
     var cancellables = Set<AnyCancellable>()
 
     /// The app's entry point: production stores, the host's lifecycle
@@ -120,9 +122,11 @@ package final class AppModel: ObservableObject {
         crashLog: CrashLog = CrashLog(url: URL(fileURLWithPath: "/dev/null")),
         audioDependencies: AudioDependencies? = nil,
         crashUploader: CrashUploader? = nil,
-        moonlight: MoonlightConnectionManager? = nil
+        moonlight: MoonlightConnectionManager? = nil,
+        clamshell: ClamshellStateReading? = nil,
+        discovery: WifiConnectionManager.DiscoveryPaths = .live
     ) {
-        let wifi = WifiConnectionManager(store: store)
+        let wifi = WifiConnectionManager(store: store, discovery: discovery)
         let moonlight = moonlight ?? Self.defaultMoonlight(defaults: defaults, store: store)
         let hub = ConnectionHub(wifi: wifi, store: store, moonlight: moonlight)
         let input = GameControllerInput()
@@ -165,6 +169,7 @@ package final class AppModel: ObservableObject {
         )
         inspector = InputInspector(processor: input.processor)
         crashReporting = CrashReportingController(defaults: defaults, uploader: crashUploader)
+        lidWatch = LidWatch(clamshell: clamshell ?? IOKitClamshellState())
         wireObservers(pipeline: pipeline, lifecycle: lifecycle)
     }
 
@@ -257,6 +262,7 @@ package final class AppModel: ObservableObject {
     private func observeDiagnostics() {
         diagnostics.useSlots { [weak self] in self?.slots ?? [] }
         diagnostics.useAudio { [weak self] slotId in self?.audio.padDiagnostics(slotId) }
+        diagnostics.useBackgroundInput { [weak self] in self?.input.monitorsBackgroundEvents ?? false }
         hub.$connections
             .sink { [weak self] rows in self?.recorder.observeLinks(rows) }
             .store(in: &cancellables)
@@ -336,26 +342,6 @@ package final class AppModel: ObservableObject {
             lastFailure = failure
             failures.send(failure)
         }
-    }
-
-    /// Focus loss and sleep both release every held input, because the
-    /// controller callbacks stop reaching this process and a held button
-    /// would otherwise stay pressed on the virtual pad until heartbeat death.
-    /// Wake reconnects resting rows at once.
-    private func installLifecycleHandling(_ lifecycle: LifecycleSignals) {
-        lifecycle.focusLost
-            .sink { [weak self] in self?.releaseAllInputs() }
-            .store(in: &cancellables)
-        lifecycle.willSleep
-            .sink { [weak self] in self?.releaseAllInputs() }
-            .store(in: &cancellables)
-        lifecycle.didWake
-            .sink { [weak self] in self?.wifi.resumeAfterWake() }
-            .store(in: &cancellables)
-    }
-
-    private func releaseAllInputs() {
-        input.processor.zeroAndSendAll()
     }
 
     // MARK: - Slots

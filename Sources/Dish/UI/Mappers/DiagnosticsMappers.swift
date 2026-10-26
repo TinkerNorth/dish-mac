@@ -162,10 +162,18 @@ func moonlightPadText(_ pad: MoonlightPadFacts, words: L10n = .app) -> String {
 
 func padLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
     let slot = pad.slot
-    let opening = [FactLine(key: words.connection, value: words.gameControllerFramework)]
+    let opening = [
+        FactLine(key: words.connection, value: words.gameControllerFramework),
+        FactLine(key: words.backgroundInput, value: backgroundInputText(pad.backgroundInput, words: words))
+    ]
         + (slot.emulation.map { [FactLine(key: words.type, value: emulatedTypeName($0, words: words))] } ?? [])
         + (slot.battery.map { [FactLine(key: words.battery, value: batteryHelp($0, words: words))] } ?? [])
     return opening + bindingLines(pad, words: words) + audioLines(pad, words: words)
+}
+
+/// Whether the pad keeps reaching the host while another app is in front.
+func backgroundInputText(_ on: Bool, words: L10n = .app) -> String {
+    on ? words.on : words.off
 }
 
 /// The pad's own audio: where its route stands and, once the engine has a

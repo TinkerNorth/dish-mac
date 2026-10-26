@@ -17,6 +17,46 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Guide reaches the host.** A pad's Home button now presses the XUSB Guide
+  button (`0x0400`) on a satellite and on a Moonlight host. XUSB has no Share
+  button and no paddles, so those stay unmapped, as on the other clients.
+- **Input keeps flowing while Dish is in the background.** GameController's
+  background monitoring is on from the first controller connect, so a pad
+  keeps driving the host while another app is in front, and Dish no longer
+  releases every button when it stops being the active app. Diagnostics shows
+  it on each controller as "Background input: On". Dish reads the pad
+  alongside the frontmost app; taking it away from that app is not possible
+  through public API. macOS 15.4 broke background monitoring for every app;
+  macOS 15.5 fixed it.
+- **A closed lid is said, once.** When the lid closed on a stream and put the
+  Mac to sleep, the wake shows "Streaming paused while the lid was closed",
+  and Settings ▸ Power says that closing the lid still sleeps the Mac unless a
+  display and power are connected: macOS has no API that keeps a lidded Mac
+  awake.
+
+### Changed
+
+- **The controller hot path leaves the main thread.** Every controller's
+  handlers run on one serial, user-interactive input queue handed to the pad
+  before any handler is installed, so a busy window never delays a report.
+- **Sleep closes every session cleanly and wake reopens it.** Going to sleep
+  releases every held input, closes each satellite session with its `DELETE`
+  and stops each Moonlight session with its pads kept; waking reopens both
+  and scans the network again, because a laptop may wake on another one. The
+  scan after a wake stays quiet when it hears nothing.
+
+### Fixed
+
+- **A stick pushed all the way up reads as up, not down, on both links.**
+  GameController reports a stick pushed up as positive, like the XUSB report
+  every client sends, and Dish negated it, so both sticks read upside down on
+  a satellite and on a Moonlight host. The sign now passes through, and a
+  sweep over the whole travel pins it.
+
 ## [1.0.0] - 2026-10-26
 
 ### Added

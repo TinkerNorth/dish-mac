@@ -7,7 +7,7 @@
 >
 > Legend: ✅ works · ⚠️ shipped, not yet verified on real hardware · ❌ not
 > available · – not applicable · 🔜 decided and in progress. Verified against
-> the code on 2026-10-13.
+> the code on 2026-10-26.
 
 ## 1. What works, per client
 
@@ -23,8 +23,9 @@
 | Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ✅ Sentry (sentry-cocoa) behind "Share crash reports", on by default, armed only by an official build; the local redacted log and its report card stay |
 | Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ✅ `latest.json` from the release permalink; once per version, skippable, floor warning |
 | Runs in the background / window closed | ⚠️ | ✅ tray | ✅ tray | ✅ menu-bar item (closing the window keeps streaming; off in Settings quits) |
-| Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite (release-all on sleep, reconnect on wake) |
-| Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional |
+| Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite and Moonlight (sleep releases held input and closes every session, a satellite's with its `DELETE`; wake reopens them and rescans; a lid that closed on a stream is said once) |
+| Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional; a closed lid still sleeps the Mac (no API keeps a lidded Mac awake: `IOPMLib.h` calls `kIOPMAssertionTypePreventSystemSleep` "not supported in any OS X releases"; clamshell mode needs power and a display) |
+| Input while another app is in front | – (stops by design) | ✅ | ✅ | ✅ GameController's background monitoring, on from the first connect (broken in macOS 15.4, fixed in 15.5) |
 | Diagnostics screen | ✅ | ✅ | ✅ | ✅ window: session facts for satellites and Moonlight hosts (the session's standing, the app, the control round trip, each pad's reports), each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, the rumble bench, the test tone and the microphone meter) |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ a satellite reads Fastest, a Moonlight host Fast |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
@@ -40,7 +41,7 @@
 
 | | Android | Windows | Linux | macOS (this) |
 |---|---|---|---|---|
-| Buttons, sticks, triggers | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ |
+| Buttons, sticks, triggers | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ (sticks up-positive like XUSB; Guide from the pad's Home button) |
 | Motion | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (GCMotion on DualSense and DualShock 4) |
 | Touchpad | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (DualSense and DualShock 4 profiles) |
 | Battery | ⚠️ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ |
@@ -80,6 +81,9 @@ does not apply here.
   per-unit identifier. Two identical pads take ordinals.
 - **The Android-only surfaces** (on-screen pad, skins, Bluetooth HID host
   mode, Play billing, store screenshots) do not apply.
+- **XUSB carries no Share button and no paddles**, so a pad's Share and
+  paddle buttons stay unmapped, as on the other clients; Guide is the pad's
+  Home button.
 - **Battery over USB is the host Mac's** when the pad reports none, which is
   what the other desktop clients send too.
 - **Controller audio is the pad's USB audio function**, matched to the pad
@@ -97,7 +101,11 @@ does not apply here.
 The waves below are planned in this order. Each lands with its tests and
 updates the rows above.
 
-1. A run against a live Moonlight host: Sunshine and Wolf, a DualSense and
+1. Exclusive capture (decided: not built). Dish reads the pad alongside the
+   frontmost app. Seizing it is not possible through public API (an Apple
+   frameworks engineer, Apple Developer Forums thread 775975), and seizing
+   the HID device would blind GameController, Dish's only input path.
+2. A run against a live Moonlight host: Sunshine and Wolf, a DualSense and
    an Xbox pad, the resume path and a host that ends the session. (Theme,
    background mode, keep-awake modes, the update check, About, the Emulate
    picker, "What carries", the motion word, the link tier, Diagnostics and

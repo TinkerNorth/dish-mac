@@ -118,6 +118,15 @@ extension MoonlightConnectionManager {
         }
     }
 
+    /// The machine is about to sleep: every session stops the way a user's
+    /// disconnect stops it, its pads still claimed and the app left running,
+    /// so the wake's converge opens it again and resumes.
+    func stopSessionsForSleep() {
+        for hostId in connections.keys.sorted() {
+            disconnect(hostId: hostId)
+        }
+    }
+
     /// Tell the host to end the app it runs: the protocol's own way out of
     /// "an app is already running" when the host will not resume it for us.
     /// /cancel answers 200 whether or not anything ran, so nothing is believed from it.

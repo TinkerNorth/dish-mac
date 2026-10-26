@@ -21,26 +21,28 @@ let kBatteryFirstReportDelaySec = 1
 /// is caught by this faster read-only poll.
 let kBatteryStateWatchIntervalSec = 3
 
-/// The XUSB bit each required button sets.
-private let requiredButtons: [(KeyPath<GCExtendedGamepad, GCControllerButtonInput>, UInt16)] = [
-    (\.buttonA, GamepadInputProcessor.Buttons.faceA),
-    (\.buttonB, GamepadInputProcessor.Buttons.faceB),
-    (\.buttonX, GamepadInputProcessor.Buttons.faceX),
-    (\.buttonY, GamepadInputProcessor.Buttons.faceY),
-    (\.leftShoulder, GamepadInputProcessor.Buttons.leftShoulder),
-    (\.rightShoulder, GamepadInputProcessor.Buttons.rightShoulder),
-    (\.buttonMenu, GamepadInputProcessor.Buttons.start),
-    (\.dpad.up, GamepadInputProcessor.Buttons.dpadUp),
-    (\.dpad.down, GamepadInputProcessor.Buttons.dpadDown),
-    (\.dpad.left, GamepadInputProcessor.Buttons.dpadLeft),
-    (\.dpad.right, GamepadInputProcessor.Buttons.dpadRight)
+/// The wire button each required button is.
+private let requiredButtons: [(KeyPath<GCExtendedGamepad, GCControllerButtonInput>, WireButton)] = [
+    (\.buttonA, .faceA),
+    (\.buttonB, .faceB),
+    (\.buttonX, .faceX),
+    (\.buttonY, .faceY),
+    (\.leftShoulder, .leftShoulder),
+    (\.rightShoulder, .rightShoulder),
+    (\.buttonMenu, .start),
+    (\.dpad.up, .dpadUp),
+    (\.dpad.down, .dpadDown),
+    (\.dpad.left, .dpadLeft),
+    (\.dpad.right, .dpadRight)
 ]
 
-/// The XUSB bit each optional button sets when the pad has it.
-private let optionalButtons: [(KeyPath<GCExtendedGamepad, GCControllerButtonInput?>, UInt16)] = [
-    (\.buttonOptions, GamepadInputProcessor.Buttons.back),
-    (\.leftThumbstickButton, GamepadInputProcessor.Buttons.leftThumb),
-    (\.rightThumbstickButton, GamepadInputProcessor.Buttons.rightThumb)
+/// The wire button each optional button is when the pad has it. XUSB has no
+/// Share button and no paddles, so those stay unmapped.
+private let optionalButtons: [(KeyPath<GCExtendedGamepad, GCControllerButtonInput?>, WireButton)] = [
+    (\.buttonOptions, .back),
+    (\.buttonHome, .guide),
+    (\.leftThumbstickButton, .leftThumb),
+    (\.rightThumbstickButton, .rightThumb)
 ]
 
 /// Bridges GameController.framework into the input processor: one full
@@ -64,6 +66,9 @@ final class GameControllerInput: ObservableObject {
     @Published var slots: [Slot] = []
 
     nonisolated let processor = GamepadInputProcessor()
+    /// The one serial queue every controller's handlers run on, so the hot
+    /// path never waits behind the main thread.
+    nonisolated let inputQueue = DispatchQueue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
     let touchpadIds = TouchpadTrackingState()
 
     private var observers: [NSObjectProtocol] = []
@@ -117,7 +122,9 @@ final class GameControllerInput: ObservableObject {
         let displayState: BatteryChargeState
     }
 
-    init() {
+    /// `connected` is the launch sweep, the framework's list unless a test
+    /// hands in its own.
+    init(connected: [GCController] = GCController.controllers()) {
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: .GCControllerDidConnect, object: nil, queue: .main) { [weak self] note in
             guard let self, let controller = note.object as? GCController else { return }
@@ -127,7 +134,7 @@ final class GameControllerInput: ObservableObject {
             guard let self, let controller = note.object as? GCController else { return }
             Task { @MainActor in self.detach(controller) }
         })
-        for controller in GCController.controllers() {
+        for controller in connected {
             attach(controller)
         }
     }
@@ -140,16 +147,32 @@ final class GameControllerInput: ObservableObject {
 
     // MARK: - Attach / detach
 
+    /// The queue is the controller's before any handler is, so no event
+    /// lands on the main queue first.
     private func attach(_ controller: GCController) {
+        Self.monitorBackgroundEvents()
         guard let pad = controller.extendedGamepad else { return }
         let id = slotId(for: controller)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
         processor.setDeadzones(deviceId: id, .init(stickFlat: kDefaultStickFlat, triggerFlat: kDefaultTriggerFlat))
+        controller.handlerQueue = inputQueue
         installReportHandler(id: id, pad: pad)
         installMotionHandler(id: id, controller: controller)
         installTouchpadHandlers(id: id, pad: pad)
         startBatteryTimer(deviceId: id, controller: controller)
+    }
+
+    /// Input keeps reaching Dish while another app is frontmost. Set at a
+    /// connect, never before the first one: macOS 12.3.1 crashed when the
+    /// flag was set ahead of it (SDL 09086ae).
+    private static func monitorBackgroundEvents() {
+        GCController.shouldMonitorBackgroundEvents = true
+    }
+
+    /// Whether the framework delivers input while Dish is in the background.
+    nonisolated var monitorsBackgroundEvents: Bool {
+        GCController.shouldMonitorBackgroundEvents
     }
 
     /// The launch sweep and the connect notification can both fire for one
@@ -208,7 +231,9 @@ final class GameControllerInput: ObservableObject {
 
     /// GameController coalesces simultaneous changes into one call, and the
     /// handler rebuilds the whole report from the snapshot every time.
-    private func installReportHandler(id: String, pad: GCExtendedGamepad) {
+    /// Nonisolated, so the compiler refuses a handler that reaches for
+    /// main-actor state: it runs on the input queue.
+    private nonisolated func installReportHandler(id: String, pad: GCExtendedGamepad) {
         pad.valueChangedHandler = { [weak self] pad, _ in
             self?.pushReport(id: id, pad: pad)
         }
@@ -234,7 +259,7 @@ final class GameControllerInput: ObservableObject {
     }
 
     /// Only the DualSense and DualShock 4 profiles expose a touchpad.
-    static func touchpadInputs(_ pad: GCExtendedGamepad) -> TouchpadInputs? {
+    nonisolated static func touchpadInputs(_ pad: GCExtendedGamepad) -> TouchpadInputs? {
         if let dualSense = pad as? GCDualSenseGamepad {
             return TouchpadInputs(
                 primary: dualSense.touchpadPrimary,
@@ -260,29 +285,29 @@ final class GameControllerInput: ObservableObject {
 
     // MARK: - Hot path
 
-    /// GameController's thumbstick y is up-positive; the wire's is
-    /// down-positive, matching the other clients.
     private nonisolated func pushReport(id: String, pad: GCExtendedGamepad) {
-        let report = GamepadReport(
-            buttons: Self.buttonWord(pad),
-            lt: scaleTrigger(pad.leftTrigger.value),
-            rt: scaleTrigger(pad.rightTrigger.value),
-            lx: scaleAxis(pad.leftThumbstick.xAxis.value, max: 32767),
-            ly: scaleAxis(-pad.leftThumbstick.yAxis.value, max: 32767),
-            rx: scaleAxis(pad.rightThumbstick.xAxis.value, max: 32767),
-            ry: scaleAxis(-pad.rightThumbstick.yAxis.value, max: 32767)
-        )
-        processor.publish(deviceId: id, state: report)
+        let sample = Self.padSample(pad)
+        processor.publish(deviceId: id, state: wireReport(sample))
     }
 
-    nonisolated static func buttonWord(_ pad: GCExtendedGamepad) -> UInt16 {
-        let required = requiredButtons.reduce(UInt16(0)) { word, entry in
-            pad[keyPath: entry.0].isPressed ? word | entry.1 : word
-        }
-        let optional = optionalButtons.reduce(UInt16(0)) { word, entry in
-            pad[keyPath: entry.0]?.isPressed == true ? word | entry.1 : word
-        }
-        return required | optional
+    /// The pad as GameController reads it, which is already the wire's
+    /// orientation: both report a stick pushed up as positive y.
+    nonisolated static func padSample(_ pad: GCExtendedGamepad) -> PadSample {
+        PadSample(
+            leftX: pad.leftThumbstick.xAxis.value,
+            leftY: pad.leftThumbstick.yAxis.value,
+            rightX: pad.rightThumbstick.xAxis.value,
+            rightY: pad.rightThumbstick.yAxis.value,
+            leftTrigger: pad.leftTrigger.value,
+            rightTrigger: pad.rightTrigger.value,
+            pressed: heldButtons(pad)
+        )
+    }
+
+    nonisolated static func heldButtons(_ pad: GCExtendedGamepad) -> Set<WireButton> {
+        let required = requiredButtons.filter { entry in pad[keyPath: entry.0].isPressed }
+        let optional = optionalButtons.filter { entry in pad[keyPath: entry.0]?.isPressed == true }
+        return Set(required.map(\.1) + optional.map(\.1))
     }
 
     // MARK: - Identity

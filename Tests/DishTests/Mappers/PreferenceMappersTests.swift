@@ -25,6 +25,13 @@ final class PreferenceMappersTests: XCTestCase {
         XCTAssertEqual(idleTimeoutText(5), "5 min")
     }
 
+    func testThePowerSectionSaysTheLidStillSleepsTheMac() {
+        XCTAssertEqual(
+            L10n.app.lidStillSleepsTheMac,
+            "Closing the lid still puts the Mac to sleep unless a display and power are connected."
+        )
+    }
+
     func testTheUpdateStatusLineForEveryPhase() {
         var status = UpdateStatus(phase: .idle, currentVersion: "0.1.0")
         let now = Date(timeIntervalSince1970: 1_700_000_000)

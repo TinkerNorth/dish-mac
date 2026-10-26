@@ -2490,6 +2490,41 @@
         }
       }
     },
+    "Background input" : {
+      "comment" : "Diagnostics pad line: whether the pad's input reaches Dish while another app is in front.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unos u pozadini"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingabe im Hintergrund"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrada en segundo plano"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisie en arrière-plan"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Entrada em segundo plano"
+          }
+        }
+      }
+    },
     "Bad token from server" : {
       "comment" : "Failure: the session material did not parse.",
       "localizations" : {
@@ -3326,6 +3361,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Fechar o app em %@"
+          }
+        }
+      }
+    },
+    "Closing the lid still puts the Mac to sleep unless a display and power are connected." : {
+      "comment" : "Settings, Power section footnote: macOS keeps a lidded Mac awake only in clamshell mode.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zatvaranje poklopca i dalje uspavljuje Mac, osim ako su priključeni ekran i napajanje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Zuklappen des Deckels versetzt den Mac trotzdem in den Ruhezustand, außer ein Bildschirm und das Netzteil sind angeschlossen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cerrar la tapa sigue poniendo el Mac en reposo, salvo que haya una pantalla y la alimentación conectadas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer le capot met quand même le Mac en veille, sauf si un écran et l'alimentation sont branchés."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fechar a tampa ainda coloca o Mac em repouso, a menos que uma tela e a energia estejam conectadas."
           }
         }
       }
@@ -11096,6 +11166,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Transmitindo"
+          }
+        }
+      }
+    },
+    "Streaming paused while the lid was closed" : {
+      "comment" : "Toast on the wake after a closed lid put the Mac to sleep mid-stream.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strimanje je pauzirano dok je poklopac bio zatvoren"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streaming pausiert, solange der Deckel geschlossen war"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La transmisión se pausó mientras la tapa estaba cerrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diffusion en pause pendant que le capot était fermé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmissão pausada enquanto a tampa estava fechada"
           }
         }
       }
