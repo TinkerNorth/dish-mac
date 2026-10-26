@@ -203,6 +203,36 @@ extension L10n {
         catalog.text("not granted")
     }
 
+    // MARK: - Other input devices
+
+    var otherInputDevices: String {
+        catalog.text("Other input devices")
+    }
+
+    var otherInputDevicesNote: String {
+        catalog.text("Dish does not treat these as controllers.")
+    }
+
+    var status: String {
+        catalog.text("Status")
+    }
+
+    var notClaimedByGameController: String {
+        catalog.text("Not a controller: not claimed by GameController")
+    }
+
+    var hardwareId: String {
+        catalog.text("Hardware ID")
+    }
+
+    var usb: String {
+        catalog.text("USB")
+    }
+
+    var bluetooth: String {
+        catalog.text("Bluetooth")
+    }
+
     // MARK: - A controller's lines
 
     var connection: String {
@@ -211,6 +241,10 @@ extension L10n {
 
     var gameControllerFramework: String {
         catalog.text("GameController")
+    }
+
+    var usbId: String {
+        catalog.text("USB ID")
     }
 
     var backgroundInput: String {

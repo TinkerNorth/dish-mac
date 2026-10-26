@@ -57,6 +57,11 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertEqual(try emulatedControllerType(override: nil, catalog: catalog(), family: .other), 0, "the first offered")
     }
 
+    func testANintendoPadIsEmulatedAsTheSwitchPro() throws {
+        XCTAssertEqual(try emulatedControllerType(override: nil, catalog: catalog(), family: .nintendo), 3, "057e:2009 by `emulates`")
+        XCTAssertEqual(emulationCandidates(for: .nintendo), ["switchpro"])
+    }
+
     func testAPickSurvivesAMissingCatalog() {
         XCTAssertEqual(emulatedControllerType(override: 1, catalog: nil, family: .other), 1)
         XCTAssertEqual(emulatedControllerType(override: nil, catalog: nil, family: .dualSense), 0, "the legacy target")

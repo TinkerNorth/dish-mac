@@ -30,6 +30,9 @@ struct DiagnosticsPage: View {
                     .fixedSize(horizontal: false, vertical: true)
                 cardsSection(words.hosts, state.hosts)
                 cardsSection(words.controllers, state.pads)
+                if let others = state.otherDevices {
+                    otherDevicesSection(others)
+                }
                 eventsSection
             }
             .padding(DishSpace.page)
@@ -48,6 +51,17 @@ struct DiagnosticsPage: View {
                 ForEach(cards) { card in
                     DiagnosticsCard(state: card, inspectLabel: words.inspectInput, inspect: inspect)
                 }
+            }
+        }
+    }
+
+    /// The game devices GameController leaves out, under Android's note.
+    private func otherDevicesSection(_ others: OtherInputDevicesState) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionHeader(title: others.title)
+            emptyNote(others.note)
+            ForEach(others.cards) { card in
+                DiagnosticsCard(state: card, inspectLabel: words.inspectInput, inspect: inspect)
             }
         }
     }

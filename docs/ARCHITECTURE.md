@@ -199,8 +199,13 @@ Every controller event takes one path. GameController calls the pad's
 handlers on `GameControllerInput.inputQueue`, one serial `userInteractive`
 queue (`com.tinkernorth.dish.input`) handed to each controller as its
 `handlerQueue` before any handler is installed, so no event waits behind the
-main thread. The handler samples the pad into the core's `PadSample`,
-`wireReport` turns it into a `GamepadReport` (up-positive sticks, as XUSB and
+main thread. The handler samples the pad into the core's `PadSample`
+(a pad GameController vends without the extended profile is read through
+`physicalInputProfile` instead: `GameControllerInput+Profile` resolves the
+core's `ProfileLayout`, the generic table of Apple's `GCInput…` names or the
+N64's, against the pad's elements once at attach, so the handler walks fixed
+arrays into a `ProfileSample` whose C buttons rail the right stick; no set,
+array or string is built per report), `wireReport` turns it into a `GamepadReport` (up-positive sticks, as XUSB and
 every other client have them), the processor applies the dead zones under its lock,
 `InputRouting` reads the slot's route (its live connection and the switches
 in force for that controller, global and per-controller already folded on
@@ -222,6 +227,16 @@ host's sleep and wake into the engine as publishers, so the engine never
 imports AppKit. Losing focus is not a signal: `GCController.shouldMonitorBackgroundEvents`
 is set at the first connect, so input keeps arriving while another app is in
 front and nothing is released when Dish stops being frontmost.
+
+The HID census (`Input/HidDeviceCensus.swift`) is the one IOHIDManager in
+the app, behind the `HidCensusReading` seam: it matches usage page Generic
+Desktop with Joystick, GamePad and MultiAxisController and
+`GCSyntheticDevice = false` (Apple's only supported way to leave out the
+devices macOS 14 and later synthesise), is never opened, and is scheduled on
+the main run loop only while the Diagnostics page shows, re-read on its 1 Hz
+tick and on every match and removal. It reports each device's name, ids,
+transport and `GCController.supportsHIDDevice` (cached per device, as
+GameController.h asks); a test hands `DiagnosticsSource` a fake.
 
 ## How to add a feature
 
@@ -283,8 +298,14 @@ Each entry names the decided shape, so a change lands on it.
 - **Diagnostics shows the facts it holds.** The page reads what the engine
   already acts on; the input inspector (pushed from a controller's card)
   adds the live input, the stick drift and range tests, the rumble bench and
-  the audio tests. The radios section and the other input devices the
-  siblings list are not there yet.
+  the audio tests, and the HID census lists the game devices GameController
+  does not claim. The radios section the desktops show is not there yet.
+- **A pad GameController does not vend is listed, not read.** The census
+  shows it in Diagnostics; reading it needs the raw-HID Direct backend the
+  other clients carry, a later wave. The N64 table's names for the C
+  buttons, Z, ZR and Capture are Apple's undocumented ones, so each row
+  tries the plausible names and the attach logs (`DEVCAPS PROFILE`) what
+  bound, what is missing and what no row claims.
 - **The update check downloads nothing.** It reads the release manifest,
   says so once per version and opens the release page; installing stays
   manual, as on the other desktop clients.

@@ -26,6 +26,7 @@ func padFamilyName(_ family: PadFamily) -> String {
     case .dualSense: "DualSense"
     case .dualShock4: "DualShock 4"
     case .xbox: "Xbox"
+    case .nintendo: "Nintendo"
     case .other: "GameController"
     }
 }

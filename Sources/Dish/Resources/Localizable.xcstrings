@@ -3869,6 +3869,41 @@
         }
       }
     },
+    "Bluetooth" : {
+      "comment" : "Diagnostics: an input device's connection, Bluetooth. Matches the desktops' `Bluetooth`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bluetooth"
+          }
+        }
+      }
+    },
     "Both" : {
       "comment" : "Rumble bench button.",
       "localizations" : {
@@ -6634,6 +6669,41 @@
         }
       }
     },
+    "Dish does not treat these as controllers." : {
+      "comment" : "Diagnostics: the note under Other input devices. From Android `diagnostics_ignored_inputs_header`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish ih ne tretira kao kontrolere."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish behandelt sie nicht als Controller."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish no los trata como mandos."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish ne les traite pas comme des manettes."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish não os trata como controles."
+          }
+        }
+      }
+    },
     "Dish doesn’t send gameplay or controller input anywhere except the host PC on your local network." : {
       "comment" : "Help & FAQ: what does dish collect answer (one sentence of a paragraph).",
       "localizations" : {
@@ -9010,6 +9080,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Háptica"
+          }
+        }
+      }
+    },
+    "Hardware ID" : {
+      "comment" : "Diagnostics: an input device's vendor and product id line key. Maps to Android `diagnostics_hardware_id`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hardverski ID"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hardware-ID"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID de hardware"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID matériel"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID de hardware"
           }
         }
       }
@@ -12934,6 +13039,41 @@
         }
       }
     },
+    "Not a controller: not claimed by GameController" : {
+      "comment" : "Diagnostics: an input device's status when GameController does not claim it. After Android `diagnostics_state_ignored`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije kontroler: GameController ga ne preuzima"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Controller: von GameController nicht übernommen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No es un mando: GameController no lo reconoce"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas une manette : non prise en charge par GameController"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não é um controle: não reconhecido pelo GameController"
+          }
+        }
+      }
+    },
     "Not available" : {
       "comment" : "Capability verdict.",
       "localizations" : {
@@ -13875,6 +14015,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Licenças de código aberto"
+          }
+        }
+      }
+    },
+    "Other input devices" : {
+      "comment" : "Diagnostics: the section of game devices GameController does not claim. From Android `diagnostics_ignored_inputs_header`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ostali ulazni uređaji"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere Eingabegeräte"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otros dispositivos de entrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autres périphériques d'entrée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outros dispositivos de entrada"
           }
         }
       }
@@ -17484,6 +17659,41 @@
         }
       }
     },
+    "Status" : {
+      "comment" : "Diagnostics: an input device's status line key. Maps to Android `diagnostics_state`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "État"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Status"
+          }
+        }
+      }
+    },
     "Step 1 of 3 · Input" : {
       "comment" : "The setup walk: step input.",
       "localizations" : {
@@ -19965,6 +20175,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "ATUALIZAÇÕES"
+          }
+        }
+      }
+    },
+    "USB" : {
+      "comment" : "Diagnostics: an input device's connection, USB. Matches the desktops' `USB`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB"
+          }
+        }
+      }
+    },
+    "USB ID" : {
+      "comment" : "Diagnostics: a controller's vendor and product id line key. Matches the desktops' `USB ID`.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB ID"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "USB-ID"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID USB"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID USB"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ID USB"
           }
         }
       }

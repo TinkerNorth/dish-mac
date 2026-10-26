@@ -44,48 +44,69 @@ package struct PadDiagnostics: Equatable, Identifiable {
     package let audio: PadAudioDiagnostics?
     /// Whether the pad's input reaches Dish while another app is in front.
     package let backgroundInput: Bool
+    /// The HID device under the pad, when the census finds exactly one by its name.
+    package let hardwareId: HidHardwareId?
 
     package var id: String {
         slot.id
     }
 
-    package init(slot: ControllerSlot, wire: SlotWireFacts?, audio: PadAudioDiagnostics? = nil, backgroundInput: Bool = false) {
+    package init(
+        slot: ControllerSlot,
+        wire: SlotWireFacts?,
+        audio: PadAudioDiagnostics? = nil,
+        backgroundInput: Bool = false,
+        hardwareId: HidHardwareId? = nil
+    ) {
         self.slot = slot
         self.wire = wire
         self.audio = audio
         self.backgroundInput = backgroundInput
+        self.hardwareId = hardwareId
     }
 }
 
 package struct DiagnosticsSnapshot: Equatable {
     package var hosts: [HostDiagnostics] = []
     package var pads: [PadDiagnostics] = []
+    /// Every HID game device on the Mac, GameController's and the rest.
+    package var inputDevices: [HidDeviceFacts] = []
 
-    package init(hosts: [HostDiagnostics] = [], pads: [PadDiagnostics] = []) {
+    package init(hosts: [HostDiagnostics] = [], pads: [PadDiagnostics] = [], inputDevices: [HidDeviceFacts] = []) {
         self.hosts = hosts
         self.pads = pads
+        self.inputDevices = inputDevices
     }
 }
 
 /// What the app sees right now, for the Diagnostics window: every figure is
 /// one the rest of the app already acts on, not a second measurement. The
 /// ack-fed numbers change without a publication, so a 1 Hz tick re-reads
-/// them while the window is open; `start` arms it and `stop` ends it.
+/// them while the window is open; `start` arms it and `stop` ends it. The
+/// HID census watches only while the window is open, and a device's match
+/// or removal re-reads at once.
 @MainActor
 package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
 
     private let wifi: WifiConnectionManager
     private let hub: ConnectionHub
     private let moonlight: MoonlightConnectionManager?
+    private let census: HidCensusReading
     private var slots: () -> [ControllerSlot] = { [] }
     private var audio: (String) -> PadAudioDiagnostics? = { _ in nil }
     private var backgroundInput: () -> Bool = { false }
     private var timer: DispatchSourceTimer?
 
-    init(wifi: WifiConnectionManager, hub: ConnectionHub, moonlight: MoonlightConnectionManager? = nil) {
+    init(
+        wifi: WifiConnectionManager,
+        hub: ConnectionHub,
+        moonlight: MoonlightConnectionManager? = nil,
+        census: HidCensusReading = IOKitHidCensus()
+    ) {
         self.wifi = wifi
         self.hub = hub
         self.moonlight = moonlight
+        self.census = census
         super.init(initial: DiagnosticsSnapshot())
     }
 
@@ -106,6 +127,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
 
     override package func start() {
         MainActor.assumeIsolated {
+            census.start { [weak self] in self?.refresh() }
             refresh()
             arm()
         }
@@ -115,6 +137,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         MainActor.assumeIsolated {
             timer?.cancel()
             timer = nil
+            census.stop()
         }
     }
 
@@ -142,15 +165,17 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
             )
         }
         let inBackground = backgroundInput()
+        let devices = census.devices()
         let pads = slots().map { slot in
             PadDiagnostics(
                 slot: slot,
                 wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap(slotWireFacts),
                 audio: audio(slot.id),
-                backgroundInput: inBackground
+                backgroundInput: inBackground,
+                hardwareId: hardwareId(forPadNamed: slot.name, in: devices)
             )
         }
-        return DiagnosticsSnapshot(hosts: hosts, pads: pads)
+        return DiagnosticsSnapshot(hosts: hosts, pads: pads, inputDevices: devices)
     }
 
     /// A Moonlight host's session, read off its connection when one exists

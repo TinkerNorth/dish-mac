@@ -133,6 +133,7 @@ package final class AppModel: ObservableObject {
         crashUploader: CrashUploader? = nil,
         moonlight: MoonlightConnectionManager? = nil,
         clamshell: ClamshellStateReading? = nil,
+        hidCensus: HidCensusReading? = nil,
         discovery: WifiConnectionManager.DiscoveryPaths = .live,
         approvalPolling: WifiConnectionManager.ApprovalPolling = .standard
     ) {
@@ -164,7 +165,7 @@ package final class AppModel: ObservableObject {
         activity = pipeline.activity
         wakeState = pipeline.wakeState
         wake = pipeline.wake
-        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight)
+        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight, census: hidCensus ?? IOKitHidCensus())
         recorder = DiagnosticsRecorder(store: diagnosticsLog)
         self.crashLog = crashLog
         returnPaths = ReturnPathRouter(input: input, gate: gate, table: routing.table)

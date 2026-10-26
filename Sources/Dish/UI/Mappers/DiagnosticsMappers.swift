@@ -163,10 +163,9 @@ func moonlightPadText(_ pad: MoonlightPadFacts, words: L10n = .app) -> String {
 
 func padLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
     let slot = pad.slot
-    let opening = [
-        FactLine(key: words.connection, value: words.gameControllerFramework),
-        FactLine(key: words.backgroundInput, value: backgroundInputText(pad.backgroundInput, words: words))
-    ]
+    let opening = [FactLine(key: words.connection, value: words.gameControllerFramework)]
+        + (pad.hardwareId.map { [FactLine(key: words.usbId, value: hardwareIdText($0))] } ?? [])
+        + [FactLine(key: words.backgroundInput, value: backgroundInputText(pad.backgroundInput, words: words))]
         + (slot.emulation.map { [FactLine(key: words.type, value: emulatedTypeName($0, words: words))] } ?? [])
         + (slot.battery.map { [FactLine(key: words.battery, value: batteryHelp($0, words: words))] } ?? [])
     return opening + bindingLines(pad, words: words) + audioLines(pad, words: words)
@@ -321,10 +320,13 @@ func recentEvents(_ events: [DiagnosticsEvent], limit: Int = 30) -> [Diagnostics
 // MARK: - The page
 
 /// Everything Diagnostics draws: a card per host and per pad, or the word
-/// for none, and the flight recorder's newest lines.
+/// for none, the game devices GameController leaves out, and the flight
+/// recorder's newest lines.
 struct DiagnosticsPageState: Equatable {
     let hosts: DiagnosticsCards
     let pads: DiagnosticsCards
+    /// Nil while GameController claims every game device.
+    let otherDevices: OtherInputDevicesState?
     /// The newest lines, newest first.
     let events: [DiagnosticsEventLine]
     /// Copy waits until the recorder holds a line.
@@ -366,6 +368,7 @@ func diagnosticsPageState(
     return DiagnosticsPageState(
         hosts: hosts.isEmpty ? .empty(words.noSatellitesYet) : .cards(hosts),
         pads: pads.isEmpty ? .empty(words.noControllersConnected) : .cards(pads),
+        otherDevices: otherInputDevicesState(facts.diagnostics.inputDevices, words: words),
         events: events,
         canCopy: !facts.diagnosticsEvents.isEmpty
     )

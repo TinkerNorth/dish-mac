@@ -21,6 +21,20 @@ the repos share a version number.
 
 ### Added
 
+- **Every GameController pad is adopted, the N64 included.** A pad the
+  framework vends without the extended profile is read through its physical
+  input profile: Apple's documented element names for a generic pad, and for
+  the Nintendo Switch Online N64 pad Android's table (A, B, L, R, Start; Z
+  and ZR pull the triggers fully, Home is Guide, Capture is Back, the C
+  buttons drive the right stick, the control stick is the left). Nintendo's
+  pads are their own family, emulated as the Switch Pro by default. The
+  attach log names every element a pad carries and what the table left
+  unclaimed.
+- **Diagnostics lists the input devices macOS leaves out.** "Other input
+  devices" shows a card per game device on the Mac that GameController does
+  not claim, with its hardware ID and connection, and a controller's card
+  shows its USB ID when the HID census finds it.
+
 - **Home draws the signal path.** A boxed row per controller: the pad, a wire
   captioned with the measured report rate and the link's latency (dashed and
   idle until the link is live, crawling while it comes up), and the host with

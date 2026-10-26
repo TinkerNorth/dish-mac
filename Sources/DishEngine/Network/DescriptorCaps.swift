@@ -6,12 +6,28 @@ import Foundation
 
 /// The physical pad's family, decided once at attach from the framework's
 /// product category. It picks the catalog type the pad is emulated as. The
-/// framework names these three; everything else is a generic pad.
+/// framework exports constants for the first three; Nintendo's pads are
+/// known by the words the framework uses for them; everything else is a
+/// generic pad.
 package enum PadFamily: Hashable {
     case dualSense
     case dualShock4
     case xbox
+    case nintendo
     case other
+}
+
+/// The framework's words for Nintendo's pads, which the SDK exports no
+/// constant for: "Switch Pro Controller", "Nintendo Switch Joy-Con (L/R)",
+/// and the Switch Online N64, SNES and NES pads.
+private let nintendoMarkers = ["switch pro", "joy-con", "n64", "snes", "nes controller", "nintendo"]
+
+/// The family a pad's category or vendor name names, for a category the
+/// framework has no constant for.
+func namedPadFamily(productCategory: String, vendorName: String?) -> PadFamily {
+    let words = [productCategory, vendorName ?? ""].map { $0.lowercased() }
+    let namesNintendo = words.contains { word in nintendoMarkers.contains { word.contains($0) } }
+    return namesNintendo ? .nintendo : .other
 }
 
 /// The caps word a descriptor advertises. A cap is a promise that the
@@ -75,6 +91,7 @@ func emulationCandidates(for family: PadFamily) -> [String] {
     case .dualSense: ["ps5", "ps4"]
     case .dualShock4: ["ps4", "ps5"]
     case .xbox: ["xbox360", "xboxone"]
+    case .nintendo: ["switchpro"]
     case .other: []
     }
 }

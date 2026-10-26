@@ -38,9 +38,13 @@ protocol-1 satellite; see [Protocol](#protocol).
   Nintendo pad you pick or the one that fits it, with rumble and the light
   bar coming back. The first controller bound to a host starts the app you
   picked for it, or the first the host lists; no video or audio is received.
-- Forwards buttons (Guide included), sticks and triggers from every
-  GameController-framework pad, and keeps forwarding them while another app
-  is in front, plus motion (gyro and accelerometer) and the touchpad from DualSense
+- Forwards buttons (Guide included), sticks and triggers from every pad
+  GameController vends, including the ones it vends without the extended
+  profile, such as the Nintendo Switch Online N64 and SNES pads (the N64's C
+  buttons drive the right stick, Z and ZR the triggers, as on Android), and
+  keeps forwarding them while another app is in front. A game device macOS
+  does not hand to GameController is listed under Other input devices in
+  Diagnostics with its hardware ID and connection. Plus motion (gyro and accelerometer) and the touchpad from DualSense
   and DualShock 4 pads, and the battery level; the touchpad reaches the host
   as the pad's own or, picked per controller, as the host's mouse.
 - Plays rumble and sets the light bar as the host game asks, each gated by
@@ -108,7 +112,8 @@ row, in [`Tests/PARITY.md`](Tests/PARITY.md).
 
 - macOS 13 (Ventura) or newer to run.
 - Xcode 26 (the Swift 6.2 toolchain) to build; CI builds on `macos-26`.
-- A compatible gamepad (Xbox, PlayStation or any MFi controller). Its input
+- A compatible gamepad (Xbox, PlayStation, Nintendo Switch Pro, Joy-Con, the
+  Switch Online N64 and SNES pads, or any MFi controller). Its input
   keeps flowing when another app is in front; macOS 15.4 broke that for every
   app and macOS 15.5 fixed it.
 - A Satellite server reachable on your LAN.

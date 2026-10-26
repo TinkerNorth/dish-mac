@@ -46,7 +46,7 @@ private let optionalButtons: [(KeyPath<GCExtendedGamepad, GCControllerButtonInpu
 @MainActor
 final class GameControllerInput: ObservableObject {
 
-    private static let log = Logger(subsystem: "com.tinkernorth.dish", category: "GC")
+    static let log = Logger(subsystem: "com.tinkernorth.dish", category: "GC")
 
     /// One connected controller.
     struct Slot: Identifiable, Hashable {
@@ -147,7 +147,15 @@ final class GameControllerInput: ObservableObject {
     /// pad its dead zones (`observeDeadzones`), before its first report.
     private func attach(_ controller: GCController) {
         Self.monitorBackgroundEvents()
-        guard let pad = controller.extendedGamepad else { return }
+        if let pad = controller.extendedGamepad {
+            attachExtended(controller, pad: pad)
+        } else {
+            attachByProfile(controller)
+        }
+    }
+
+    /// A pad with the extended profile is read through its named inputs.
+    private func attachExtended(_ controller: GCController, pad: GCExtendedGamepad) {
         let id = slotId(for: controller)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
@@ -173,7 +181,7 @@ final class GameControllerInput: ObservableObject {
     /// The launch sweep and the connect notification can both fire for one
     /// pad; the same object keeps its id so a re-attach never reads as a
     /// second identical pad.
-    private func slotId(for controller: GCController) -> String {
+    func slotId(for controller: GCController) -> String {
         let id = controllerIds[ObjectIdentifier(controller)] ?? stableId(for: controller)
         controllerIds[ObjectIdentifier(controller)] = id
         controllersById[id] = controller
@@ -196,18 +204,20 @@ final class GameControllerInput: ObservableObject {
         )
     }
 
-    /// The pad's family from the framework's product category; anything
-    /// the framework does not name is a generic pad.
+    /// The pad's family from the framework's product category; a category
+    /// the framework exports no constant for is read by its words.
     static func family(of controller: GCController) -> PadFamily {
         switch controller.productCategory {
         case GCProductCategoryDualSense: .dualSense
         case GCProductCategoryDualShock4: .dualShock4
         case GCProductCategoryXboxOne: .xbox
-        default: .other
+        default: namedPadFamily(productCategory: controller.productCategory, vendorName: controller.vendorName)
         }
     }
 
-    private func recordSlot(id: String, controller: GCController, capabilities: ControllerCapabilities, family: PadFamily) {
+    /// The DEVCAPS line names everything the framework says of the pad, so
+    /// a pad nobody here has held can be read from a log.
+    func recordSlot(id: String, controller: GCController, capabilities: ControllerCapabilities, family: PadFamily) {
         let name = controller.vendorName ?? controller.productCategory
         if let index = slots.firstIndex(where: { $0.id == id }) {
             slots[index].capabilities = capabilities
@@ -215,12 +225,16 @@ final class GameControllerInput: ObservableObject {
         } else {
             slots.append(Slot(id: id, name: name, capabilities: capabilities, family: family))
         }
+        let extended = controller.extendedGamepad == nil ? "no" : "yes"
+        let profile = Self.profileCensus(controller.physicalInputProfile)
         Self.log.info("""
         DEVCAPS id=\(id, privacy: .public) name=\(name, privacy: .public) \
-        category=\(controller.productCategory, privacy: .public) \
-        extendedGamepad=yes motion=\(capabilities.hasMotion) touchpad=\(capabilities.hasTouchpad) \
+        productCategory=\(controller.productCategory, privacy: .public) \
+        vendorName=\(controller.vendorName ?? "none", privacy: .public) family=\(String(describing: family), privacy: .public) \
+        extendedGamepad=\(extended, privacy: .public) motion=\(capabilities.hasMotion) touchpad=\(capabilities.hasTouchpad) \
         rumble=\(capabilities.hasRumble) lightbar=\(capabilities.hasLightbar) battery=\(capabilities.hasBattery) \
-        triggerEffects=\(capabilities.hasTriggerEffects) playerLeds=\(capabilities.hasPlayerLeds)
+        triggerEffects=\(capabilities.hasTriggerEffects) playerLeds=\(capabilities.hasPlayerLeds) \
+        \(profile, privacy: .public)
         """)
     }
 
@@ -237,6 +251,7 @@ final class GameControllerInput: ObservableObject {
     private func detach(_ controller: GCController) {
         guard let id = controllerIds.removeValue(forKey: ObjectIdentifier(controller)) else { return }
         controller.extendedGamepad?.valueChangedHandler = nil
+        controller.physicalInputProfile.valueDidChangeHandler = nil
         controller.motion?.valueChangedHandler = nil
         if let pad = controller.extendedGamepad, let touchpad = Self.touchpadInputs(pad) {
             touchpad.primary.valueChangedHandler = nil

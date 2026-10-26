@@ -62,6 +62,7 @@ final class SlotMappersTests: XCTestCase {
         XCTAssertEqual(padFamilyName(.dualSense), "DualSense")
         XCTAssertEqual(padFamilyName(.dualShock4), "DualShock 4")
         XCTAssertEqual(padFamilyName(.xbox), "Xbox")
+        XCTAssertEqual(padFamilyName(.nintendo), "Nintendo")
         XCTAssertEqual(padFamilyName(.other), "GameController")
     }
 
