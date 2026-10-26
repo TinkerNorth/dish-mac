@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import XCTest
 @testable import DishEngine
 
@@ -124,42 +125,21 @@ final class PairingClientClassifyTests: XCTestCase {
         XCTAssertEqual(PairingClient.classify(r), .success(sharedKeyHex: String(repeating: "ab", count: 32)))
     }
 
-    // MARK: - Path-B status poll classification (ports dish-android PairingApproval)
+    // MARK: - Path-B status poll, as the reducer reads it
 
-    private func status(_ status: String, key: String? = nil) -> PairStatusResponse {
-        var r = PairStatusResponse()
-        r.ok = status == "approved"
-        r.status = status
-        r.sharedKey = key
-        r.reachable = true
-        return r
+    func testAStatusReplyCarriesItsWordAndKeyToTheReducer() {
+        var response = PairStatusResponse()
+        response.status = "approved"
+        response.sharedKey = String(repeating: "ab", count: 32)
+        response.reachable = true
+        let reply = PairingClient.approvalReply(response)
+        XCTAssertEqual(reply, ApprovalReply(reachable: true, status: "approved", sharedKey: String(repeating: "ab", count: 32)))
     }
 
-    func testApprovedWithFullHexKeyIsApproved() {
-        let key = String(repeating: "ab", count: 32)
-        XCTAssertEqual(
-            PairingClient.classifyStatus(status("approved", key: key)),
-            .approved(sharedKeyHex: key)
-        )
-    }
-
-    func testApprovedWithoutUsableKeyIsDeclined() {
-        // Approved-but-malformed must never be mistaken for a usable key.
-        XCTAssertEqual(PairingClient.classifyStatus(status("approved")), .declined)
-        XCTAssertEqual(PairingClient.classifyStatus(status("approved", key: "abcd")), .declined)
-        let nonHex = String(repeating: "zz", count: 32)
-        XCTAssertEqual(PairingClient.classifyStatus(status("approved", key: nonHex)), .declined)
-    }
-
-    func testPendingKeepsPolling() {
-        XCTAssertEqual(PairingClient.classifyStatus(status("pending")), .pending)
-    }
-
-    func testDeniedNoneAndUnknownStopPolling() {
-        XCTAssertEqual(PairingClient.classifyStatus(status("denied")), .declined)
-        XCTAssertEqual(PairingClient.classifyStatus(status("none")), .declined)
-        XCTAssertEqual(PairingClient.classifyStatus(status("")), .declined)
-        XCTAssertEqual(PairingClient.classifyStatus(status("future-state")), .declined)
+    func testAnUnreadableStatusReplyIsUnreachable() {
+        let reply = PairingClient.approvalReply(PairStatusResponse())
+        XCTAssertFalse(reply.reachable)
+        XCTAssertEqual(classifyApproval(reply, sawPending: true), .unreachable)
     }
 
     // MARK: - Client PIN shape

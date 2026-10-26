@@ -19,36 +19,8 @@ extension L10n {
         catalog.text("Bind")
     }
 
-    var noConnectionsAddOne: String {
-        catalog.text("No connections — add one from Manage")
-    }
-
     var unbound: String {
         catalog.text("unbound")
-    }
-
-    func gamepadSubtitle(_ binding: String) -> String {
-        catalog.format("Gamepad • %@", binding)
-    }
-
-    func boundTo(_ label: String) -> String {
-        catalog.format("→ %@", label)
-    }
-
-    func boundUnsteady(_ label: String) -> String {
-        catalog.format("→ %@ (unsteady)", label)
-    }
-
-    func boundConnecting(_ label: String) -> String {
-        catalog.format("→ %@ (connecting…)", label)
-    }
-
-    func boundReady(_ label: String) -> String {
-        catalog.format("→ %@ (ready)", label)
-    }
-
-    func boundOffline(_ label: String) -> String {
-        catalog.format("→ %@ (offline)", label)
     }
 }
 

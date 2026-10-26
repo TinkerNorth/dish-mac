@@ -87,7 +87,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         // The first heartbeat fires immediately on session start.
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "uplink heartbeat must decrypt server-side")
 
-        conn.sendReport(GamepadReport(buttons: 0x1000, lt: 9, rt: 0, lx: 5, ly: -5, rx: 0, ry: 0))
+        conn.sendReport(GamepadReport(buttons: 0x1000, lt: 9, rt: 0, lx: 5, ly: -5, rx: 0, ry: 0), controllerIndex: 0)
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
         guard case let .input(ctrlIdx, report) = frame.detail else {
             return XCTFail("input frame must parse as .input, got \(frame.detail)")
@@ -106,7 +106,8 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
                 finger1: TouchpadFinger(active: false, id: 0, x: 0, y: 0),
                 buttonPressed: false
             ),
-            eventTimeMs: 0x1234_5678
+            eventTimeMs: 0x1234_5678,
+            controllerIndex: 0
         )
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))
         guard case let .pointer(decoded) = frame.detail else {
@@ -283,7 +284,7 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
             0
         )
 
-        conn.detachSlot()
+        conn.detachSlot("slot-a")
         let removed = await waitUntil { self.satellite.appliedControllers.isEmpty }
         XCTAssertTrue(removed, "live detach must DELETE the slot; the session lives on")
         XCTAssertEqual(manager.get(server.id)?.state, .live)

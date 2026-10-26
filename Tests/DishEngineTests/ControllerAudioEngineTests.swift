@@ -22,6 +22,7 @@ final class ControllerAudioEngineTests: XCTestCase {
         engine = ControllerAudioEngine(ports: ports)
         let server = DiscoveredServer(name: "Desk", ip: "10.0.0.1", udpPort: 9876, pairPort: 9443, httpPort: 9443, machineId: "desk")
         connection = WifiConnection(id: "desk", server: server)
+        connection.attachSlot("slot", controllerType: 0, capabilities: .none)
     }
 
     private var dualSense: PadAudioFunction {
@@ -53,7 +54,7 @@ final class ControllerAudioEngineTests: XCTestCase {
     }
 
     private func binding(_ facts: AudioFacts) -> AudioBinding {
-        AudioBinding(slotId: "slot", connection: connection, route: dualSense, facts: facts)
+        AudioBinding(slotId: "slot", connection: connection, controllerIndex: 0, route: dualSense, facts: facts)
     }
 
     private func tone(channels: Int) -> [Float] {
@@ -117,6 +118,25 @@ final class ControllerAudioEngineTests: XCTestCase {
         XCTAssertGreaterThan(rms(second, stride: 4, offset: 3), 0.05, "and channel 4")
     }
 
+    func testTwoPadsOnOneSatelliteEachHearTheirOwnIndex() async throws {
+        let index = try XCTUnwrap(connection.attachSlot("second", controllerType: 0, capabilities: .none))
+        XCTAssertEqual(index, 1)
+        let second = AudioBinding(slotId: "second", connection: connection, controllerIndex: index, route: dualSense, facts: facts())
+        engine.apply([binding(facts()), second])
+        let speaker = try encodedTone(channels: 2, bitrate: AudioWire.speakerBitrate)
+        for seq in UInt16(0) ..< 3 {
+            connection.returnPaths.speakerAudio?(AudioFrame(controllerIndex: 1, seq: seq, opus: speaker))
+        }
+        let played = await waitUntil { self.engine.counters(for: "second")?.speakerPlayed == 3 }
+        XCTAssertTrue(played, "index 1's lane plays on the pad holding index 1")
+        XCTAssertEqual(engine.counters(for: "slot")?.speakerPlayed, 0, "the pad on index 0 hears none of it")
+
+        engine.apply([binding(facts())])
+        connection.returnPaths.speakerAudio?(AudioFrame(controllerIndex: 1, seq: 3, opus: speaker))
+        try await Task.sleep(nanoseconds: 100_000_000)
+        XCTAssertEqual(engine.counters(for: "slot")?.speakerPlayed, 0, "a pad that let go leaves its index silent")
+    }
+
     func testTheRingCushionsTwoWindowsBeforePlaying() async throws {
         engine.apply([binding(facts())])
         let output = try XCTUnwrap(ports.outputs.first)
@@ -161,14 +181,14 @@ final class ControllerAudioEngineTests: XCTestCase {
         let replayed = await waitUntil(timeout: 0.3) { self.engine.counters(for: "slot")?.speakerPlayed == 6 }
         XCTAssertFalse(replayed, "the same numbers again are late behind the playhead")
 
-        connection.markSlotApplied()
+        connection.markSlotApplied("slot")
         stream(connection)
         let pluggedAgain = await waitUntil { self.engine.counters(for: "slot")?.speakerPlayed == 6 }
         XCTAssertTrue(pluggedAgain, "plugged again: the lanes start over")
 
         let server = DiscoveredServer(name: "Den", ip: "10.0.0.2", udpPort: 9876, pairPort: 9443, httpPort: 9443, machineId: "den")
         let other = WifiConnection(id: "den", server: server)
-        engine.apply([AudioBinding(slotId: "slot", connection: other, route: dualSense, facts: facts())])
+        engine.apply([AudioBinding(slotId: "slot", connection: other, controllerIndex: 0, route: dualSense, facts: facts())])
         stream(other)
         let newSession = await waitUntil { self.engine.counters(for: "slot")?.speakerPlayed == 9 }
         XCTAssertTrue(newSession, "a new session is a new pad")
@@ -243,7 +263,7 @@ final class ControllerAudioEngineTests: XCTestCase {
     }
 
     func testTheToneNeedsASpeakerRoute() {
-        engine.apply([AudioBinding(slotId: "slot", connection: connection, route: nil, facts: facts())])
+        engine.apply([AudioBinding(slotId: "slot", connection: connection, controllerIndex: 0, route: nil, facts: facts())])
         XCTAssertFalse(engine.playTone(for: "slot"))
         XCTAssertFalse(engine.playTone(for: "nobody"))
     }
@@ -271,7 +291,7 @@ final class ControllerAudioEngineTests: XCTestCase {
         refused.micPermitted = false
         engine.apply([binding(refused)])
         XCTAssertFalse(engine.startMicMeter(for: "slot"))
-        engine.apply([AudioBinding(slotId: "slot", connection: connection, route: nil, facts: facts())])
+        engine.apply([AudioBinding(slotId: "slot", connection: connection, controllerIndex: 0, route: nil, facts: facts())])
         XCTAssertFalse(engine.startMicMeter(for: "slot"))
         engine.stopMicMeter(for: "slot")
         XCTAssertEqual(engine.state["slot"]?.micMeter, nil)

@@ -25,7 +25,13 @@ package final class AppModel: ObservableObject {
     package let updates: UpdateChecker
     /// The per-controller switches beneath the global ones.
     package let slotPreferences: SlotPreferenceStore
-    /// What the Diagnostics window reads, ticking while it is open.
+    /// Each pad's dead zones, handed to the processor as the pad attaches.
+    package let deadzonePreferences: DeadzonePreferenceStore
+    /// Events, sends and each pad's rates, ticking while Home or Controllers shows.
+    package let telemetry = TelemetrySource()
+    /// The one binding apply's ears and clock.
+    let bindingWatch = BindingApplyWatch()
+    /// What the Diagnostics page reads, ticking while it shows.
     package let diagnostics: DiagnosticsSource
     /// The flight recorder's lines.
     package let diagnosticsLog = DiagnosticsLogStore()
@@ -33,7 +39,7 @@ package final class AppModel: ObservableObject {
     package let crashLog: CrashLog
     /// Controller audio: the routes, the mutes, the permission, the engine.
     let audio: AudioPipeline
-    /// The input inspector, armed on one controller while its sheet is open.
+    /// The input inspector, armed on one controller while its page shows.
     package let inspector: InputInspector
     /// The Share crash reports switch; the uploader behind it is the app's.
     package let crashReporting: CrashReportingController
@@ -42,10 +48,10 @@ package final class AppModel: ObservableObject {
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
-    /// The satellite that asked for a PIN; the app presents the sheet.
-    @Published package var pairingTarget: DiscoveredServer?
-    /// The Moonlight host that minted a PIN for the user to type into it; the app presents the sheet.
-    @Published package var moonlightPin: MoonlightPinPrompt?
+    /// The satellite whose row shows the pairing card.
+    @Published package internal(set) var pairingTarget: DiscoveredServer?
+    /// The Moonlight host that minted a PIN for the user to type into it; its row shows the card.
+    @Published package internal(set) var moonlightPin: MoonlightPinPrompt?
     /// The most recent failure, until the app clears it.
     @Published package internal(set) var lastFailure: ConnectionFailure?
     /// Every failure as it happens, for a banner.
@@ -54,23 +60,28 @@ package final class AppModel: ObservableObject {
     @Published package private(set) var micIndicator = MicIndicatorState.hidden
     /// Whether the system lets Dish capture a microphone.
     @Published package private(set) var micPermitted = true
+    /// What the shell shows beyond the slot list: the keep-awake reach, the
+    /// update check, and whether a crash report waits.
+    @Published package internal(set) var shellFacts = ShellFacts()
 
     /// Thread-safe mirror of `settings` for the callback threads.
     private let gate = ForwardingGate()
-    private let routing: InputRouting
+    let routing = InputRouting()
     private let returnPaths: ReturnPathRouter
     /// A host's rumble and lamp onto the pad bound to the number it names.
     let moonlightFeedback: MoonlightFeedbackRouter
     /// What the bindings last asked of the hosts, so an unchanged desire converges nothing.
     var lastDesired: [String: [MoonlightPadRequest]] = [:]
     /// Bound slots whose connection streams.
-    private let streamingCount: Composer<Int>
+    let streamingCount: Composer<Int>
     /// Whether a pad was used inside the keep-awake window.
     let activity: ControllerActivitySource
     /// How far the machine is held awake, from the count, the activity and
     /// the preferences; the wake controller follows it.
-    private let wakeState: Composer<WakeState>
+    let wakeState: Composer<WakeState>
     private let recorder: DiagnosticsRecorder
+    /// Whether the lid closed on a stream, across one sleep.
+    let lidWatch: LidWatch
     var cancellables = Set<AnyCancellable>()
 
     /// The app's entry point: production stores, the host's lifecycle
@@ -120,9 +131,13 @@ package final class AppModel: ObservableObject {
         crashLog: CrashLog = CrashLog(url: URL(fileURLWithPath: "/dev/null")),
         audioDependencies: AudioDependencies? = nil,
         crashUploader: CrashUploader? = nil,
-        moonlight: MoonlightConnectionManager? = nil
+        moonlight: MoonlightConnectionManager? = nil,
+        clamshell: ClamshellStateReading? = nil,
+        hidCensus: HidCensusReading? = nil,
+        discovery: WifiConnectionManager.DiscoveryPaths = .live,
+        approvalPolling: WifiConnectionManager.ApprovalPolling = .standard
     ) {
-        let wifi = WifiConnectionManager(store: store)
+        let wifi = WifiConnectionManager(store: store, approvalPolling: approvalPolling, discovery: discovery)
         let moonlight = moonlight ?? Self.defaultMoonlight(defaults: defaults, store: store)
         let hub = ConnectionHub(wifi: wifi, store: store, moonlight: moonlight)
         let input = GameControllerInput()
@@ -138,6 +153,7 @@ package final class AppModel: ObservableObject {
         keepAwake = prefs.keepAwake
         updatePreferences = prefs.updates
         slotPreferences = prefs.slots
+        deadzonePreferences = prefs.deadzones
         updates = Self.updateChecker(preferences: prefs.updates, manifestGateway: manifestGateway, appVersion: appVersion)
         let pipeline = WakePipeline(
             hub: hub,
@@ -149,12 +165,10 @@ package final class AppModel: ObservableObject {
         activity = pipeline.activity
         wakeState = pipeline.wakeState
         wake = pipeline.wake
-        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight)
+        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight, census: hidCensus ?? IOKitHidCensus())
         recorder = DiagnosticsRecorder(store: diagnosticsLog)
         self.crashLog = crashLog
-        let routing = InputRouting()
-        self.routing = routing
-        returnPaths = ReturnPathRouter(input: input, gate: gate, table: routing.table)
+        returnPaths = ReturnPathRouter(actuators: .live(input), gate: gate, table: routing.table)
         moonlightFeedback = MoonlightFeedbackRouter(actuators: .live(input), gate: gate, table: routing.table)
         audio = AudioPipeline(
             hub: hub,
@@ -165,6 +179,7 @@ package final class AppModel: ObservableObject {
         )
         inspector = InputInspector(processor: input.processor)
         crashReporting = CrashReportingController(defaults: defaults, uploader: crashUploader)
+        lidWatch = LidWatch(clamshell: clamshell ?? IOKitClamshellState())
         wireObservers(pipeline: pipeline, lifecycle: lifecycle)
     }
 
@@ -176,6 +191,7 @@ package final class AppModel: ObservableObject {
         gate.update(settings.flags)
         routing.install(on: input.processor)
         observeSlots()
+        observeDeadzones()
         observeRoutingTable()
         observeMoonlight()
         observeDiagnostics()
@@ -186,6 +202,8 @@ package final class AppModel: ObservableObject {
         observeReturnPathWiring()
         observeSettings()
         observeEvents()
+        observePairing()
+        observeShellFacts()
         installLifecycleHandling(lifecycle)
         wifi.autoReconnectAll()
     }
@@ -257,6 +275,7 @@ package final class AppModel: ObservableObject {
     private func observeDiagnostics() {
         diagnostics.useSlots { [weak self] in self?.slots ?? [] }
         diagnostics.useAudio { [weak self] slotId in self?.audio.padDiagnostics(slotId) }
+        diagnostics.useBackgroundInput { [weak self] in self?.input.monitorsBackgroundEvents ?? false }
         hub.$connections
             .sink { [weak self] rows in self?.recorder.observeLinks(rows) }
             .store(in: &cancellables)
@@ -288,17 +307,11 @@ package final class AppModel: ObservableObject {
         preferences: [String: SlotPreferences]
     ) {
         let global = settings.flags
-        let flags = connectionFlags(bindings: bindings, connectionIds: pool.keys, global: global, preferences: preferences)
-        routing.table.set(routeSnapshot(
-            bindings: bindings,
-            pool: pool,
-            flags: flags,
-            global: global,
-            moonlight: hosts,
-            preferences: preferences
-        ))
-        for (id, conn) in pool {
-            conn.setForwardingFlags(flags[id] ?? global)
+        let flags = slotFlags(bindings: bindings, global: global, preferences: preferences)
+        routing.table.set(routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global, moonlight: hosts))
+        for conn in pool.values {
+            conn.setForwardingFlags(global)
+            conn.setSlotFlags(flags)
         }
     }
 
@@ -330,49 +343,29 @@ package final class AppModel: ObservableObject {
 
     private func handle(_ event: ConnectionEvent) {
         switch event {
-        case let .pairingRequired(server):
-            pairingTarget = server
-        case let .failure(failure):
-            lastFailure = failure
-            failures.send(failure)
+        case let .pairingRequired(server): beginPairing(server)
+        case let .failure(failure): report(failure)
+        case let .pairingFailed(serverId, failure): reportPairingFailure(serverId: serverId, failure)
         }
     }
 
-    /// Focus loss and sleep both release every held input, because the
-    /// controller callbacks stop reaching this process and a held button
-    /// would otherwise stay pressed on the virtual pad until heartbeat death.
-    /// Wake reconnects resting rows at once.
-    private func installLifecycleHandling(_ lifecycle: LifecycleSignals) {
-        lifecycle.focusLost
-            .sink { [weak self] in self?.releaseAllInputs() }
-            .store(in: &cancellables)
-        lifecycle.willSleep
-            .sink { [weak self] in self?.releaseAllInputs() }
-            .store(in: &cancellables)
-        lifecycle.didWake
-            .sink { [weak self] in self?.wifi.resumeAfterWake() }
-            .store(in: &cancellables)
-    }
-
-    private func releaseAllInputs() {
-        input.processor.zeroAndSendAll()
+    func report(_ failure: ConnectionFailure) {
+        lastFailure = failure
+        failures.send(failure)
     }
 
     // MARK: - Slots
 
-    /// Rebuild the slot list and evict bindings whose controller is gone.
-    /// The catalogs and probes are read here; the rest arrived with the
-    /// emission.
+    /// Rebuild the slot list and release bindings whose controller is gone;
+    /// their memory stays for the pad's return. The catalogs and probes are
+    /// read here; the rest arrived with the emission.
     private func rebuildSlots(
         gcSlots: [GameControllerInput.Slot],
         connections: [ConnectionSummary],
         bindings: [String: String],
         facts: SlotFactsSnapshot
     ) {
-        let known = Set(gcSlots.map(\.id))
-        for (slotId, _) in bindings where !known.contains(slotId) {
-            hub.unbind(slotId: slotId)
-        }
+        hub.keepPresent(Set(gcSlots.map(\.id)))
         var facts = facts
         facts.catalogs = wifi.catalogs
         facts.probes = wifi.capabilities

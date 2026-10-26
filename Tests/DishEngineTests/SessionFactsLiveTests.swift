@@ -90,7 +90,7 @@ final class SessionFactsLiveTests: XCTestCase {
         XCTAssertNil(facts.backendAvailable)
         XCTAssertEqual(facts.missedAcks, 0)
         XCTAssertEqual(facts.latency.samples, 0)
-        XCTAssertNil(slotWireFacts(of: conn), "no descriptor without a bound slot")
+        XCTAssertNil(slotWireFacts(of: conn, slotId: "slot-a"), "no descriptor without a bound slot")
         XCTAssertEqual(HostSessionFacts.resting(id: "x").offeredProtocol, ProtocolConstants.protocolVersion)
     }
 
@@ -113,7 +113,7 @@ final class SessionFactsLiveTests: XCTestCase {
 
     func testTheBoundSlotsWireFactsReadTheDescriptorAndTheAck() async throws {
         let conn = try await bindAndGoLive()
-        let wire = try XCTUnwrap(slotWireFacts(of: conn))
+        let wire = try XCTUnwrap(slotWireFacts(of: conn, slotId: "slot-a"))
         XCTAssertEqual(wire.controllerIndex, 0)
         XCTAssertEqual(wire.type, 2, "the DualSense type from the catalog")
         XCTAssertEqual(advertisedCaps(wire.caps), [.analogTriggers, .rumble, .motion])

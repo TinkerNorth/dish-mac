@@ -180,3 +180,129 @@ package final class UpdatePreferenceStore: StateSource<UpdatePreferences> {
         defaults.set(Int(ms), forKey: Self.lastCheckKey)
     }
 }
+
+/// Each pad's dead zones under the desktops' keys: one `deadzone:<slotId>`
+/// entry per pad tuned, in their `{"s":…,"t":…}` shape. A pad never tuned
+/// reads the defaults, and a value that does not read is nothing stored.
+@MainActor
+package final class DeadzonePreferenceStore: StateSource<[String: DeadzoneSetting]> {
+    static let keyPrefix = "deadzone:"
+
+    private let defaults: UserDefaults
+
+    package init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        super.init(initial: Self.read(defaults))
+    }
+
+    package func zones(for slotId: String) -> DeadzoneSetting {
+        state[slotId] ?? .defaults
+    }
+
+    package func setZones(_ zones: DeadzoneSetting, for slotId: String) {
+        guard state[slotId] != zones else { return }
+        defaults.set(zones.storedJson, forKey: Self.keyPrefix + slotId)
+        updateState { var next = $0
+            next[slotId] = zones
+            return next
+        }
+    }
+
+    package func reset(_ slotId: String) {
+        defaults.removeObject(forKey: Self.keyPrefix + slotId)
+        updateState { var next = $0
+            next.removeValue(forKey: slotId)
+            return next
+        }
+    }
+
+    private static func read(_ defaults: UserDefaults) -> [String: DeadzoneSetting] {
+        let stored = defaults.dictionaryRepresentation().filter { $0.key.hasPrefix(keyPrefix) }
+        var all: [String: DeadzoneSetting] = [:]
+        for (key, value) in stored {
+            let slotId = String(key.dropFirst(keyPrefix.count))
+            all[slotId] = DeadzoneSetting(storedJson: value as? String)
+        }
+        return all
+    }
+}
+
+/// The first-run flags: whether the welcome was skipped or finished (the
+/// desktops' key), and whether the scan that raises macOS's Local Network
+/// prompt has run once after being explained (Android's key). Plain reads
+/// over the defaults, so the window and the engine read one truth.
+package struct OnboardingPreferenceStore {
+    static let welcomeCompletedKey = "onboarding_welcome_completed"
+    static let localNetworkPrimedKey = "local_network_primed"
+
+    private let defaults: UserDefaults
+
+    package init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    package var welcomeCompleted: Bool {
+        defaults.bool(forKey: Self.welcomeCompletedKey)
+    }
+
+    package var localNetworkPrimed: Bool {
+        defaults.bool(forKey: Self.localNetworkPrimedKey)
+    }
+
+    package func markWelcomeComplete() {
+        defaults.set(true, forKey: Self.welcomeCompletedKey)
+    }
+
+    package func markLocalNetworkPrimed() {
+        defaults.set(true, forKey: Self.localNetworkPrimedKey)
+    }
+
+    /// The welcome comes back on the next launch, as the siblings' tests reset it.
+    package func resetWelcome() {
+        defaults.removeObject(forKey: Self.welcomeCompletedKey)
+    }
+}
+
+/// A pad's standing binding to a satellite, as kept across restarts: the
+/// satellite's remembered id (its machine id) and the type the user picked,
+/// nil for the pad's own. The pad's switches live under their own keys.
+struct RememberedSatelliteBinding: Equatable, Codable {
+    var slotId: String
+    var satelliteId: String
+    var emulatedType: Int?
+}
+
+/// The satellite bindings under `wifi_binding_list`, one record per pad.
+/// Plain reads over the defaults, so every reader sees one truth; a value
+/// that does not read is nothing stored.
+struct BindingMemoryStore {
+    static let bindingsKey = "wifi_binding_list"
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    func bindings() -> [RememberedSatelliteBinding] {
+        guard let raw = defaults.data(forKey: Self.bindingsKey) else { return [] }
+        return (try? JSONDecoder().decode([RememberedSatelliteBinding].self, from: raw)) ?? []
+    }
+
+    /// The pad's record, replacing whatever it had.
+    func remember(_ binding: RememberedSatelliteBinding) {
+        write(bindings().filter { $0.slotId != binding.slotId } + [binding])
+    }
+
+    func forget(slotId: String) {
+        write(bindings().filter { $0.slotId != slotId })
+    }
+
+    func forgetSatellite(_ satelliteId: String) {
+        write(bindings().filter { $0.satelliteId != satelliteId })
+    }
+
+    private func write(_ bindings: [RememberedSatelliteBinding]) {
+        defaults.set(try? JSONEncoder().encode(bindings), forKey: Self.bindingsKey)
+    }
+}

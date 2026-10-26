@@ -20,6 +20,13 @@ final class AtomicCounter: @unchecked Sendable {
         return current
     }
 
+    /// Advance by one where nothing reads the new value: a tally.
+    func increment() {
+        os_unfair_lock_lock(&lock)
+        value &+= 1
+        os_unfair_lock_unlock(&lock)
+    }
+
     /// Current value without advancing — the rekey poll (`needsRekey`)
     /// compares this against the contract's re-PUT threshold.
     func current() -> UInt64 {

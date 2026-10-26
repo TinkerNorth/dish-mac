@@ -60,7 +60,7 @@ final class SlotSwitchesMappersTests: XCTestCase {
     func testTheTableFoldsTheControllersOwnSwitches() throws {
         var bound = slot(SlotPreferences(motion: false))
         bound.boundConnectionId = "sat"
-        bound.boundStatus = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connected, boundSlotId: "pad")
+        bound.boundStatus = ConnectionSummary(id: "sat", name: "Desk", live: .connected, boundSlotId: "pad")
         bound.typeFeatures = TypeFeatureFacts(
             motion: true,
             touchpad: true,
@@ -156,18 +156,6 @@ final class SlotSwitchesMappersTests: XCTestCase {
         XCTAssertNil(micStatusChip(slot), "a silent plan arms nothing")
     }
 
-    func testTheHeaderChipFollowsTheAppWideWord() throws {
-        XCTAssertNil(micIndicatorChip(.hidden))
-        let live = try XCTUnwrap(micIndicatorChip(.live))
-        XCTAssertEqual(live.label, "Mic live")
-        XCTAssertEqual(live.help, "Mute mic")
-        XCTAssertTrue(live.on)
-        let muted = try XCTUnwrap(micIndicatorChip(.muted))
-        XCTAssertEqual(muted.label, "Mic muted")
-        XCTAssertEqual(muted.help, "Unmute mic")
-        XCTAssertFalse(muted.on)
-    }
-
     func testTheGlobalSwitchesCoverOnlyTheThreeForwardedFeatures() {
         let allOff = ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false, mic: false, speaker: false)
         XCTAssertFalse(globallyAllowed(.motion, allOff))
@@ -211,21 +199,5 @@ final class SlotSwitchesMappersTests: XCTestCase {
         XCTAssertEqual(touchpadPickOptions(bound).map(\.enabled), [true, true, true])
         bound.hostProbe = probed(mouseControl: false)
         XCTAssertEqual(touchpadPickOptions(bound).map(\.enabled), [true, true, false])
-    }
-
-    func testTheDetailSaysWhereTheTouchpadGoes() {
-        var bound = slot()
-        bound.hostProbe = probed(mouseControl: false)
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "Forwards this pad’s touchpad to the game as a touchpad.")
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags(touchpad: false)), "Switched off in Settings.")
-        bound.preferences.touchpad = .off
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "Touchpad routing is off for this binding.")
-        bound.preferences.touchpad = .mouse
-        XCTAssertEqual(touchpadPickDetail(bound, ForwardingFlags()), "The host doesn’t carry Mouse.")
-        bound.hostProbe = probed(mouseControl: true)
-        XCTAssertEqual(
-            touchpadPickDetail(bound, ForwardingFlags()),
-            "The touchpad moves the host’s mouse; the pad’s click is the left button."
-        )
     }
 }

@@ -131,7 +131,7 @@ final class ControllerAudioLiveTests: XCTestCase {
 
     func testMicFramesReachTheSatelliteWithOneSequenceAcrossAMute() async throws {
         let conn = try await bindAndGoLive()
-        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, route: dualSense, facts: facts())])
+        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, controllerIndex: 0, route: dualSense, facts: facts())])
         let input = try XCTUnwrap(audioPorts.inputs.first)
         for _ in 0 ..< 3 {
             input.push(tone())
@@ -141,12 +141,12 @@ final class ControllerAudioLiveTests: XCTestCase {
         XCTAssertEqual(satellite.micFrames.map(\.seq), [0, 1, 2])
         XCTAssertTrue(satellite.micFrames.allSatisfy { !$0.opus.isEmpty })
 
-        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, route: dualSense, facts: facts(muted: true))])
+        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, controllerIndex: 0, route: dualSense, facts: facts(muted: true))])
         input.push(tone())
         try await Task.sleep(nanoseconds: 300_000_000)
         XCTAssertEqual(satellite.micFrames.count, 3, "muted means zero packets on the wire")
 
-        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, route: dualSense, facts: facts())])
+        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, controllerIndex: 0, route: dualSense, facts: facts())])
         input.push(tone())
         let resumed = await waitUntil { self.satellite.micFrames.count == 4 }
         XCTAssertTrue(resumed)
@@ -155,7 +155,7 @@ final class ControllerAudioLiveTests: XCTestCase {
 
     func testTheSatellitesSpeakerFramesReachTheEngine() async throws {
         let conn = try await bindAndGoLive()
-        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, route: dualSense, facts: facts())])
+        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, controllerIndex: 0, route: dualSense, facts: facts())])
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "the reply path is learned from the first uplink frame")
         let encoder = try XCTUnwrap(OpusEncoder(channels: 2, bitrate: AudioWire.speakerBitrate))
         let packet = try XCTUnwrap(encoder
@@ -225,7 +225,7 @@ final class ControllerAudioLiveTests: XCTestCase {
     /// then rejects every full-size frame.
     func testAFrameAtTheDatagramCeilingArrivesWhole() async throws {
         let conn = try await bindAndGoLive()
-        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, route: dualSense, facts: facts())])
+        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, controllerIndex: 0, route: dualSense, facts: facts())])
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1))
         let largest = ProtocolConstants.udpMaxInnerPayloadBytes - AudioWire.headerBytes
         let packet = Data((0 ..< largest).map { UInt8(truncatingIfNeeded: $0) })

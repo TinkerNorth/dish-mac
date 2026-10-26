@@ -69,8 +69,8 @@ enum MoonlightDesire {
         return discovered || verified ? .ready : .saved
     }
 
-    /// A host's row: its name (its address when it has none), the address
-    /// with the protocol's name, the chip, and every slot bound to it.
+    /// A host's row: its name and address as data, the chip, and every slot
+    /// bound to it.
     static func summary(
         host: MoonlightHost,
         phase: MoonlightSessionPhase,
@@ -82,8 +82,8 @@ enum MoonlightDesire {
     ) -> ConnectionSummary {
         ConnectionSummary(
             id: host.id,
-            label: host.name.isEmpty ? host.address : host.name,
-            detail: "\(host.address) • Moonlight",
+            name: host.name,
+            address: host.address,
             live: linkState(phase: phase, paired: paired, verified: verified, discovered: discovered),
             boundSlotId: boundSlotIds.first,
             latencyMs: roundTripMs.map { Double($0) / 2 },

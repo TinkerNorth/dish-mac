@@ -6,15 +6,10 @@ import DishEngine
 import Foundation
 import SwiftUI
 
-// MARK: - The Connections sheet's two sections
+// MARK: - The Moonlight hosts page's rows
 
-/// The satellites' rows; the Moonlight hosts sit under their own header.
-func satelliteSummaries(_ connections: [ConnectionSummary]) -> [ConnectionSummary] {
-    connections.filter { $0.kind == .satellite }
-}
-
-/// A row of the Moonlight section: a host the records or the pool know, or
-/// one a scan found that they do not.
+/// A row of the Moonlight hosts page: a host the records or the pool know,
+/// or one a scan found that they do not.
 enum MoonlightRow: Equatable {
     case known(ConnectionSummary)
     case discovered(MoonlightHost)
@@ -39,23 +34,38 @@ func moonlightHostTitle(_ host: MoonlightHost) -> String {
     host.name.isEmpty ? host.address : host.name
 }
 
-/// The address line, numeric and untranslated, with the protocol's name.
-func moonlightHostDetail(_ host: MoonlightHost) -> String {
-    "\(host.address) • Moonlight"
+/// The trust word beside a host, never a liveness light: paired and seen,
+/// paired and out of sight, or not paired (the records hold no pairing, or
+/// the host refused the one they held).
+func moonlightTrustText(_ state: LinkState, words: L10n = .app) -> String {
+    switch moonlightTrust(state) {
+    case .paired: words.pairedTitle
+    case .remembered: words.remembered
+    case .notPaired: words.notPaired
+    }
 }
 
-func moonlightDiscoveredStatusText(words: L10n = .app) -> String {
-    words.foundVia(words.moonlightHost)
+/// Amber is the problem colour, never the resting one: a remembered host is
+/// one switched off, not a fault.
+func moonlightTrustColor(_ state: LinkState) -> Color {
+    switch moonlightTrust(state) {
+    case .paired: DishTheme.success
+    case .remembered, .notPaired: DishTheme.muted
+    }
 }
 
-/// The trust word beside a host: the records hold a pairing unless the chip
-/// says Needs pairing.
-func moonlightTrustText(_ summary: ConnectionSummary, words: L10n = .app) -> String {
-    summary.live == .stale ? words.notPaired : words.pairedTrust
+enum MoonlightTrust: Equatable {
+    case paired
+    case remembered
+    case notPaired
 }
 
-func moonlightTrustColor(_ summary: ConnectionSummary) -> Color {
-    summary.live == .stale ? DishTheme.muted : DishTheme.success
+func moonlightTrust(_ state: LinkState) -> MoonlightTrust {
+    switch state {
+    case .ready, .connecting, .connected, .unstable: .paired
+    case .saved: .remembered
+    case .found, .stale: .notPaired
+    }
 }
 
 /// How many controllers the host carries; nothing while none is bound.
@@ -64,17 +74,6 @@ func moonlightControllersText(_ summary: ConnectionSummary, words: L10n = .app) 
 }
 
 // MARK: - A host's actions and status
-
-/// What a host's row offers besides Forget.
-enum MoonlightRowAction: Equatable {
-    case pair
-    case rePair
-    case disconnect
-    case reconnect
-    case startSession
-    case retry
-    case quitApp
-}
 
 /// Pairing while trust is missing (again when the records held one), the
 /// session's way out of where it stands, and nothing while the bindings
@@ -109,7 +108,7 @@ func moonlightActionText(_ action: MoonlightRowAction, host: String, words: L10n
 /// The line under the chip: why the session is not up, when the chip alone
 /// does not say; nil while the chip says it all.
 func moonlightStatusLine(_ summary: ConnectionSummary, phase: MoonlightSessionPhase?, words: L10n = .app) -> String? {
-    let host = summary.label
+    let host = connectionTitle(summary)
     switch phase {
     case .failed(.notPaired): return words.notPairedYet
     case .failed(.trustLost): return words.noLongerRecognises(host)
@@ -150,7 +149,7 @@ func moonlightTypeName(_ type: UInt8, words: L10n = .app) -> String {
 
 /// Under the picker: what Auto sends for this pad, or what a pick asks of the host.
 func moonlightEmulateDetail(_ slot: ControllerSlot, words: L10n = .app) -> String {
-    guard let emulation = slot.emulation, let host = slot.boundStatus?.label else { return words.waitingOnTheType }
+    guard let emulation = slot.emulation, let host = slot.boundStatus.map(connectionTitle) else { return words.waitingOnTheType }
     if emulation.isOverride { return words.dishAsksHostToPlugIn(host) }
     let resolved = MoonlightPadRules.resolveType(
         picked: UInt8(truncatingIfNeeded: emulation.type),
@@ -180,7 +179,7 @@ struct MoonlightNotice: Equatable {
     let key: String
 }
 
-/// The PIN is a sheet, not a banner; every other event is worded here.
+/// The PIN is its row's card, not a banner; every other event is worded here.
 func moonlightNotice(for event: MoonlightConnectionEvent, words: L10n = .app) -> MoonlightNotice? {
     switch event {
     case .pairingPinReady:

@@ -40,8 +40,8 @@ final class DiscoveryScanTests: XCTestCase {
         return manager
     }
 
-    private func scanToTheEnd(_ manager: WifiConnectionManager) async {
-        manager.startDiscovery()
+    private func scanToTheEnd(_ manager: WifiConnectionManager, trigger: WifiConnectionManager.ScanTrigger = .user) async {
+        manager.startDiscovery(trigger: trigger)
         XCTAssertTrue(manager.isScanning)
         let settled = await waitUntil { !manager.isScanning }
         XCTAssertTrue(settled, "the scan never finished")
@@ -85,6 +85,23 @@ final class DiscoveryScanTests: XCTestCase {
         XCTAssertEqual(manager.discoveredServers, [])
         XCTAssertEqual(events, [.failure(.localNetworkDenied)])
         XCTAssertEqual(lan.scans, 1)
+    }
+
+    func testAScanMacOSRefusedLeavesTheRefusalForTheEmptyState() async {
+        let lan = ScriptedLAN([.init(broadcast: [], mdns: [], localNetworkDenied: true), .init(broadcast: [basement], mdns: [])])
+        let manager = makeManager(lan: lan)
+        await scanToTheEnd(manager)
+        XCTAssertTrue(manager.localNetworkDenied)
+        await scanToTheEnd(manager)
+        XCTAssertFalse(manager.localNetworkDenied, "the next open scan clears it")
+    }
+
+    func testAScanAPageRunsAsItOpensSaysNothingOfAnEmptyOrRefusedNetwork() async {
+        let lan = ScriptedLAN([.init(broadcast: [], mdns: [], localNetworkDenied: true)])
+        let manager = makeManager(lan: lan)
+        await scanToTheEnd(manager, trigger: .pageOpened)
+        XCTAssertEqual(events, [])
+        XCTAssertTrue(manager.localNetworkDenied, "the page's empty state says it instead")
     }
 
     func testARefusalIsSaidEvenWhenAServerWasHeard() async {

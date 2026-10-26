@@ -22,6 +22,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
         static let rightThumb: UInt16 = 0x0080
         static let leftShoulder: UInt16 = 0x0100
         static let rightShoulder: UInt16 = 0x0200
+        static let guide: UInt16 = 0x0400
         static let faceA: UInt16 = 0x1000
         static let faceB: UInt16 = 0x2000
         static let faceX: UInt16 = 0x4000
@@ -64,6 +65,8 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// When the last report left, on the uptime clock; the keep-awake window
     /// reads it.
     let lastInputMs = AtomicInt(0)
+    /// Each pad's reports and admitted motion samples, for the telemetry.
+    let tally = InputTally()
 
     private let reportSenderBox = LockedBox<ReportSender?>(nil)
     private let motionSenderBox = LockedBox<MotionSender?>(nil)
@@ -129,6 +132,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
         let filtered = applyDeadzones(state, zones)
         states[deviceId] = filtered
         lock.unlock()
+        tally.countReport(deviceId)
         lastInputMs.set(Int(uptimeMs()))
         reportTap?(deviceId, state, filtered)
         reportSender?(deviceId, filtered)
@@ -154,6 +158,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
         states.removeValue(forKey: deviceId)
         deadzones.removeValue(forKey: deviceId)
         lastMotionTimestampNs.removeValue(forKey: deviceId)
+        tally.forget(deviceId)
     }
 
     // MARK: - Motion
@@ -163,6 +168,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// pushes the deadline forward.
     func publishMotion(deviceId: DeviceId, sample: MotionSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         guard let deltaUs = admitMotion(deviceId: deviceId, nowNs: nowNs) else { return }
+        tally.countMotion(deviceId)
         motionTap?(deviceId, sample)
         motionSender?(deviceId, sample, deltaUs)
     }
@@ -199,18 +205,6 @@ final class GamepadInputProcessor: @unchecked Sendable {
 }
 
 // MARK: - Pure conversions
-
-/// Scale a -1...1 axis into a clamped 16-bit signed integer.
-@inline(__always)
-func scaleAxis(_ value: Float, max: Float) -> Int16 {
-    Int16(clamping: Int(value * max))
-}
-
-/// Scale a 0...1 trigger into a clamped 8-bit unsigned integer.
-@inline(__always)
-func scaleTrigger(_ value: Float) -> UInt8 {
-    UInt8(clamping: Int((value * 255.0).rounded()))
-}
 
 /// deg/s to the wire's int16 at ±2000 deg/s full scale, clamped.
 @inline(__always)

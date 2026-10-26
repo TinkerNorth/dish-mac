@@ -17,11 +17,13 @@ enum BrandIconKind {
     case dish
     case satellite
     case bluetooth
+    /// The rail's Controllers destination.
+    case pad
 }
 
-/// Lifecycle state for a connection row. The label vocabulary mirrors
-/// `LinkState` in [ConnectionsView.statusText]; the glyph for each state is
-/// chosen by [BrandIcon.body] below.
+/// Lifecycle state for a connection row, from its `LinkState` by
+/// `brandIconState(for:)`; the glyph for each state is chosen by
+/// [BrandIcon.body] below.
 enum BrandIconState {
     case `default`
     case connected
@@ -37,7 +39,7 @@ struct BrandIcon: View {
     var size: CGFloat = 28
     /// Override the canvas scale used to map the 64-unit SVG viewBox onto
     /// the rendered frame. Default is `size / 64`.
-    private var scale: CGFloat {
+    var scale: CGFloat {
         size / 64.0
     }
 
@@ -47,6 +49,7 @@ struct BrandIcon: View {
             case .dish: drawDish(in: &ctx)
             case .satellite: drawSatellite(in: &ctx)
             case .bluetooth: drawBluetooth(in: &ctx)
+            case .pad: drawPad(in: &ctx)
             }
         }
         .frame(width: size, height: size)
@@ -56,12 +59,12 @@ struct BrandIcon: View {
     // MARK: - Palette (the brand book's glyph colours, from the theme)
 
     /// The glyph fill, dimmed in the "off" state.
-    private var glyph: Color {
+    var glyph: Color {
         state == .off ? DishTheme.brandGlyphOff : DishTheme.brandGlyph
     }
 
     /// The white highlight, dimmed in the "off" state.
-    private var highlight: Color {
+    var highlight: Color {
         state == .off ? DishTheme.brandGlyphHighlightOff : DishTheme.brandGlyphHighlight
     }
 

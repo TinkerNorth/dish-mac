@@ -126,9 +126,7 @@ final class MouseModeLiveTests: XCTestCase {
 
     func testAPickTheHostCannotCarryDeclaresOffButStillAsksForTheMouse() async throws {
         let conn = try await bindAndGoLive(pick: .pad)
-        var facts = conn.touchpadFacts
-        facts.hostMouseControl = false
-        conn.setTouchpadFacts(facts)
+        conn.setHostMouseControl(false)
         manager.applyForwardingFlags(ForwardingFlags(touchpadPick: .mouse), to: server.id)
         let declared = await waitUntil { self.appliedTouchpadMode == "off" }
         XCTAssertTrue(declared, "a mouse pick without the host's word declares off, never the pad render")

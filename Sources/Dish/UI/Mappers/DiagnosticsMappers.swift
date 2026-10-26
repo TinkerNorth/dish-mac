@@ -4,6 +4,7 @@
 import DishCore
 import DishEngine
 import Foundation
+import SwiftUI
 
 /// One fact of a Diagnostics card: the key in the left column, the value
 /// beside it.
@@ -29,7 +30,7 @@ func hostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n =
 
 func satelliteHostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> [FactLine] {
     let facts = host.facts
-    let opening = [FactLine(key: words.address, value: host.summary.detail)]
+    let opening = [FactLine(key: words.address, value: connectionAddressLine(host.summary))]
         + (facts.compat == .unknown && !facts.live ? [] : [FactLine(key: words.protocolKey, value: protocolText(facts, words: words))])
     guard facts.live else { return opening + [FactLine(key: words.session, value: words.noSessionRightNow)] }
     return opening + [
@@ -118,7 +119,7 @@ func roundTripText(_ latency: LatencySummary, locale: Locale = .current, words: 
 func moonlightHostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> [FactLine] {
     let facts = host.moonlight ?? .resting(info: nil)
     var lines = [
-        FactLine(key: words.address, value: host.summary.detail),
+        FactLine(key: words.address, value: connectionAddressLine(host.summary)),
         FactLine(key: words.session, value: moonlightPhaseText(facts.phase, summary: host.summary, words: words))
     ]
     if let info = facts.info {
@@ -163,9 +164,16 @@ func moonlightPadText(_ pad: MoonlightPadFacts, words: L10n = .app) -> String {
 func padLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
     let slot = pad.slot
     let opening = [FactLine(key: words.connection, value: words.gameControllerFramework)]
+        + (pad.hardwareId.map { [FactLine(key: words.usbId, value: hardwareIdText($0))] } ?? [])
+        + [FactLine(key: words.backgroundInput, value: backgroundInputText(pad.backgroundInput, words: words))]
         + (slot.emulation.map { [FactLine(key: words.type, value: emulatedTypeName($0, words: words))] } ?? [])
         + (slot.battery.map { [FactLine(key: words.battery, value: batteryHelp($0, words: words))] } ?? [])
     return opening + bindingLines(pad, words: words) + audioLines(pad, words: words)
+}
+
+/// Whether the pad keeps reaching the host while another app is in front.
+func backgroundInputText(_ on: Bool, words: L10n = .app) -> String {
+    on ? words.on : words.off
 }
 
 /// The pad's own audio: where its route stands and, once the engine has a
@@ -219,7 +227,7 @@ func micLampText(_ state: MicLedState?, words: L10n = .app) -> String {
 /// host said back.
 func bindingLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
     guard let bound = pad.slot.boundStatus else { return [FactLine(key: words.binding, value: words.notBound)] }
-    let binding = FactLine(key: words.binding, value: "\(bound.label) · \(words.satellite)")
+    let binding = FactLine(key: words.binding, value: "\(connectionTitle(bound)) · \(words.satellite)")
     guard let wire = pad.wire else { return [binding, FactLine(key: words.onTheWire, value: words.notDeclaredToTheHostYet)] }
     return [
         binding,
@@ -307,4 +315,81 @@ func eventsTranscript(
 /// The newest `limit` lines, newest first, as the window shows them.
 func recentEvents(_ events: [DiagnosticsEvent], limit: Int = 30) -> [DiagnosticsEvent] {
     Array(events.suffix(limit).reversed())
+}
+
+// MARK: - The page
+
+/// Everything Diagnostics draws: a card per host and per pad, or the word
+/// for none, the game devices GameController leaves out, and the flight
+/// recorder's newest lines.
+struct DiagnosticsPageState: Equatable {
+    let hosts: DiagnosticsCards
+    let pads: DiagnosticsCards
+    /// Nil while GameController claims every game device.
+    let otherDevices: OtherInputDevicesState?
+    /// The newest lines, newest first.
+    let events: [DiagnosticsEventLine]
+    /// Copy waits until the recorder holds a line.
+    let canCopy: Bool
+}
+
+enum DiagnosticsCards: Equatable {
+    case empty(String)
+    case cards([DiagnosticsCardState])
+}
+
+/// One card: a headline with its dot and chip, then one fact per line.
+struct DiagnosticsCardState: Equatable, Identifiable {
+    let id: String
+    let title: String
+    let dot: Color?
+    let chip: String?
+    let lines: [FactLine]
+    /// The pad Inspect input opens; nil on a host's card.
+    let inspects: String?
+}
+
+struct DiagnosticsEventLine: Equatable, Identifiable {
+    let id: Int
+    let text: String
+}
+
+func diagnosticsPageState(
+    facts: ShellFacts,
+    locale: Locale = .current,
+    timeZone: TimeZone = .current,
+    words: L10n = .app
+) -> DiagnosticsPageState {
+    let hosts = facts.diagnostics.hosts.map { hostCard($0, locale: locale, words: words) }
+    let pads = facts.diagnostics.pads.map { padCard($0, words: words) }
+    let events = recentEvents(facts.diagnosticsEvents).map { event in
+        DiagnosticsEventLine(id: event.id, text: eventLine(event, locale: locale, timeZone: timeZone, words: words))
+    }
+    return DiagnosticsPageState(
+        hosts: hosts.isEmpty ? .empty(words.noSatellitesYet) : .cards(hosts),
+        pads: pads.isEmpty ? .empty(words.noControllersConnected) : .cards(pads),
+        otherDevices: otherInputDevicesState(facts.diagnostics.inputDevices, words: words),
+        events: events,
+        canCopy: !facts.diagnosticsEvents.isEmpty
+    )
+}
+
+func hostCard(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> DiagnosticsCardState {
+    DiagnosticsCardState(
+        id: host.id,
+        title: connectionTitle(host.summary),
+        dot: linkDotColor(host.summary.live),
+        chip: linkStateText(host.summary.live, words: words),
+        lines: hostLines(host, locale: locale, words: words),
+        inspects: nil
+    )
+}
+
+func padCard(_ pad: PadDiagnostics, words: L10n = .app) -> DiagnosticsCardState {
+    DiagnosticsCardState(id: pad.id, title: pad.slot.name, dot: nil, chip: nil, lines: padLines(pad, words: words), inspects: pad.slot.id)
+}
+
+/// The whole log for the clipboard, oldest first.
+func diagnosticsTranscript(facts: ShellFacts, locale: Locale = .current, timeZone: TimeZone = .current, words: L10n = .app) -> String {
+    eventsTranscript(facts.diagnosticsEvents, locale: locale, timeZone: timeZone, words: words)
 }

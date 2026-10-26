@@ -3,10 +3,12 @@
 //
 // ConnectionHub summary/binding invariants: the pool sink rebuilds from the
 // EMITTED pool (a forgotten resting satellite must disappear synchronously —
-// no later emission exists to self-correct on), and `bind` evicts the prior
-// owner on BOTH sides so no connection is left believing it owns a slot the
-// binding table gave away.
+// no later emission exists to self-correct on), a satellite carries up to
+// four pads on the lowest free controller indices, and a slot bound
+// elsewhere lets its prior satellite go so no connection is left believing
+// it owns a pad the binding table gave away.
 
+import Combine
 import XCTest
 @testable import DishEngine
 
@@ -42,6 +44,28 @@ final class ConnectionHubTests: XCTestCase {
         )
     }
 
+    // MARK: - A row is data
+
+    func testARememberedSatellitesRowCarriesItsNameAddressAndPortUnworded() {
+        let sat = server("13")
+        store.remember(sat)
+        wifi.register(WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max))
+        let row = hub.connections.first
+        XCTAssertEqual(row?.name, "Sat-13")
+        XCTAssertEqual(row?.address, "192.0.2.13")
+        XCTAssertEqual(row?.udpPort, 9876)
+    }
+
+    func testRowsAreOrderedByNameWithAnUnnamedSatelliteByItsAddress() {
+        let named = server("14")
+        let unnamed = DiscoveredServer(name: "", ip: "192.0.2.1", udpPort: 9876, machineId: "sat-unnamed")
+        store.remember(named)
+        store.remember(unnamed)
+        wifi.register(WifiConnection(id: named.id, server: named, tickIntervalNs: .max))
+        wifi.register(WifiConnection(id: unnamed.id, server: unnamed, tickIntervalNs: .max))
+        XCTAssertEqual(hub.connections.map(\.recordName), ["192.0.2.1", "Sat-14"])
+    }
+
     // MARK: - Forget removes the row synchronously (emitted-pool rebuild)
 
     func testForgetIdleRememberedSatelliteRemovesRowSynchronously() {
@@ -74,42 +98,95 @@ final class ConnectionHubTests: XCTestCase {
         XCTAssertEqual(hub.connections.map(\.id), [beta.id])
     }
 
-    // MARK: - bind evicts BOTH sides
+    // MARK: - Up to four pads per satellite
 
-    func testBindEvictsConnectionsPriorSlot() {
-        let sat = server("20")
+    @discardableResult
+    private func pooled(_ sat: DiscoveredServer) -> WifiConnection {
         let conn = WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max)
         wifi.register(conn)
-
-        hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
-        hub.bind(slotId: "slot-b", connectionId: sat.id, capabilities: .none, family: .other)
-
-        XCTAssertEqual(hub.bindings, ["slot-b": sat.id])
-        XCTAssertEqual(conn.boundSlotId, "slot-b")
+        return conn
     }
 
-    func testBindEvictsSlotsPriorConnection() {
-        let alpha = server("21")
-        let beta = server("22")
-        let connAlpha = WifiConnection(id: alpha.id, server: alpha, tickIntervalNs: .max)
-        let connBeta = WifiConnection(id: beta.id, server: beta, tickIntervalNs: .max)
-        wifi.register(connAlpha)
-        wifi.register(connBeta)
+    @discardableResult
+    private func bind(_ slotId: String, to sat: DiscoveredServer) -> Bool {
+        hub.bind(slotId: slotId, connectionId: sat.id, capabilities: .none, family: .other)
+    }
 
-        hub.bind(slotId: "slot-a", connectionId: alpha.id, capabilities: .none, family: .other)
-        XCTAssertEqual(connAlpha.boundSlotId, "slot-a")
+    func testASatelliteCarriesFourPadsOnTheLowestFreeIndicesAndRefusesAFifth() {
+        let sat = server("20")
+        let conn = pooled(sat)
+        for slotId in ["a", "b", "c", "d"] {
+            XCTAssertTrue(bind(slotId, to: sat))
+        }
+        XCTAssertEqual(["a", "b", "c", "d"].map(conn.controllerIndex(of:)), [0, 1, 2, 3])
+        XCTAssertEqual(hub.summary(sat.id)?.boundSlotIds, ["a", "b", "c", "d"])
+        XCTAssertEqual(hub.summary(sat.id)?.hasRoomForAnotherSlot, false)
 
-        // Rebinding the SLOT to another satellite must detach the first
-        // connection too — otherwise it keeps advertising a desired
-        // descriptor for a slot it no longer owns (zombie pad).
-        hub.bind(slotId: "slot-a", connectionId: beta.id, capabilities: .none, family: .other)
+        XCTAssertFalse(bind("e", to: sat), "a fifth pad is refused")
+        XCTAssertNil(hub.bindings["e"])
+        XCTAssertNil(conn.controllerIndex(of: "e"))
+        XCTAssertEqual(conn.boundSlotIds.count, 4, "nobody was evicted")
+    }
 
-        XCTAssertEqual(hub.bindings, ["slot-a": beta.id])
-        XCTAssertEqual(connBeta.boundSlotId, "slot-a")
-        XCTAssertNil(
-            connAlpha.boundSlotId,
-            "the slot's prior connection must be detached on rebind"
-        )
+    func testUnbindingFreesTheIndexAndTheNextPadTakesTheLowestFreeOne() {
+        let sat = server("21")
+        let conn = pooled(sat)
+        for slotId in ["a", "b", "c"] {
+            bind(slotId, to: sat)
+        }
+        hub.unbind(slotId: "b")
+        XCTAssertNil(conn.controllerIndex(of: "b"))
+        XCTAssertEqual(conn.controllerIndex(of: "c"), 2, "a bound pad keeps its index")
+        bind("d", to: sat)
+        XCTAssertEqual(conn.controllerIndex(of: "d"), 1, "the freed index is reused first")
+        XCTAssertEqual(hub.summary(sat.id)?.boundSlotIds, ["a", "d", "c"], "the row lists the pads in index order")
+    }
+
+    func testRebindingAPadItsSatelliteCarriesKeepsItsIndex() {
+        let sat = server("22")
+        let conn = pooled(sat)
+        bind("a", to: sat)
+        bind("b", to: sat)
+        XCTAssertTrue(bind("b", to: sat))
+        XCTAssertEqual(conn.controllerIndex(of: "b"), 1)
+        XCTAssertEqual(conn.boundSlotIds, ["a", "b"])
+    }
+
+    func testAFullSatelliteStillTakesBackAPadItCarries() {
+        let sat = server("23")
+        pooled(sat)
+        for slotId in ["a", "b", "c", "d"] {
+            bind(slotId, to: sat)
+        }
+        XCTAssertTrue(bind("d", to: sat), "the cap counts the other pads")
+    }
+
+    func testBindingASlotElsewhereLetsItsPriorSatelliteGo() {
+        let alpha = server("24")
+        let beta = server("25")
+        let connAlpha = pooled(alpha)
+        let connBeta = pooled(beta)
+        bind("a", to: alpha)
+        bind("b", to: alpha)
+
+        // Rebinding the SLOT to another satellite must detach it from the
+        // first one too, or the first keeps advertising a descriptor for a
+        // pad it no longer owns (zombie pad).
+        bind("a", to: beta)
+
+        XCTAssertEqual(hub.bindings, ["a": beta.id, "b": alpha.id])
+        XCTAssertEqual(connBeta.boundSlotIds, ["a"])
+        XCTAssertEqual(connAlpha.boundSlotIds, ["b"], "the slot's prior satellite let go of that pad alone")
+    }
+
+    func testThePadsRouteIsKnownTheMomentTheBindingPublishes() {
+        let sat = server("26")
+        let conn = pooled(sat)
+        var indexAtPublish: Int?
+        let watch = hub.$bindings.dropFirst().sink { _ in indexAtPublish = conn.controllerIndex(of: "a") }
+        bind("a", to: sat)
+        watch.cancel()
+        XCTAssertEqual(indexAtPublish, 0, "the satellite took the pad before the table published")
     }
 
     // MARK: - Bound-slot type defaults to the catalog's first offered type
@@ -132,7 +209,7 @@ final class ConnectionHubTests: XCTestCase {
 
         // A ds4-first satellite (e.g. a Mac host) → the bound descriptor
         // carries type 1, not the legacy hardcoded 0.
-        XCTAssertEqual(conn.desiredDescriptor?.type, 1)
+        XCTAssertEqual(conn.descriptor(for: "slot-a")?.type, 1)
     }
 
     func testBindHonoursCatalogFirstTypeWhenXbox() throws {
@@ -143,7 +220,7 @@ final class ConnectionHubTests: XCTestCase {
 
         hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
 
-        XCTAssertEqual(conn.desiredDescriptor?.type, 0)
+        XCTAssertEqual(conn.descriptor(for: "slot-a")?.type, 0)
     }
 
     func testBindFallsBackToTypeZeroWithoutCatalog() {
@@ -155,7 +232,7 @@ final class ConnectionHubTests: XCTestCase {
         // behavior — type 0 — stands so nothing regresses.
         hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
 
-        XCTAssertEqual(conn.desiredDescriptor?.type, 0)
+        XCTAssertEqual(conn.descriptor(for: "slot-a")?.type, 0)
     }
 
     func testEmptyCatalogIsIgnoredAndFallsBack() {
@@ -166,6 +243,6 @@ final class ConnectionHubTests: XCTestCase {
 
         hub.bind(slotId: "slot-a", connectionId: sat.id, capabilities: .none, family: .other)
 
-        XCTAssertEqual(conn.desiredDescriptor?.type, 0)
+        XCTAssertEqual(conn.descriptor(for: "slot-a")?.type, 0)
     }
 }

@@ -124,18 +124,31 @@ final class FakeSatellite {
     /// Path B: operator approves the pending client PIN; the status poll then
     /// hands the staged key back exactly once (single-use, per contract).
     func approveClientPin() {
-        store.with {
-            $0.stagedApprovalKeyHex = FakeSatelliteRandom.hex(32)
-            $0.clientPinDenied = false
-        }
+        store.with { $0.stagedApprovalKeyHex = FakeSatelliteRandom.hex(32) }
     }
 
-    /// Path B: operator denies the pending client PIN.
+    /// Path B: operator denies the pending client PIN. Like the real
+    /// satellite, a decline erases the request, so the next poll reads
+    /// "none"; the satellite never says "denied".
     func denyClientPin() {
         store.with {
             $0.stagedApprovalKeyHex = nil
-            $0.clientPinDenied = true
+            $0.lastClientPin = nil
         }
+    }
+
+    /// The next `count` status polls answer 500 with an empty body: a
+    /// transport blip the poll must ride out.
+    var pairStatusBlips: Int {
+        get { store.with { $0.pairStatusBlips } }
+        set { store.with { $0.pairStatusBlips = newValue } }
+    }
+
+    /// Every PIN pairing answers `pending:true`, the reply a PIN submission
+    /// reads as "not approved yet".
+    var answerPinWithPending: Bool {
+        get { store.with { $0.answerPinWithPending } }
+        set { store.with { $0.answerPinWithPending = newValue } }
     }
 
     /// Force the next authed REST calls to 401 with this machine code

@@ -12,7 +12,7 @@ final class DiagnosticsMappersTests: XCTestCase {
     private let english = Locale(identifier: "en_US")
 
     private func summary(_ live: LinkState = .connected) -> ConnectionSummary {
-        ConnectionSummary(id: "sat", label: "Desk", detail: "10.0.0.2 • UDP 9876", live: live, boundSlotId: nil)
+        ConnectionSummary(id: "sat", name: "Desk", address: "10.0.0.2", udpPort: 9876, live: live, boundSlotId: nil)
     }
 
     private func liveFacts(
@@ -121,8 +121,20 @@ final class DiagnosticsMappersTests: XCTestCase {
     // MARK: - Controllers
 
     func testAnUnboundPadShowsItsFrameworkAndNoBinding() {
-        let lines = padLines(PadDiagnostics(slot: ControllerSlot(id: "pad", name: "DualSense"), wire: nil))
-        XCTAssertEqual(lines, [FactLine(key: "Connection", value: "GameController"), FactLine(key: "Binding", value: "Not bound")])
+        let lines = padLines(PadDiagnostics(slot: ControllerSlot(id: "pad", name: "DualSense"), wire: nil, backgroundInput: true))
+        XCTAssertEqual(lines, [
+            FactLine(key: "Connection", value: "GameController"),
+            FactLine(key: "Background input", value: "On"),
+            FactLine(key: "Binding", value: "Not bound")
+        ])
+    }
+
+    func testThePadSaysWhetherItsInputReachesDishInTheBackground() {
+        let slot = ControllerSlot(id: "pad", name: "DualSense")
+        let on = padLines(PadDiagnostics(slot: slot, wire: nil, backgroundInput: true))
+        XCTAssertEqual(on.first { $0.key == "Background input" }?.value, "On")
+        let off = padLines(PadDiagnostics(slot: slot, wire: nil, backgroundInput: false))
+        XCTAssertEqual(off.first { $0.key == "Background input" }?.value, "Off")
     }
 
     func testABoundPadReadsItsTypeItsBatteryAndTheWire() {
@@ -143,17 +155,17 @@ final class DiagnosticsMappersTests: XCTestCase {
         )
         let lines = padLines(PadDiagnostics(slot: slot, wire: wire))
         XCTAssertEqual(lines.map(\.key), [
-            "Connection", "Type", "Battery", "Binding", "Controller index", "Confirmed by host", "Streaming", "Advertised",
-            "Touchpad on the wire"
+            "Connection", "Background input", "Type", "Battery", "Binding", "Controller index", "Confirmed by host",
+            "Streaming", "Advertised", "Touchpad on the wire"
         ])
-        XCTAssertEqual(lines[1].value, "DualSense")
-        XCTAssertEqual(lines[2].value, batteryHelp(BatteryReading(level: 80, state: .charging)))
-        XCTAssertEqual(lines[3].value, "Desk · Satellite")
-        XCTAssertEqual(lines[4].value, "0")
-        XCTAssertEqual(lines[5].value, "yes")
+        XCTAssertEqual(lines[2].value, "DualSense")
+        XCTAssertEqual(lines[3].value, batteryHelp(BatteryReading(level: 80, state: .charging)))
+        XCTAssertEqual(lines[4].value, "Desk · Satellite")
+        XCTAssertEqual(lines[5].value, "0")
         XCTAssertEqual(lines[6].value, "yes")
-        XCTAssertEqual(lines[7].value, "Rumble · Motion")
-        XCTAssertEqual(lines[8].value, "pad")
+        XCTAssertEqual(lines[7].value, "yes")
+        XCTAssertEqual(lines[8].value, "Rumble · Motion")
+        XCTAssertEqual(lines[9].value, "pad")
     }
 
     private var dualSenseFunction: PadAudioFunction {

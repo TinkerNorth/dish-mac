@@ -113,7 +113,7 @@ final class MoonlightDesireTests: XCTestCase {
         XCTAssertEqual(MoonlightDesire.linkState(phase: .failed(.launchRejected), paired: true, verified: true, discovered: true), .ready)
     }
 
-    func testTheSummaryNamesTheHostTheProtocolAndEveryBoundSlot() {
+    func testTheSummaryCarriesTheHostsNameAddressAndEveryBoundSlot() {
         let summary = MoonlightDesire.summary(
             host: MoonlightHost(name: "", address: "10.0.0.5"),
             phase: .streaming,
@@ -124,8 +124,10 @@ final class MoonlightDesireTests: XCTestCase {
             boundSlotIds: ["a", "b"]
         )
         XCTAssertEqual(summary.id, "moonlight:10.0.0.5")
-        XCTAssertEqual(summary.label, "10.0.0.5", "a host with no name is shown by its address")
-        XCTAssertEqual(summary.detail, "10.0.0.5 • Moonlight")
+        XCTAssertEqual(summary.name, "", "the engine vends the name as advertised, empty or not")
+        XCTAssertEqual(summary.address, "10.0.0.5")
+        XCTAssertNil(summary.udpPort, "a Moonlight host has no satellite port")
+        XCTAssertEqual(summary.recordName, "10.0.0.5", "the log names a host with no name by its address")
         XCTAssertEqual(summary.live, .connected)
         XCTAssertEqual(summary.kind, .moonlight)
         XCTAssertEqual(summary.boundSlotId, "a")
@@ -135,8 +137,8 @@ final class MoonlightDesireTests: XCTestCase {
         var full = summary
         full.boundSlotIds = ["a", "b", "c", "d"]
         XCTAssertFalse(full.hasRoomForAnotherSlot)
-        let satellite = ConnectionSummary(id: "mid:1", label: "Desk", detail: "", live: .ready, boundSlotId: "a")
+        let satellite = ConnectionSummary(id: "mid:1", name: "Desk", live: .ready, boundSlotId: "a")
         XCTAssertEqual(satellite.boundSlotIds, ["a"], "the one bound slot, as the list")
-        XCTAssertFalse(satellite.hasRoomForAnotherSlot, "a satellite carries one pad")
+        XCTAssertTrue(satellite.hasRoomForAnotherSlot, "a satellite carries four pads")
     }
 }

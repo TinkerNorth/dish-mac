@@ -113,10 +113,6 @@ extension L10n {
         catalog.text("Open source licenses")
     }
 
-    var licensesDetail: String {
-        catalog.text("Dish uses no third-party code. SwiftFormat and SwiftLint are build-time tools under the MIT license.")
-    }
-
     func aboutLine(_ version: String) -> String {
         catalog.format("Dish %@ · TinkerNorth · LGPL-3.0", version)
     }

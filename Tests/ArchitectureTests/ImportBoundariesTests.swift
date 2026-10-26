@@ -53,6 +53,21 @@ final class ImportBoundariesTests: XCTestCase {
         }
     }
 
+    /// A kit component takes values and closures, never the domain: it
+    /// imports no first-party module and observes no model, so it can be
+    /// drawn from any page's state (the desktops' rule C3).
+    func testAKitComponentReadsNoDomain() throws {
+        let kit = RepoFiles.swiftFiles(under: "Sources/Dish/UI/Kit")
+        XCTAssertFalse(kit.isEmpty, "the kit has components")
+        for file in kit {
+            let source = try RepoFiles.read(file)
+            let imports = RepoFiles.imports(of: source)
+            XCTAssertEqual(imports.filter { !["Foundation", "SwiftUI"].contains($0) }, [], "\(file) reaches past values")
+            XCTAssertFalse(source.contains("@EnvironmentObject"), "\(file) observes a model")
+            XCTAssertFalse(source.contains("@ObservedObject"), "\(file) observes a model")
+        }
+    }
+
     func testTheEngineNeverImportsAUIFramework() throws {
         for file in RepoFiles.swiftFiles(under: "Sources/DishEngine") {
             let imports = try RepoFiles.imports(of: RepoFiles.read(file))

@@ -15,6 +15,14 @@ final class VersionConsistencyTests: XCTestCase {
         RepoFiles.root
     }
 
+    /// The Licenses page reads a copy inside the resource bundle, so the copy
+    /// can never drift from the notice the repository states.
+    func testTheBundledThirdPartyNoticeIsTheRepositorysOwn() throws {
+        let root = try RepoFiles.read("THIRD_PARTY.md")
+        let bundled = try RepoFiles.read("Sources/Dish/Resources/THIRD_PARTY.md")
+        XCTAssertEqual(bundled, root, "copy THIRD_PARTY.md to Sources/Dish/Resources when it changes")
+    }
+
     func testVersionFileExistsAndIsSemverShaped() throws {
         let raw = try String(contentsOf: repoRoot.appendingPathComponent("VERSION"), encoding: .utf8)
         let version = raw.trimmingCharacters(in: .whitespacesAndNewlines)

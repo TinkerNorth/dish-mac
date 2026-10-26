@@ -12,7 +12,9 @@ extension GameControllerInput {
 
     /// Pads with `sensorsRequireManualActivation` stay silent until the
     /// sensors are switched on; pads that manage their own need no opt-in.
-    func installMotionHandler(id: String, controller: GCController) {
+    /// Nonisolated like every handler install, since the closure runs on the
+    /// input queue.
+    nonisolated func installMotionHandler(id: String, controller: GCController) {
         guard let motion = controller.motion else { return }
         if motion.sensorsRequireManualActivation {
             motion.sensorsActive = true
@@ -43,7 +45,7 @@ extension GameControllerInput {
 
     /// GameController has no per-finger touch-down event, so each of the
     /// three inputs re-reads the whole touchpad, as the report path does.
-    func installTouchpadHandlers(id: String, pad: GCExtendedGamepad) {
+    nonisolated func installTouchpadHandlers(id: String, pad: GCExtendedGamepad) {
         guard let touchpad = Self.touchpadInputs(pad) else { return }
         let rebuild: () -> Void = { [weak self] in
             self?.pushTouchpad(id: id, touchpad: touchpad)

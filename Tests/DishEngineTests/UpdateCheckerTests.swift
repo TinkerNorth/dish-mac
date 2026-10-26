@@ -119,6 +119,17 @@ final class UpdateCheckerTests: XCTestCase {
         XCTAssertEqual(notices, [UpdateNoticeEvent(notice: .available, version: "0.2.0")])
     }
 
+    func testACompletedCheckReachesTheClockAtOnce() async {
+        gateway.results = [.success(manifestBody("0.1.0"))]
+        let checker = makeChecker()
+        XCTAssertEqual(checker.clock.state.lastCheckMs, 0)
+        checker.start()
+        checker.firePendingCheck()
+        let settled = await settle(checker)
+        XCTAssertTrue(settled)
+        XCTAssertEqual(checker.clock.state, UpdateCheckTime(lastCheckMs: now, nowMs: now))
+    }
+
     func testAnUpToDateBuildArmsThePeriodicIntervalAndSaysNothing() async {
         gateway.results = [.success(manifestBody("0.1.0"))]
         let checker = makeChecker()

@@ -8,12 +8,12 @@ import XCTest
 final class DashboardMappersTests: XCTestCase {
 
     private func summary(_ id: String, _ live: LinkState) -> ConnectionSummary {
-        ConnectionSummary(id: id, label: "Server \(id)", detail: "", live: live, boundSlotId: nil)
+        ConnectionSummary(id: id, name: "Server \(id)", live: live, boundSlotId: nil)
     }
 
     func testNothingPairedYet() {
         XCTAssertEqual(dashboardStatusText([]), "No connections yet")
-        XCTAssertEqual(dashboardSummaryText([]), "Tap Manage to add one")
+        XCTAssertEqual(dashboardSummaryText([]), "Plug in a controller and pair a Satellite to get started")
     }
 
     func testPairedButNoneLiveCountsThePaired() {

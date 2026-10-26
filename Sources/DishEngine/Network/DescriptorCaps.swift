@@ -6,12 +6,28 @@ import Foundation
 
 /// The physical pad's family, decided once at attach from the framework's
 /// product category. It picks the catalog type the pad is emulated as. The
-/// framework names these three; everything else is a generic pad.
+/// framework exports constants for the first three; Nintendo's pads are
+/// known by the words the framework uses for them; everything else is a
+/// generic pad.
 package enum PadFamily: Hashable {
     case dualSense
     case dualShock4
     case xbox
+    case nintendo
     case other
+}
+
+/// The framework's words for Nintendo's pads, which the SDK exports no
+/// constant for: "Switch Pro Controller", "Nintendo Switch Joy-Con (L/R)",
+/// and the Switch Online N64, SNES and NES pads.
+private let nintendoMarkers = ["switch pro", "joy-con", "n64", "snes", "nes controller", "nintendo"]
+
+/// The family a pad's category or vendor name names, for a category the
+/// framework has no constant for.
+func namedPadFamily(productCategory: String, vendorName: String?) -> PadFamily {
+    let words = [productCategory, vendorName ?? ""].map { $0.lowercased() }
+    let namesNintendo = words.contains { word in nintendoMarkers.contains { word.contains($0) } }
+    return namesNintendo ? .nintendo : .other
 }
 
 /// The caps word a descriptor advertises. A cap is a promise that the
@@ -33,15 +49,6 @@ func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingF
         (capabilities.hasHapticLanes && flags.speaker, ProtocolConstants.capHapticAudio)
     ]
     return claims.filter(\.claimed).reduce(UInt16(0)) { $0 | $1.bit }
-}
-
-/// What the descriptor's touchpad ladder reads beside the pick: the
-/// catalog's word on whether the emulated type renders a touchpad, and the
-/// probe's word on whether the host advertises mouse control. A catalog not
-/// read refuses nothing; a host not probed grants nothing.
-struct TouchpadModeFacts: Equatable {
-    var typeOffersDs4 = true
-    var hostMouseControl = false
 }
 
 /// The touchpad mode a descriptor asks for: the controller's pick through
@@ -75,6 +82,7 @@ func emulationCandidates(for family: PadFamily) -> [String] {
     case .dualSense: ["ps5", "ps4"]
     case .dualShock4: ["ps4", "ps5"]
     case .xbox: ["xbox360", "xboxone"]
+    case .nintendo: ["switchpro"]
     case .other: []
     }
 }

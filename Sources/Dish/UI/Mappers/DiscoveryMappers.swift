@@ -4,7 +4,7 @@
 import DishEngine
 import Foundation
 
-/// The path a server was heard on, as the chip says it.
+/// The path a server was heard on, as the found row says it.
 func discoverySourceText(_ source: DiscoverySource, words: L10n = .app) -> String {
     switch source {
     case .broadcast: words.udpBroadcast
@@ -20,33 +20,14 @@ func serverTitle(_ server: DiscoveredServer) -> String {
     server.name.isEmpty ? server.ip : server.name
 }
 
-/// The address line: IP and UDP port, numeric and untranslated.
-func serverDetail(_ server: DiscoveredServer) -> String {
-    "\(server.ip) • UDP \(server.udpPort)"
+/// The found row's line: where the server answered, and how it was heard.
+func foundServerDetail(_ server: DiscoveredServer, words: L10n = .app) -> String {
+    "\(server.ip) · \(discoverySourceText(server.source, words: words))"
 }
 
-/// The status chip of a freshly discovered, unpaired server.
-func discoveredStatusText(_ server: DiscoveredServer, words: L10n = .app) -> String {
-    words.foundVia(discoverySourceText(server.source, words: words))
-}
-
-/// A row on the Connections sheet: a known server (remembered or live), or
-/// one just discovered that the summaries do not list yet.
-enum ConnectionRow: Equatable {
-    case known(ConnectionSummary)
-    case discovered(DiscoveredServer)
-
-    var key: String {
-        switch self {
-        case let .known(summary): summary.id
-        case let .discovered(server): server.id
-        }
-    }
-}
-
-/// Known rows first, then the discovered servers not already among them.
-func connectionRows(known: [ConnectionSummary], discovered: [DiscoveredServer]) -> [ConnectionRow] {
+/// The servers a scan heard that no paired card already shows: a satellite
+/// has one place on the page.
+func foundServers(_ discovered: [DiscoveredServer], known: [ConnectionSummary]) -> [DiscoveredServer] {
     let knownIds = Set(known.map(\.id))
-    return known.map(ConnectionRow.known)
-        + discovered.filter { !knownIds.contains($0.id) }.map(ConnectionRow.discovered)
+    return discovered.filter { !knownIds.contains($0.id) }
 }

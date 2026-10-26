@@ -22,14 +22,23 @@ extension WifiConnectionManager {
         }
     }
 
+    /// Who asked for a scan. Only the user's own scan says it heard nothing;
+    /// the one after a wake re-homes what it hears and stays quiet, and the
+    /// one a page runs as it opens lets its empty state speak instead.
+    enum ScanTrigger {
+        case user
+        case wake
+        case pageOpened
+    }
+
     /// Run the discovery paths and adopt what they heard. One scan at a time.
-    func startDiscovery() {
+    func startDiscovery(trigger: ScanTrigger = .user) {
         guard markScanStarted() else { return }
         let paths = discovery
         Task.detached(priority: .userInitiated) { [weak self] in
             let scan = await paths.scan()
             await MainActor.run { [weak self] in
-                self?.adoptScan(scan)
+                self?.adoptScan(scan, trigger: trigger)
             }
         }
     }
@@ -70,15 +79,16 @@ extension WifiConnectionManager {
 
     /// Publish a finished scan, re-home remembered satellites whose address
     /// moved, and point idle pool entries at their current endpoint.
-    private func adoptScan(_ scan: ScanResult) {
+    private func adoptScan(_ scan: ScanResult, trigger: ScanTrigger) {
         let merged = scan.merged
         let summary = "broadcast=\(scan.broadcast.count) mdns=\(scan.mdns.count) merged=\(merged.count)"
             + " localNetworkDenied=\(scan.localNetworkDenied)"
         Self.discoveryLog.info("discovery scan: \(summary, privacy: .public)")
-        publishScan(merged)
+        publishScan(merged, localNetworkDenied: scan.localNetworkDenied)
         store.refreshFromDiscovery(merged)
         rehomeIdleConnections(to: merged)
-        if let failure = scan.failure {
+        let userAsked = trigger == .user
+        if userAsked, let failure = scan.failure {
             events.send(.failure(failure))
         }
     }

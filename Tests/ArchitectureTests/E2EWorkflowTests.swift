@@ -56,6 +56,20 @@ final class E2EWorkflowTests: XCTestCase {
         XCTAssertTrue(seed.lowerBound < launch.lowerBound, "seeded before the satellite starts")
     }
 
+    /// The lane answers the pairing request as the operator would, through
+    /// the satellite's own admin surface, so approval and decline run
+    /// against the real binary with nobody at the keyboard.
+    func testTheDriverAnswersThePairingRequestAsTheOperatorWould() throws {
+        let driver = try RepoFiles.read(Self.driverPath)
+        XCTAssertTrue(driver.contains("\"/api/pair/requests\""), "the driver waits for the request the operator sees")
+        XCTAssertTrue(driver.contains("/api/pair/respond"), "and answers it the way the dashboard does")
+        XCTAssertTrue(driver.contains("forHTTPHeaderField: \"Origin\""), "with the loopback Origin the admin guard accepts")
+        XCTAssertTrue(driver.contains("func testTheOperatorApprovesTheRequestAndTheSessionOpens()"), "an approval opens the session")
+        XCTAssertTrue(driver.contains("func testTheOperatorDeclinesTheRequestAndThePairingSaysSo()"), "a decline reads as declined")
+        let script = try RepoFiles.read(Self.scriptPath)
+        XCTAssertTrue(script.contains("pairing (path B, operator approval and decline"), "the report names what ran")
+    }
+
     private static func capture(_ pattern: String, in text: String) -> String? {
         guard let regex = try? NSRegularExpression(pattern: pattern),
               let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)),

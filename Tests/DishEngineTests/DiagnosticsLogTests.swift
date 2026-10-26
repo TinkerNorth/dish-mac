@@ -20,7 +20,7 @@ final class DiagnosticsLogTests: XCTestCase {
     }
 
     private func summary(_ id: String, _ live: LinkState, boundTo slot: String? = nil) -> ConnectionSummary {
-        ConnectionSummary(id: id, label: id.capitalized, detail: "", live: live, boundSlotId: slot)
+        ConnectionSummary(id: id, name: id.capitalized, live: live, boundSlotId: slot)
     }
 
     // MARK: - Links

@@ -5,7 +5,7 @@ import Foundation
 
 extension L10n {
 
-    // MARK: - Connections sheet
+    // MARK: - Connections page
 
     var connections: String {
         catalog.text("Connections")
@@ -19,16 +19,65 @@ extension L10n {
         catalog.text("Scanning…")
     }
 
-    var done: String {
-        catalog.text("Done")
+    var scanAgain: String {
+        catalog.text("Scan again")
     }
 
-    var wifiServersSection: String {
-        catalog.text("WI-FI SERVERS")
+    var lookingForSatellites: String {
+        catalog.text("Looking for satellites")
     }
 
-    var pressScanHint: String {
-        catalog.text("Press Scan to look for servers on your LAN")
+    var scanningOverMdnsAndBroadcast: String {
+        catalog.text("Scanning your network over mDNS and UDP broadcast. Hosts appear here as they answer.")
+    }
+
+    var noSatellitesFound: String {
+        catalog.text("No satellites found")
+    }
+
+    var satelliteShowsUpHere: String {
+        catalog.text("A PC shows up here once the free Satellite app is running on it and both machines are on the same network.")
+    }
+
+    var getSatellite: String {
+        catalog.text("Get Satellite ↗")
+    }
+
+    var pairEllipsis: String {
+        catalog.text("Pair…")
+    }
+
+    var moonlightHosts: String {
+        catalog.text("Moonlight hosts")
+    }
+
+    var streamToASunshinePc: String {
+        catalog.text("Stream to a PC running Sunshine, Apollo or Wolf instead of a satellite.")
+    }
+
+    var nothingPairedYet: String {
+        catalog.text("Nothing paired yet")
+    }
+
+    var pairASatelliteAndDishSavesIt: String {
+        catalog.text("Pair a satellite and Dish saves it here for next time.")
+    }
+
+    var carrying: String {
+        catalog.text("Carrying")
+    }
+
+    var nothingBoundYet: String {
+        catalog.text("Nothing bound yet")
+    }
+
+    /// A manifest line: the pad, and the type the binding emulates it as.
+    func padAsType(_ pad: String, _ type: String) -> String {
+        catalog.format("%@ — as %@", pad, type)
+    }
+
+    func moreActionsFor(_ name: String) -> String {
+        catalog.format("More actions for %@", name)
     }
 
     var addByAddressPlaceholder: String {
@@ -63,8 +112,18 @@ extension L10n {
         catalog.text("Pairing…")
     }
 
-    func foundVia(_ source: String) -> String {
-        catalog.format("Found · %@", source)
+    // MARK: - Forget asks first
+
+    func forgetQuestion(_ name: String) -> String {
+        catalog.format("Forget %@?", name)
+    }
+
+    var pairingKeyIsDeleted: String {
+        catalog.text("Its pairing key is deleted — you’ll need the PIN again.")
+    }
+
+    func bindingsRideOnIt(_ count: Int) -> String {
+        catalog.format("%lld bindings ride on it and will be dropped:", count)
     }
 }
 
@@ -134,14 +193,14 @@ extension L10n {
 
 extension L10n {
 
-    // MARK: - Pairing sheet
+    // MARK: - Pairing card
 
-    var enterPin: String {
-        catalog.text("Enter the 4-digit PIN shown on the Satellite server.")
+    var enterSatellitePin: String {
+        catalog.text("Enter the 4-digit PIN shown on the Satellite’s screen.")
     }
 
-    var pin: String {
-        catalog.text("PIN")
+    var pairingPinField: String {
+        catalog.text("Pairing PIN, 4 digits")
     }
 
     var cancel: String {
@@ -154,5 +213,53 @@ extension L10n {
 
     func pairWith(_ name: String) -> String {
         catalog.format("Pair with %@", name)
+    }
+
+    var orWord: String {
+        catalog.text("or")
+    }
+
+    func typePinOnSatellite(_ name: String) -> String {
+        catalog.format("Type this PIN on %@ to approve the pairing.", name)
+    }
+
+    var waitingForApproval: String {
+        catalog.text("Waiting for approval on the satellite…")
+    }
+
+    var approvedConnecting: String {
+        catalog.text("Approved — connecting…")
+    }
+
+    var operatorDeclined: String {
+        catalog.text("The operator declined the pairing.")
+    }
+
+    var noApprovalCodeExpired: String {
+        catalog.text("No approval — the code expired.")
+    }
+
+    var aboutTwoMinutes: String {
+        catalog.text("~2 min")
+    }
+
+    func differentSatelliteVersion(_ name: String) -> String {
+        catalog.format("%@ is running a different Satellite version. Update both, then pair again.", name)
+    }
+
+    func couldNotReach(_ name: String) -> String {
+        catalog.format("Couldn’t reach %@. Make sure it’s on and on your network.", name)
+    }
+
+    func notApprovedYet(_ name: String) -> String {
+        catalog.format("%@ hasn’t approved the pairing yet.", name)
+    }
+
+    func pinNotAccepted(_ name: String) -> String {
+        catalog.format("That PIN wasn’t accepted. Check the code on %@ and try again.", name)
+    }
+
+    var codeChangesOnRefresh: String {
+        catalog.text("The code changes if the Satellite screen was refreshed.")
     }
 }

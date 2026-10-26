@@ -59,7 +59,9 @@ let package = Package(
             path: "Sources/Dish",
             resources: [
                 // SwiftPM compiles the String Catalog into per-locale
-                // Localizable.strings inside the bundle.
+                // Localizable.strings inside the bundle. THIRD_PARTY.md is
+                // the root notice's copy (VersionConsistencyTests pins it),
+                // read by the Licenses page.
                 .process("Resources")
             ],
             swiftSettings: warningsAreErrors

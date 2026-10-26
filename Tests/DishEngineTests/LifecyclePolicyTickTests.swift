@@ -99,7 +99,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
         conn.onTopologyChanged = { converges += 1 }
         conn.attachSlot("slot-f", controllerType: 0, capabilities: .none)
         XCTAssertEqual(converges, 1, "faltering is still a live session — REST converge must fire")
-        conn.detachSlot()
+        conn.detachSlot("slot-f")
         XCTAssertEqual(converges, 2)
     }
 
@@ -248,7 +248,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
 
         // Bound + server-confirmed slot 0: expected bitmap 0b1 matches.
         conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
-        conn.markSlotApplied()
+        conn.markSlotApplied("slot-a")
         seedAck(epoch: 5, bitmap: 0b1)
         conn.aliveTick()
         XCTAssertEqual(reconciles, 0, "applied belief matches the ack — no drift")
@@ -257,6 +257,29 @@ final class LifecyclePolicyTickTests: XCTestCase {
         seedAck(epoch: 5, bitmap: 0)
         conn.aliveTick()
         XCTAssertEqual(reconciles, 1, "belief says applied, ack says gone — drift")
+    }
+
+    func testTwoAppliedPadsFeedBothBitsOfTheExpectedBitmap() throws {
+        var reconciles = 0
+        var hooks = SessionHooks()
+        hooks.reconcile = { reconciles += 1 }
+        (conn, client) = try makeLive(epoch: 5, hooks: hooks)
+        conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
+        conn.attachSlot("slot-b", controllerType: 0, capabilities: .none)
+        conn.markSlotApplied("slot-a")
+
+        seedAck(epoch: 5, bitmap: 0b01)
+        conn.aliveTick()
+        XCTAssertEqual(reconciles, 0, "the second pad's PUT is in flight: its missing bit is not drift")
+
+        conn.markSlotApplied("slot-b")
+        seedAck(epoch: 5, bitmap: 0b11)
+        conn.aliveTick()
+        XCTAssertEqual(reconciles, 0, "both indices applied, both bits set")
+
+        seedAck(epoch: 5, bitmap: 0b01)
+        conn.aliveTick()
+        XCTAssertEqual(reconciles, 1, "index 1 lost on the satellite's side is drift")
     }
 
     func testConvergeInFlightDoesNotReadAsDrift() throws {
@@ -279,7 +302,7 @@ final class LifecyclePolicyTickTests: XCTestCase {
         XCTAssertEqual(conn.desiredSlots(), [])
         conn.attachSlot("slot-a", controllerType: 0, capabilities: ControllerCapabilities(hasMotion: true, hasLightbar: true))
         XCTAssertEqual(conn.desiredSlots(), [DesiredSlot(ctrlIdx: 0, type: 0)])
-        conn.detachSlot()
+        conn.detachSlot("slot-a")
         XCTAssertEqual(conn.desiredSlots(), [])
     }
 
@@ -291,12 +314,12 @@ final class LifecyclePolicyTickTests: XCTestCase {
         (conn, client) = try makeLive(epoch: 7, hooks: hooks)
         conn.setReconcileInFlight(true)
         conn.attachSlot("slot-a", controllerType: 0, capabilities: .none)
-        conn.markSlotApplied()
+        conn.markSlotApplied("slot-a")
 
         conn.markDisconnected()
         XCTAssertEqual(conn.lastAppliedEpoch, -1)
         XCTAssertFalse(conn.reconcileInFlight)
-        XCTAssertFalse(conn.slotApplied)
+        XCTAssertFalse(conn.isSlotApplied("slot-a"))
         XCTAssertNil(conn.latencyOneWayMs)
         XCTAssertEqual(conn.latencySamples, 0)
     }

@@ -53,7 +53,7 @@ final class PairingClient {
     static func classify(_ response: PairResponse) -> Outcome {
         // Same 64-hex gate as the path-B poll: a malformed key must never
         // classify as success and get persisted.
-        if response.ok, let key = response.sharedKey, isSharedKeyHex(key) {
+        if response.ok, let key = response.sharedKey, DishCore.isSharedKeyHex(key) {
             return .success(sharedKeyHex: key)
         }
         if response.httpStatus == 409 {
@@ -68,27 +68,9 @@ final class PairingClient {
         return .unreachable(response.error ?? "Server unreachable")
     }
 
-    /// Classification of one `/api/pair/status` poll. Ports dish-android
-    /// `PairingApproval.Status` — approved only when the satellite both says
-    /// so AND hands back a full 32-byte (64-hex) key, so a malformed reply
-    /// can never be mistaken for a usable session key.
-    enum ApprovalStatus: Equatable {
-        case approved(sharedKeyHex: String)
-        case pending
-        /// Denied, expired, consumed, or an unparseable reply: stop polling.
-        case declined
-    }
-
-    static func classifyStatus(_ response: PairStatusResponse) -> ApprovalStatus {
-        switch response.status {
-        case "approved":
-            guard let key = response.sharedKey, isSharedKeyHex(key) else { return .declined }
-            return .approved(sharedKeyHex: key)
-        case "pending":
-            return .pending
-        default:
-            return .declined
-        }
+    /// One `/api/pair/status` answer as the approval reducer reads it.
+    static func approvalReply(_ response: PairStatusResponse) -> ApprovalReply {
+        ApprovalReply(reachable: response.reachable, status: response.status, sharedKey: response.sharedKey)
     }
 
     /// Path-B client PIN: four digits, matching the satellite's own PIN
@@ -104,15 +86,6 @@ final class PairingClient {
     }
 
     private static let clientPinDigits = 4
-
-    /// Require the hex alphabet, not just the length: a 64-char non-hex key
-    /// would otherwise decode to garbage downstream in `hexToBytes`.
-    static func isSharedKeyHex(_ key: String) -> Bool {
-        key.count == 64 && key.utf8.allSatisfy { byte in
-            (0x30 ... 0x39).contains(byte) || (0x41 ... 0x46).contains(byte)
-                || (0x61 ... 0x66).contains(byte)
-        }
-    }
 
     // MARK: - Transport
 

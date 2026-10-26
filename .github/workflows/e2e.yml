@@ -2,10 +2,12 @@ name: e2e (real satellite)
 
 # Builds the real satellite from a pinned release tag and drives one full
 # session against it over loopback through scripts/e2e_local.sh: pairing
-# (path A, the rotating PIN), the TOFU pin of its self-signed certificate,
-# the hmacProof, the declarative session PUT with the slot descriptor,
-# encrypted UDP both ways with heartbeats the server decrypts, the latency
-# window seeding from real acks, the graceful DELETE and the self-unpair.
+# (path A, the rotating PIN; path B, the operator's approval and decline
+# answered on the satellite's admin API), the TOFU pin of its self-signed
+# certificate, the hmacProof, the declarative session PUT with the slot
+# descriptor, encrypted UDP both ways with heartbeats the server decrypts,
+# the latency window seeding from real acks, the graceful DELETE and the
+# self-unpair.
 # GitHub's runners are unentitled, so the satellite's virtual-pad backend is
 # inert and the driver asserts the honest `backendUnavailable` path for the
 # slot; game adoption and the live return paths still need entitled hardware.

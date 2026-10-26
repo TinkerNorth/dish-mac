@@ -4,7 +4,7 @@
 // A satellite session as the Diagnostics window reads it, taken off the
 // connection and its client together on the main actor: the negotiation,
 // the ack-fed epoch and bitmap against what this client applied, the
-// backend, the heartbeats, the grant and the round trips; and the bound
+// backend, the heartbeats, the grant and the round trips; and each bound
 // slot's side of the wire. Data only; the window words it.
 
 import DishCore
@@ -76,7 +76,7 @@ package struct HostSessionFacts: Equatable {
 @MainActor
 package func hostSessionFacts(of conn: WifiConnection) -> HostSessionFacts {
     let ack = conn.lastHeartbeatAck
-    let confirmed: UInt16 = conn.slotApplied ? UInt16(1) << UInt16(WifiConnection.defaultCtrlIndex) : 0
+    let confirmed = expectedBitmap(conn.slotTable.appliedSlots())
     return HostSessionFacts(
         id: conn.id,
         live: conn.hasLiveSession,
@@ -124,16 +124,16 @@ package struct SlotWireFacts: Equatable {
     }
 }
 
-/// Nil for a connection that carries no descriptor.
+/// Nil for a slot the connection does not carry.
 @MainActor
-package func slotWireFacts(of conn: WifiConnection) -> SlotWireFacts? {
-    guard let descriptor = conn.desiredDescriptor else { return nil }
+package func slotWireFacts(of conn: WifiConnection, slotId: String) -> SlotWireFacts? {
+    guard let descriptor = conn.descriptor(for: slotId) else { return nil }
     return SlotWireFacts(
         controllerIndex: descriptor.ctrlIdx,
         type: Int(descriptor.type),
         caps: descriptor.caps,
         touchpad: wireTouchpad(descriptor.touchpadMode),
-        confirmed: conn.slotApplied,
+        confirmed: conn.isSlotApplied(slotId),
         streaming: streamingOf(hostBitmap: conn.lastHeartbeatAck?.bitmap, controllerIndex: descriptor.ctrlIdx)
     )
 }

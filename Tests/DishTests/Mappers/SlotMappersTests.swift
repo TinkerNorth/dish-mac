@@ -7,24 +7,24 @@ import XCTest
 
 final class SlotMappersTests: XCTestCase {
 
-    private func server(_ live: LinkState, boundTo slotId: String? = nil) -> ConnectionSummary {
-        ConnectionSummary(id: "c-\(live)", label: "Desk", detail: "", live: live, boundSlotId: slotId)
+    private func server(_ live: LinkState, boundTo slotIds: [String] = []) -> ConnectionSummary {
+        ConnectionSummary(id: "c-\(live)", name: "Desk", live: live, boundSlotId: slotIds.first, boundSlotIds: slotIds)
     }
 
     private let slot = ControllerSlot(id: "pad", name: "DualSense")
 
-    func testBindableExcludesConnectionsBoundToAnotherSlot() {
+    func testASatelliteStaysBindableUntilItCarriesFourOtherPads() {
         let free = server(.ready)
-        let mine = server(.connected, boundTo: "pad")
-        let taken = server(.saved, boundTo: "other")
-        XCTAssertEqual(bindableConnections(for: slot, in: [free, mine, taken]), [free, mine])
+        let mine = server(.connected, boundTo: ["a", "b", "c", "pad"])
+        let three = server(.unstable, boundTo: ["a", "b", "c"])
+        let full = server(.saved, boundTo: ["a", "b", "c", "d"])
+        XCTAssertEqual(bindableConnections(for: slot, in: [free, mine, three, full]), [free, mine, three])
     }
 
     func testAMoonlightHostStaysBindableUntilItCarriesFourPads() {
         let three = ConnectionSummary(
             id: "moonlight:a",
-            label: "PC",
-            detail: "",
+            name: "PC",
             live: .ready,
             boundSlotId: "x",
             kind: .moonlight,
@@ -32,8 +32,7 @@ final class SlotMappersTests: XCTestCase {
         )
         let four = ConnectionSummary(
             id: "moonlight:b",
-            label: "PC",
-            detail: "",
+            name: "PC",
             live: .ready,
             boundSlotId: "x",
             kind: .moonlight,
@@ -41,8 +40,7 @@ final class SlotMappersTests: XCTestCase {
         )
         let mine = ConnectionSummary(
             id: "moonlight:c",
-            label: "PC",
-            detail: "",
+            name: "PC",
             live: .ready,
             boundSlotId: "x",
             kind: .moonlight,
@@ -51,39 +49,33 @@ final class SlotMappersTests: XCTestCase {
         XCTAssertEqual(bindableConnections(for: slot, in: [three, four, mine]), [three, mine])
     }
 
-    func testBindLabelForEveryState() {
-        XCTAssertEqual(bindLabel(nil), "unbound")
-        XCTAssertEqual(bindLabel(server(.connected)), "→ Desk")
-        XCTAssertEqual(bindLabel(server(.unstable)), "→ Desk (unsteady)")
-        XCTAssertEqual(bindLabel(server(.connecting)), "→ Desk (connecting…)")
-        XCTAssertEqual(bindLabel(server(.ready)), "→ Desk (ready)")
-        XCTAssertEqual(bindLabel(server(.saved)), "→ Desk (offline)")
-        XCTAssertEqual(bindLabel(server(.found)), "→ Desk (offline)")
-        XCTAssertEqual(bindLabel(server(.stale)), "→ Desk (offline)")
-    }
-
-    func testSubtitleLeadsWithTheDeviceKind() {
-        XCTAssertEqual(slotSubtitle(slot), "Gamepad • unbound")
-        var bound = slot
-        bound.boundStatus = server(.connected)
-        XCTAssertEqual(slotSubtitle(bound), "Gamepad • → Desk")
-    }
-
-    func testAnUnboundSlotIsMutedWithTheOffGlyph() {
+    func testAnUnboundSlotIsMuted() {
         XCTAssertEqual(slotDotColor(slot), DishTheme.muted)
-        XCTAssertEqual(slotIconState(slot), .off)
     }
 
     func testABoundSlotFollowsItsServer() {
         var bound = slot
         bound.boundStatus = server(.connected)
         XCTAssertEqual(slotDotColor(bound), DishTheme.success)
-        XCTAssertEqual(slotIconState(bound), .connected)
     }
 
-    func testTheBindButtonTitleFlipsWithThePicker() {
-        XCTAssertEqual(bindButtonTitle(expanded: false), "Bind")
-        XCTAssertEqual(bindButtonTitle(expanded: true), "Close")
+    func testAPadsLinkReadsAsItsFamilyBecauseGameControllerHidesTheTransport() {
+        XCTAssertEqual(padFamilyName(.dualSense), "DualSense")
+        XCTAssertEqual(padFamilyName(.dualShock4), "DualShock 4")
+        XCTAssertEqual(padFamilyName(.xbox), "Xbox")
+        XCTAssertEqual(padFamilyName(.nintendo), "Nintendo")
+        XCTAssertEqual(padFamilyName(.other), "GameController")
+    }
+
+    func testAChipReadsWarningFirstThenOnAndOffAndAbsentIsDashed() {
+        let on = CapabilityChipModel(label: "Gyro", on: true, available: true, help: "")
+        XCTAssertEqual(capabilityChipLook(on), CapabilityChipLook(ink: DishTheme.primary, on: true, absent: false))
+        let off = CapabilityChipModel(label: "Gyro", on: false, available: true, help: "")
+        XCTAssertEqual(capabilityChipLook(off), CapabilityChipLook(ink: DishTheme.muted, on: false, absent: false))
+        let absent = CapabilityChipModel(label: "No gyro", on: false, available: false, help: "")
+        XCTAssertEqual(capabilityChipLook(absent), CapabilityChipLook(ink: DishTheme.muted, on: false, absent: true))
+        let warned = CapabilityChipModel(label: "Mic", on: true, available: true, help: "", warning: true)
+        XCTAssertEqual(capabilityChipLook(warned).ink, DishTheme.warning, "the warning outranks on")
     }
 
     func testAPadWithoutAnImuGetsTheAbsentMotionChip() {

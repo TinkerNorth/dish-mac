@@ -7,8 +7,9 @@
 // control-plane / data-plane suites; these tests prove the STAGES COMPOSE:
 //
 //   pair (operator PIN path A, incl. a wrong-PIN detour / client PIN path B
-//   with the status poll) → declarative PUT topology → encrypted controller
-//   input the harness decrypts and records byte-for-byte → enriched-ack
+//   with the status poll) → declarative PUT topology carrying two pads →
+//   encrypted controller input on each pad's own index, which the harness
+//   decrypts and records byte-for-byte → enriched-ack
 //   snapshot → latency seeding → graceful teardown. Plus the two terminal
 //   control-plane arms end-to-end: a TOFU imposter aborts the handshake
 //   without leaking a request (and without costing trust), and a pair-time
@@ -77,8 +78,10 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
 
     private var failures: [ConnectionFailure] {
         events.compactMap {
-            if case let .failure(failure) = $0 { return failure }
-            return nil
+            switch $0 {
+            case let .failure(failure), let .pairingFailed(_, failure): failure
+            case .pairingRequired: nil
+            }
         }
     }
 
@@ -101,7 +104,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         await refuseAWrongPin(id: id)
         let conn = boundConnection(id: id)
         try await pairWithTheRealPin(id: id)
-        try assertTheFirstPutCarriedTheWholeSlot()
+        try assertTheFirstPutCarriedBothPads()
         var closeReasons: [CloseReason] = []
         conn.onSessionClose = { closeReasons.append($0) }
         try assertEncryptedInputRoundTrips(conn)
@@ -120,7 +123,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertNil(satellite.pairingKeyHex, "the satellite must not mint trust for a wrong PIN")
     }
 
-    /// The slot is bound before pairing so the descriptor rides the very
+    /// Two pads are bound before pairing so both descriptors ride the very
     /// first declarative PUT rather than a follow-up converge.
     private func boundConnection(id: String) -> WifiConnection {
         let conn = manager.get(id) ?? {
@@ -129,6 +132,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
             return fresh
         }()
         conn.attachSlot("journey-slot", controllerType: 0, capabilities: ControllerCapabilities(hasMotion: true, hasLightbar: true))
+        conn.attachSlot("journey-second", controllerType: 0, capabilities: ControllerCapabilities(hasRumble: true))
         return conn
     }
 
@@ -141,24 +145,27 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertTrue(live, "pairing must flow straight into the live session")
     }
 
-    private func assertTheFirstPutCarriedTheWholeSlot() throws {
+    private func assertTheFirstPutCarriedBothPads() throws {
         XCTAssertEqual(satellite.sessionPuts.count, 1)
         let put = try XCTUnwrap(satellite.sessionPuts.first)
         XCTAssertEqual(put["protocolVersion"] as? Int, ProtocolConstants.protocolVersion)
         XCTAssertEqual(put["deviceId"] as? String, store.getOrCreateDeviceId())
         let descriptors = try XCTUnwrap(put["controllers"] as? [[String: Any]])
-        XCTAssertEqual(descriptors.count, 1)
+        XCTAssertEqual(descriptors.compactMap { $0["ctrlIdx"] as? Int }, [0, 1], "each pad on its own index")
         let caps = try XCTUnwrap(descriptors.first?["caps"] as? [String: Any])
         XCTAssertEqual(caps["motion"] as? Bool, true)
         XCTAssertEqual(caps["lightbar"] as? Bool, true)
-        XCTAssertEqual(satellite.appliedControllers.count, 1, "the harness applied the slot")
+        let second = try XCTUnwrap(descriptors.last?["caps"] as? [String: Any])
+        XCTAssertEqual(second["rumble"] as? Bool, true)
+        XCTAssertEqual(second["motion"] as? Bool, false, "each descriptor claims its own pad's hardware")
+        XCTAssertEqual(satellite.appliedControllers.count, 2, "the harness applied both pads")
     }
 
     /// The harness decrypts with its independent crypto and records the exact
     /// XUSB bytes.
     private func assertEncryptedInputRoundTrips(_ conn: WifiConnection) throws {
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "uplink heartbeat must decrypt")
-        conn.sendReport(GamepadReport(buttons: 0x0405, lt: 7, rt: 9, lx: 1000, ly: -2, rx: 3, ry: -4))
+        conn.sendReport(GamepadReport(buttons: 0x0405, lt: 7, rt: 9, lx: 1000, ly: -2, rx: 3, ry: -4), controllerIndex: 0)
         let inputFrame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
         guard case let .input(ctrlIdx, report) = inputFrame.detail else {
             return XCTFail("input frame must parse as .input, got \(inputFrame.detail)")
@@ -169,6 +176,13 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
             [0x05, 0x04, 0x07, 0x09, 0xE8, 0x03, 0xFE, 0xFF, 0x03, 0x00, 0xFC, 0xFF],
             "the decrypted XUSB report must match byte-for-byte"
         )
+        conn.sendReport(GamepadReport(buttons: 0x1000, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0), controllerIndex: 1)
+        XCTAssertTrue(satellite.awaitFrameCount(opcode: FakeSatelliteOpcode.input, atLeast: 2))
+        let indices = satellite.frames.compactMap { frame -> UInt8? in
+            guard case let .input(index, _) = frame.detail else { return nil }
+            return index
+        }
+        XCTAssertEqual(indices, [0, 1], "the second pad's input rides its own index")
     }
 
     private func assertTouchpadFrameRoundTrips(_ conn: WifiConnection) throws {
@@ -178,7 +192,8 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
                 finger1: TouchpadFinger(active: true, id: 3, x: 400, y: -500),
                 buttonPressed: true
             ),
-            eventTimeMs: 0xCAFE_F00D
+            eventTimeMs: 0xCAFE_F00D,
+            controllerIndex: 0
         )
         let padFrame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))
         guard case let .pointer(pad) = padFrame.detail else {
@@ -195,7 +210,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertTrue(acked, "the enriched ack must surface through the tick")
         let ack = try XCTUnwrap(conn.lastHeartbeatAck)
         XCTAssertEqual(ack.epoch, satellite.epoch, "ack epoch mirrors the server's applied epoch")
-        XCTAssertEqual(ack.bitmap, 0b1, "slot 0 is active server-side")
+        XCTAssertEqual(ack.bitmap, 0b11, "slots 0 and 1 are active server-side")
         let seeded = await waitUntil { (conn.client?.latencySnapshot().samples ?? 0) >= 1 }
         XCTAssertTrue(seeded, "heartbeat RTTs must seed the latency window")
         let p50 = try XCTUnwrap(conn.client?.latencySnapshot().p50OneWayMs)
@@ -210,7 +225,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         manager.disconnect(id: id)
         let deleted = await waitUntil { self.satellite.lastTokenHex == nil }
         XCTAssertTrue(deleted, "graceful close must DELETE the session server-side")
-        XCTAssertTrue(satellite.appliedControllers.isEmpty, "teardown unplugs the applied slot")
+        XCTAssertTrue(satellite.appliedControllers.isEmpty, "teardown unplugs both pads")
         XCTAssertEqual(satellite.epoch, epochBeforeClose &+ 1, "unplugging bumps the epoch")
         XCTAssertEqual(manager.get(id)?.state, .idle)
         XCTAssertNotNil(store.sharedKey(for: id), "disconnect keeps the pairing")

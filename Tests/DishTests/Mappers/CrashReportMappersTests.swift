@@ -1,31 +1,22 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import DishEngine
 import XCTest
 @testable import Dish
 
-/// The report the user reviews is the log on disk, redacted with this
-/// user's home, under the running build.
+/// The report the user reviews is the log as the model last read it,
+/// redacted with this user's home, under the running build.
 final class CrashReportMappersTests: XCTestCase {
 
-    private var directory: URL!
-
-    override func setUpWithError() throws {
-        try super.setUpWithError()
-        directory = FileManager.default.temporaryDirectory.appendingPathComponent("dish-report-\(UUID().uuidString)", isDirectory: true)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-    }
-
-    override func tearDownWithError() throws {
-        try FileManager.default.removeItem(at: directory)
-        try super.tearDownWithError()
-    }
-
-    func testTheReportRedactsTheLogUnderTheEnvironmentHeader() throws {
-        let log = CrashLog(url: directory.appendingPathComponent("crash.log"))
-        try Data("--- dish crash: SIGSEGV\n0 Dish /Users/laura/Dish.app to 192.168.1.9\n".utf8).write(to: log.url)
-        let report = crashReportText(log, appVersion: "0.1.0", home: "/Users/laura", system: "Version 26.0 (Build 1)")
+    func testTheReportRedactsTheLogUnderTheEnvironmentHeader() {
+        let report = crashReportText(
+            "--- dish crash: SIGSEGV\n0 Dish /Users/laura/Dish.app to 192.168.1.9\n",
+            appVersion: "0.1.0",
+            home: "/Users/laura",
+            system: "Version 26.0 (Build 1)"
+        )
         XCTAssertEqual(
             report,
             "Dish 0.1.0\nmacOS Version 26.0 (Build 1)\n\n--- backtrace ---\n--- dish crash: SIGSEGV\n0 Dish ~/Dish.app to [ip]\n"
@@ -33,13 +24,16 @@ final class CrashReportMappersTests: XCTestCase {
     }
 
     func testAMissingLogReportsAnEmptyTrace() {
-        let report = crashReportText(
-            CrashLog(url: directory.appendingPathComponent("none.log")),
-            appVersion: "0.1.0",
-            home: "/Users/laura",
-            system: "26"
-        )
+        let report = crashReportText("", appVersion: "0.1.0", home: "/Users/laura", system: "26")
         XCTAssertEqual(report, "Dish 0.1.0\nmacOS 26\n\n--- backtrace ---\n")
+    }
+
+    func testThePageReadsTheLogTheModelLastReadUnderTheRunningVersion() throws {
+        var facts = ShellFacts(update: UpdateStatus(currentVersion: "0.2.0"), crashLogPresent: true)
+        facts.crashLogText = "--- dish crash: SIGABRT\n"
+        let state = crashReportPageState(facts: facts, home: "/Users/laura", system: "26")
+        XCTAssertEqual(state.report, "Dish 0.2.0\nmacOS 26\n\n--- backtrace ---\n--- dish crash: SIGABRT\n")
+        XCTAssertEqual(try XCTUnwrap(state.issueURL).host, "github.com")
     }
 
     func testTheIssueOpensOnThisRepository() throws {

@@ -165,8 +165,8 @@ func audioFacts(
     )
 }
 
-/// The engine's bindings: every bound slot whose connection is in the pool,
-/// in slot order.
+/// The engine's bindings: every bound slot its satellite carries, on the
+/// controller index it holds there, in slot order.
 @MainActor
 func audioBindings(
     bindings: [String: String],
@@ -177,7 +177,7 @@ func audioBindings(
     permitted: Bool
 ) -> [AudioBinding] {
     bindings.compactMap { slotId, connectionId -> AudioBinding? in
-        guard let conn = pool[connectionId] else { return nil }
+        guard let conn = pool[connectionId], let index = conn.controllerIndex(of: slotId) else { return nil }
         let facts = audioFacts(
             route: routes[slotId],
             preferences: preferences[slotId] ?? SlotPreferences(),
@@ -186,7 +186,7 @@ func audioBindings(
             permitted: permitted,
             muted: mutes.contains(slotId)
         )
-        return AudioBinding(slotId: slotId, connection: conn, route: routes[slotId]?.function, facts: facts)
+        return AudioBinding(slotId: slotId, connection: conn, controllerIndex: index, route: routes[slotId]?.function, facts: facts)
     }
     .sorted { $0.slotId < $1.slotId }
 }

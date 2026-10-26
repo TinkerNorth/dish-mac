@@ -94,18 +94,22 @@ final class AudioPipelineTests: XCTestCase {
     func testTheBindingsFollowThePoolInSlotOrder() {
         let desk = connection("desk")
         let den = connection("den")
+        desk.attachSlot("a", controllerType: 0, capabilities: .none)
+        den.attachSlot("x", controllerType: 0, capabilities: .none)
+        den.attachSlot("b", controllerType: 0, capabilities: .none)
         var preferences = SlotPreferences()
         preferences.mic = true
         let bindings = audioBindings(
-            bindings: ["b": "den", "a": "desk", "c": "gone"],
+            bindings: ["b": "den", "a": "desk", "c": "gone", "d": "desk"],
             pool: ["desk": desk, "den": den],
             routes: ["a": PadAudioRoute(verdict: .routed, function: function)],
             preferences: ["a": preferences],
             mutes: ["a"],
             permitted: true
         )
-        XCTAssertEqual(bindings.map(\.slotId), ["a", "b"], "a binding whose connection left the pool is dropped")
+        XCTAssertEqual(bindings.map(\.slotId), ["a", "b"], "a binding its satellite does not carry, or whose satellite left, is dropped")
         XCTAssertTrue(bindings.first?.connection === desk)
+        XCTAssertEqual(bindings.map(\.controllerIndex), [0, 1], "each on the index its satellite gave it")
         XCTAssertEqual(bindings.first?.route, function)
         XCTAssertEqual(bindings.first?.facts.micOn, true)
         XCTAssertEqual(bindings.first?.facts.muted, true)
@@ -152,7 +156,7 @@ final class AudioPipelineTests: XCTestCase {
 
         preferences.setMic(true, for: "ds")
         XCTAssertEqual(pipeline.engine.state["ds"]?.plan.capMic, true)
-        let claimed = await waitUntil { desk.desiredDescriptor.map { $0.caps & ProtocolConstants.capMic != 0 } == true }
+        let claimed = await waitUntil { desk.descriptor(for: "ds").map { $0.caps & ProtocolConstants.capMic != 0 } == true }
         XCTAssertTrue(claimed, "the bound pad's descriptor claims the mic once its route and switch allow")
 
         pipeline.requestMicrophoneLeave()

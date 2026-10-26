@@ -33,11 +33,10 @@ package extension AppModel {
         return true
     }
 
-    /// Every trace of a connection goes, its bindings first.
+    /// Every trace of a connection goes, its bindings first, the ones
+    /// remembered for an absent pad with them.
     func forget(_ id: String) {
-        for (slotId, connectionId) in hub.bindings where connectionId == id {
-            hub.unbind(slotId: slotId)
-        }
+        hub.forgetBindings(of: id)
         if ConnectionHub.isMoonlight(id) {
             moonlight.forget(hostId: id)
         } else {
@@ -45,14 +44,12 @@ package extension AppModel {
         }
     }
 
-    /// Both browses at once: the satellites' beacon and mDNS, and the Moonlight hosts' mDNS.
+    /// Both browses at once: the satellites' beacon and mDNS, and the Moonlight
+    /// hosts' mDNS. The user asked, so the prompt it raises needs no more explaining.
     func startScan() {
+        markLocalNetworkPrimed()
         wifi.startDiscovery()
         moonlight.startDiscovery()
-    }
-
-    func pairWithPin(_ server: DiscoveredServer, pin: String) {
-        wifi.pairWithPin(server, pin: pin)
     }
 
     /// The bound pad's detected capabilities, with its audio route folded

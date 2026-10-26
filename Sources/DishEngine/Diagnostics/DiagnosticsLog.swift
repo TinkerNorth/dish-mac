@@ -84,8 +84,16 @@ package enum DiagnosticsLog {
     package static let capacity = 200
 }
 
+package extension ConnectionSummary {
+    /// What the flight recorder writes and the rows are ordered by: the
+    /// advertised name, else the address, which a bug report can still match.
+    var recordName: String {
+        name.isEmpty ? address : name
+    }
+}
+
 package func linkSnapshot(of summary: ConnectionSummary) -> LinkSnapshot {
-    LinkSnapshot(id: summary.id, label: summary.label, state: summary.live)
+    LinkSnapshot(id: summary.id, label: summary.recordName, state: summary.live)
 }
 
 /// The host's label, or its id once the row has gone, which is still better
@@ -95,7 +103,7 @@ package func padSnapshot(of slot: ControllerSlot) -> PadSnapshot {
         id: slot.id,
         name: slot.name,
         boundId: slot.boundConnectionId ?? "",
-        boundLabel: slot.boundStatus?.label ?? slot.boundConnectionId ?? ""
+        boundLabel: slot.boundStatus?.recordName ?? slot.boundConnectionId ?? ""
     )
 }
 

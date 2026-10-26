@@ -17,22 +17,41 @@ protocol-1 satellite; see [Protocol](#protocol).
 
 - Finds satellites over mDNS (`_satellite._udp`) and the legacy `:9879`
   beacon, or takes an address typed in when both are blocked.
-- Pairs with the satellite's rotating four-digit PIN, or waits for the
-  operator's approval, and remembers the satellite by its stable identity so
-  a DHCP change keeps it paired.
-- Keeps several satellites paired at once and binds each controller slot to
-  one of them.
+- Pairs by asking the satellite's operator first: the satellite's row opens
+  into a pairing card that shows a four-digit code and files it with the
+  satellite, whose operator accepts it there (the request waits about two
+  minutes; a decline or an expiry offers a new code). The satellite's own
+  rotating four-digit PIN can be typed into the same card at the same time,
+  and whichever lands first pairs. Dish remembers the satellite by its stable
+  identity so a DHCP change keeps it paired.
+- Keeps several satellites paired at once and binds each controller to one
+  of them, up to four controllers on one satellite, each on its own slot
+  there. Bindings survive a restart: a remembered binding is made again as
+  soon as its controller is plugged in and its satellite or host is known.
+  The Connections page scans as it opens (once macOS's Local Network prompt
+  has been explained) and lists what it found, with Pair… on each row, above
+  a card per paired satellite that shows its address, latency, link chips
+  and every pad it carries, with Disconnect, Pair… or Connect and a Forget
+  that asks first and names the bindings it drops; a typed address reaches a
+  satellite discovery misses.
 - Finds Moonlight hosts (Sunshine, Apollo, Wolf) over mDNS (`_nvstream._tcp`)
-  or by a typed address, pairs with the PIN the host asks for, and streams
+  or by a typed address on their own page, pairs with the PIN the dish shows
+  inside the host's row for you to type into the host, and streams
   controller input into the host's own game-streaming session: up to four
   controllers on one host, each plugged in as the Xbox, PlayStation or
   Nintendo pad you pick or the one that fits it, with rumble and the light
   bar coming back. The first controller bound to a host starts the app you
   picked for it, or the first the host lists; no video or audio is received.
-- Forwards buttons, sticks and triggers from every GameController-framework
-  pad, plus motion (gyro and accelerometer) and the touchpad from DualSense
-  and DualShock 4 pads, and the battery level; the touchpad reaches the host
-  as the pad's own or, picked per controller, as the host's mouse.
+- Forwards buttons (Guide included), sticks and triggers from every pad
+  GameController vends, including the ones it vends without the extended
+  profile, such as the Nintendo Switch Online N64 and SNES pads (the N64's C
+  buttons drive the right stick, Z and ZR the triggers, as on Android), and
+  keeps forwarding them while another app is in front. A game device macOS
+  does not hand to GameController is listed under Other input devices in
+  Diagnostics with its hardware ID and connection. Plus motion (gyro and
+  accelerometer) and the touchpad from DualSense and DualShock 4 pads, and
+  the battery level; the touchpad reaches the host as the pad's own or,
+  picked per controller, as the host's mouse.
 - Plays rumble and sets the light bar as the host game asks, each gated by
   its own switch in Settings and, for motion, rumble and the touchpad, by
   the controller's own; on a DualSense it also plays the game's
@@ -42,16 +61,46 @@ protocol-1 satellite; see [Protocol](#protocol).
   muted from one chip, and the host's voice chat and HD haptics to the pad's
   speaker and actuators.
 - Keeps the Mac awake while a controller is being used or connected, your
-  choice in Settings with the display optional; releases every session when
-  the Mac sleeps and reconnects when it wakes.
-- Keeps streaming when the window is closed, from a menu-bar item; follows
-  the system appearance or a chosen light or dark theme.
+  choice in Settings with the display optional. When the Mac sleeps it
+  releases every held button and closes every session cleanly; when it wakes
+  it reopens them and scans the network again. A closed lid still puts the
+  Mac to sleep: `IOPMLib.h` calls `kIOPMAssertionTypePreventSystemSleep` "not
+  supported in any OS X releases", the idle-sleep assertions Dish holds do
+  not reach the lid, and Apple's clamshell mode needs a display and power
+  connected; when the lid closes mid-stream, Dish says so once on the wake.
+- Opens one window, the desktops' shell: a rail on the left (Home,
+  Controllers and Connections at the top, Support Dish and Settings at the
+  foot, collapsible to an icon strip that stays collapsed across launches)
+  and a content column whose header carries the page title, a back chevron
+  on a pushed page, the streaming pill with the keep-awake reach, the
+  app-wide microphone chip and the status line. Settings, Diagnostics, the
+  inspector, the crash report and the licenses are pages in that window,
+  not sheets or extra windows, so the window always moves; ⌘, opens
+  Settings, ⌘1 to ⌘3 the top destinations and ⌘[ goes back.
+- Keeps streaming when the window is closed, from a menu-bar item whose
+  Diagnostics item opens the window on that page; follows the system
+  appearance or a chosen light or dark theme.
 - Checks GitHub for a newer release at startup and every few hours, says so
   once per version, and lets one switch turn the check off.
-- Emulates each pad as the type its satellite offers for it, or the one you
-  pick, and shows what carries end to end: the pad, this Mac, the type and
-  the host, feature by feature.
-- Opens a Diagnostics window with each session's own account of itself, each
+- Draws Home as the signal path, the desktops' wiring diagram: a boxed row
+  per controller from the pad, along a wire captioned with its measured
+  report rate and the link's latency, to the host and the slot it holds
+  there ("slot 2 of 4"), with the binding printed underneath as chips (the emulated type,
+  then motion, touchpad, rumble, microphone, speaker and light bar, the
+  controller's own switches clickable in place) and an Edit button; a pad
+  with nowhere to go is a "Bind…" card, and the live events, sends and total
+  sit under the diagram. Controllers lists a card per pad with its family
+  and rate, its capability chips, the microphone's mute, its motion rate,
+  "Bound · host ›" and its dead zones.
+- Configures each binding on its own page: where the pad goes (paired
+  satellites and Moonlight hosts with their link chips), its motion,
+  rumble, touchpad, microphone and speaker switches, the type it is emulated
+  as (the satellite's catalog, or Auto / Xbox / PlayStation / Nintendo on a
+  Moonlight host) and what carries end to end, feature by feature, all held
+  as a draft until one Apply, which shows its steps and asks before you
+  leave with changes unapplied. Each pad's stick and trigger dead zones are
+  sliders of their own, kept per pad under the desktops' key.
+- Shows a Diagnostics page with each session's own account of itself, each
   controller down to the wire, and a log of what changed; inspects one
   controller live (its input as the host sees it, motion and touch, a drift
   and a range test on the raw sticks, a rumble bench, a test tone and a
@@ -68,7 +117,10 @@ row, in [`Tests/PARITY.md`](Tests/PARITY.md).
 
 - macOS 13 (Ventura) or newer to run.
 - Xcode 26 (the Swift 6.2 toolchain) to build; CI builds on `macos-26`.
-- A compatible gamepad (Xbox, PlayStation or any MFi controller).
+- A compatible gamepad (Xbox, PlayStation, Nintendo Switch Pro, Joy-Con, the
+  Switch Online N64 and SNES pads, or any MFi controller). Its input
+  keeps flowing when another app is in front; macOS 15.4 broke that for every
+  app and macOS 15.5 fixed it.
 - A Satellite server reachable on your LAN.
 
 ## Build and run
@@ -85,6 +137,17 @@ For a signed-looking `.app` with its icon, `Info.plist` (versions from
 ./bundle.sh release
 open Dish.app
 ```
+
+## Getting started
+
+The first launch opens a short welcome: what Dish is, how it reaches the host,
+and where to get Satellite for the host PC. Finish starts **Set up Dish**, a
+walk through the controller, the PC it drives, the type it plugs in as and how
+it feels, with nothing sent until its last step's Bind. Before the first scan
+for satellites, Dish says that macOS is about to ask for Local Network access,
+then asks; if the permission was refused, the empty list and its notice open
+Privacy & Security › Local Network. Set up is in the rail any time, in Settings
+▸ Setup & help beside Help & FAQ, and behind a controller's "Bind…" on Home.
 
 ## Architecture
 
@@ -112,10 +175,11 @@ fails the build when a file imports outside its module's allowlist, a
 dependency points the wrong way, a view holds a raw colour or an English
 literal, or a mutable static appears.
 
-The hot path never leaves the GameController callback thread: it builds a
-`GamepadReport`, applies the dead zones under a lock, reads the
-slot-to-connection table under one `os_unfair_lock`, seals the frame and
-calls `sendto()`. No queue, no Combine, no async hop, no main-actor hop; the
+The hot path never leaves the controller's input queue: it builds a
+`GamepadReport`, applies the dead zones under a lock, reads the slot's route
+(its satellite and the controller index it holds there, or its pad on a
+Moonlight host) under one `os_unfair_lock`, seals the frame and calls
+`sendto()`. No queue, no Combine, no async hop, no main-actor hop; the
 raw POSIX socket carries `IP_TOS = 0xB8` (DSCP EF) and `SO_NOSIGPIPE`.
 CryptoKit's `ChaChaPoly` produces the exact bytes libsodium produces on the
 server, pinned byte-for-byte by the cross-repo vectors in
@@ -136,14 +200,15 @@ dish-mac/
 │   ├── Input/                    # the GameController bridge and the hot path
 │   ├── Audio/                    # the pad's own audio: routes, the engine, the codec, the HAL units
 │   ├── Update/                   # the release manifest check
-│   ├── Diagnostics/              # the session facts, the flight recorder, the window's source
+│   ├── Diagnostics/              # the session facts, the flight recorder, the page's source
 │   └── Util/                     # leaf helpers (the keep-awake pipeline, the crash handler, hex, locks)
 ├── Sources/Dish/
 │   ├── DishApp.swift             # @main
 │   ├── L10n/                     # every word, and the one reader of the catalog
 │   ├── Resources/Localizable.xcstrings
+│   ├── Navigation/               # the navigation machine, its store, the keyboard commands
 │   ├── Notifications/            # the toast queue, the background notice
-│   └── UI/                       # views, Theme.swift, Mappers/
+│   └── UI/                       # Shell/ (rail, window), Pages/, Kit/, Mappers/, Theme.swift
 ├── Tests/DishCoreTests/          # pinned interop vectors, reducer suites
 ├── Tests/DishKernelTests/        # every kernel primitive
 ├── Tests/DishEngineTests/        # unit and live suites; Support/FakeSatellite/
@@ -155,6 +220,7 @@ dish-mac/
 ├── packaging/update-policy.json  # the oldest build the update check still supports
 ├── .github/workflows/            # macos-ci, e2e (the real satellite), release, the security gates
 ├── docs/ARCHITECTURE.md          # the module map and the dataflow rules
+├── docs/UI_CONTRACT.md           # the shell header, the pages, the kit rules
 ├── docs/contract.md              # contract concept → file
 ├── scripts/ci-local.sh           # the CI gate, locally
 ├── scripts/e2e_local.sh          # loopback e2e against the real satellite binary
@@ -168,7 +234,8 @@ forwards what the host game writes to the virtual pad as `MSG_RUMBLE`
 (`0x0009`, 7 bytes: `ctrlIdx(1) + strong(2 BE) + weak(2 BE) + durationMs(2
 BE)`) and `MSG_LIGHTBAR` (`0x000D`, 4 bytes: `ctrlIdx(1) + R + G + B`) over
 the encrypted UDP socket. `DishCore` parses them as pure decoders;
-`ReturnPathRouter` resolves connection to slot to device; the GameController
+`ReturnPathRouter` resolves the connection and the command's controller
+index to the slot bound there, and so to the device; the GameController
 bridge actuates `GCController.haptics` (one `CHHapticEngine` per handle) and
 sets `GCController.light`. The two are gated and routed independently, so
 Rumble off in Settings leaves the light bar alone, and a pad without the
@@ -179,7 +246,8 @@ Controller audio rides the same socket. `MSG_SPEAKER_AUDIO` (`0x0013`) and
 audio function, the haptics on channels 3–4 of a DualSense's four-channel
 stream; `MSG_MIC_AUDIO` (`0x0012`) carries the pad's microphone up while its
 switch is on and it is not muted; and `MSG_MIC_LED` (`0x0014`) reports the
-lamp the game asked for, shown as a chip. `ControllerAudioEngine` decodes
+lamp the game asked for, shown as a chip. Each of these names its pad by
+controller index, so two pads on one satellite keep their own lanes. `ControllerAudioEngine` decodes
 through the fleet's jitter window and plays on a Core Audio HAL unit.
 
 ## Protocol

@@ -12,6 +12,9 @@ import os
 package enum ConnectionEvent: Equatable {
     case pairingRequired(DiscoveredServer)
     case failure(ConnectionFailure)
+    /// A pairing attempt's failure, which the pairing card for that satellite
+    /// shows itself.
+    case pairingFailed(serverId: String, failure: ConnectionFailure)
 }
 
 /// Hosts whose presented TLS certificate mismatched the stored TOFU pin. The
@@ -55,6 +58,8 @@ package final class WifiConnectionManager: ObservableObject {
     @Published package private(set) var connections: [String: WifiConnection] = [:]
     @Published package private(set) var discoveredServers: [DiscoveredServer] = []
     @Published package private(set) var isScanning = false
+    /// Whether macOS refused this app the local network during the last scan.
+    @Published package private(set) var localNetworkDenied = false
     /// Ids in the pair-and-handshake flow; the rows show a spinner.
     @Published package private(set) var pairingInFlight: Set<String> = []
     /// True while any pooled connection converges its slot over REST.
@@ -83,6 +88,11 @@ package final class WifiConnectionManager: ObservableObject {
     /// In-flight path-B approval polls by connection id, so a re-issued
     /// request supersedes the prior poll and forget or disconnect cancels it.
     var approvalPolls: [String: Task<Void, Never>] = [:]
+    /// In-flight path-A PIN submissions by connection id, so an approval
+    /// landing first can stop the one it beat.
+    var pinSubmissions: [String: Task<Void, Never>] = [:]
+    /// Each satellite's pairing as the card shows it.
+    package let pairingAttempts = PairingAttempts()
     /// Per-connection reconnect throttle on the backoff curve.
     var retry: [String: RetryState] = [:]
     var retryTasks: [String: Task<Void, Never>] = [:]
@@ -167,7 +177,7 @@ package final class WifiConnectionManager: ObservableObject {
             .store(in: &bag)
         conn.onTopologyChanged = { [weak self, weak conn] in
             guard let self, let conn else { return }
-            Task { await self.syncBoundSlot(conn) }
+            Task { await self.syncSlots(conn) }
         }
         conn.onRekeyNeeded = { [weak self, weak conn] in
             guard let self, let conn else { return }
@@ -198,8 +208,9 @@ package final class WifiConnectionManager: ObservableObject {
         return true
     }
 
-    func publishScan(_ servers: [DiscoveredServer]) {
+    func publishScan(_ servers: [DiscoveredServer], localNetworkDenied denied: Bool = false) {
         discoveredServers = servers
+        localNetworkDenied = denied
         isScanning = false
     }
 
@@ -260,7 +271,7 @@ package final class WifiConnectionManager: ObservableObject {
     /// survive, and no scheduled retry resurrects a session the user closed.
     func disconnect(id: String) {
         guard let conn = connections[id] else { return }
-        cancelApprovalPoll(id)
+        dropPairing(id)
         let server = conn.server
         let connectionId = conn.connectionId
         let did = deviceId
@@ -284,7 +295,7 @@ package final class WifiConnectionManager: ObservableObject {
     /// dropped, because the proof needs the key; then the row, the key, the
     /// pin, the catalog and every retry marker go.
     func forget(id: String) {
-        cancelApprovalPoll(id)
+        dropPairing(id)
         selfUnpair(id)
         disconnect(id: id)
         store.forget(id)
@@ -361,6 +372,17 @@ package final class WifiConnectionManager: ObservableObject {
     private func isResting(_ id: String) -> Bool {
         guard let existing = connections[id] else { return true }
         return existing.state == .idle || existing.state == .stale
+    }
+
+    /// The machine is about to sleep: every session closes the graceful way
+    /// (`DELETE`, as the desktops do on suspend) and its row rests, so the
+    /// wake's reconnect is its next attempt. A sleep is not the user asking a
+    /// satellite to stay down, so nothing is suppressed.
+    func closeSessionsForSleep() {
+        let open = connections.values.filter(\.hasSession).map(\.id)
+        for id in open.sorted() {
+            disconnect(id: id)
+        }
     }
 
     /// After a wake, sockets may be dead and addresses moved: resting rows

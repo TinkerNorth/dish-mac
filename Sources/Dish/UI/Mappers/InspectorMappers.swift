@@ -153,3 +153,104 @@ func micMeterNote(_ slot: ControllerSlot, micPermitted: Bool, words: L10n = .app
     guard let meter = slot.audio?.micMeter else { return nil }
     return meter.peakPercent == 0 ? words.micListening : words.micLevel(meter.levelPercent, meter.peakPercent)
 }
+
+// MARK: - The page
+
+/// Everything the inspector draws for one controller: its name, the live
+/// input once the first report arrives, motion and touch, the stick tests
+/// and, while the pad is attached, the benches.
+struct InspectorPageState: Equatable {
+    let title: String
+    /// Nil until the pad's first report.
+    let live: LiveInputState?
+    let gyro: String
+    let accel: String
+    let touch: String
+    /// The test buttons wait while a test runs.
+    let stickTestsEnabled: Bool
+    let stickTestStatus: String?
+    /// Nil while the pad is not attached.
+    let benches: InspectorBenchState?
+}
+
+struct LiveInputState: Equatable {
+    let pressed: String
+    let leftStick: String
+    let rightStick: String
+    let leftTrigger: TriggerReadoutState
+    let rightTrigger: TriggerReadoutState
+    let rate: String
+}
+
+struct TriggerReadoutState: Equatable {
+    let fraction: Double
+    let text: String
+}
+
+/// The rumble, tone and microphone benches: what each can do and says.
+struct InspectorBenchState: Equatable {
+    let rumbleNote: String
+    let rumbleEnabled: Bool
+    let toneEnabled: Bool
+    let toneNote: String?
+    let mic: MicTestButton
+    let micNote: String?
+    /// The meter's level as a fraction while it listens.
+    let micLevel: Double?
+}
+
+/// The microphone bench's one button: stop a meter that listens, or start one.
+enum MicTestButton: Equatable {
+    case stop
+    case start(enabled: Bool)
+}
+
+func inspectorPageState(
+    slotId: String,
+    slots: [ControllerSlot],
+    facts: ShellFacts,
+    micPermitted: Bool,
+    locale: Locale = .current,
+    words: L10n = .app
+) -> InspectorPageState {
+    let slot = slots.first { $0.id == slotId }
+    let inspection = facts.inspection
+    let snapshot = inspection.snapshot
+    return InspectorPageState(
+        title: slot?.name ?? slotId,
+        live: snapshot.map { liveInput($0, reportsHz: inspection.reportsHz, words: words) },
+        gyro: gyroText(snapshot?.motion, locale: locale, words: words),
+        accel: accelText(snapshot?.motion, locale: locale, words: words),
+        touch: touchText(snapshot?.touch, words: words),
+        stickTestsEnabled: inspection.bench.phase != .running,
+        stickTestStatus: stickTestText(inspection, words: words),
+        benches: slot.map { inspectorBenches($0, micPermitted: micPermitted, words: words) }
+    )
+}
+
+func liveInput(_ snapshot: InputSnapshot, reportsHz: Int, words: L10n = .app) -> LiveInputState {
+    LiveInputState(
+        pressed: pressedText(snapshot, words: words),
+        leftStick: stickText(snapshot.leftStick, words: words),
+        rightStick: stickText(snapshot.rightStick, words: words),
+        leftTrigger: TriggerReadoutState(fraction: Double(snapshot.leftTrigger), text: percentText(snapshot.leftTrigger, words: words)),
+        rightTrigger: TriggerReadoutState(fraction: Double(snapshot.rightTrigger), text: percentText(snapshot.rightTrigger, words: words)),
+        rate: inputRateText(reportsHz, words: words)
+    )
+}
+
+/// A tone plays only through a speaker route and not over one already
+/// playing; a meter starts only on a microphone the system lets Dish hear.
+func inspectorBenches(_ slot: ControllerSlot, micPermitted: Bool, words: L10n = .app) -> InspectorBenchState {
+    let meter = slot.audio?.micMeter
+    let tonePlaying = slot.audio?.tonePlaying == true
+    return InspectorBenchState(
+        rumbleNote: rumbleBenchNote(slot, words: words),
+        rumbleEnabled: slot.capabilities.hasRumble,
+        toneEnabled: slot.capabilities.hasSpeaker && !tonePlaying,
+        toneNote: toneNote(slot, words: words),
+        mic: meter == nil ? .start(enabled: slot.capabilities.hasMic && micPermitted) : .stop,
+        micNote: micMeterNote(slot, micPermitted: micPermitted, words: words),
+        micLevel: meter.map { Double($0.levelPercent) / 100 }
+    )
+}

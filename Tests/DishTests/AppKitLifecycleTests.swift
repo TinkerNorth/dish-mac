@@ -8,13 +8,11 @@ import XCTest
 
 final class AppKitLifecycleTests: XCTestCase {
 
-    private var application: NotificationCenter!
     private var workspace: NotificationCenter!
     private var bag: Set<AnyCancellable>!
 
     override func setUp() {
         super.setUp()
-        application = NotificationCenter()
         workspace = NotificationCenter()
         bag = []
     }
@@ -25,42 +23,36 @@ final class AppKitLifecycleTests: XCTestCase {
         return { fired }
     }
 
-    func testResigningActiveFiresFocusLost() {
-        let signals = appKitLifecycleSignals(application: application, workspace: workspace)
-        let focusLost = count(signals.focusLost)
-        application.post(name: NSApplication.didResignActiveNotification, object: nil)
-        XCTAssertEqual(focusLost(), 1)
-    }
-
     func testWorkspaceSleepFiresWillSleep() {
-        let signals = appKitLifecycleSignals(application: application, workspace: workspace)
+        let signals = appKitLifecycleSignals(workspace: workspace)
         let willSleep = count(signals.willSleep)
         workspace.post(name: NSWorkspace.willSleepNotification, object: nil)
         XCTAssertEqual(willSleep(), 1)
     }
 
     func testWorkspaceWakeFiresDidWake() {
-        let signals = appKitLifecycleSignals(application: application, workspace: workspace)
+        let signals = appKitLifecycleSignals(workspace: workspace)
         let didWake = count(signals.didWake)
         workspace.post(name: NSWorkspace.didWakeNotification, object: nil)
         XCTAssertEqual(didWake(), 1)
     }
 
     func testEachSignalListensToItsOwnNotificationOnly() {
-        let signals = appKitLifecycleSignals(application: application, workspace: workspace)
-        let focusLost = count(signals.focusLost)
+        let signals = appKitLifecycleSignals(workspace: workspace)
         let willSleep = count(signals.willSleep)
         let didWake = count(signals.didWake)
         workspace.post(name: NSWorkspace.didWakeNotification, object: nil)
-        XCTAssertEqual(focusLost(), 0)
         XCTAssertEqual(willSleep(), 0)
         XCTAssertEqual(didWake(), 1)
     }
 
-    func testTheApplicationNotificationIsNotReadFromTheWorkspaceCenter() {
-        let signals = appKitLifecycleSignals(application: application, workspace: workspace)
-        let focusLost = count(signals.focusLost)
+    func testAnotherAppComingToTheFrontIsNotASignal() {
+        let signals = appKitLifecycleSignals(workspace: workspace)
+        let willSleep = count(signals.willSleep)
+        let didWake = count(signals.didWake)
         workspace.post(name: NSApplication.didResignActiveNotification, object: nil)
-        XCTAssertEqual(focusLost(), 0)
+        NotificationCenter.default.post(name: NSApplication.didResignActiveNotification, object: nil)
+        XCTAssertEqual(willSleep(), 0, "input keeps flowing in the background, so nothing is released")
+        XCTAssertEqual(didWake(), 0)
     }
 }

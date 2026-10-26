@@ -209,10 +209,16 @@ struct PairResponse: Codable {
 /// `SessionState.stale`, the death→silent-retry backoff window (gap G15).
 package enum LinkState { case found, stale, saved, ready, connecting, connected, unstable }
 
+/// A connection as data: who it is, where it lives, and how its link stands.
+/// The words a row shows (its title and its address line) are the app's.
 package struct ConnectionSummary: Identifiable, Hashable {
     package let id: String
-    package let label: String
-    package let detail: String
+    /// The advertised name; empty when the beacon or the host carried none.
+    package let name: String
+    /// The IPv4 address or host name it is reached at.
+    package let address: String
+    /// A satellite's UDP port; nil for a Moonlight host.
+    package let udpPort: Int?
     package let live: LinkState
     package let boundSlotId: String?
     /// One-way latency readout (median heartbeat RTT ÷ 2, rounded to
@@ -223,14 +229,15 @@ package struct ConnectionSummary: Identifiable, Hashable {
     package var compat: ProtocolCompat
     /// The kind of link, for the tier cue: a satellite, or a Moonlight host.
     package var kind: ConnectionKind
-    /// Every slot bound to this connection: one at most for a satellite, up
-    /// to four for a Moonlight host. `boundSlotId` is the first of them.
+    /// Every slot bound to this connection, up to four: a satellite's in the
+    /// order of the controller indices they hold. `boundSlotId` is the first.
     package var boundSlotIds: [String]
 
     package init(
         id: String,
-        label: String,
-        detail: String,
+        name: String,
+        address: String = "",
+        udpPort: Int? = nil,
         live: LinkState,
         boundSlotId: String?,
         latencyMs: Double? = nil,
@@ -239,8 +246,9 @@ package struct ConnectionSummary: Identifiable, Hashable {
         boundSlotIds: [String] = []
     ) {
         self.id = id
-        self.label = label
-        self.detail = detail
+        self.name = name
+        self.address = address
+        self.udpPort = udpPort
         self.live = live
         self.boundSlotId = boundSlotId
         self.latencyMs = latencyMs
@@ -249,12 +257,13 @@ package struct ConnectionSummary: Identifiable, Hashable {
         self.boundSlotIds = boundSlotIds.isEmpty ? boundSlotId.map { [$0] } ?? [] : boundSlotIds
     }
 
-    /// Whether one more slot may bind here: a satellite carries one pad, a
-    /// Moonlight session four.
+    /// Whether one more slot may bind here: a satellite and a Moonlight
+    /// session each carry four pads, a Bluetooth link one.
     package var hasRoomForAnotherSlot: Bool {
         switch kind {
-        case .satellite, .bluetooth: boundSlotIds.isEmpty
+        case .satellite: boundSlotIds.count < SatelliteSlots.maxPerSatellite
         case .moonlight: boundSlotIds.count < MoonlightProtocol.maxPads
+        case .bluetooth: boundSlotIds.isEmpty
         }
     }
 }
@@ -368,6 +377,8 @@ package struct ControllerSlot: Identifiable, Hashable {
     package var audio: ControllerAudioState?
     /// The user muted this controller's microphone (in memory only).
     package var micMuted = false
+    /// The pad's family, the word the Controllers card shows for its link.
+    package var family = PadFamily.other
 
     package init(
         id: String,
@@ -383,7 +394,8 @@ package struct ControllerSlot: Identifiable, Hashable {
         preferences: SlotPreferences = SlotPreferences(),
         audioRoute: AudioRouteVerdict? = nil,
         audio: ControllerAudioState? = nil,
-        micMuted: Bool = false
+        micMuted: Bool = false,
+        family: PadFamily = .other
     ) {
         self.id = id
         self.name = name
@@ -399,6 +411,7 @@ package struct ControllerSlot: Identifiable, Hashable {
         self.audioRoute = audioRoute
         self.audio = audio
         self.micMuted = micMuted
+        self.family = family
     }
 }
 

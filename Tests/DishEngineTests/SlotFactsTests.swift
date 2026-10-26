@@ -57,6 +57,11 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertEqual(try emulatedControllerType(override: nil, catalog: catalog(), family: .other), 0, "the first offered")
     }
 
+    func testANintendoPadIsEmulatedAsTheSwitchPro() throws {
+        XCTAssertEqual(try emulatedControllerType(override: nil, catalog: catalog(), family: .nintendo), 3, "057e:2009 by `emulates`")
+        XCTAssertEqual(emulationCandidates(for: .nintendo), ["switchpro"])
+    }
+
     func testAPickSurvivesAMissingCatalog() {
         XCTAssertEqual(emulatedControllerType(override: 1, catalog: nil, family: .other), 1)
         XCTAssertEqual(emulatedControllerType(override: nil, catalog: nil, family: .dualSense), 0, "the legacy target")
@@ -143,7 +148,7 @@ final class SlotFactsTests: XCTestCase {
             overrides: [key: 1],
             motion: [key: MotionBackendStatus(sinkSupportedForType: true, backendOk: false)]
         )
-        let summary = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connected, boundSlotId: "pad")
+        let summary = ConnectionSummary(id: "sat", name: "Desk", live: .connected, boundSlotId: "pad")
         let slots = composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"], facts: facts)
         let slot = try XCTUnwrap(slots.first)
         XCTAssertEqual(slot.emulation, try SlotEmulation(type: 1, isOverride: true, offered: offerableTypes(in: catalog())))
@@ -200,7 +205,7 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertTrue(unbound.micMuted)
         XCTAssertNil(unbound.audio, "the engine only speaks for a bound controller")
 
-        let summary = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connected, boundSlotId: "pad")
+        let summary = ConnectionSummary(id: "sat", name: "Desk", live: .connected, boundSlotId: "pad")
         let bound = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"], facts: facts).first)
         XCTAssertEqual(bound.audio, state)
 
@@ -213,7 +218,7 @@ final class SlotFactsTests: XCTestCase {
     @MainActor
     func testABindingWithoutACatalogResolvesTheLegacyTypeAndStaysUnresolved() throws {
         let gc = GameControllerInput.Slot(id: "pad", name: "Pad", capabilities: .none, family: .dualSense)
-        let summary = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connecting, boundSlotId: "pad")
+        let summary = ConnectionSummary(id: "sat", name: "Desk", live: .connecting, boundSlotId: "pad")
         let slot = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"]).first)
         XCTAssertEqual(slot.emulation, SlotEmulation(type: 0, isOverride: false, offered: []))
         XCTAssertNil(slot.emulation?.current)

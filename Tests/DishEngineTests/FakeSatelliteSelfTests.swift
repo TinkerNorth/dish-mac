@@ -216,11 +216,39 @@ final class FakeSatelliteRestSelfTests: XCTestCase {
         let key = try XCTUnwrap(FakeSatelliteCrypto.hexToData(keyHex))
         let context = try await FakeSatelliteScript.putSession(rest, deviceId: "d2", pairingKey: key, controllers: [])
         XCTAssertEqual(context.connectionId, "conn_fake01")
-        // Deny path is sticky until the next clientPin request.
+        // A decline erases the request, so the poll reads none, never "denied".
         _ = try await rest.request("POST", "/api/pair", json: ["deviceId": "d2", "deviceName": "n", "clientPin": "0001"])
+        let refiled = try await rest.request("GET", "/api/pair/status?deviceId=d2")
+        XCTAssertEqual(refiled.string("status"), "pending")
         satellite.denyClientPin()
         let denied = try await rest.request("GET", "/api/pair/status?deviceId=d2")
-        XCTAssertEqual(denied.string("status"), "denied")
+        XCTAssertEqual(denied.string("status"), "none")
+    }
+
+    func testAStatusBlipAnswersUnreadablyThenThePollReadsTheTruth() async throws {
+        let satellite = try FakeSatellite()
+        defer { satellite.stop() }
+        try satellite.start()
+        let rest = FakeSatelliteRestScriptClient(satellite: satellite)
+        _ = try await rest.request("POST", "/api/pair", json: ["deviceId": "d4", "deviceName": "n", "clientPin": "2468"])
+        satellite.pairStatusBlips = 1
+        let blip = try await rest.request("GET", "/api/pair/status?deviceId=d4")
+        XCTAssertEqual(blip.status, 500)
+        XCTAssertNil(blip.string("status"), "no readable body")
+        let after = try await rest.request("GET", "/api/pair/status?deviceId=d4")
+        XCTAssertEqual(after.string("status"), "pending", "one blip, then the truth")
+        XCTAssertEqual(satellite.pairStatusPolls, 2, "a blip is a poll too")
+    }
+
+    func testThePendingKnobAnswersAPinWithPending() async throws {
+        let satellite = try FakeSatellite()
+        defer { satellite.stop() }
+        try satellite.start()
+        let rest = FakeSatelliteRestScriptClient(satellite: satellite)
+        satellite.answerPinWithPending = true
+        let reply = try await rest.request("POST", "/api/pair", json: ["deviceId": "d5", "deviceName": "n", "pin": satellite.operatorPin])
+        XCTAssertEqual(reply.bool("pending"), true)
+        XCTAssertNil(satellite.pairingKeyHex, "nothing is minted")
     }
 
     func testProtocolVersionNegotiation() async throws {

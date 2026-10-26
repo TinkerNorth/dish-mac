@@ -175,7 +175,10 @@ final class FakeSatelliteStore {
         var pairedDeviceName: String?
         var lastClientPin: String?
         var stagedApprovalKeyHex: String?
-        var clientPinDenied = false
+        /// The next status polls that answer with no readable body.
+        var pairStatusBlips = 0
+        /// Every PIN pairing answers "pending" instead of pairing.
+        var answerPinWithPending = false
         // Session.
         var sessions: [UInt32: FakeSatelliteSession] = [:]
         var activeToken: UInt32?

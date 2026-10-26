@@ -28,9 +28,10 @@ URLSession, and stores.
 | TOFU TLS enforcement (pin on first contact, abort handshake on mismatch) | `Sources/DishEngine/Network/TofuTrustDelegate.swift`, composed by `WifiConnectionManager.makePinVerifier` |
 | Wire DTOs (ControllerDescriptor, session/controller/pair responses, host-feature grants) | `Sources/DishEngine/Network/RestModels.swift` |
 | Authed REST routes (session PUT/GET/DELETE, per-slot PUT/DELETE, self-unpair; `X-Device-Id` + `X-Hmac-Proof` headers) | `Sources/DishEngine/Network/HTTPClient.swift` |
-| Pairing paths A + B (`POST /api/pair`, `GET /api/pair/status` poll) + outcome classification | `Sources/DishEngine/Network/PairingClient.swift` |
-| Session lifecycle: declarative PUT, HKDF key handoff, proactive re-key, live per-slot converge | `Sources/DishEngine/Network/WifiConnectionManager+Session.swift` |
-| Connect/pair flows, terminal-401 key drop + stale marker, forget → self-unpair, identity-changed UX | `Sources/DishEngine/Network/WifiConnectionManager.swift` + `WifiConnectionManager+Pairing.swift` |
+| Pairing paths A + B (`POST /api/pair`, `GET /api/pair/status` poll) + outcome classification | `Sources/DishEngine/Network/PairingClient.swift`; the approval verdicts and the poll's next step in `Sources/DishCore/Reducers/ReversePairing.swift` |
+| Session lifecycle: declarative PUT, HKDF key handoff, proactive re-key | `Sources/DishEngine/Network/WifiConnectionManager+Session.swift` |
+| `controllers[]` with `ctrlIdx`: up to four pads per session, each on the lowest free index while bound; the live per-slot converge (`PUT`/`DELETE …/controllers/{idx}`) of exactly the indices an edit changed | `Sources/DishCore/Reducers/SatelliteSlots.swift`; `SatelliteSlotTable.swift`, `WifiConnection+Slots.swift` and `WifiConnectionManager+Slots.swift` in `Sources/DishEngine/Network/` |
+| Connect/pair flows, terminal-401 key drop + stale marker, forget → self-unpair, identity-changed UX | `Sources/DishEngine/Network/WifiConnectionManager.swift` + `WifiConnectionManager+Pairing.swift` (path A) + `WifiConnectionManager+Approval.swift` (path B); the card's state in `PairingAttempts.swift` |
 | UDP data plane: socket, per-direction counters from 1, replay guard, heartbeat timer, receive loop | `Sources/DishEngine/Network/SatelliteClient.swift` + `SatelliteClient+IO.swift` |
 | Per-session liveness (2 s heartbeat, alive tick, enriched-ack snapshot, close-reason surfacing) | `Sources/DishEngine/Network/WifiConnection.swift` |
 | Satellite identity: `mid:<machineId>` keying, legacy-ghost collapse, DHCP re-home, TOFU pin registry | `Sources/DishEngine/Network/ConnectionStore.swift` |
@@ -62,9 +63,10 @@ and `Integration*` suites drive it end-to-end.
 - **Declarative topology.** A bind carries the FULL descriptor (type, caps,
   touchpad routing); slots absent from the PUT array are unplugged
   server-side. While live, single-slot changes ride
-  `PUT /api/connections/{id}/controllers/{idx}` so the session token never
-  rotates for a toggle; the full-session PUT runs on connect, re-key and
-  reconcile. Zero-controller sessions are valid.
+  `PUT /api/connections/{id}/controllers/{idx}` (and a pad that let go its
+  `DELETE`) so the session token never rotates for a toggle; the
+  full-session PUT, every bound pad in index order, runs on connect, re-key
+  and reconcile. Zero-controller sessions are valid.
 - **Session key ≠ pairing key.** Every session PUT re-derives
   `HKDF-SHA256(pairingKey, sessionSalt, token)`; the pairing key never
   reaches `SatelliteClient`. Counters restart at 1 per direction per key.
@@ -91,7 +93,11 @@ and `Integration*` suites drive it end-to-end.
   and surfaces the "security identity changed" message, not "unreachable".
 - **Pairing.** No PIN-free path. Path A: operator PIN typed here. Path B:
   this dish shows a PIN, the operator approves on the satellite, the key
-  arrives via the status poll exactly once. Forget self-unpairs server-side
+  arrives via the status poll exactly once. Both run at once from the
+  pairing card; whichever lands first opens the session and cancels the
+  other. A decline erases the request, so the poll reads `none`, which is
+  a decline once the submit has answered `pending`; a transport blip keeps
+  polling until the inclusive deadline. Forget self-unpairs server-side
   (`DELETE /api/pair`) BEFORE dropping the local key.
 
 ## Contract surfaces this client does not consume yet

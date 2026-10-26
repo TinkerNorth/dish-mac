@@ -1,6 +1,6 @@
 # Dish for macOS: Privacy Policy
 
-**Effective date:** 2026-10-12.
+**Effective date:** 2026-10-26.
 **Canonical copy:** this file, at
 [`https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md`](https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md).
 
@@ -57,11 +57,15 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 | `wifi_list` | The remembered satellites: display name, IP address, UDP and HTTPS ports, and the satellite's own machine id | Reconnecting to satellites you already paired with, also after their address changed |
 | `cert_pin:<address>` | The SHA-256 fingerprint of the TLS certificate each satellite presented on first contact | Refusing a satellite whose certificate later changes (trust on first use) |
 | `feature_motion_enabled`, `feature_rumble_enabled`, `feature_touchpad_enabled`, `feature_lightbar_mode` | Your forwarding switches | Deciding which controller features to forward or act on |
-| `motion_preferences`, `rumble_preferences`, `touchpad_preferences` | Each controller's own switches, by the controller's vendor and kind (no serial number) | Deciding the same per controller |
+| `motion_preferences`, `rumble_preferences`, `touchpad_preferences`, `touchpad_mode_preferences`, `mic_preferences`, `speaker_preferences` | Each controller's own switches and touchpad pick, by the controller's vendor and kind (no serial number) | Deciding the same per controller |
+| `deadzone:<controller>` | Each controller's stick and trigger dead zones, by the controller's vendor and kind | Applying the dead zones you set when the controller attaches |
+| `wifi_binding_list` | Which controller is bound to which satellite, by the controller's vendor and kind and the satellite's machine id (both already kept above), and the controller type picked for it | Binding a controller to its satellite again after a restart or a replug |
 | `theme_mode` | `system`, `light` or `dark` | Drawing the window in the appearance you chose |
 | `background_run_enabled`, `background_notice_shown` | Whether closing the window keeps Dish running, and whether the one-time notice about it was shown | The close-to-background rule |
 | `keep_awake_mode`, `keep_awake_timeout_minutes`, `keep_awake_display` | Your keep-awake mode, its stillness window and whether the display is held too | Deciding when to hold a power-management assertion |
 | `updates_check_enabled`, `updates_skipped_version`, `updates_last_check_utc_ms` | Whether automatic update checks run, a version you chose to skip, and when the last check completed | The update check and its schedule |
+| `crashlytics_collection_enabled` | Whether *Share crash reports* is on (the fleet's key name) | Deciding whether a crash report may be sent (section 3) |
+| `ui_rail_collapsed`, `onboarding_welcome_completed`, `local_network_primed` | Whether the window's rail is collapsed, whether the welcome was finished or skipped, and whether the Local Network prompt was explained once | Drawing the window as you left it and showing the welcome and the explanation only once |
 | `moonlight_host_list` | The remembered Moonlight hosts: name, address, HTTP and HTTPS ports, the id the host answers with, the app picked for it, the controller type picked for it, and whether it ever accepted this device | Pairing with and starting sessions on Moonlight hosts you added or paired with |
 | `moonlight_binding_list` | Which controller is bound to which Moonlight host, by the controller's vendor and kind, and the type it is plugged in as | Putting a controller back on its host |
 | `moonlight_uniqueid` | A random sixteen-character id generated on first use | The name a Moonlight host files this device under; not derived from your hardware or your Apple ID |
@@ -70,7 +74,8 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 Pairing keys are the long-lived trust root of the protocol and are not kept
 in preferences. Each one is a login-keychain item with the service name
 `com.tinkernorth.dish.pairing-key` and the satellite's id as its account name.
-Forgetting a satellite deletes its key, its pin and its row.
+Forgetting a satellite deletes its key, its pin, its row and the bindings
+remembered for it.
 
 The Moonlight identity, an RSA key and the self-signed certificate around it,
 is minted once in the login keychain (labelled "Dish Moonlight client key" and

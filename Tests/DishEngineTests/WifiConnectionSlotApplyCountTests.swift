@@ -6,9 +6,10 @@ import DishCore
 import XCTest
 @testable import DishEngine
 
-/// The count of the satellite's confirmations that the slot is plugged: one
-/// per confirmation, none without a bound slot, never rewound, and published
-/// so the audio lanes can start over on each.
+/// The count of the satellite's confirmations that a slot is plugged, kept
+/// per slot: one per confirmation, none without a bound slot, never rewound,
+/// another pad's confirmation never counted, and published so that pad's
+/// audio lanes can start over on each.
 @MainActor
 final class WifiConnectionSlotApplyCountTests: XCTestCase {
 
@@ -19,37 +20,39 @@ final class WifiConnectionSlotApplyCountTests: XCTestCase {
 
     func testEveryConfirmationCountsAndNoneWithoutABoundSlot() {
         let conn = connection()
-        conn.markSlotApplied()
-        XCTAssertEqual(conn.slotApplyCount, 0, "nothing to plug")
-        XCTAssertFalse(conn.slotApplied)
+        conn.markSlotApplied("slot")
+        XCTAssertEqual(conn.slotTable.applyCount(of: "slot"), 0, "nothing to plug")
+        XCTAssertFalse(conn.isSlotApplied("slot"))
 
         conn.attachSlot("slot", controllerType: 0, capabilities: .none)
-        conn.markSlotApplied()
-        conn.markSlotApplied()
-        XCTAssertEqual(conn.slotApplyCount, 2, "a re-PUT the satellite confirms is a fresh pad too")
-        XCTAssertTrue(conn.slotApplied)
+        conn.markSlotApplied("slot")
+        conn.markSlotApplied("slot")
+        XCTAssertEqual(conn.slotTable.applyCount(of: "slot"), 2, "a re-PUT the satellite confirms is a fresh pad too")
+        XCTAssertTrue(conn.isSlotApplied("slot"))
     }
 
     func testDetachingNeverRewindsTheCount() {
         let conn = connection()
         conn.attachSlot("slot", controllerType: 0, capabilities: .none)
-        conn.markSlotApplied()
-        conn.detachSlot()
-        XCTAssertFalse(conn.slotApplied)
-        XCTAssertEqual(conn.slotApplyCount, 1)
+        conn.markSlotApplied("slot")
+        conn.detachSlot("slot")
+        XCTAssertFalse(conn.isSlotApplied("slot"))
+        XCTAssertEqual(conn.slotTable.applyCount(of: "slot"), 1)
         conn.attachSlot("slot", controllerType: 0, capabilities: .none)
-        conn.markSlotApplied()
-        XCTAssertEqual(conn.slotApplyCount, 2)
+        conn.markSlotApplied("slot")
+        XCTAssertEqual(conn.slotTable.applyCount(of: "slot"), 2)
     }
 
-    func testTheCountIsPublishedOncePerConfirmation() {
+    func testTheCountIsPublishedOncePerConfirmationOfThatSlotAlone() {
         let conn = connection()
         conn.attachSlot("slot", controllerType: 0, capabilities: .none)
+        conn.attachSlot("other", controllerType: 0, capabilities: .none)
         var seen: [Int] = []
-        let watch = conn.$slotApplyCount.dropFirst().sink { seen.append($0) }
-        conn.markSlotApplied()
-        conn.markSlotApplied()
-        XCTAssertEqual(seen.count, 2)
+        let watch = conn.applyCountPublisher(of: "slot").dropFirst().sink { seen.append($0) }
+        conn.markSlotApplied("slot")
+        conn.markSlotApplied("other")
+        conn.markSlotApplied("slot")
+        XCTAssertEqual(seen, [1, 2], "the other pad's confirmation is not this one's")
         watch.cancel()
     }
 }

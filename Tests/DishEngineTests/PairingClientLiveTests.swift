@@ -6,6 +6,7 @@
 // key), protocolVersion carriage with terminal 409, and the
 // unreachable-vs-auth split.
 
+import DishCore
 import XCTest
 @testable import DishEngine
 
@@ -79,6 +80,11 @@ final class PairingClientLiveTests: XCTestCase {
 
     // MARK: - Path B (client PIN + status poll)
 
+    /// A poll read the way the engine reads it, after the submit's pending.
+    private func verdict(_ status: PairStatusResponse) -> ApprovalVerdict {
+        classifyApproval(PairingClient.approvalReply(status), sawPending: true)
+    }
+
     func testPathBSubmitPollApproveHandsKeyExactlyOnce() async {
         let submitted = await pair(pin: "", clientPin: "7788")
         XCTAssertEqual(PairingClient.classify(submitted), .pendingApproval)
@@ -88,15 +94,15 @@ final class PairingClientLiveTests: XCTestCase {
         let pending = await client.pairStatus(
             ip: "127.0.0.1", port: Int(ports.rest), deviceId: "device-under-test"
         )
-        XCTAssertEqual(PairingClient.classifyStatus(pending), .pending)
+        XCTAssertEqual(verdict(pending), .pending)
 
         satellite.approveClientPin()
 
         let approved = await client.pairStatus(
             ip: "127.0.0.1", port: Int(ports.rest), deviceId: "device-under-test"
         )
-        guard case let .approved(sharedKeyHex) = PairingClient.classifyStatus(approved) else {
-            return XCTFail("expected approved, got \(PairingClient.classifyStatus(approved))")
+        guard case let .approved(sharedKeyHex) = verdict(approved) else {
+            return XCTFail("expected approved, got \(verdict(approved))")
         }
         XCTAssertEqual(sharedKeyHex, satellite.pairingKeyHex)
 
@@ -105,7 +111,7 @@ final class PairingClientLiveTests: XCTestCase {
         let replay = await client.pairStatus(
             ip: "127.0.0.1", port: Int(ports.rest), deviceId: "device-under-test"
         )
-        XCTAssertEqual(PairingClient.classifyStatus(replay), .declined)
+        XCTAssertEqual(verdict(replay), .declined, "none after the pending")
     }
 
     func testPathBDenyStopsThePoll() async {
@@ -114,7 +120,7 @@ final class PairingClientLiveTests: XCTestCase {
         let status = await client.pairStatus(
             ip: "127.0.0.1", port: Int(ports.rest), deviceId: "device-under-test"
         )
-        XCTAssertEqual(PairingClient.classifyStatus(status), .declined)
+        XCTAssertEqual(verdict(status), .declined, "a decline erases the request")
     }
 
     // MARK: - Transport failure
