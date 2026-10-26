@@ -29,17 +29,37 @@ and send it events; nothing else moves the window.
 | `guardLeave(Bool)` | The page on screen arms or releases its leave guard. |
 | `leaveGuard(.stay / .leave)` | The page's answer about the move its guard is holding. |
 | `external(.showDestination / .showPage)` | The menu-bar item and the keyboard commands: the window comes forward on what was asked for. A page shown from outside lands on the destination it lives in. |
+| `openSetup(seedSlotId:)` | Select Home, then push the setup walk (`AppShell.qml`'s `openSetupWizard`), so its result lands on a Home row. A move like `select`: a guarded page is asked first. |
+| `welcome(.skip / .finish)` | Lower the welcome; both complete it (`markWelcomeComplete`), and Finish goes on as `openSetup(nil)`. Ignored while no welcome is up. |
+| `setupEnded(.applied / .exited)` | The walk ends on Home's root with its guard released: after its apply landed (also `markWelcomeComplete`), or by a blocker's Exit, which asks nothing. |
+| `pairingCardOpened` | A satellite's pairing card opened: Connections comes up, unless the walk is on screen, which draws the card in its Destination step. |
 
 The five destinations, in rail order, are Home, Controllers and Connections at
 the top, then Support Dish and Settings pinned to the footer over the version
-label. The space between the two groups is where the Set up action goes; it
-is an action, not a destination. Pushed pages today: Diagnostics, the
+label. Between the two groups is the **Set up** action (`RailAction`, the
+desktops' outlined accent button, a bare plus when the rail is collapsed); it
+is an action, not a destination, and sends `openSetup(nil)`. Pushed pages today: Diagnostics, the
 controller inspector (pushed from Diagnostics), the crash report and the open
 source licenses (pushed from Settings), Moonlight hosts (pushed from
 Connections; a PIN a host mints elsewhere shows it with `external(.showPage)`),
 Configure binding (`Page.configureBinding(slotId:)`, pushed from a Home row
-or a Controllers card onto the destination that asked, home `Home`) and Dead
-zones & motion (`Page.deadZones(slotId:)`, pushed from a Controllers card).
+or a Controllers card onto the destination that asked, home `Home`), Dead
+zones & motion (`Page.deadZones(slotId:)`, pushed from a Controllers card),
+Set up Dish (`Page.setup(seedSlotId:)`, always on Home's stack through
+`openSetup`) and Help & FAQ (`Page.help`, pushed from Settings ▸ Setup &
+help).
+
+### The welcome
+
+On a first run (`onboarding_welcome_completed` unset, read through
+`OnboardingPreferenceStore` when the `NavigationStore` is built) the state's
+`showingWelcome` is up and the shell draws `WelcomeView` over everything in
+a `ZStack`, full-window, not a sheet: the desktops' four pages
+(`WelcomeMappers`), their step dots, Back / Skip / Next, Finish on the last,
+and Esc as Skip. The page index is the view's own; every word, the dots and
+which way Next and Back turn come from `welcomeState(page:)`. Skip and
+Finish send `welcome(.skip / .finish)`; the store's effect persists the
+flag, so the welcome shows once.
 
 ### The header
 
@@ -63,8 +83,10 @@ never draws its own title bar.
 ### The leave guard
 
 A page with a draft arms the guard (`guardLeave(true)`) while it shows:
-today Configure binding, whenever its draft differs from what it opened
-with, asking "Leave without applying?" (Discard / Keep editing). Any
+Configure binding, whenever its draft differs from what it opened with,
+asking "Leave without applying?" (Discard / Keep editing), and the setup
+walk once it is past its first page (`setupLeaveGuarded`), asking "Leave
+setup?" (Discard / Keep setting up). Any
 move that would replace or unwind the stack from outside the page (a rail
 click, the chevron, ⌘[, the menu-bar item) is then held as
 `pendingLeaveGuard` until the page answers `.stay` or `.leave`; a request
@@ -82,8 +104,10 @@ page never adds its own.
 Only short confirmations macOS expects as alert sheets may be modal, raised
 with `confirmationDialog` from a view state the model drives: today, Forget
 (`requestForget` / `confirmForget` / `cancelForget`, the dialog's words from
-`forgetDialog`) and the leave guard's "Leave without applying?", shown while
-`pendingLeaveGuard` holds a move. There is no `.sheet` anywhere under
+`forgetDialog`) and the leave guards' "Leave without applying?" and "Leave
+setup?", shown while `pendingLeaveGuard` holds a move. The setup walk's two
+blockers (Connection lost, Controller unplugged) are not modal: a
+`BlockerCard` stands in for the step until Start over or Exit. There is no `.sheet` anywhere under
 `Sources/Dish`; "Applying binding…" is an in-page overlay (`ApplyOverlay`),
 not a modal.
 
@@ -198,9 +222,17 @@ name, address and port as data; `connectionTitle` and
 `connectionAddressLine` word them.
 
 - **Connections** ([`ConnectionsMappers.swift`](../Sources/Dish/UI/Mappers/ConnectionsMappers.swift)):
-  `pageAppeared(.connections)` runs the page-open scan, which is quiet: the
-  empty state says what a scan did not find (the local-network refusal as
-  its hint), and only the Scan button's sweep raises the toast. FOUND is
+  `pageAppeared(.connections)` runs the page-open scan once the Local Network
+  prompt has been explained (`ConnectionsFacts.localNetworkPrimed`, the
+  `local_network_primed` key): before the first scan ever, FOUND is
+  Android's explain-then-ask card, "macOS will ask to let Dish find
+  satellites on your network" with "Show me the prompt"
+  (`primeLocalNetwork`, which runs the scan that makes macOS ask; the Scan
+  button primes too). The page-open scan is quiet: the empty state says what
+  a scan did not find (the local-network refusal as its hint, with "Open
+  System Settings" on Privacy & Security › Local Network through `openURL`),
+  and only the Scan button's sweep raises the toast, whose refusal carries
+  the same button. FOUND is
   looking, nothing found (Get Satellite ↗, Scan again) or rows with Pair…;
   a "Moonlight hosts ›" row pushes `Page.moonlightHosts`; PAIRED is a card
   per remembered satellite with its chips (tier, protocol, link), the
@@ -233,9 +265,10 @@ being configured (`binding`). No page holds an engine environment object.
   `BindingStrip`: the emulated type as a fact, then the controller's chips,
   the switches among them clickable in place (`SlotChipAction`), the mic's
   word and lamp, and Edit › into `Page.configureBinding`. A pad with no
-  binding is a ghost "Bind…" card that pushes the same page; "Set up a
-  controller" pushes it for the first pad with no binding and is absent when
-  there is none. The `TelemetryFooter` carries events/s, sends/s and the total.
+  binding is a ghost "Bind…" card that opens the setup walk answered with
+  that pad (`openSetup(seedSlotId:)`); "Set up a controller", under the rows
+  whenever there are any, and the empty state's "Set up Dish ›" open it from
+  its first page. The `TelemetryFooter` carries events/s, sends/s and the total.
 - **Controllers** ([`ControllersMappers.swift`](../Sources/Dish/UI/Mappers/ControllersMappers.swift)):
   a card per pad with its dot, name, family and measured rate (GameController
   keeps the transport to itself, so there is no Bluetooth / USB word and no
@@ -260,6 +293,42 @@ being configured (`binding`). No page holds an engine environment object.
   their readouts, `setStickDeadzone` / `setTriggerDeadzone` on every move,
   `resetDeadzones` back to the defaults, and the pad's own motion switch.
 
+## The setup walk
+
+Set up Dish ([`SetupPage`](../Sources/Dish/UI/Pages/SetupPage.swift),
+[`SetupMappers.swift`](../Sources/Dish/UI/Mappers/SetupMappers.swift)) is the
+desktops' wizard, "the one way a binding is created", as a pushed page and
+never a dialog. Its state is a pure `SetupWizardMachine`
+([`SetupWizard.swift`](../Sources/DishCore/Reducers/SetupWizard.swift), in
+DishCore): the step (Input · Destination · Type · Session · Feel · Review),
+the three stages its pips draw, the draft (a `BindingDraft`), the chosen
+host's kind (Session is stepped over, both ways, for a satellite), whether
+that host was ever live, the blocker and whether the apply landed; events in
+(`pickPad`, `pickDestination`, `edit`, `next`, `back`, `padPresent`,
+`hostLive`, `startOver`, `applied`), effects out as data (`scan` as
+Destination comes up, `apply` on Review's next). The model keeps it in
+`ShellFacts.setup` (`AppModel+Setup.swift`: `startSetup(seed:)` on
+`pageAppeared(.setup)`, `pickSetupPad`, `pickSetupDestination`, `editSetup`,
+`setupNext`, `setupBack`, `startSetupOver`, `endSetup` on leaving) and mirrors
+its draft into the binding facts, so the type picker, "What carries" and the
+one write are Configure binding's own: Review's Bind is `applyBinding`, shown
+by the same `ApplyOverlay`, whose Done sends `setupEnded(.applied)`.
+
+- The pips (`StepPips`) are pinned above, the footer below: ‹ Back, Cancel
+  (and Esc), the step's position ("Step 2 of 3 · Destination") and Continue ›
+  or Bind; the header's line is "Nothing is changed until the last step".
+- **Input** lists the attached pads, or waits with "Plug your controller in".
+  **Destination** lists the paired satellites and Moonlight hosts to pick
+  and the satellites a sweep heard, each with Pair… and its pairing card in
+  the row, exactly as Connections draws them; before the first scan ever it
+  is the priming card, with nothing to pick it is "No PCs found yet" with Get
+  Satellite ↗, Rescan and, after a refusal, Open System Settings. **Type** is
+  the Emulate picker; **Session** the Moonlight app picker; **Feel** the
+  pad's switches on the draft; **Review** the binding drawn and "What
+  carries".
+- A pad unplugged or a host that was live and dropped raises a blocker in
+  the page; Start over sends `startOver`, Exit `setupEnded(.exited)`.
+
 ## Kit rules
 
 A kit component lives in `Sources/Dish/UI/Kit/` and is drawn from any page's
@@ -280,7 +349,8 @@ Today's kit: `ShellHeader` (with `StreamingPill` and `MicChip`), `RailItem`,
 `EmptyStateCard` (with an optional hint and actions), `TwoColumnLayout`,
 `PairingCard`, `PinCells`, `ScanHeader`, `StateChip`, `CapabilityChip`,
 `FlowLayout`, `WireLine`, `BindingStrip`, `ApplyOverlay`, `SliderRow`,
-`TelemetryFooter`.
+`TelemetryFooter`, `StepPips` (the welcome's dots and the walk's pips),
+`BlockerCard` and `RailAction`.
 
 ## Keyboard
 
@@ -289,3 +359,5 @@ Today's kit: `ShellHeader` (with `StreamingPill` and `MicChip`), `RailItem`,
 | ⌘, | Settings |
 | ⌘1, ⌘2, ⌘3 | Home, Controllers, Connections |
 | ⌘[ | Back, enabled exactly while a page is pushed |
+| Esc | Skip on the welcome; Cancel in the setup walk, through its leave guard |
+| Return | Next or Finish on the welcome; Continue › or Bind in the setup walk |

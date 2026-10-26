@@ -2,10 +2,12 @@
 // Copyright (C) 2026 Dish contributors.
 
 import Combine
+import DishEngine
 import SwiftUI
 
 /// The navigation machine at the app layer: it applies events, runs the
-/// effects the machine returns, and hands `NavigationSplitView` and
+/// effects the machine returns (the rail's collapse and the welcome's
+/// completion persist), and hands `NavigationSplitView` and
 /// `NavigationStack` their bindings.
 @MainActor
 final class NavigationStore: ObservableObject {
@@ -13,12 +15,14 @@ final class NavigationStore: ObservableObject {
     @Published private(set) var state: NavigationState
 
     private let preferences: UiPreferenceStore
+    private let onboarding: OnboardingPreferenceStore
     private let activateWindow: () -> Void
 
-    init(preferences: UiPreferenceStore, activateWindow: @escaping () -> Void) {
+    init(preferences: UiPreferenceStore, onboarding: OnboardingPreferenceStore, activateWindow: @escaping () -> Void) {
         self.preferences = preferences
+        self.onboarding = onboarding
         self.activateWindow = activateWindow
-        state = NavigationState(railCollapsed: preferences.railCollapsed)
+        state = NavigationState(railCollapsed: preferences.railCollapsed, showingWelcome: !onboarding.welcomeCompleted)
     }
 
     func send(_ event: NavigationEvent) {
@@ -31,6 +35,7 @@ final class NavigationStore: ObservableObject {
         switch effect {
         case let .persistRail(collapsed): preferences.setRailCollapsed(collapsed)
         case .activateWindow: activateWindow()
+        case .markWelcomeComplete: onboarding.markWelcomeComplete()
         }
     }
 

@@ -45,8 +45,10 @@ package extension AppModel {
         }
     }
 
-    /// Both browses at once: the satellites' beacon and mDNS, and the Moonlight hosts' mDNS.
+    /// Both browses at once: the satellites' beacon and mDNS, and the Moonlight
+    /// hosts' mDNS. The user asked, so the prompt it raises needs no more explaining.
     func startScan() {
+        markLocalNetworkPrimed()
         wifi.startDiscovery()
         moonlight.startDiscovery()
     }

@@ -128,6 +128,17 @@ For a signed-looking `.app` with its icon, `Info.plist` (versions from
 open Dish.app
 ```
 
+## Getting started
+
+The first launch opens a short welcome: what Dish is, how it reaches the host,
+and where to get Satellite for the host PC. Finish starts **Set up Dish**, a
+walk through the controller, the PC it drives, the type it plugs in as and how
+it feels, with nothing sent until its last step's Bind. Before the first scan
+for satellites, Dish says that macOS is about to ask for Local Network access,
+then asks; if the permission was refused, the empty list and its notice open
+Privacy & Security › Local Network. Set up is in the rail any time, in Settings
+▸ Setup & help beside Help & FAQ, and behind a controller's "Bind…" on Home.
+
 ## Architecture
 
 Four SwiftPM modules carry the layering, so the compiler enforces it:

@@ -52,6 +52,19 @@ final class ShellMappersTests: XCTestCase {
         XCTAssertEqual(pageTitle(NavigationState(destination: .controllers, path: [.deadZones(slotId: "a")])), "Dead zones & motion")
     }
 
+    func testTheSetupWalkAndHelpAreTitledAndCarryTheirOwnLines() {
+        let walk = NavigationState(destination: .home, path: [.setup(seedSlotId: nil)])
+        let help = NavigationState(destination: .settings, path: [.help])
+        XCTAssertEqual(pageTitle(walk), "Set up Dish")
+        XCTAssertEqual(pageTitle(help), "Help & FAQ")
+        XCTAssertEqual(shellSubline(walk, connections: []), .note("Nothing is changed until the last step"))
+        XCTAssertEqual(shellSubline(help, connections: []), .note("How Dish works, and what to try when it doesn’t"))
+    }
+
+    func testTheRailCarriesTheSetUpActionBetweenItsGroups() {
+        XCTAssertEqual(shellState(NavigationState(), inputs()).setUp, "Set up")
+    }
+
     func testTheBackChevronShowsOnlyOverAPushedPage() {
         XCTAssertFalse(shellState(NavigationState(), inputs()).showsBack)
         XCTAssertTrue(shellState(NavigationState(path: [.licenses]), inputs()).showsBack)

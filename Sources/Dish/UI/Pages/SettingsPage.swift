@@ -5,10 +5,10 @@ import DishCore
 import DishEngine
 import SwiftUI
 
-/// Settings, in the desktops' order: Appearance and Forwarded features on
-/// the left, the rest on the right once the page is wide enough for two
-/// columns. Each switch is a global preference: Dish forwards input, it does
-/// not remap it.
+/// Settings, in the desktops' order: Setup & help, Appearance and Forwarded
+/// features on the left, the rest on the right once the page is wide enough
+/// for two columns. Each switch is a global preference: Dish forwards
+/// input, it does not remap it.
 struct SettingsPage: View {
 
     @EnvironmentObject var model: AppModel
@@ -20,7 +20,8 @@ struct SettingsPage: View {
 
     var body: some View {
         ScrollView {
-            TwoColumnLayout(breakpoint: DishSize.wideBreakpoint, leading: 2, spacing: DishSpace.page) {
+            TwoColumnLayout(breakpoint: DishSize.wideBreakpoint, leading: Self.leftColumn, spacing: DishSpace.page) {
+                SetupAndHelpSection(openSetup: openSetup, push: push)
                 AppearanceSection(state: state)
                 ForwardedFeaturesSection(state: state)
                 ControllerTuningSection(state: state)
@@ -36,8 +37,15 @@ struct SettingsPage: View {
         .onDisappear { model.pageDisappeared(.settings) }
     }
 
+    /// Setup & help, Appearance and Forwarded features.
+    private static let leftColumn = 3
+
     private func push(_ page: Page) {
         navigation.send(.push(page))
+    }
+
+    private func openSetup() {
+        navigation.send(.openSetup(seedSlotId: nil))
     }
 
     private func select(_ destination: Destination) {

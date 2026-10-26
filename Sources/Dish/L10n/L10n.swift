@@ -61,3 +61,9 @@ extension L10n {
         catalog.text("Working")
     }
 }
+
+/// A paragraph the catalog keeps one sentence to a key, so every key fits
+/// on one line; the translations split at the same sentences.
+func paragraph(_ sentences: String...) -> String {
+    sentences.joined(separator: " ")
+}

@@ -3,13 +3,15 @@
 
 import SwiftUI
 
-/// The rail: Home, Controllers and Connections at the top; Support Dish and
-/// Settings pinned to the footer over the version label. Collapsed, it is
-/// an icon strip whose items name themselves in their tooltips.
+/// The rail: Home, Controllers and Connections at the top; the Set up action
+/// between the groups; Support Dish and Settings pinned to the footer over
+/// the version label. Collapsed, it is an icon strip whose items name
+/// themselves in their tooltips.
 struct RailView: View {
 
     let state: ShellState
     let select: (Destination) -> Void
+    let setUp: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: DishSpace.s2) {
@@ -17,6 +19,8 @@ struct RailView: View {
                 railItem(item)
             }
             Spacer(minLength: DishSpace.s8)
+            RailAction(label: state.setUp, collapsed: state.railCollapsed, action: setUp)
+                .padding(.bottom, DishSpace.s4)
             Divider()
                 .background(DishTheme.outline)
                 .padding(.vertical, DishSpace.s4)

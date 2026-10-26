@@ -13,6 +13,8 @@ package struct ConnectionsFacts: Equatable {
     package var discovered: [DiscoveredServer] = []
     package var scanning = false
     package var localNetworkDenied = false
+    /// The scan that raises macOS's Local Network prompt has been explained and run once.
+    package var localNetworkPrimed = false
     package var pairingInFlight: Set<String> = []
     package var moonlight = MoonlightFacts()
     /// The connection whose Forget waits for the user's answer.

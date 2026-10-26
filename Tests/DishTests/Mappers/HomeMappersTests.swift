@@ -30,13 +30,18 @@ final class HomeMappersTests: XCTestCase {
         return (host, strip)
     }
 
-    func testHomeWithNoControllerSaysNothingIsSetUp() {
+    func testHomeWithNoControllerOffersTheSetupWalk() {
         let home = state([])
-        XCTAssertEqual(home.content, .empty(title: "Nothing set up yet", body: "Plug one in, then pick where it goes"))
-        XCTAssertNil(home.setUp, "there is no pad to set up")
+        let empty = HomeContent.empty(
+            title: "Nothing set up yet",
+            body: "Setup fills this diagram in, one answer at a time — and hands it back finished.",
+            action: "Set up Dish ›"
+        )
+        XCTAssertEqual(home.content, empty)
+        XCTAssertNil(home.setUp, "the empty state is the invitation")
     }
 
-    func testAnUnboundPadIsAGhostRowAndTheInvitationOpensIt() throws {
+    func testAnUnboundPadIsAGhostRowUnderTheInvitation() throws {
         let row = try row(Fix.pad())
         XCTAssertEqual(row.destination, .ghost(GhostCardState(title: "Bind…", subtitle: "Choose a satellite for this pad")))
         XCTAssertEqual(row.pad, PadNodeState(name: "DualSense", detail: "DualSense · Unbound"))
@@ -44,12 +49,12 @@ final class HomeMappersTests: XCTestCase {
         XCTAssertFalse(row.wire.live)
         XCTAssertEqual(
             state([Fix.pad()]).setUp,
-            SetUpCardState(title: "Set up a controller", subtitle: "Plug one in, then pick where it goes", slotId: "pad")
+            SetUpCardState(title: "Set up a controller", subtitle: "Plug one in, then pick where it goes")
         )
     }
 
-    func testEveryPadBoundHidesTheInvitation() {
-        XCTAssertNil(state([Fix.pad(boundTo: Fix.den)]).setUp)
+    func testTheInvitationStaysUnderTheRowsWithEveryPadBound() {
+        XCTAssertNotNil(state([Fix.pad(boundTo: Fix.den)]).setUp, "another pad can always be set up, as on the desktops")
     }
 
     func testABoundPadDrawsTheHostWithTheOneSlotASatelliteHas() throws {

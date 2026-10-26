@@ -84,7 +84,7 @@ struct MoonlightHostRow: View {
 }
 
 /// The app a host's session starts, shared by every pad on the host.
-private struct MoonlightAppPicker: View {
+struct MoonlightAppPicker: View {
     let state: AppPickerState
     let pick: (String) -> Void
 

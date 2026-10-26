@@ -38,6 +38,12 @@ package extension AppModel {
         refreshCandidate(slots: slots)
     }
 
+    /// Another page's draft becomes the one the candidate and the apply read.
+    internal func adoptBindingDraft(_ draft: BindingDraft?) {
+        shellFacts.binding.draft = draft
+        refreshCandidate(slots: slots)
+    }
+
     internal func closeBindingDraft() {
         shellFacts.binding.draft = nil
         shellFacts.binding.candidate = nil
@@ -227,6 +233,7 @@ package extension AppModel {
         if ended { bindingWatch.end() }
         let landed = next == .done && before != .done
         if landed { markDraftApplied() }
+        if landed { markSetupApplied() }
     }
 
     private func markDraftApplied() {

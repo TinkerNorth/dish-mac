@@ -7,7 +7,8 @@ import XCTest
 @testable import DishEngine
 
 /// The Connections pages' intents through the composition root: the scan a
-/// page runs as it opens is quiet while the Scan button's speaks, the facts
+/// page runs as it opens (once the Local Network prompt has been explained,
+/// AppModelSetupTests) is quiet while the Scan button's speaks, the facts
 /// the pages draw follow the scans, a Forget waits for its answer, a typed
 /// address is read in the model, and a row's buttons dispatch there.
 @MainActor
@@ -85,6 +86,7 @@ final class AppModelConnectionsTests: XCTestCase {
     // MARK: - Scanning
 
     func testThePageOpensWithAScanThatSaysNothingOfAnEmptyNetwork() async {
+        model.markLocalNetworkPrimed()
         model.pageAppeared(.connections)
         XCTAssertTrue(model.wifi.isScanning, "the page scans as it opens")
         let settled = await waitUntil { !model.wifi.isScanning }

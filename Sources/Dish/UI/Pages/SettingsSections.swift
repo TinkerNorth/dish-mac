@@ -5,6 +5,22 @@ import DishCore
 import DishEngine
 import SwiftUI
 
+/// The desktops' first section: the walk again, and Help & FAQ.
+struct SetupAndHelpSection: View {
+    let openSetup: () -> Void
+    let push: (Page) -> Void
+    private let words = L10n.app
+
+    var body: some View {
+        SettingsSection(title: words.setupAndHelpSection) {
+            ActionRow(title: words.setUpDish, detail: words.setUpDishDetail, systemImage: "chevron.right", action: openSetup)
+            ActionRow(title: words.helpAndFaq, detail: words.helpDetail, systemImage: "chevron.right") {
+                push(.help)
+            }
+        }
+    }
+}
+
 struct AppearanceSection: View {
     @EnvironmentObject var model: AppModel
     let state: SettingsPageState
@@ -172,7 +188,6 @@ struct AboutSection: View {
 
     var body: some View {
         SettingsSection(title: words.aboutSection) {
-            LinkRow(title: words.helpAndFaq, detail: words.helpDetail, destination: DishLinks.help)
             ActionRow(title: words.supportDish, detail: words.supportDetail, systemImage: "chevron.right") {
                 select(.support)
             }
@@ -189,7 +204,6 @@ struct AboutSection: View {
 
 /// The places Settings, Support Dish and the Connections pages link to.
 enum DishLinks {
-    static let help = "https://dish.tinkernorth.com"
     static let privacy = "https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md"
     static let sponsors = "https://github.com/sponsors/TinkerNorth"
     static let koFi = "https://ko-fi.com/tinkernorth"
@@ -198,4 +212,8 @@ enum DishLinks {
     static let satellite = "https://dish.tinkernorth.com/downloads/satellite"
     /// A Moonlight host for a user without one.
     static let sunshine = "https://github.com/LizardByte/Sunshine"
+    /// The fleet's source, as Help & FAQ links it.
+    static let github = "https://github.com/TinkerNorth"
+    /// System Settings on Privacy & Security › Local Network.
+    static let localNetworkSettings = "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork"
 }

@@ -16,7 +16,7 @@ final class FailureNotifierTests: XCTestCase {
         let center = DishNotificationCenter()
         let failures = PassthroughSubject<ConnectionFailure, Never>()
         let notifier = FailureNotifier()
-        notifier.bind(failures: failures.eraseToAnyPublisher(), center: center)
+        notifier.bind(failures: failures.eraseToAnyPublisher(), center: center, open: ignoreURL)
 
         failures.send(.noServersFound)
         XCTAssertEqual(center.state.map(\.title), [failureText(.noServersFound)])
@@ -27,11 +27,35 @@ final class FailureNotifierTests: XCTestCase {
         XCTAssertEqual(center.state.map(\.title), [failureText(.sessionLinkFailed)], "the same key replaces, never stacks")
     }
 
+    private var opened: [URL] = []
+
+    private func ignoreURL(_: URL) {}
+
+    private func recordURL(_ url: URL) {
+        opened.append(url)
+    }
+
+    func testARefusedLocalNetworkToastOpensSystemSettings() throws {
+        let center = DishNotificationCenter()
+        let failures = PassthroughSubject<ConnectionFailure, Never>()
+        let notifier = FailureNotifier()
+        notifier.bind(failures: failures.eraseToAnyPublisher(), center: center, open: recordURL)
+
+        failures.send(.localNetworkDenied)
+        let action = try XCTUnwrap(center.state.first?.action)
+        XCTAssertEqual(action.label, "Open System Settings")
+        action.handler()
+        XCTAssertEqual(opened, [URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")])
+
+        failures.send(.noServersFound)
+        XCTAssertNil(center.state.first?.action, "any other failure has no way out")
+    }
+
     func testEveryFailureHandedOverIsToastedAPairingOneIncluded() {
         let center = DishNotificationCenter()
         let failures = PassthroughSubject<ConnectionFailure, Never>()
         let notifier = FailureNotifier()
-        notifier.bind(failures: failures.eraseToAnyPublisher(), center: center)
+        notifier.bind(failures: failures.eraseToAnyPublisher(), center: center, open: ignoreURL)
 
         failures.send(.approvalDeclined)
         XCTAssertEqual(center.state.map(\.title), [failureText(.approvalDeclined)], "no blanket hush while a card is open")

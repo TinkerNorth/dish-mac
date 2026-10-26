@@ -6,8 +6,10 @@ import XCTest
 
 /// The shell's navigation rule, event by event: a rail selection replaces
 /// the stack, a page pushes onto it, the rail's collapse is persisted, a
-/// request from the menu bar brings the window forward, and a guarded page
-/// gets first refusal of every move that would take it off screen.
+/// request from the menu bar brings the window forward, a guarded page gets
+/// first refusal of every move that would take it off screen, the welcome
+/// shows on a first run until it is skipped or finished, and the setup walk
+/// opens on Home.
 final class NavigationMachineTests: XCTestCase {
 
     private let root = NavigationState()
@@ -145,8 +147,79 @@ final class NavigationMachineTests: XCTestCase {
         XCTAssertEqual(step(pushed, .leaveGuard(.stay)), NavigationStep(state: pushed, effects: []))
     }
 
-    func testTheWelcomeStaysDownUntilOnboardingExists() {
-        XCTAssertFalse(root.showingWelcome)
+    // MARK: - The welcome and the setup walk
+
+    private var firstRun: NavigationState {
+        NavigationState(showingWelcome: true)
+    }
+
+    func testSkippingTheWelcomeLandsOnHomeAndRemembersIt() {
+        let next = step(firstRun, .welcome(.skip))
+        XCTAssertEqual(next.state, root)
+        XCTAssertEqual(next.effects, [.markWelcomeComplete])
+    }
+
+    func testFinishingTheWelcomeRemembersItAndOpensSetup() {
+        let next = step(firstRun, .welcome(.finish))
+        XCTAssertFalse(next.state.showingWelcome)
+        XCTAssertEqual(next.state.destination, .home)
+        XCTAssertEqual(next.state.path, [.setup(seedSlotId: nil)])
+        XCTAssertEqual(next.effects, [.markWelcomeComplete])
+    }
+
+    func testAWelcomeAnswerWithNoWelcomeUpChangesNothing() {
+        XCTAssertEqual(step(pushed, .welcome(.finish)), NavigationStep(state: pushed, effects: []))
+        XCTAssertEqual(step(pushed, .welcome(.skip)), NavigationStep(state: pushed, effects: []))
+    }
+
+    func testOpeningSetupSelectsHomeFirstThenPushesTheWalk() {
+        let next = step(pushed, .openSetup(seedSlotId: "pad"))
+        XCTAssertEqual(next.state.destination, .home, "the walk's result is a Home row")
+        XCTAssertEqual(next.state.path, [.setup(seedSlotId: "pad")])
+        XCTAssertEqual(next.effects, [])
+        XCTAssertEqual(homeDestination(of: .setup(seedSlotId: nil)), .home)
+    }
+
+    func testOpeningSetupAsksAGuardedPageFirst() {
+        let held = step(guardedPage, .openSetup(seedSlotId: nil)).state
+        XCTAssertEqual(held.pendingLeaveGuard, .openSetup(seedSlotId: nil))
+        XCTAssertEqual(held.path, guardedPage.path)
+        let left = step(held, .leaveGuard(.leave)).state
+        XCTAssertEqual(left.path, [.setup(seedSlotId: nil)])
+    }
+
+    func testTheWalkPastItsFirstPageHoldsTheRail() {
+        let walking = step(step(root, .openSetup(seedSlotId: nil)).state, .guardLeave(true)).state
+        let held = step(walking, .select(.settings)).state
+        XCTAssertEqual(held.pendingLeaveGuard, .select(.settings), "Leave setup? is asked first")
+        XCTAssertEqual(held.path, [.setup(seedSlotId: nil)])
+        XCTAssertEqual(step(held, .leaveGuard(.stay)).state.path, [.setup(seedSlotId: nil)])
+    }
+
+    func testAWalkThatAppliedLandsOnHomeAndRemembersTheWelcome() {
+        let walking = step(step(root, .openSetup(seedSlotId: nil)).state, .guardLeave(true)).state
+        let ended = step(walking, .setupEnded(.applied))
+        XCTAssertEqual(ended.state, root, "the guard goes with the walk")
+        XCTAssertEqual(ended.effects, [.markWelcomeComplete])
+    }
+
+    func testAWalkLeftFromABlockerLandsOnHomeWithoutAsking() {
+        let walking = step(step(root, .openSetup(seedSlotId: nil)).state, .guardLeave(true)).state
+        let ended = step(walking, .setupEnded(.exited))
+        XCTAssertEqual(ended.state, root)
+        XCTAssertEqual(ended.effects, [])
+    }
+
+    func testAPairingCardBringsConnectionsUpUnlessTheWalkHoldsIt() {
+        XCTAssertEqual(step(pushed, .pairingCardOpened).state.destination, .connections)
+        let walking = step(root, .openSetup(seedSlotId: nil)).state
+        XCTAssertEqual(step(walking, .pairingCardOpened), NavigationStep(state: walking, effects: []), "the walk draws the card itself")
+    }
+
+    func testHelpIsPushedOntoSettings() {
+        XCTAssertEqual(homeDestination(of: .help), .settings)
+        let shown = step(root, .external(.showPage(.help)))
+        XCTAssertEqual(shown.state.path, [.help])
     }
 
     // MARK: - The leave guard

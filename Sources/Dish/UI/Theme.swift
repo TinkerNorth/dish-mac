@@ -100,6 +100,14 @@ enum DishSize {
     static let nodeMinWidth: CGFloat = 200
     /// The apply overlay's card.
     static let overlayWidth: CGFloat = 380
+    /// A step dot on the welcome and a pip in the setup walk.
+    static let stepDot: CGFloat = 8
+    /// The welcome's text column.
+    static let welcomeColumn: CGFloat = 460
+    /// The mark on the welcome's first page.
+    static let welcomeMark: CGFloat = 64
+    /// Help & FAQ's reading column.
+    static let helpColumn: CGFloat = 640
 }
 
 /// The spacing scale.

@@ -93,6 +93,32 @@ the repos share a version number.
   "Forget Den?", says the pairing key goes (a Moonlight host also keeps its
   own record of this device until it is removed there), and names every
   binding it drops.
+- **A welcome on the first run.** The desktops' four pages cover the window
+  until they are left: what Dish is, how it reaches the host, Satellite to
+  install there (with its download page) and the walk Finish opens. Back,
+  Skip, Next and Finish, step dots, and Esc as Skip; Skip and Finish are both
+  remembered (`onboarding_welcome_completed`), so it shows once.
+- **Set up Dish walks a binding through from scratch.** The desktops' wizard
+  as a page on Home: Input, Destination, Type, Session (for a Moonlight host
+  only), Feel and Review, in three stages with their pips, "Nothing is changed
+  until the last step", and one Bind on Review through the same apply and
+  overlay Configure binding uses. Destination lists the paired hosts and the
+  satellites a sweep heard, with Pair… opening the pairing card in the row.
+  Leaving past the first page asks "Leave setup?"; a host that drops or a pad
+  that is unplugged stops the walk in the page with Start over and Exit. It
+  opens from the rail's new Set up action, Settings ▸ Setup & help, Home's
+  empty state and "Set up a controller", and a pad's ghost "Bind…", which
+  answers the first page with that pad.
+- **Help & FAQ is a page.** Settings ▸ Setup & help ▸ Help & FAQ opens the
+  desktops' questions under Concepts, Best performance, Troubleshooting and
+  About Dish, folded until opened, with "Walk me through setup", the privacy
+  policy and the source.
+- **macOS's Local Network prompt is explained before it appears.** Until the
+  first scan ever, Connections and the walk's Destination step say "macOS will
+  ask to let Dish find satellites on your network" with "Show me the prompt",
+  which runs the scan that raises it (`local_network_primed`); the page no
+  longer scans as it opens before then. A refused network's empty state and
+  toast now carry "Open System Settings" (Privacy & Security › Local Network).
 
 ### Changed
 

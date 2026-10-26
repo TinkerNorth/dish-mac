@@ -226,3 +226,39 @@ package final class DeadzonePreferenceStore: StateSource<[String: DeadzoneSettin
         return all
     }
 }
+
+/// The first-run flags: whether the welcome was skipped or finished (the
+/// desktops' key), and whether the scan that raises macOS's Local Network
+/// prompt has run once after being explained (Android's key). Plain reads
+/// over the defaults, so the window and the engine read one truth.
+package struct OnboardingPreferenceStore {
+    static let welcomeCompletedKey = "onboarding_welcome_completed"
+    static let localNetworkPrimedKey = "local_network_primed"
+
+    private let defaults: UserDefaults
+
+    package init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    package var welcomeCompleted: Bool {
+        defaults.bool(forKey: Self.welcomeCompletedKey)
+    }
+
+    package var localNetworkPrimed: Bool {
+        defaults.bool(forKey: Self.localNetworkPrimedKey)
+    }
+
+    package func markWelcomeComplete() {
+        defaults.set(true, forKey: Self.welcomeCompletedKey)
+    }
+
+    package func markLocalNetworkPrimed() {
+        defaults.set(true, forKey: Self.localNetworkPrimedKey)
+    }
+
+    /// The welcome comes back on the next launch, as the siblings' tests reset it.
+    package func resetWelcome() {
+        defaults.removeObject(forKey: Self.welcomeCompletedKey)
+    }
+}

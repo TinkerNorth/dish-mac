@@ -85,7 +85,7 @@ struct BindingSection<Content: View>: View {
     }
 }
 
-private struct FunctionsSection: View {
+struct FunctionsSection: View {
     let state: FunctionsSectionState
     let edit: (BindingDraftEvent) -> Void
 
@@ -138,7 +138,7 @@ private struct FunctionsSection: View {
     }
 }
 
-private struct CarriesSection: View {
+struct CarriesSection: View {
     let state: CarriesSectionState
 
     var body: some View {

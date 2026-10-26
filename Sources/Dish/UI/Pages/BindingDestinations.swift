@@ -39,7 +39,7 @@ struct DestinationSection: View {
     }
 }
 
-private struct DestinationRow: View {
+struct DestinationRow: View {
     let state: DestinationRowState
     let pick: (String) -> Void
 

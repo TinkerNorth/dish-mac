@@ -118,6 +118,10 @@ The window's sizes and the rail's are the desktops' (`AppShell.qml`,
 | `DishSize.wireGlyph` | 20 | The dish glyph riding the wire |
 | `DishSize.nodeMinWidth` | 200 | A pad or host node's narrowest width on Home |
 | `DishSize.overlayWidth` | 380 | The apply overlay's card |
+| `DishSize.stepDot` | 8 | A step dot on the welcome and a pip in the setup walk |
+| `DishSize.welcomeColumn` | 460 | The welcome's text column, the desktops' width |
+| `DishSize.welcomeMark` | 64 | The mark on the welcome's first page |
+| `DishSize.helpColumn` | 640 | Help & FAQ's reading column, the desktops' width |
 
 ## Spacing (`DishSpace`)
 

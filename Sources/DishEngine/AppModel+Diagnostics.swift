@@ -16,7 +16,8 @@ package enum ObservedPage: Equatable {
     case settings
     /// The crash report reads the log as it opens.
     case crashReport
-    /// Connections scans as it opens; leaving it closes its pairing card.
+    /// Connections scans as it opens, once the Local Network prompt has been
+    /// explained; leaving it closes its pairing card.
     case connections
     /// Moonlight hosts scans as it opens; leaving it ends the pairing its PIN card waits on.
     case moonlightHosts
@@ -25,6 +26,8 @@ package enum ObservedPage: Equatable {
     case controllers
     /// Configure binding opens a draft of the pad's binding; leaving drops it.
     case configureBinding(slotId: String)
+    /// The setup walk opens, pre-answered with a pad or not; leaving drops it.
+    case setup(seedSlotId: String?)
 }
 
 /// The pages' lifecycle as intents: a view's `onAppear` and `onDisappear`
@@ -37,10 +40,11 @@ package extension AppModel {
         case let .inspector(slotId): inspect(slotId: slotId)
         case .settings: showSettings()
         case .crashReport: refreshCrashLogPresence()
-        case .connections: scanAsThePageOpens()
+        case .connections: scanIfPrimed()
         case .moonlightHosts: scanMoonlightHosts()
         case .home, .controllers: telemetry.show()
         case let .configureBinding(slotId): openBindingDraft(slotId: slotId)
+        case let .setup(seedSlotId): startSetup(seed: seedSlotId)
         }
     }
 
@@ -55,6 +59,7 @@ package extension AppModel {
         case .moonlightHosts: leftMoonlightHosts()
         case .home, .controllers: telemetry.hide()
         case .configureBinding: closeBindingDraft()
+        case .setup: endSetup()
         }
     }
 

@@ -54,6 +54,8 @@ enum ShellSubline: Equatable {
 /// Everything the shell draws around a page.
 struct ShellState: Equatable {
     let top: [RailItemState]
+    /// The Set up action's label, between the destinations and the footer.
+    let setUp: String
     let footer: [RailItemState]
     let version: String
     let railCollapsed: Bool
@@ -77,6 +79,7 @@ func shellState(_ navigation: NavigationState, _ inputs: ShellInputs, words: L10
     let footer: [Destination] = [.support, .settings]
     return ShellState(
         top: top.map { railItem($0, navigation: navigation, badge: nil, words: words) },
+        setUp: words.setUp,
         footer: footer.map { railItem($0, navigation: navigation, badge: $0 == .settings ? badge : nil, words: words) },
         version: words.railVersion(inputs.facts.update.currentVersion),
         railCollapsed: navigation.railCollapsed,
@@ -127,6 +130,8 @@ func pushedPageTitle(_ page: Page, words: L10n = .app) -> String {
     case .moonlightHosts: words.moonlightHosts
     case .configureBinding: words.configureBinding
     case .deadZones: words.deadZonesAndMotion
+    case .setup: words.setUpDish
+    case .help: words.helpAndFaq
     }
 }
 
@@ -186,6 +191,8 @@ func shellSubline(_ navigation: NavigationState, connections: [ConnectionSummary
     )
     switch navigation.path.last {
     case .licenses: return .note(words.licensesSubtitle)
+    case .setup: return .note(words.nothingIsChangedUntilTheLastStep)
+    case .help: return .note(words.helpSubline)
     case .diagnostics, .inspector, .crashReport, .moonlightHosts, .configureBinding, .deadZones: return status
     case nil: return navigation.destination == .support ? .note(words.donationsKeepItFree) : status
     }

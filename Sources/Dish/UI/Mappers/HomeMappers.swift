@@ -21,13 +21,14 @@ struct HomeInputs {
 struct HomePageState: Equatable {
     let registering: Bool
     let content: HomeContent
-    /// The invitation row; nil once every pad is bound.
+    /// The invitation row under the rows; nil while the empty state invites instead.
     let setUp: SetUpCardState?
     let footer: TelemetryFooterState
 }
 
 enum HomeContent: Equatable {
-    case empty(title: String, body: String)
+    /// Nothing to draw yet: the empty state, its action the setup walk.
+    case empty(title: String, body: String, action: String)
     case rows([HomeRowState])
 }
 
@@ -89,12 +90,10 @@ struct GhostCardState: Equatable {
     let subtitle: String
 }
 
-/// "Set up a controller" opens Configure binding for the first pad with no
-/// binding, until setup has a wizard of its own.
+/// "Set up a controller" opens the setup walk from its first page.
 struct SetUpCardState: Equatable {
     let title: String
     let subtitle: String
-    let slotId: String
 }
 
 struct TelemetryFooterState: Equatable {
@@ -104,9 +103,9 @@ struct TelemetryFooterState: Equatable {
 
 func homePageState(_ inputs: HomeInputs, words: L10n = .app) -> HomePageState {
     let rows = inputs.slots.map { homeRow($0, inputs, words: words) }
-    let content: HomeContent = rows.isEmpty ? .empty(title: words.nothingSetUpYet, body: words.plugOneIn) : .rows(rows)
-    let firstUnbound = inputs.slots.first { $0.boundConnectionId == nil }
-    let setUp = firstUnbound.map { SetUpCardState(title: words.setUpAController, subtitle: words.plugOneIn, slotId: $0.id) }
+    let empty = HomeContent.empty(title: words.nothingSetUpYet, body: words.setupFillsThisDiagramIn, action: words.setUpDishChevron)
+    let content = rows.isEmpty ? empty : .rows(rows)
+    let setUp = rows.isEmpty ? nil : SetUpCardState(title: words.setUpAController, subtitle: words.plugOneIn)
     return HomePageState(
         registering: inputs.registering,
         content: content,

@@ -23,6 +23,7 @@ struct DishApp: App {
     @StateObject private var lidNotifier = LidNotifier()
     @StateObject private var navigation = NavigationStore(
         preferences: UiPreferenceStore(defaults: .standard),
+        onboarding: OnboardingPreferenceStore(defaults: .standard),
         activateWindow: activateDish
     )
     @NSApplicationDelegateAdaptor private var delegate: DishAppDelegate
@@ -66,7 +67,7 @@ struct DishApp: App {
     }
 
     private func bindNotifiers() {
-        failureNotifier.bind(failures: model.failures.eraseToAnyPublisher(), center: notifications)
+        failureNotifier.bind(failures: model.failures.eraseToAnyPublisher(), center: notifications, open: openInWorkspace)
         moonlightNotifier.bind(events: model.moonlight.events.eraseToAnyPublisher(), center: notifications, quitApp: quitMoonlightApp)
         updateNotifier.bind(checker: model.updates, center: notifications)
         lidNotifier.bind(lidPausedStreaming: model.lidPausedStreaming, center: notifications)
@@ -82,6 +83,12 @@ struct DishApp: App {
         openWindow(id: DishWindow.main)
         navigation.send(.external(request))
     }
+}
+
+/// Opens a link or a System Settings pane, for a toast's button.
+@MainActor
+func openInWorkspace(_ url: URL) {
+    NSWorkspace.shared.open(url)
 }
 
 /// Brings Dish forward, for a request from outside the window.

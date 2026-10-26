@@ -33,6 +33,8 @@ package struct ShellFacts: Equatable {
     package var deadzones: [String: DeadzoneSetting] = [:]
     package var telemetry = InputTelemetry()
     package var binding = BindingFacts()
+    /// The setup walk on screen, nil while none is.
+    package var setup: SetupWizardState?
     /// A satellite is still registering a controller.
     package var controllerRegistering = false
 
@@ -60,6 +62,7 @@ extension AppModel {
             .store(in: &cancellables)
         observeTelemetry()
         observeBindingFacts()
+        observeSetup()
         observePreferences()
         observeDiagnosticsFacts()
     }

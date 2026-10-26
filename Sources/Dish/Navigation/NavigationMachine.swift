@@ -21,14 +21,17 @@ enum Page: Hashable {
     case moonlightHosts
     case configureBinding(slotId: String)
     case deadZones(slotId: String)
+    /// The setup walk, pre-answered with a pad or not.
+    case setup(seedSlotId: String?)
+    case help
 }
 
 /// Where a page lives when something outside the window asks for it.
 func homeDestination(of page: Page) -> Destination {
     switch page {
-    case .diagnostics, .inspector, .crashReport, .licenses: .settings
+    case .diagnostics, .inspector, .crashReport, .licenses, .help: .settings
     case .moonlightHosts: .connections
-    case .configureBinding: .home
+    case .configureBinding, .setup: .home
     case .deadZones: .controllers
     }
 }
@@ -40,6 +43,8 @@ enum NavigationMove: Equatable {
     case pop
     case popToRoot
     case external(ExternalRequest)
+    /// Home is selected, then the walk is pushed onto it.
+    case openSetup(seedSlotId: String?)
 }
 
 /// What the menu-bar item asks of the window.
@@ -53,6 +58,18 @@ enum LeaveAnswer: Equatable {
     case leave
 }
 
+/// How the welcome was left: both are completions, and Finish runs setup.
+enum WelcomeExit: Equatable {
+    case skip
+    case finish
+}
+
+/// How the setup walk was left from inside: its apply landed, or a blocker's Exit.
+enum SetupEnding: Equatable {
+    case applied
+    case exited
+}
+
 enum NavigationEvent: Equatable {
     case select(Destination)
     case push(Page)
@@ -64,11 +81,18 @@ enum NavigationEvent: Equatable {
     /// The answer to the guard's question about the held move.
     case leaveGuard(LeaveAnswer)
     case external(ExternalRequest)
+    /// The rail's Set up action, Settings, Help, Home's invitations and a pad's Bind….
+    case openSetup(seedSlotId: String?)
+    case welcome(WelcomeExit)
+    case setupEnded(SetupEnding)
+    /// A satellite's pairing card opened, on the walk or on Connections.
+    case pairingCardOpened
 }
 
 enum NavigationEffect: Equatable {
     case persistRail(collapsed: Bool)
     case activateWindow
+    case markWelcomeComplete
 }
 
 struct NavigationState: Equatable {
@@ -79,6 +103,7 @@ struct NavigationState: Equatable {
     var leaveGuarded = false
     /// The move the guard is holding until the page answers.
     var pendingLeaveGuard: NavigationMove?
+    /// The first-run welcome covers the shell until it is skipped or finished.
     var showingWelcome = false
 }
 
@@ -88,8 +113,8 @@ struct NavigationStep: Equatable {
 }
 
 /// The shell's one navigation rule: a rail selection replaces the stack, a
-/// page pushes onto it, and a guarded page gets first refusal of any move
-/// that would take it off screen.
+/// page pushes onto it, a guarded page gets first refusal of any move that
+/// would take it off screen, and the welcome covers it all on a first run.
 func reduceNavigation(_ state: NavigationState, _ event: NavigationEvent) -> NavigationStep {
     switch event {
     case let .select(destination): guarded(state, .select(destination))
@@ -100,6 +125,10 @@ func reduceNavigation(_ state: NavigationState, _ event: NavigationEvent) -> Nav
     case let .guardLeave(armed): guardChanged(state, armed: armed)
     case let .leaveGuard(answer): answered(state, answer)
     case let .external(request): guarded(state, .external(request))
+    case let .openSetup(seed): guarded(state, .openSetup(seedSlotId: seed))
+    case let .welcome(exit): welcomeLeft(state, exit)
+    case let .setupEnded(ending): setupLeft(state, ending)
+    case .pairingCardOpened: pairingShown(state)
     }
 }
 
@@ -129,6 +158,9 @@ private func applied(_ state: NavigationState, _ move: NavigationMove) -> Naviga
     case let .external(.showPage(page)):
         next.destination = homeDestination(of: page)
         next.path = [page]
+    case let .openSetup(seed):
+        next.destination = .home
+        next.path = [.setup(seedSlotId: seed)]
     }
     return NavigationStep(state: next, effects: activation(for: move))
 }
@@ -138,7 +170,7 @@ private func applied(_ state: NavigationState, _ move: NavigationMove) -> Naviga
 private func activation(for move: NavigationMove) -> [NavigationEffect] {
     switch move {
     case .external: [.activateWindow]
-    case .select, .pop, .popToRoot: []
+    case .select, .pop, .popToRoot, .openSetup: []
     }
 }
 
@@ -173,4 +205,36 @@ private func answered(_ state: NavigationState, _ answer: LeaveAnswer) -> Naviga
     case .leave:
         return applied(state, move)
     }
+}
+
+/// Skip and Finish both complete the welcome, or it would show on every
+/// launch; Finish goes on into the walk.
+private func welcomeLeft(_ state: NavigationState, _ exit: WelcomeExit) -> NavigationStep {
+    guard state.showingWelcome else { return NavigationStep(state: state, effects: []) }
+    var next = state
+    next.showingWelcome = false
+    switch exit {
+    case .skip:
+        return NavigationStep(state: next, effects: [.markWelcomeComplete])
+    case .finish:
+        let walk = applied(next, .openSetup(seedSlotId: nil))
+        return NavigationStep(state: walk.state, effects: [.markWelcomeComplete] + walk.effects)
+    }
+}
+
+/// The walk ends on Home's root with its guard released; a landed apply
+/// also completes the welcome.
+private func setupLeft(_ state: NavigationState, _ ending: SetupEnding) -> NavigationStep {
+    let home = applied(state, .select(.home))
+    switch ending {
+    case .applied: return NavigationStep(state: home.state, effects: [.markWelcomeComplete])
+    case .exited: return home
+    }
+}
+
+/// The walk draws a pairing card in its own Destination step; anywhere else
+/// the card lives on Connections.
+private func pairingShown(_ state: NavigationState) -> NavigationStep {
+    guard case .setup = state.path.last else { return guarded(state, .select(.connections)) }
+    return NavigationStep(state: state, effects: [])
 }

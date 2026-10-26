@@ -62,23 +62,41 @@ struct ConnectionsPage: View {
 private struct FoundSection: View {
 
     @EnvironmentObject var model: AppModel
-    @Environment(\.openURL) private var openURL
     let state: FoundSectionState
 
     var body: some View {
         switch state {
+        case let .priming(card):
+            PrimingCard(state: card, prime: model.primeLocalNetwork)
         case let .looking(card):
             EmptyStateCard(title: card.title, message: card.message, hint: card.hint)
         case let .nothing(nothing):
-            EmptyStateCard(title: nothing.card.title, message: nothing.card.message, hint: nothing.card.hint) {
-                Button(nothing.getApp) { open(nothing.getAppURL) }
-                    .buttonStyle(DishOutlinedButtonStyle())
-                Button(nothing.secondary, action: model.startScan)
-                    .buttonStyle(DishOutlinedButtonStyle())
-            }
+            NothingFoundCard(state: nothing, secondary: model.startScan)
         case let .rows(rows):
             ForEach(rows) { row in
                 FoundRow(state: row)
+            }
+        }
+    }
+}
+
+/// An empty list after a sweep, with its ways forward: the app to install,
+/// the page's own second action, and System Settings once macOS refused.
+struct NothingFoundCard: View {
+
+    @Environment(\.openURL) private var openURL
+    let state: NothingFoundState
+    let secondary: () -> Void
+
+    var body: some View {
+        EmptyStateCard(title: state.card.title, message: state.card.message, hint: state.card.hint) {
+            Button(state.getApp) { open(state.getAppURL) }
+                .buttonStyle(DishOutlinedButtonStyle())
+            Button(state.secondary, action: secondary)
+                .buttonStyle(DishOutlinedButtonStyle())
+            if let link = state.settings {
+                Button(link.title) { open(link.url) }
+                    .buttonStyle(DishOutlinedButtonStyle())
             }
         }
     }
@@ -88,9 +106,23 @@ private struct FoundSection: View {
     }
 }
 
+/// Why macOS is about to ask, before the first scan ever; the button runs
+/// the scan that makes it ask.
+struct PrimingCard: View {
+    let state: PrimingCardState
+    let prime: () -> Void
+
+    var body: some View {
+        EmptyStateCard(title: state.title, message: state.message) {
+            Button(state.action, action: prime)
+                .buttonStyle(DishOutlinedButtonStyle())
+        }
+    }
+}
+
 /// A satellite the sweep heard that nothing remembers yet; its pairing card
 /// opens under it.
-private struct FoundRow: View {
+struct FoundRow: View {
 
     @EnvironmentObject var model: AppModel
     let state: FoundRowState

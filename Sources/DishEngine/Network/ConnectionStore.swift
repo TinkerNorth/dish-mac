@@ -41,6 +41,12 @@ final class ConnectionStore {
         migrateLegacyKeys()
     }
 
+    /// The first-run flags, over the same defaults as the rest of what this
+    /// install remembers about itself.
+    var onboarding: OnboardingPreferenceStore {
+        OnboardingPreferenceStore(defaults: defaults)
+    }
+
     // MARK: - Device id
 
     /// Stable per-install device id. Generated once on first launch. Not a

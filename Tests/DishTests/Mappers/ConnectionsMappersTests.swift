@@ -64,9 +64,11 @@ final class ConnectionsMappersTests: XCTestCase {
         discovered: [DiscoveredServer] = [],
         scanning: Bool = false,
         denied: Bool = false,
-        pairing: Set<String> = []
+        pairing: Set<String> = [],
+        primed: Bool = true
     ) -> ConnectionsFacts {
         var facts = ConnectionsFacts()
+        facts.localNetworkPrimed = primed
         facts.discovered = discovered
         facts.scanning = scanning
         facts.localNetworkDenied = denied
@@ -145,9 +147,10 @@ final class ConnectionsMappersTests: XCTestCase {
     }
 
     func testAnEmptyFoundListAfterTheSweepOffersSatelliteAndAnotherScan() {
-        guard case let .nothing(nothing) = foundSection(inputs(), known: []) else { return XCTFail("nothing found") }
+        guard case let .nothing(nothing) = foundSection(inputs(facts: facts()), known: []) else { return XCTFail("nothing found") }
         XCTAssertEqual(nothing.card.title, "No satellites found")
         XCTAssertNil(nothing.card.hint, "an open network needs no hint")
+        XCTAssertNil(nothing.settings, "an open network needs no way to System Settings")
         XCTAssertEqual(nothing.getApp, "Get Satellite ↗")
         XCTAssertEqual(nothing.getAppURL, URL(string: "https://dish.tinkernorth.com/downloads/satellite"))
         XCTAssertEqual(nothing.secondary, "Scan again")
@@ -157,6 +160,26 @@ final class ConnectionsMappersTests: XCTestCase {
         let state = foundSection(inputs(facts: facts(denied: true)), known: [])
         guard case let .nothing(nothing) = state else { return XCTFail("nothing found") }
         XCTAssertEqual(nothing.card.hint, L10n.app.localNetworkDenied)
+        let settings = SettingsLinkState(
+            title: "Open System Settings",
+            url: URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork")
+        )
+        XCTAssertEqual(nothing.settings, settings, "the refusal comes with the way to undo it")
+    }
+
+    func testBeforeTheFirstScanEverTheListExplainsThePromptInstead() {
+        let state = foundSection(inputs(facts: facts(primed: false)), known: [])
+        let card = PrimingCardState(
+            title: "macOS will ask to let Dish find satellites on your network",
+            message: "Dish finds and connects to satellites on your Wi-Fi. Allow local network access to scan.",
+            action: "Show me the prompt"
+        )
+        XCTAssertEqual(state, .priming(card))
+    }
+
+    func testWhatASweepHeardOutranksTheExplanation() {
+        let state = foundSection(inputs(facts: facts(discovered: [desk], primed: false)), known: [])
+        guard case .rows = state else { return XCTFail("the rows are drawn") }
     }
 
     func testAFoundRowNamesTheServerHowItWasHeardAndOffersPair() {

@@ -9,6 +9,7 @@ struct SignalRow: View {
     let state: HomeRowState
     let perform: (SlotChipAction, String) -> Void
     let edit: (String) -> Void
+    let bind: (String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: DishSpace.s5) {
@@ -42,7 +43,7 @@ struct SignalRow: View {
         case let .bound(host, _):
             HostNode(state: host)
         case let .ghost(card):
-            Button(action: editThisRow) {
+            Button(action: bindThisRow) {
                 ActionCardLabel(title: card.title, subtitle: card.subtitle, plus: false)
             }
             .buttonStyle(.plain)
@@ -53,6 +54,10 @@ struct SignalRow: View {
         edit(state.id)
     }
 
+    private func bindThisRow() {
+        bind(state.id)
+    }
+
     private func performHere(_ action: SlotChipAction) {
         perform(action, state.id)
     }
@@ -61,11 +66,11 @@ struct SignalRow: View {
 /// The "Set up a controller" invitation under the rows.
 struct SetUpRow: View {
     let state: SetUpCardState
-    let open: (String) -> Void
+    let open: () -> Void
 
     var body: some View {
         HStack(spacing: DishSpace.s6) {
-            Button(action: openFirstUnbound) {
+            Button(action: open) {
                 ActionCardLabel(title: state.title, subtitle: state.subtitle, plus: true)
             }
             .buttonStyle(.plain)
@@ -74,10 +79,6 @@ struct SetUpRow: View {
             Spacer()
                 .frame(minWidth: DishSize.nodeMinWidth)
         }
-    }
-
-    private func openFirstUnbound() {
-        open(state.slotId)
     }
 }
 

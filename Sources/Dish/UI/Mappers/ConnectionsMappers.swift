@@ -102,15 +102,33 @@ struct EmptyStateModel: Equatable {
     var hint: String?
 }
 
-/// An empty list after a scan: the card and its two ways forward.
+/// An empty list after a scan: the card and its two ways forward, and the
+/// way to System Settings when macOS refused the network.
 struct NothingFoundState: Equatable {
     let card: EmptyStateModel
     let getApp: String
     let getAppURL: URL?
     let secondary: String
+    var settings: SettingsLinkState?
+}
+
+/// A button that opens a pane of System Settings.
+struct SettingsLinkState: Equatable {
+    let title: String
+    let url: URL?
+}
+
+/// Android's explain-then-ask card: why macOS is about to ask, and the
+/// button that runs the scan that makes it.
+struct PrimingCardState: Equatable {
+    let title: String
+    let message: String
+    let action: String
 }
 
 enum FoundSectionState: Equatable {
+    /// Before the first scan ever: the prompt explained first.
+    case priming(PrimingCardState)
     case looking(EmptyStateModel)
     case nothing(NothingFoundState)
     case rows([FoundRowState])
@@ -212,13 +230,28 @@ func addressField(draft: String, placeholder: String, error: String?, words: L10
 func foundSection(_ inputs: ConnectionsInputs, known: [ConnectionSummary], words: L10n = .app) -> FoundSectionState {
     let found = foundServers(inputs.facts.discovered, known: known)
     guard found.isEmpty else { return .rows(found.map { foundRow($0, inputs, words: words) }) }
+    if let priming = primingCard(inputs.facts, words: words) { return .priming(priming) }
     guard !inputs.facts.scanning else {
         return .looking(EmptyStateModel(title: words.lookingForSatellites, message: words.scanningOverMdnsAndBroadcast))
     }
     let hint = inputs.facts.localNetworkDenied ? words.localNetworkDenied : nil
     let card = EmptyStateModel(title: words.noSatellitesFound, message: words.satelliteShowsUpHere, hint: hint)
     let getApp = URL(string: DishLinks.satellite)
-    return .nothing(NothingFoundState(card: card, getApp: words.getSatellite, getAppURL: getApp, secondary: words.scanAgain))
+    var nothing = NothingFoundState(card: card, getApp: words.getSatellite, getAppURL: getApp, secondary: words.scanAgain)
+    nothing.settings = localNetworkSettings(denied: inputs.facts.localNetworkDenied, words: words)
+    return .nothing(nothing)
+}
+
+/// Nil once the scan that raises the prompt has been explained and run.
+func primingCard(_ facts: ConnectionsFacts, words: L10n = .app) -> PrimingCardState? {
+    guard !facts.localNetworkPrimed else { return nil }
+    return PrimingCardState(title: words.macosWillAskForTheNetwork, message: words.allowLocalNetworkToScan, action: words.showMeThePrompt)
+}
+
+/// Privacy & Security › Local Network, offered only once macOS has refused.
+func localNetworkSettings(denied: Bool, words: L10n = .app) -> SettingsLinkState? {
+    guard denied else { return nil }
+    return SettingsLinkState(title: words.openSystemSettings, url: URL(string: DishLinks.localNetworkSettings))
 }
 
 func foundRow(_ server: DiscoveredServer, _ inputs: ConnectionsInputs, words: L10n = .app) -> FoundRowState {

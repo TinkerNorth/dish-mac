@@ -8,6 +8,7 @@ import SwiftUI
 /// column with the shell header over a navigation stack whose root is the
 /// rail's destination. The shell owns the one toast host, above every page,
 /// and registers no sheet: pairing and the Moonlight PIN are inline cards.
+/// On a first run the welcome covers it all, full-window, until it is left.
 struct ShellView: View {
 
     @EnvironmentObject var model: AppModel
@@ -26,8 +27,17 @@ struct ShellView: View {
     }
 
     var body: some View {
+        ZStack {
+            shell
+            if navigation.state.showingWelcome {
+                WelcomeView()
+            }
+        }
+    }
+
+    private var shell: some View {
         NavigationSplitView(columnVisibility: navigation.columnVisibility) {
-            RailView(state: state, select: select)
+            RailView(state: state, select: select, setUp: openSetup)
                 .navigationSplitViewColumnWidth(min: railWidth, ideal: railWidth, max: railWidth)
         } detail: {
             VStack(alignment: .leading, spacing: 0) {
@@ -72,6 +82,8 @@ struct ShellView: View {
         case .moonlightHosts: MoonlightHostsPage().shellPage()
         case let .configureBinding(slotId): ConfigureBindingPage(slotId: slotId).shellPage()
         case let .deadZones(slotId): DeadZonesPage(slotId: slotId).shellPage()
+        case let .setup(seedSlotId): SetupPage(seedSlotId: seedSlotId).shellPage()
+        case .help: HelpPage().shellPage()
         }
     }
 
@@ -87,14 +99,20 @@ struct ShellView: View {
         navigation.send(.pop)
     }
 
+    /// The rail's Set up: Home first, then the walk.
+    private func openSetup() {
+        navigation.send(.openSetup(seedSlotId: nil))
+    }
+
     private func configure() {
         navigation.send(.select(.settings))
     }
 
-    /// A pairing card lives on its row on the Connections page, so a
-    /// satellite that asks to pair brings the page up.
+    /// A pairing card lives on its row on the Connections page, or in the
+    /// setup walk's Destination step, so a satellite that asks to pair brings
+    /// the page up unless the walk draws the card itself.
     private func showPairing(_ serverId: String?) {
-        if serverId != nil { navigation.send(.select(.connections)) }
+        if serverId != nil { navigation.send(.pairingCardOpened) }
     }
 
     /// The Moonlight PIN lives on its host's row, so a host that minted one

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishEngine
 import SwiftUI
 import XCTest
 @testable import Dish
 
-/// The machine at the app layer: the rail's state survives a relaunch under
-/// the desktops' key, the window comes forward when the menu bar asks, and
-/// the split view's and the stack's bindings speak in events.
+/// The machine at the app layer: the rail's state and the welcome's survive
+/// a relaunch under the desktops' keys, the window comes forward when the
+/// menu bar asks, and the split view's and the stack's bindings speak in
+/// events.
 @MainActor
 final class NavigationStoreTests: XCTestCase {
 
@@ -28,7 +30,11 @@ final class NavigationStoreTests: XCTestCase {
     }
 
     private func makeStore() -> NavigationStore {
-        NavigationStore(preferences: UiPreferenceStore(defaults: defaults), activateWindow: countActivation)
+        NavigationStore(
+            preferences: UiPreferenceStore(defaults: defaults),
+            onboarding: OnboardingPreferenceStore(defaults: defaults),
+            activateWindow: countActivation
+        )
     }
 
     private func countActivation() {
@@ -40,6 +46,20 @@ final class NavigationStoreTests: XCTestCase {
         makeStore().send(.toggleRail)
         XCTAssertTrue(defaults.bool(forKey: "ui_rail_collapsed"))
         XCTAssertTrue(makeStore().state.railCollapsed)
+    }
+
+    func testTheWelcomeShowsOnAFirstRunOnly() {
+        XCTAssertTrue(makeStore().state.showingWelcome, "a first run opens on the welcome")
+        makeStore().send(.welcome(.skip))
+        XCTAssertTrue(defaults.bool(forKey: "onboarding_welcome_completed"), "Skip is a completion too")
+        XCTAssertFalse(makeStore().state.showingWelcome)
+    }
+
+    func testFinishingTheWelcomeIsRememberedAndOpensTheWalk() {
+        let store = makeStore()
+        store.send(.welcome(.finish))
+        XCTAssertEqual(store.state.path, [.setup(seedSlotId: nil)])
+        XCTAssertTrue(OnboardingPreferenceStore(defaults: defaults).welcomeCompleted)
     }
 
     func testARequestFromTheMenuBarActivatesTheWindow() {

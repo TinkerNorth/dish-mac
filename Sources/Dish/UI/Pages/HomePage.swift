@@ -6,8 +6,8 @@ import SwiftUI
 
 /// Home: the signal-path wiring diagram. One boxed row per pad, pad node to
 /// wire to host node with the binding printed underneath, a ghost "Bind…"
-/// card for a pad with nowhere to go, the invitation to set one up, and the
-/// live figures pinned under it all.
+/// card that opens the setup walk on the pad with nowhere to go, the
+/// invitation to set one up, and the live figures pinned under it all.
 struct HomePage: View {
 
     @EnvironmentObject var model: AppModel
@@ -32,7 +32,7 @@ struct HomePage: View {
                     }
                     content(state.content)
                     if let setUp = state.setUp {
-                        SetUpRow(state: setUp, open: configure)
+                        SetUpRow(state: setUp, open: openSetup)
                     }
                 }
                 .padding(DishSpace.page)
@@ -46,17 +46,29 @@ struct HomePage: View {
     @ViewBuilder
     private func content(_ content: HomeContent) -> some View {
         switch content {
-        case let .empty(title, body):
-            EmptyStateCard(title: title, message: body)
+        case let .empty(title, body, action):
+            EmptyStateCard(title: title, message: body) {
+                Button(action, action: openSetup)
+                    .buttonStyle(DishOutlinedButtonStyle())
+            }
         case let .rows(rows):
             ForEach(rows) { row in
-                SignalRow(state: row, perform: perform, edit: configure)
+                SignalRow(state: row, perform: perform, edit: configure, bind: bind)
             }
         }
     }
 
     private func configure(_ slotId: String) {
         navigation.send(.push(.configureBinding(slotId: slotId)))
+    }
+
+    /// A ghost card's Bind…: the walk, its first page answered with this pad.
+    private func bind(_ slotId: String) {
+        navigation.send(.openSetup(seedSlotId: slotId))
+    }
+
+    private func openSetup() {
+        navigation.send(.openSetup(seedSlotId: nil))
     }
 
     /// A strip chip's click: one of the controller's switches, or its mic's mute.
