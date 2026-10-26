@@ -6,7 +6,7 @@ import DishEngine
 import Foundation
 import SwiftUI
 
-// MARK: - The Connections sheet's two sections
+// MARK: - The Connections page's two sections
 
 /// The satellites' rows; the Moonlight hosts sit under their own header.
 func satelliteSummaries(_ connections: [ConnectionSummary]) -> [ConnectionSummary] {

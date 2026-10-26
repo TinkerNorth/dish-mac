@@ -1,21 +1,21 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import AppKit
 import DishEngine
 import SwiftUI
 
 /// Diagnostics: what the app sees right now. Each satellite session's own
 /// account of itself, each controller down to the wire, and the flight
 /// recorder. Read-only: every figure is one the rest of the app already acts
-/// on, not a second measurement. The source ticks while the window is open.
-struct DiagnosticsView: View {
+/// on, not a second measurement. The source ticks while the page shows.
+struct DiagnosticsPage: View {
 
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var navigation: NavigationStore
     @EnvironmentObject var diagnostics: DiagnosticsSource
     @EnvironmentObject var log: DiagnosticsLogStore
+    @Environment(\.pasteboard) private var pasteboard
     @State private var copied = false
-    @State private var inspecting: ControllerSlot?
 
     private let words = L10n.app
 
@@ -30,16 +30,10 @@ struct DiagnosticsView: View {
                 controllersSection
                 eventsSection
             }
-            .padding(16)
+            .padding(DishSpace.page)
         }
-        .background(DishTheme.background.ignoresSafeArea())
-        .onAppear { diagnostics.start() }
-        .onDisappear { diagnostics.stop() }
-        .sheet(item: $inspecting) { slot in
-            InspectorView(slotId: slot.id)
-                .environmentObject(model)
-                .environmentObject(model.inspector)
-        }
+        .onAppear { model.pageAppeared(.diagnostics) }
+        .onDisappear { model.pageDisappeared(.diagnostics) }
     }
 
     private var hostsSection: some View {
@@ -71,7 +65,7 @@ struct DiagnosticsView: View {
                     dot: nil,
                     chip: nil,
                     lines: padLines(pad),
-                    action: CardAction(label: words.inspectInput) { inspecting = pad.slot }
+                    action: CardAction(label: words.inspectInput) { navigation.send(.push(.inspector(slotId: pad.slot.id))) }
                 )
             }
         }
@@ -109,9 +103,7 @@ struct DiagnosticsView: View {
     }
 
     private func copyEvents() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(eventsTranscript(log.state), forType: .string)
+        pasteboard.copy(eventsTranscript(log.state))
         copied = true
     }
 }

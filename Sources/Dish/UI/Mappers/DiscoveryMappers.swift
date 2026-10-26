@@ -30,7 +30,7 @@ func discoveredStatusText(_ server: DiscoveredServer, words: L10n = .app) -> Str
     words.foundVia(discoverySourceText(server.source, words: words))
 }
 
-/// A row on the Connections sheet: a known server (remembered or live), or
+/// A row on the Connections page: a known server (remembered or live), or
 /// one just discovered that the summaries do not list yet.
 enum ConnectionRow: Equatable {
     case known(ConnectionSummary)

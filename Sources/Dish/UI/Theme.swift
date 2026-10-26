@@ -35,6 +35,13 @@ enum DishTheme {
     static let barTrack = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.22)
     /// A toast's drop shadow.
     static let shadow = Color(dark: 0x000000, light: 0x0C1430, alpha: 0.35)
+    /// The rail item of the destination on screen.
+    static let railActiveFill = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.14)
+    /// The shell's streaming pill.
+    static let pillFill = Color(dark: 0x4FE3FF, light: 0x0E7C97, alpha: 0.14)
+    /// The one hue beyond the accent, kept for donations: the rail's heart
+    /// and the Support page's call to action.
+    static let pulse = Color(dark: 0xFF6FB5, light: 0xC2417F)
 
     /// The brand glyphs' fill, from the brand book rather than the UI accent.
     static let brandGlyph = Color(dark: 0x8FCFE3, light: 0x2F7E96)
@@ -50,12 +57,64 @@ enum DishTheme {
     static let brandSlashCut = Color(dark: 0x0F1620, light: 0xF5F7FC)
 }
 
+/// The shell's measures. Every size a kit component sets is one of these
+/// names; the window's sizes are the desktops'.
+enum DishSize {
+    /// The labelled rail.
+    static let railExpanded: CGFloat = 236
+    /// The collapsed rail, an icon strip.
+    static let railCompact: CGFloat = 52
+    /// A rail glyph's cell.
+    static let railGlyph: CGFloat = 18
+    /// A rail item's height.
+    static let railItemHeight: CGFloat = 34
+    /// The rail's active-destination bar.
+    static let railAccentBar: CGFloat = 3
+    /// The update badge on a rail glyph.
+    static let badge: CGFloat = 7
+    /// The window as it first opens.
+    static let windowDefaultWidth: CGFloat = 980
+    static let windowDefaultHeight: CGFloat = 640
+    /// The smallest the window goes.
+    static let windowMinWidth: CGFloat = 900
+    static let windowMinHeight: CGFloat = 620
+    /// Settings lays its sections in two columns from this page width.
+    static let wideBreakpoint: CGFloat = 980
+    /// A hairline divider.
+    static let hairline: CGFloat = 1
+    /// A spinner inside a button.
+    static let buttonSpinner: CGFloat = 12
+    /// A chip's and a rail item's corner.
+    static let chipRadius: CGFloat = 6
+    /// A card's corner.
+    static let cardRadius: CGFloat = 8
+}
+
+/// The spacing scale.
+enum DishSpace {
+    static let s1: CGFloat = 2
+    static let s2: CGFloat = 4
+    static let s3: CGFloat = 6
+    static let s4: CGFloat = 8
+    static let s5: CGFloat = 10
+    static let s6: CGFloat = 12
+    static let s8: CGFloat = 16
+    /// A page's inset from the content column's edges.
+    static let page: CGFloat = 24
+}
+
 /// The type scale. Every font a view sets is one of these names.
 enum DishFont {
-    /// The Connections sheet's headline.
+    /// The PIN a Moonlight host waits for.
     static let windowTitle = Font.system(size: 18, weight: .semibold)
-    /// The dashboard status line and the Settings headline.
+    /// The shell header's page title.
+    static let pageTitle = Font.system(size: 20, weight: .bold)
+    /// The Support page's headline.
     static let title = Font.system(size: 17, weight: .semibold)
+    /// A rail item's label.
+    static let railLabel = Font.system(size: 13)
+    /// The rail item of the destination on screen.
+    static let railLabelActive = Font.system(size: 13, weight: .semibold)
     /// The Moonlight PIN sheet's headline.
     static let sheetTitle = Font.system(size: 16, weight: .semibold)
     /// A row's name or a toggle's title.
@@ -113,6 +172,7 @@ struct SectionHeader: View {
     let title: String
     var body: some View {
         Text(title)
+            .textCase(.uppercase)
             .font(DishFont.mono)
             .tracking(1.3)
             .foregroundColor(DishTheme.primary)

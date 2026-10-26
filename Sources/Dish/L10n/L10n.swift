@@ -24,16 +24,8 @@ extension L10n {
         catalog.text("No connections yet")
     }
 
-    var tapManageToAddOne: String {
-        catalog.text("Tap Manage to add one")
-    }
-
     var settings: String {
         catalog.text("Settings")
-    }
-
-    var manage: String {
-        catalog.text("Manage")
     }
 
     var controllersSection: String {

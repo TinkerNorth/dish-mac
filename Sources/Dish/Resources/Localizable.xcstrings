@@ -996,7 +996,7 @@
       }
     },
     "%lld controllers" : {
-      "comment" : "Connections sheet: how many controllers a Moonlight host carries.",
+      "comment" : "Connections page: how many controllers a Moonlight host carries.",
       "localizations" : {
         "en" : {
           "variations" : {
@@ -1930,6 +1930,41 @@
         }
       }
     },
+    "Acknowledgements for the libraries Dish is built on." : {
+      "comment" : "Open source licenses: the row's detail and the page's status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zahvale bibliotekama na kojima je Dish izgrađen."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Danksagungen für die Bibliotheken, auf denen Dish aufbaut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reconocimientos de las bibliotecas sobre las que se construye Dish."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mentions relatives aux bibliothèques sur lesquelles Dish s'appuie."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créditos das bibliotecas em que o Dish é construído."
+          }
+        }
+      }
+    },
     "Adaptive triggers" : {
       "comment" : "Capability row.",
       "localizations" : {
@@ -2246,7 +2281,7 @@
       }
     },
     "App" : {
-      "comment" : "Connections sheet: the label of a Moonlight host's app picker.",
+      "comment" : "Connections page: the label of a Moonlight host's app picker.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -2561,7 +2596,7 @@
       }
     },
     "Back" : {
-      "comment" : "A button name.",
+      "comment" : "A controller button's name; also the shell header's back chevron.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -3015,6 +3050,41 @@
         }
       }
     },
+    "Buy Me a Coffee" : {
+      "comment" : "Support Dish: a way to give, by its service's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy Me a Coffee"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy Me a Coffee"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy Me a Coffee"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy Me a Coffee"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buy Me a Coffee"
+          }
+        }
+      }
+    },
     "CONTROLLERS" : {
       "comment" : "Dashboard section header for the controller list. Maps to Android `section_controllers`.",
       "localizations" : {
@@ -3046,6 +3116,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "CONTROLES"
+          }
+        }
+      }
+    },
+    "Cadence" : {
+      "comment" : "Support Dish: how often a way to give charges.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Učestalost"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frequenz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cadencia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cadence"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Frequência"
           }
         }
       }
@@ -3116,6 +3221,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Medindo… %lld s"
+          }
+        }
+      }
+    },
+    "Card, Apple Pay, Google Pay" : {
+      "comment" : "Support Dish: what Buy Me a Coffee accepts.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kartica, Apple Pay, Google Pay"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karte, Apple Pay, Google Pay"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta, Apple Pay, Google Pay"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carte, Apple Pay, Google Pay"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cartão, Apple Pay, Google Pay"
+          }
+        }
+      }
+    },
+    "Card, Apple Pay, Google Pay, PayPal" : {
+      "comment" : "Support Dish: what Ko-fi accepts.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kartica, Apple Pay, Google Pay, PayPal"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karte, Apple Pay, Google Pay, PayPal"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta, Apple Pay, Google Pay, PayPal"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carte, Apple Pay, Google Pay, PayPal"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cartão, Apple Pay, Google Pay, PayPal"
+          }
+        }
+      }
+    },
+    "Card, PayPal, GitHub credit" : {
+      "comment" : "Support Dish: what GitHub Sponsors accepts.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kartica, PayPal, GitHub kredit"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Karte, PayPal, GitHub-Guthaben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tarjeta, PayPal, crédito de GitHub"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carte, PayPal, crédit GitHub"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cartão, PayPal, crédito do GitHub"
           }
         }
       }
@@ -3575,6 +3785,76 @@
         }
       }
     },
+    "Configure" : {
+      "comment" : "The button beside the streaming pill; opens Settings.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podesi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Konfigurieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar"
+          }
+        }
+      }
+    },
+    "Configure keep-awake" : {
+      "comment" : "The accessible name of the Configure button beside the streaming pill.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podesi držanje budnim"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wachhalten konfigurieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar mantener activo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurer le maintien en éveil"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Configurar a opção de manter ativo"
+          }
+        }
+      }
+    },
     "Confirmed by host" : {
       "comment" : "Controller card line key.",
       "localizations" : {
@@ -3716,7 +3996,7 @@
       }
     },
     "Connections" : {
-      "comment" : "Title of the connections-management sheet. Maps to Android `title_connections`.",
+      "comment" : "Title of the Connections page. Maps to Android `title_connections`.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -3856,7 +4136,7 @@
       }
     },
     "Controller inspector" : {
-      "comment" : "Inspector sheet title.",
+      "comment" : "Inspector page title.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -3886,6 +4166,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inspetor de controle"
+          }
+        }
+      }
+    },
+    "Controller tuning" : {
+      "comment" : "Settings section: the per-controller tuning.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podešavanje kontrolera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller-Feinabstimmung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste del mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglage de la manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajuste do controle"
           }
         }
       }
@@ -4101,7 +4416,7 @@
       }
     },
     "Crash report" : {
-      "comment" : "Settings row title and sheet title.",
+      "comment" : "Settings row title and page title.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -4345,6 +4660,41 @@
         }
       }
     },
+    "Diagnostics…" : {
+      "comment" : "Settings row that opens the Diagnostics page.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dijagnostika…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnose…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnóstico…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostics…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnóstico…"
+          }
+        }
+      }
+    },
     "Discard" : {
       "comment" : "Button: deletes the crash log.",
       "localizations" : {
@@ -4411,6 +4761,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desconectar"
+          }
+        }
+      }
+    },
+    "Dish %@" : {
+      "comment" : "The version label at the foot of the rail.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish %@"
           }
         }
       }
@@ -4591,7 +4976,7 @@
       }
     },
     "Dish closed unexpectedly last time. The report below has had your home folder, network addresses and key-like values removed." : {
-      "comment" : "Crash report sheet intro (the sibling sentence, one word shorter to fit a line).",
+      "comment" : "Crash report page intro (the sibling sentence, one word shorter to fit a line).",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -4695,6 +5080,41 @@
         }
       }
     },
+    "Dish is free and open source — donations keep it that way" : {
+      "comment" : "Support Dish: the header's status line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish je besplatan i otvorenog koda — donacije ga takvim i drže"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish ist kostenlos und Open Source — Spenden halten es so"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish es gratuito y de código abierto — las donaciones hacen que siga así"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish est gratuit et open source — les dons le maintiennent ainsi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish é gratuito e de código aberto — as doações mantêm essa promessa"
+          }
+        }
+      }
+    },
     "Dish is still running" : {
       "comment" : "System notification title on the first close to the background.",
       "localizations" : {
@@ -4761,6 +5181,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Dish no Mac não transmite %@."
+          }
+        }
+      }
+    },
+    "Dish runs on coffee and goodwill." : {
+      "comment" : "Support Dish: the headline.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish radi na kafi i dobroj volji."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish läuft mit Kaffee und gutem Willen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish funciona a base de café y buena voluntad."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish tourne au café et à la bonne volonté."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish funciona a café e boa vontade."
           }
         }
       }
@@ -4835,41 +5290,6 @@
         }
       }
     },
-    "Dish uses no third-party code. SwiftFormat and SwiftLint are build-time tools under the MIT license." : {
-      "comment" : "About link detail.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dish ne koristi kod trećih strana. SwiftFormat i SwiftLint su alati za izgradnju pod MIT licencom."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dish verwendet keinen Fremdcode. SwiftFormat und SwiftLint sind Build-Werkzeuge unter MIT-Lizenz."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dish no usa código de terceros. SwiftFormat y SwiftLint son herramientas de compilación bajo licencia MIT."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dish n'utilise aucun code tiers. SwiftFormat et SwiftLint sont des outils de compilation sous licence MIT."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "O Dish não usa código de terceiros. SwiftFormat e SwiftLint são ferramentas de compilação sob a licença MIT."
-          }
-        }
-      }
-    },
     "Dismiss" : {
       "comment" : "Tooltip of a toast's close cross.",
       "localizations" : {
@@ -4940,41 +5360,6 @@
         }
       }
     },
-    "Done" : {
-      "comment" : "Dismiss-the-sheet button. No direct Android equivalent — left for translators.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Done"
-          }
-        }
-      }
-    },
     "Drift test (hands off the sticks)" : {
       "comment" : "Inspector button.",
       "localizations" : {
@@ -5041,6 +5426,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A sessão de cada host, cada controle até a conexão e um registro do que mudou."
+          }
+        }
+      }
+    },
+    "Either" : {
+      "comment" : "Support Dish: a cadence, one-time or monthly.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oboje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beides"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cualquiera"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Au choix"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambas"
           }
         }
       }
@@ -5186,7 +5606,7 @@
       }
     },
     "Enter the host address" : {
-      "comment" : "Connections sheet: an empty Moonlight address was submitted.",
+      "comment" : "Connections page: an empty Moonlight address was submitted.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -6025,6 +6445,41 @@
         }
       }
     },
+    "GitHub Sponsors" : {
+      "comment" : "Support Dish: a way to give, by its service's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "GitHub Sponsors"
+          }
+        }
+      }
+    },
     "Guide" : {
       "comment" : "A button name.",
       "localizations" : {
@@ -6235,8 +6690,43 @@
         }
       }
     },
+    "Home" : {
+      "comment" : "The rail's first destination and its page title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Početna"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Start"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inicio"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accueil"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Início"
+          }
+        }
+      }
+    },
     "Host IP or name" : {
-      "comment" : "Connections sheet: the placeholder of the Moonlight address field.",
+      "comment" : "Connections page: the placeholder of the Moonlight address field.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -6581,6 +7071,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Manter também a tela ativa"
+          }
+        }
+      }
+    },
+    "Ko-fi" : {
+      "comment" : "Support Dish: a way to give, by its service's name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ko-fi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ko-fi"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ko-fi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ko-fi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ko-fi"
           }
         }
       }
@@ -7076,7 +7601,7 @@
       }
     },
     "MOONLIGHT HOSTS" : {
-      "comment" : "Connections sheet: the Moonlight section's header.",
+      "comment" : "Connections page: the Moonlight section's header.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -7106,41 +7631,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "HOSTS MOONLIGHT"
-          }
-        }
-      }
-    },
-    "Manage" : {
-      "comment" : "Dashboard action button — opens the connections sheet. Maps to Android `action_manage`.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Upravljanje"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Verwalten"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gestionar"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gérer"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gerenciar"
           }
         }
       }
@@ -7461,7 +7951,7 @@
       }
     },
     "Moonlight host" : {
-      "comment" : "Connections sheet: what a discovered Moonlight host was found as.",
+      "comment" : "Connections page: what a discovered Moonlight host was found as.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -7950,41 +8440,6 @@
         }
       }
     },
-    "Mute mic" : {
-      "comment" : "Header chip tooltip: the click mutes every armed microphone.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Utišaj mikrofon"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Mikro stummschalten"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Silenciar micro"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Couper le micro"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Silenciar mic"
-          }
-        }
-      }
-    },
     "Needs pairing" : {
       "comment" : "LinkState chip — server forgot us. Maps to Android `chip_status_needs_pairing`.",
       "localizations" : {
@@ -8126,7 +8581,7 @@
       }
     },
     "No Moonlight hosts yet. Scan your network or add one by address." : {
-      "comment" : "Connections sheet: the Moonlight section with nothing in it.",
+      "comment" : "Connections page: the Moonlight section with nothing in it.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -8471,6 +8926,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sem giroscópio"
+          }
+        }
+      }
+    },
+    "No license manifest" : {
+      "comment" : "Open source licenses: the empty state's title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema manifesta licenci"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Lizenzmanifest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin manifiesto de licencias"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun manifeste de licence"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem manifesto de licenças"
           }
         }
       }
@@ -8930,6 +9420,41 @@
         }
       }
     },
+    "Nothing set up yet" : {
+      "comment" : "Home with no controller: the empty state's title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još ništa nije postavljeno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts eingerichtet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay nada configurado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien de configuré pour l'instant"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada configurado ainda"
+          }
+        }
+      }
+    },
     "Off" : {
       "comment" : "Light-bar mode: leave the LED alone.",
       "localizations" : {
@@ -9066,6 +9591,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Para o host"
+          }
+        }
+      }
+    },
+    "One-time" : {
+      "comment" : "Support Dish: a cadence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jednokratno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Einmalig"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Único"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponctuel"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Única"
           }
         }
       }
@@ -9560,6 +10120,41 @@
         }
       }
     },
+    "Pays with" : {
+      "comment" : "Support Dish: what a way to give accepts.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plaća se sa"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bezahlung mit"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paga con"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paie avec"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pagamento"
+          }
+        }
+      }
+    },
     "Pending" : {
       "comment" : "Capability verdict before the host resolves.",
       "localizations" : {
@@ -9770,8 +10365,78 @@
         }
       }
     },
+    "Plug in a controller and pair a Satellite to get started" : {
+      "comment" : "The header's status line with nothing paired.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priključite kontroler i uparite satelit za početak"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließe einen Controller an und koppele einen Satelliten, um loszulegen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conecta un mando y empareja un satélite para empezar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Branchez une manette et appairez un Satellite pour commencer"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conecte um controle e pareie um satélite para começar"
+          }
+        }
+      }
+    },
+    "Plug one in, then pick where it goes" : {
+      "comment" : "Home with no controller: the empty state's body.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priključite ga, zatim odaberite gdje ide"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schließe einen an und wähle dann sein Ziel"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conecta uno y luego elige adónde va"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Branchez-en une, puis choisissez sa destination"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conecte um e escolha para onde ele vai"
+          }
+        }
+      }
+    },
     "Press Scan to look for servers on your LAN" : {
-      "comment" : "Connections sheet empty-state hint. Mac-specific copy.",
+      "comment" : "Connections page empty-state hint. Mac-specific copy.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -9941,6 +10606,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pulso"
+          }
+        }
+      }
+    },
+    "Quick one-time gift or a monthly membership. Great if you don’t have a GitHub account." : {
+      "comment" : "Support Dish: what Buy Me a Coffee is.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brzi jednokratni poklon ili mjesečno članstvo. Odlično ako nemate GitHub nalog."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schnelles Einmal-Geschenk oder eine monatliche Mitgliedschaft. Ideal, wenn du kein GitHub-Konto hast."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Regalo rápido único o una membresía mensual. Genial si no tienes cuenta de GitHub."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cadeau ponctuel rapide ou abonnement mensuel. Parfait si vous n'avez pas de compte GitHub."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Doação rápida e única ou uma assinatura mensal. Ótimo se você não tem conta no GitHub."
           }
         }
       }
@@ -10190,6 +10890,76 @@
         }
       }
     },
+    "Recommended" : {
+      "comment" : "Support Dish: the eyebrow on the recommended way to give.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preporučeno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfohlen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recomendado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommandé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recomendado"
+          }
+        }
+      }
+    },
+    "Recommended — lowest fees, matched by GitHub where eligible." : {
+      "comment" : "Support Dish: the note under the call to action.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preporučeno — najniže naknade, GitHub ih uparuje gdje je moguće."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empfohlen — niedrigste Gebühren, von GitHub verdoppelt, wo förderfähig."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recomendado — comisiones mínimas, igualadas por GitHub donde sea elegible."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recommandé — frais les plus bas, abondé par GitHub quand vous êtes éligible."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recomendado — menores taxas, equiparadas pelo GitHub onde elegível."
+          }
+        }
+      }
+    },
     "Reconnect" : {
       "comment" : "Row action after a dropped Moonlight session.",
       "localizations" : {
@@ -10221,6 +10991,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Reconectar"
+          }
+        }
+      }
+    },
+    "Recurring" : {
+      "comment" : "Support Dish: a cadence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ponavljajuće"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wiederkehrend"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recurrente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Récurrent"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recorrente"
           }
         }
       }
@@ -10961,7 +11766,7 @@
       }
     },
     "Settings" : {
-      "comment" : "Tooltip / title for the settings gear button + sheet. No direct Android equivalent — left for translators.",
+      "comment" : "The Settings rail item and page title.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
@@ -11166,6 +11971,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Alto-falante"
+          }
+        }
+      }
+    },
+    "Sponsor on GitHub Sponsors" : {
+      "comment" : "Support Dish: the call to action.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sponzorišite na GitHub Sponsors"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auf GitHub Sponsors sponsern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Patrocínanos en GitHub Sponsors"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sponsoriser sur GitHub Sponsors"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Patrocine no GitHub Sponsors"
           }
         }
       }
@@ -11380,6 +12220,76 @@
         }
       }
     },
+    "Streaming · computer kept awake" : {
+      "comment" : "The shell's streaming pill while the Mac is held awake.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Striming · računar ostaje budan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streaming · Computer bleibt wach"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmitiendo · equipo activo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diffusion · ordinateur maintenu éveillé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmitindo · computador mantido ativo"
+          }
+        }
+      }
+    },
+    "Streaming · display kept awake" : {
+      "comment" : "The shell's streaming pill while the display is held awake too.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Striming · ekran ostaje budan"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streaming · Anzeige bleibt wach"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmitiendo · pantalla activa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diffusion · écran maintenu allumé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmitindo · tela mantida ativa"
+          }
+        }
+      }
+    },
     "Strong" : {
       "comment" : "Rumble bench button.",
       "localizations" : {
@@ -11446,6 +12356,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Apoiar o Dish"
+          }
+        }
+      }
+    },
+    "Support the project" : {
+      "comment" : "Support Dish: the eyebrow over the headline.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Podržite projekat"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Projekt unterstützen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apoya el proyecto"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Soutenir le projet"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Apoie o projeto"
           }
         }
       }
@@ -11555,41 +12500,6 @@
         }
       }
     },
-    "Tap Manage to add one" : {
-      "comment" : "Dashboard summary hint when no connections exist. Maps to Android `status_tap_manage`.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dodirnite Upravljanje da dodate jednu"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap Manage to add one"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap Manage to add one"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Touchez Gérer pour en ajouter une"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Tap Manage to add one"
-          }
-        }
-      }
-    },
     "Test microphone" : {
       "comment" : "Inspector button.",
       "localizations" : {
@@ -11621,6 +12531,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Testar microfone"
+          }
+        }
+      }
+    },
+    "Thank you. Every dollar, every star, every shared link. — Emir" : {
+      "comment" : "Support Dish: the sign-off.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hvala vam. Svaki dolar, svaka zvjezdica, svaki podijeljeni link. — Emir"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Danke. Jeder Euro, jeder Stern, jeder geteilte Link. — Emir"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gracias. Cada dólar, cada estrella, cada enlace compartido. — Emir"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Merci. Chaque don, chaque favori, chaque lien partagé. — Emir"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obrigado. Cada dólar, cada estrela, cada link compartilhado. — Emir"
           }
         }
       }
@@ -11726,6 +12671,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O app iniciou, mas a transmissão não subiu, então o Dish o fechou de novo."
+          }
+        }
+      }
+    },
+    "The bundled acknowledgements could not be read from this build." : {
+      "comment" : "Open source licenses: the empty state's body.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priložene zahvale nije bilo moguće pročitati iz ovog builda."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die mitgelieferten Danksagungen konnten aus diesem Build nicht gelesen werden."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se pudieron leer los reconocimientos incluidos en esta versión."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les mentions incluses n'ont pas pu être lues depuis cette version."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não foi possível ler os créditos incluídos nesta versão."
           }
         }
       }
@@ -12675,6 +13655,41 @@
         }
       }
     },
+    "Tip jar. Buy us a coffee, no account required — Ko-fi takes no cut on one-time tips." : {
+      "comment" : "Support Dish: what Ko-fi is.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tegla za napojnice. Kupite nam kafu, bez potrebe za nalogom — Ko-fi ne uzima ništa na jednokratne napojnice."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trinkgeldkasse. Spendier uns einen Kaffee, kein Konto nötig — Ko-fi nimmt bei einmaligen Trinkgeldern keine Gebühr."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bote de propinas. Invítanos a un café, sin cuenta necesaria — Ko-fi no se lleva nada en las propinas únicas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pot à pourboires. Offrez-nous un café, sans compte requis — Ko-fi ne prend rien sur les pourboires ponctuels."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caixinha de gorjeta. Pague um café para nós, sem precisar de conta — o Ko-fi não cobra nada em gorjetas únicas."
+          }
+        }
+      }
+    },
     "Touchpad" : {
       "comment" : "Capability chip and Settings toggle title.",
       "localizations" : {
@@ -13095,41 +14110,6 @@
         }
       }
     },
-    "Unmute mic" : {
-      "comment" : "Header chip tooltip: the click unmutes every armed microphone.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uključi mikrofon"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Stummschaltung aufheben"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reactivar micro"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Rétablir le micro"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Reativar mic"
-          }
-        }
-      }
-    },
     "Unsteady" : {
       "comment" : "LinkState chip — live but faltering. Maps to Android `chip_status_unstable`.",
       "localizations" : {
@@ -13236,7 +14216,7 @@
       }
     },
     "WI-FI SERVERS" : {
-      "comment" : "Section header on the Connections sheet. Mac-specific surface (Android uses SATELLITES); marked new for localization.",
+      "comment" : "Section header on the Connections page. Mac-specific surface (Android uses SATELLITES); marked new for localization.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {

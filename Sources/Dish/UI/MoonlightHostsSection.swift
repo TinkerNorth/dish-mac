@@ -5,7 +5,7 @@ import DishCore
 import DishEngine
 import SwiftUI
 
-/// The Moonlight half of the Connections sheet: the hosts the records or a
+/// The Moonlight half of the Connections page: the hosts the records or a
 /// scan know, each with its trust, its session's standing, the controllers
 /// it carries, the app it starts, and the way out of where it stands; and
 /// an address field for a host that advertises nothing.

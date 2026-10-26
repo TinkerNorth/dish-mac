@@ -5,7 +5,7 @@ import Foundation
 
 extension L10n {
 
-    // MARK: - Moonlight hosts on the Connections sheet
+    // MARK: - Moonlight hosts on the Connections page
 
     var moonlightHostsSection: String {
         catalog.text("MOONLIGHT HOSTS")

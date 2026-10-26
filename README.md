@@ -54,14 +54,24 @@ protocol-1 satellite; see [Protocol](#protocol).
   supported in any OS X releases", the idle-sleep assertions Dish holds do
   not reach the lid, and Apple's clamshell mode needs a display and power
   connected; when the lid closes mid-stream, Dish says so once on the wake.
-- Keeps streaming when the window is closed, from a menu-bar item; follows
-  the system appearance or a chosen light or dark theme.
+- Opens one window, the desktops' shell: a rail on the left (Home,
+  Controllers and Connections at the top, Support Dish and Settings at the
+  foot, collapsible to an icon strip that stays collapsed across launches)
+  and a content column whose header carries the page title, a back chevron
+  on a pushed page, the streaming pill with the keep-awake reach, the
+  app-wide microphone chip and the status line. Settings, Diagnostics, the
+  inspector, the crash report and the licenses are pages in that window,
+  not sheets or extra windows, so the window always moves; ⌘, opens
+  Settings, ⌘1 to ⌘3 the top destinations and ⌘[ goes back.
+- Keeps streaming when the window is closed, from a menu-bar item whose
+  Diagnostics item opens the window on that page; follows the system
+  appearance or a chosen light or dark theme.
 - Checks GitHub for a newer release at startup and every few hours, says so
   once per version, and lets one switch turn the check off.
 - Emulates each pad as the type its satellite offers for it, or the one you
   pick, and shows what carries end to end: the pad, this Mac, the type and
   the host, feature by feature.
-- Opens a Diagnostics window with each session's own account of itself, each
+- Shows a Diagnostics page with each session's own account of itself, each
   controller down to the wire, and a log of what changed; inspects one
   controller live (its input as the host sees it, motion and touch, a drift
   and a range test on the raw sticks, a rumble bench, a test tone and a
@@ -148,14 +158,15 @@ dish-mac/
 │   ├── Input/                    # the GameController bridge and the hot path
 │   ├── Audio/                    # the pad's own audio: routes, the engine, the codec, the HAL units
 │   ├── Update/                   # the release manifest check
-│   ├── Diagnostics/              # the session facts, the flight recorder, the window's source
+│   ├── Diagnostics/              # the session facts, the flight recorder, the page's source
 │   └── Util/                     # leaf helpers (the keep-awake pipeline, the crash handler, hex, locks)
 ├── Sources/Dish/
 │   ├── DishApp.swift             # @main
 │   ├── L10n/                     # every word, and the one reader of the catalog
 │   ├── Resources/Localizable.xcstrings
+│   ├── Navigation/               # the navigation machine, its store, the keyboard commands
 │   ├── Notifications/            # the toast queue, the background notice
-│   └── UI/                       # views, Theme.swift, Mappers/
+│   └── UI/                       # Shell/ (rail, window), Pages/, Kit/, Mappers/, Theme.swift
 ├── Tests/DishCoreTests/          # pinned interop vectors, reducer suites
 ├── Tests/DishKernelTests/        # every kernel primitive
 ├── Tests/DishEngineTests/        # unit and live suites; Support/FakeSatellite/
@@ -167,6 +178,7 @@ dish-mac/
 ├── packaging/update-policy.json  # the oldest build the update check still supports
 ├── .github/workflows/            # macos-ci, e2e (the real satellite), release, the security gates
 ├── docs/ARCHITECTURE.md          # the module map and the dataflow rules
+├── docs/UI_CONTRACT.md           # the shell header, the pages, the kit rules
 ├── docs/contract.md              # contract concept → file
 ├── scripts/ci-local.sh           # the CI gate, locally
 ├── scripts/e2e_local.sh          # loopback e2e against the real satellite binary

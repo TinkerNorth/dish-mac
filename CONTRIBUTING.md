@@ -85,7 +85,8 @@ fails the build on one. Every user-facing word reaches a view through `L10n`
 (`Sources/Dish/L10n/`); its `StringCatalog` is the one reader of the compiled
 catalog, and a view never holds an English literal. Derivation (a chip's text, a dot's
 colour, a battery glyph) is a pure function under `Sources/Dish/UI/Mappers`,
-tested in `Tests/DishTests`, never an expression inside a `body`.
+tested in `Tests/DishTests`, never an expression inside a `body`. The shell,
+the page rules and the kit rules are in [`docs/UI_CONTRACT.md`](docs/UI_CONTRACT.md).
 
 ## Translations
 

@@ -4,76 +4,67 @@
 import DishEngine
 import SwiftUI
 
-/// The connection-management sheet: scan, pair, connect, and forget a
+/// The Connections page's content: scan, pair, connect, and forget a
 /// remembered satellite, and the Moonlight hosts under their own header. A
 /// manual address is the escape hatch when discovery is dead. A satellite
 /// that pairs opens its row into the pairing card, which shows its own
-/// errors; closing the sheet cancels the pairing. Other failures and notices
-/// arrive as toasts over the sheet's bottom, the same strip the window shows
-/// when the sheet is down; only an address the sheet itself could not read
-/// gets an inline banner.
+/// errors; leaving the page cancels the pairing. Other failures and notices
+/// arrive as the shell's toasts; only an address the page itself could not
+/// read gets an inline banner.
 struct ConnectionsView: View {
 
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var wifi: WifiConnectionManager
-    @Environment(\.dismiss) private var dismiss
     @State private var manualAddress = ""
     @State private var manualAddressError: String?
 
     private let words = L10n.app
 
+    private var state: ConnectionsPageState {
+        connectionsPageState(connections: model.connections, discovered: wifi.discoveredServers, scanning: wifi.isScanning)
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
-            Divider().background(DishTheme.outline)
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     sectionHeader
-                    let rows = connectionRows(known: satelliteSummaries(model.connections), discovered: wifi.discoveredServers)
-                    if rows.isEmpty {
-                        Text(words.pressScanHint)
+                    if let hint = state.emptyHint {
+                        Text(hint)
                             .font(DishFont.detail)
                             .foregroundColor(DishTheme.muted)
                             .padding(.vertical, 6)
-                    } else {
-                        ForEach(rows, id: \.key) { row in
-                            rowView(row)
-                        }
+                    }
+                    ForEach(state.rows, id: \.key) { row in
+                        rowView(row)
                     }
                     addByAddressRow
                     MoonlightHostsSection()
-                        .environmentObject(model)
-                        .environmentObject(model.moonlight)
                         .padding(.top, 10)
                 }
-                .padding(20)
+                .padding(DishSpace.page)
             }
             if let manualAddressError {
                 ErrorBanner(message: manualAddressError) { self.manualAddressError = nil }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, DishSpace.page)
                     .padding(.bottom, 12)
             }
         }
-        .frame(minWidth: 480, minHeight: 540)
-        .background(DishTheme.background)
-        .overlay(alignment: .bottom) {
-            NotificationOverlay()
-        }
         .onDisappear(perform: model.leftConnections)
-        .sheet(item: $model.moonlightPin) { prompt in
-            MoonlightPinSheet(prompt: prompt)
-                .environmentObject(model)
-        }
     }
 
     private var sectionHeader: some View {
         HStack(spacing: 8) {
             BrandIcon(kind: .satellite, state: .default, size: 18)
             SectionHeader(title: words.wifiServersSection)
-            if wifi.isScanning {
-                DishSpinner(size: 11)
-            }
             Spacer()
+            Button {
+                model.startScan()
+            } label: {
+                workingLabel(words.scan, working: words.scanning, isWorking: state.scanning)
+            }
+            .buttonStyle(DishOutlinedButtonStyle())
+            .disabled(state.scanning)
         }
     }
 
@@ -98,26 +89,7 @@ struct ConnectionsView: View {
         }
     }
 
-    // MARK: - Header
-
-    private var header: some View {
-        HStack {
-            Text(words.connections)
-                .font(DishFont.windowTitle)
-                .foregroundColor(DishTheme.onSurface)
-            Spacer()
-            Button {
-                model.startScan()
-            } label: {
-                workingLabel(words.scan, working: words.scanning, isWorking: wifi.isScanning)
-            }
-            .buttonStyle(DishOutlinedButtonStyle())
-            .disabled(wifi.isScanning)
-            Button(words.done) { dismiss() }
-                .buttonStyle(DishOutlinedButtonStyle())
-        }
-        .padding(20)
-    }
+    // MARK: - Labels
 
     /// A button label that carries its own spinner while its action runs, so
     /// "disabled" and "working" read as one state.

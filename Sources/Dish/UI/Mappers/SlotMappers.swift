@@ -213,16 +213,6 @@ func micLampChip(_ slot: ControllerSlot, words: L10n = .app) -> CapabilityChipMo
     }
 }
 
-/// The header's app-wide chip: nil while no microphone is armed, else one
-/// word and one click for every armed mic at once.
-func micIndicatorChip(_ state: MicIndicatorState, words: L10n = .app) -> CapabilityChipModel? {
-    switch state {
-    case .hidden: nil
-    case .live: CapabilityChipModel(label: words.micLive, on: true, available: true, help: words.muteMic)
-    case .muted: CapabilityChipModel(label: words.micMuted, on: false, available: true, help: words.unmuteMic)
-    }
-}
-
 /// Bound, the gyro chip reads the satellite's word; the click hint stays.
 private func boundGyro(_ chip: CapabilityChipModel, slot: ControllerSlot, effective: ForwardingFlags, words: L10n) -> CapabilityChipModel {
     guard slot.boundConnectionId != nil, slot.capabilities.hasMotion else { return chip }

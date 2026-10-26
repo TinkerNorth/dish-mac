@@ -19,14 +19,6 @@ extension L10n {
         catalog.text("Mic muted")
     }
 
-    var muteMic: String {
-        catalog.text("Mute mic")
-    }
-
-    var unmuteMic: String {
-        catalog.text("Unmute mic")
-    }
-
     var micLiveClickToMute: String {
         catalog.text("Microphone is live. Click to mute it.")
     }

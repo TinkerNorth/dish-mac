@@ -156,18 +156,6 @@ final class SlotSwitchesMappersTests: XCTestCase {
         XCTAssertNil(micStatusChip(slot), "a silent plan arms nothing")
     }
 
-    func testTheHeaderChipFollowsTheAppWideWord() throws {
-        XCTAssertNil(micIndicatorChip(.hidden))
-        let live = try XCTUnwrap(micIndicatorChip(.live))
-        XCTAssertEqual(live.label, "Mic live")
-        XCTAssertEqual(live.help, "Mute mic")
-        XCTAssertTrue(live.on)
-        let muted = try XCTUnwrap(micIndicatorChip(.muted))
-        XCTAssertEqual(muted.label, "Mic muted")
-        XCTAssertEqual(muted.help, "Unmute mic")
-        XCTAssertFalse(muted.on)
-    }
-
     func testTheGlobalSwitchesCoverOnlyTheThreeForwardedFeatures() {
         let allOff = ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false, mic: false, speaker: false)
         XCTAssertFalse(globallyAllowed(.motion, allOff))

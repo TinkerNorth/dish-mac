@@ -3,7 +3,8 @@
 A map of the codebase aimed at people working in it. It says which primitive to
 reach for, where the code goes, and what the layering rules are. The protocol
 contract lives in `satellite/docs/contract.md`; the macOS-side mapping is
-[`contract.md`](contract.md). The design tokens are in [`../DESIGN.md`](../DESIGN.md).
+[`contract.md`](contract.md). The design tokens are in [`../DESIGN.md`](../DESIGN.md); the window's shell,
+page and kit rules in [`UI_CONTRACT.md`](UI_CONTRACT.md).
 
 Data flows one way. A source of truth owns state, pure reducers and composers
 derive from it, the UI binds and renders it, and the UI sends commands back to
@@ -48,7 +49,7 @@ frameworks each one may import.
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
 | `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
-| `Dish` | The SwiftUI views, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three and `DishCrashUpload` | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
+| `Dish` | The shell (the navigation machine and its store, the rail, the header, the pages), the SwiftUI views and kit, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three and `DishCrashUpload` | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
 `ImportBoundariesTests` fails the build when a file imports outside its row;
 `PackageGraphTests` fails it when a dependency points the wrong way.
@@ -102,7 +103,7 @@ over or the user cancels;
 pure `UpdateMachine` reducer and performs the effects it returns; the
 notification queue is a `StateSource<[DishNotification]>`; `DiagnosticsSource`
 is a `StateSource<DiagnosticsSnapshot>` that re-reads the session facts at
-1 Hz while the Diagnostics window is open, and `DiagnosticsLogStore` keeps the
+1 Hz while the Diagnostics page shows, and `DiagnosticsLogStore` keeps the
 flight recorder's lines that `DiagnosticsRecorder` derives by diffing the
 rows and the slots; `composeSlots` and `routeSnapshot` are the pure transforms
 behind the slot list and the hot-path table. The coordinators still publish several properties each; moving them
@@ -153,7 +154,21 @@ state and `WifiConnectionManager` performs the effects.
    closures; a host view beside the page maps the engine's value into that
    state and forwards the closures as intents. `ImportBoundariesTests` pins
    it: a kit file imports only SwiftUI and Foundation and observes no model.
-9. **A failure is told in one place.** A pairing attempt's failure is keyed
+9. **Navigation is data.** `Sources/Dish/Navigation/NavigationMachine.swift`
+   is a pure `reduceNavigation(state, event)` over the rail's destination,
+   the pushed pages, the rail's collapse, the leave guard and the welcome
+   gate; it returns its effects (`persistRail`, `activateWindow`) as data and
+   `NavigationStore` runs them and hands `NavigationSplitView` and
+   `NavigationStack` their bindings. A rail selection replaces the stack, a
+   page pushes onto it, and a page that arms the leave guard gets first
+   refusal of every move that would take it off screen. The window, the
+   menu-bar item and the keyboard commands all go through it.
+10. **A page's lifecycle is an intent.** A page's `onAppear` and
+   `onDisappear` forward `pageAppeared` / `pageDisappeared` to `AppModel`
+   (`AppModel+Diagnostics.swift`), which starts and stops the Diagnostics
+   source, arms and disarms the inspector, and re-reads the crash log; the
+   view does nothing else there.
+11. **A failure is told in one place.** A pairing attempt's failure is keyed
    to its satellite (`ConnectionEvent.pairingFailed`); while that
    satellite's pairing card is open the card shows it, and `AppModel` hands
    only the others to the toast.
@@ -247,7 +262,7 @@ Each entry names the decided shape, so a change lands on it.
   redacted by `CrashReport` in the core and sent only by the user's browser.
 - **Diagnostics shows the facts, not the bench.** The input inspector, the
   stick drift test and the rumble bench the Linux client has are pending; the
-  window reads the facts the engine already holds.
+  page reads the facts the engine already holds.
 - **The update check downloads nothing.** It reads the release manifest,
   says so once per version and opens the release page; installing stays
   manual, as on the other desktop clients.

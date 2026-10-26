@@ -30,7 +30,7 @@ struct PinCells: View {
                     .foregroundColor(ink)
                     .frame(width: Self.cellWidth, height: Self.cellHeight)
                     .background(DishTheme.surface)
-                    .overlay(RoundedRectangle(cornerRadius: Self.cornerRadius).stroke(stroke, lineWidth: 1))
+                    .overlay(RoundedRectangle(cornerRadius: Self.cornerRadius).stroke(stroke, lineWidth: DishSize.hairline))
                     .clipShape(RoundedRectangle(cornerRadius: Self.cornerRadius))
             }
         }

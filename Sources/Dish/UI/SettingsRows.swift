@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import AppKit
 import DishEngine
 import SwiftUI
 
@@ -71,7 +70,6 @@ struct StepperRow: View {
     }
 }
 
-/// A row that opens a web page.
 /// A row that acts inside the app, its glyph on the right.
 struct ActionRow: View {
 
@@ -95,16 +93,16 @@ struct ActionRow: View {
     }
 }
 
+/// A row that opens a web page.
 struct LinkRow: View {
 
+    @Environment(\.openURL) private var openURL
     let title: String
     let detail: String
     let destination: String
 
     var body: some View {
-        Button {
-            if let url = URL(string: destination) { NSWorkspace.shared.open(url) }
-        } label: {
+        Button(action: open) {
             HStack(alignment: .top) {
                 RowText(title: title, detail: detail)
                 Spacer()
@@ -116,12 +114,17 @@ struct LinkRow: View {
         }
         .buttonStyle(.plain)
     }
+
+    private func open() {
+        if let url = URL(string: destination) { openURL(url) }
+    }
 }
 
 /// The Updates section's status line and its two actions.
 struct UpdateStatusRow: View {
 
     @EnvironmentObject var updates: UpdateChecker
+    @Environment(\.openURL) private var openURL
 
     private let words = L10n.app
 
@@ -136,10 +139,8 @@ struct UpdateStatusRow: View {
                     .buttonStyle(DishOutlinedButtonStyle())
                     .disabled(updates.state.phase == .checking || updates.state.phase == .disabled)
                 if showsReleasePage(updates.state) {
-                    Button(words.openReleasePage) {
-                        if let url = URL(string: updates.state.notesUrl) { NSWorkspace.shared.open(url) }
-                    }
-                    .buttonStyle(DishOutlinedButtonStyle())
+                    Button(words.openReleasePage, action: openReleasePage)
+                        .buttonStyle(DishOutlinedButtonStyle())
                     if !updates.state.required {
                         Button(words.skipThisVersion) { updates.skipAvailableVersion() }
                             .buttonStyle(DishOutlinedButtonStyle())
@@ -148,6 +149,10 @@ struct UpdateStatusRow: View {
             }
         }
         .settingsCard()
+    }
+
+    private func openReleasePage() {
+        if let url = URL(string: updates.state.notesUrl) { openURL(url) }
     }
 }
 

@@ -1,25 +1,27 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import AppKit
+import DishEngine
 import SwiftUI
 
 /// The crash report the user reviews before anything leaves this Mac: the
 /// redacted text, a copy, a prefilled issue in the browser, or the bin.
-struct CrashReportSheet: View {
+struct CrashReportPage: View {
 
-    @Environment(\.dismiss) private var dismiss
-    let report: String
-    let onDiscard: () -> Void
+    @EnvironmentObject var model: AppModel
+    @EnvironmentObject var navigation: NavigationStore
+    @Environment(\.pasteboard) private var pasteboard
+    @Environment(\.openURL) private var openURL
     @State private var copied = false
 
     private let words = L10n.app
 
+    private var report: String {
+        crashReportText(model.crashLog, appVersion: model.shellFacts.update.currentVersion)
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(words.crashReport)
-                .font(DishFont.title)
-                .foregroundColor(DishTheme.onSurface)
+        VStack(alignment: .leading, spacing: DishSpace.s6) {
             Text(words.crashReportIntro)
                 .font(DishFont.detail)
                 .foregroundColor(DishTheme.muted)
@@ -27,9 +29,7 @@ struct CrashReportSheet: View {
             reportText
             actions
         }
-        .padding(20)
-        .frame(width: 640)
-        .background(DishTheme.background)
+        .padding(DishSpace.page)
     }
 
     private var reportText: some View {
@@ -39,15 +39,15 @@ struct CrashReportSheet: View {
                 .foregroundColor(DishTheme.onSurface)
                 .textSelection(.enabled)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(10)
+                .padding(DishSpace.s5)
         }
-        .frame(minHeight: 260, maxHeight: 360)
+        .frame(maxHeight: .infinity)
         .background(DishTheme.surfaceDim)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: DishSize.cardRadius))
     }
 
     private var actions: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: DishSpace.s4) {
             Button(words.copy, action: copyReport)
                 .buttonStyle(DishOutlinedButtonStyle())
             if copied {
@@ -56,12 +56,7 @@ struct CrashReportSheet: View {
                     .foregroundColor(DishTheme.success)
             }
             Spacer()
-            Button(words.discard) {
-                onDiscard()
-                dismiss()
-            }
-            .buttonStyle(DishOutlinedButtonStyle())
-            Button(words.close) { dismiss() }
+            Button(words.discard, action: discard)
                 .buttonStyle(DishOutlinedButtonStyle())
             Button(words.reportOnGitHub, action: openIssue)
                 .buttonStyle(DishOutlinedButtonStyle())
@@ -70,14 +65,17 @@ struct CrashReportSheet: View {
     }
 
     private func copyReport() {
-        let pasteboard = NSPasteboard.general
-        pasteboard.clearContents()
-        pasteboard.setString(report, forType: .string)
+        pasteboard.copy(report)
         copied = true
+    }
+
+    private func discard() {
+        model.discardCrashLog()
+        navigation.send(.pop)
     }
 
     private func openIssue() {
         guard let url = crashIssueURL(report) else { return }
-        NSWorkspace.shared.open(url)
+        openURL(url)
     }
 }

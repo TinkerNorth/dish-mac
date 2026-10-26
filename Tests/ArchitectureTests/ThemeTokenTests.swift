@@ -47,7 +47,7 @@ final class ThemeTokenTests: XCTestCase {
                 namespace = ""
             }
             guard !namespace.isEmpty, line.hasPrefix("static let ") else { continue }
-            tokens.append(Token(namespace: namespace, name: String(line.dropFirst("static let ".count).prefix { $0 != " " })))
+            tokens.append(Token(namespace: namespace, name: String(line.dropFirst("static let ".count).prefix { $0 != " " && $0 != ":" })))
         }
         return tokens
     }
@@ -75,6 +75,19 @@ final class ThemeTokenTests: XCTestCase {
 
     func testAViewSetsNoRawFontSize() throws {
         try assertNoLine(matching: Self.rawFonts, message: "a font is a DishFont token")
+    }
+
+    /// A kit component draws from the tokens alone (docs/UI_CONTRACT.md, K7):
+    /// no raw spacing, padding, corner, frame or glyph size.
+    func testAKitComponentSetsNoRawSize() throws {
+        let regex =
+            try NSRegularExpression(pattern: #"(\b(spacing|cornerRadius|width|height|size|minLength): *|\.padding\((\.\w+, *)?)[1-9]"#)
+        for file in RepoFiles.swiftFiles(under: "Sources/Dish/UI/Kit") {
+            let offenders = try RepoFiles.offendingLines(in: file) { line in
+                regex.firstMatch(in: line, range: NSRange(line.startIndex..., in: line)) != nil
+            }
+            XCTAssertEqual(offenders, [], "a kit size is a DishSize or DishSpace token")
+        }
     }
 
     func testTheDesignDocumentListsEveryToken() throws {

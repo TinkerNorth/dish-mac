@@ -5,7 +5,7 @@ import Foundation
 
 extension L10n {
 
-    // MARK: - Connections sheet
+    // MARK: - Connections page
 
     var connections: String {
         catalog.text("Connections")
@@ -17,10 +17,6 @@ extension L10n {
 
     var scanning: String {
         catalog.text("Scanning…")
-    }
-
-    var done: String {
-        catalog.text("Done")
     }
 
     var wifiServersSection: String {

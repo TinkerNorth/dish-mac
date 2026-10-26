@@ -13,7 +13,7 @@ final class DashboardMappersTests: XCTestCase {
 
     func testNothingPairedYet() {
         XCTAssertEqual(dashboardStatusText([]), "No connections yet")
-        XCTAssertEqual(dashboardSummaryText([]), "Tap Manage to add one")
+        XCTAssertEqual(dashboardSummaryText([]), "Plug in a controller and pair a Satellite to get started")
     }
 
     func testPairedButNoneLiveCountsThePaired() {

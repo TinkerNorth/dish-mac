@@ -26,7 +26,7 @@ func dashboardSummaryText(_ connections: [ConnectionSummary], words: L10n = .app
     let live = liveConnections(connections).count
     let total = connections.count
     switch (live, total) {
-    case (0, 0): return words.tapManageToAddOne
+    case (0, 0): return words.plugInAndPairToGetStarted
     case (0, _): return words.paired(total)
     case (_, _): return words.onlineOfTotal(live, total)
     }

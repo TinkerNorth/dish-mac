@@ -25,7 +25,7 @@ package final class AppModel: ObservableObject {
     package let updates: UpdateChecker
     /// The per-controller switches beneath the global ones.
     package let slotPreferences: SlotPreferenceStore
-    /// What the Diagnostics window reads, ticking while it is open.
+    /// What the Diagnostics page reads, ticking while it shows.
     package let diagnostics: DiagnosticsSource
     /// The flight recorder's lines.
     package let diagnosticsLog = DiagnosticsLogStore()
@@ -33,7 +33,7 @@ package final class AppModel: ObservableObject {
     package let crashLog: CrashLog
     /// Controller audio: the routes, the mutes, the permission, the engine.
     let audio: AudioPipeline
-    /// The input inspector, armed on one controller while its sheet is open.
+    /// The input inspector, armed on one controller while its page shows.
     package let inspector: InputInspector
     /// The Share crash reports switch; the uploader behind it is the app's.
     package let crashReporting: CrashReportingController
@@ -54,6 +54,9 @@ package final class AppModel: ObservableObject {
     @Published package private(set) var micIndicator = MicIndicatorState.hidden
     /// Whether the system lets Dish capture a microphone.
     @Published package private(set) var micPermitted = true
+    /// What the shell shows beyond the slot list: the keep-awake reach, the
+    /// update check, and whether a crash report waits.
+    @Published package internal(set) var shellFacts = ShellFacts()
 
     /// Thread-safe mirror of `settings` for the callback threads.
     private let gate = ForwardingGate()
@@ -69,7 +72,7 @@ package final class AppModel: ObservableObject {
     let activity: ControllerActivitySource
     /// How far the machine is held awake, from the count, the activity and
     /// the preferences; the wake controller follows it.
-    private let wakeState: Composer<WakeState>
+    let wakeState: Composer<WakeState>
     private let recorder: DiagnosticsRecorder
     /// Whether the lid closed on a stream, across one sleep.
     let lidWatch: LidWatch
@@ -193,6 +196,7 @@ package final class AppModel: ObservableObject {
         observeSettings()
         observeEvents()
         observePairing()
+        observeShellFacts()
         installLifecycleHandling(lifecycle)
         wifi.autoReconnectAll()
     }

@@ -54,6 +54,25 @@ the repos share a version number.
 
 ### Changed
 
+- **One window with a rail and pages replaces the sheets.** The window is
+  the desktops' shell: a rail (Home, Controllers, Connections; Support Dish
+  and Settings at the foot, with a dot on Settings while an update waits,
+  and the version) that collapses to an icon strip and stays collapsed
+  across launches, and a content column whose header carries the page
+  title, a back chevron on a pushed page, the streaming pill ("Streaming ·
+  computer kept awake" or "… display kept awake") with a Configure button,
+  the app-wide microphone chip and the status line. Connections, Settings,
+  the crash report and the input inspector were sheets, nested up to three
+  deep, and Diagnostics was a second window; they are now pages of the one
+  window, so it moves wherever a page is open. Settings follows the
+  desktops' order (Appearance, Forwarded features, Controller tuning,
+  Window, Power, Diagnostics, Updates, About) in two columns on a wide
+  window. Support Dish lists GitHub Sponsors, Ko-fi and Buy Me a Coffee, and
+  Open source licenses shows the bundled third-party notice. The window
+  opens at 980×640 (at least 900×620); ⌘, opens Settings, ⌘1 to ⌘3 the top
+  destinations and ⌘[ goes back; the menu-bar item's Diagnostics opens the
+  window on that page. Every toast shows in one place above every page, and
+  the Home copy no longer says "Tap Manage".
 - **The controller hot path leaves the main thread.** Every controller's
   handlers run on one serial, user-interactive input queue handed to the pad
   before any handler is installed, so a busy window never delays a report.

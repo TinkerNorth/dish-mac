@@ -18,7 +18,7 @@ struct PairingCard: View {
     @FocusState private var pinFocused: Bool
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: DishSpace.s6) {
             Text(state.pinPrompt)
                 .font(DishFont.detail)
                 .foregroundColor(DishTheme.muted)
@@ -33,9 +33,9 @@ struct PairingCard: View {
             }
             buttons
         }
-        .padding(12)
+        .padding(DishSpace.s6)
         .background(DishTheme.surfaceDim)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: DishSize.cardRadius))
         .onAppear(perform: focusPin)
     }
 
@@ -67,8 +67,8 @@ struct PairingCard: View {
                 .buttonStyle(DishOutlinedButtonStyle())
             Button(action: pair) {
                 if state.showsPairSpinner {
-                    HStack(spacing: 6) {
-                        DishSpinner(size: 12)
+                    HStack(spacing: DishSpace.s3) {
+                        DishSpinner(size: DishSize.buttonSpinner)
                         Text(state.pairTitle)
                     }
                 } else {
@@ -93,8 +93,8 @@ private struct PairingRequestSection: View {
     private static let barWidth: CGFloat = 60
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 8) {
+        VStack(alignment: .leading, spacing: DishSpace.s5) {
+            HStack(spacing: DishSpace.s4) {
                 rule
                 Text(request.orWord)
                     .font(DishFont.caption)
@@ -113,11 +113,11 @@ private struct PairingRequestSection: View {
     private var rule: some View {
         Rectangle()
             .fill(DishTheme.outline)
-            .frame(height: 1)
+            .frame(height: DishSize.hairline)
     }
 
     private var status: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: DishSpace.s5) {
             if request.showsProgress {
                 DishBar(width: Self.barWidth)
             }

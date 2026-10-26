@@ -9,11 +9,10 @@ import SwiftUI
 /// the pad sent it, motion and touch, the stick tests, the rumble bench and
 /// the audio tests. Arms the inspector while shown and disarms it on the
 /// way out, the mic meter with it.
-struct InspectorView: View {
+struct InspectorPage: View {
 
     @EnvironmentObject var model: AppModel
     @EnvironmentObject var inspector: InputInspector
-    @Environment(\.dismiss) private var dismiss
     let slotId: String
 
     private let words = L10n.app
@@ -32,31 +31,16 @@ struct InspectorView: View {
                 rumbleSection
                 audioSection
             }
-            .padding(16)
+            .padding(DishSpace.page)
         }
-        .frame(minWidth: 540, minHeight: 600)
-        .background(DishTheme.background.ignoresSafeArea())
-        .onAppear { model.inspect(slotId: slotId) }
-        .onDisappear {
-            model.stopInspecting()
-            model.stopMicMeter(slotId: slotId)
-        }
+        .onAppear { model.pageAppeared(.inspector(slotId: slotId)) }
+        .onDisappear { model.pageDisappeared(.inspector(slotId: slotId)) }
     }
 
     private var header: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(words.inspectorTitle)
-                    .font(DishFont.title)
-                    .foregroundColor(DishTheme.onSurface)
-                Text(slot?.name ?? slotId)
-                    .font(DishFont.detail)
-                    .foregroundColor(DishTheme.muted)
-            }
-            Spacer()
-            Button(words.close) { dismiss() }
-                .buttonStyle(DishOutlinedButtonStyle())
-        }
+        Text(slot?.name ?? slotId)
+            .font(DishFont.body)
+            .foregroundColor(DishTheme.onSurface)
     }
 
     // MARK: - Live input
@@ -239,21 +223,5 @@ struct InspectorView: View {
             .font(DishFont.caption)
             .foregroundColor(DishTheme.muted)
             .fixedSize(horizontal: false, vertical: true)
-    }
-}
-
-/// The inspector's card: the Diagnostics card's frame around free content.
-private struct InspectorCard<Content: View>: View {
-    @ViewBuilder let content: Content
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            content
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(12)
-        .background(DishTheme.surface)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DishTheme.cardStroke, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 }

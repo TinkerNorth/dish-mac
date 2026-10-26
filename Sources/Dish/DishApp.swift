@@ -21,8 +21,13 @@ struct DishApp: App {
     @StateObject private var moonlightNotifier = MoonlightNotifier()
     @StateObject private var updateNotifier = UpdateNotifier()
     @StateObject private var lidNotifier = LidNotifier()
+    @StateObject private var navigation = NavigationStore(
+        preferences: UiPreferenceStore(defaults: .standard),
+        activateWindow: activateDish
+    )
     @NSApplicationDelegateAdaptor private var delegate: DishAppDelegate
     @Environment(\.openWindow) private var openWindow
+    private let licenseNotice = thirdPartyNotice(in: L10n.app.catalog.bundle)
 
     init() {
         // First, so a fault anywhere after this leaves a backtrace the user
@@ -36,9 +41,10 @@ struct DishApp: App {
 
     var body: some Scene {
         Window(L10n.app.appName, id: DishWindow.main) {
-            MainView()
+            ShellView(licenseNotice: licenseNotice)
                 .preferredColorScheme(colorScheme(for: model.theme.state))
                 .environmentObject(model)
+                .environmentObject(navigation)
                 .environmentObject(model.wifi)
                 .environmentObject(model.moonlight)
                 .environmentObject(model.settings)
@@ -48,55 +54,57 @@ struct DishApp: App {
                 .environmentObject(model.updatePreferences)
                 .environmentObject(model.updates)
                 .environmentObject(model.crashReporting)
-                .environmentObject(notifications)
-                .frame(minWidth: 520, minHeight: 640)
-                .background(DishTheme.background.ignoresSafeArea())
-                .onAppear {
-                    failureNotifier.bind(failures: model.failures.eraseToAnyPublisher(), center: notifications)
-                    moonlightNotifier.bind(events: model.moonlight.events.eraseToAnyPublisher(), center: notifications) { host in
-                        model.quitMoonlightApp(host.id)
-                    }
-                    updateNotifier.bind(checker: model.updates, center: notifications)
-                    lidNotifier.bind(lidPausedStreaming: model.lidPausedStreaming, center: notifications)
-                    delegate.bind(background: model.background, announcer: BackgroundAnnouncer())
-                }
-        }
-        .windowResizability(.contentMinSize)
-        .defaultSize(width: 560, height: 700)
-
-        Window(L10n.app.diagnostics, id: DishWindow.diagnostics) {
-            DiagnosticsView()
-                .preferredColorScheme(colorScheme(for: model.theme.state))
-                .environmentObject(model)
                 .environmentObject(model.diagnostics)
                 .environmentObject(model.diagnosticsLog)
-                .frame(minWidth: 560, minHeight: 520)
+                .environmentObject(model.inspector)
+                .environmentObject(notifications)
+                .environment(\.pasteboard, .system)
+                .frame(minWidth: DishSize.windowMinWidth, minHeight: DishSize.windowMinHeight)
+                .background(DishTheme.background.ignoresSafeArea())
+                .onAppear(perform: bindNotifiers)
         }
-        .defaultSize(width: 660, height: 780)
+        .windowResizability(.contentMinSize)
+        .defaultSize(width: DishSize.windowDefaultWidth, height: DishSize.windowDefaultHeight)
+        .commands {
+            ShellCommands(navigation: navigation, show: show)
+        }
 
         MenuBarExtra {
-            MenuBarMenu(showWindow: showMainWindow, showDiagnostics: showDiagnosticsWindow)
+            MenuBarMenu(show: show)
                 .environmentObject(model)
         } label: {
             Image(systemName: "gamecontroller")
         }
     }
 
-    private func showMainWindow() {
-        openWindow(id: DishWindow.main)
-        NSApplication.shared.activate(ignoringOtherApps: true)
+    private func bindNotifiers() {
+        failureNotifier.bind(failures: model.failures.eraseToAnyPublisher(), center: notifications)
+        moonlightNotifier.bind(events: model.moonlight.events.eraseToAnyPublisher(), center: notifications, quitApp: quitMoonlightApp)
+        updateNotifier.bind(checker: model.updates, center: notifications)
+        lidNotifier.bind(lidPausedStreaming: model.lidPausedStreaming, center: notifications)
+        delegate.bind(background: model.background, announcer: BackgroundAnnouncer())
     }
 
-    private func showDiagnosticsWindow() {
-        openWindow(id: DishWindow.diagnostics)
-        NSApplication.shared.activate(ignoringOtherApps: true)
+    private func quitMoonlightApp(_ host: MoonlightHost) {
+        model.quitMoonlightApp(host.id)
+    }
+
+    /// The window comes up, closed or not, on what was asked for.
+    private func show(_ request: ExternalRequest) {
+        openWindow(id: DishWindow.main)
+        navigation.send(.external(request))
     }
 }
 
-/// The scene ids the menu bar and Settings open.
+/// Brings Dish forward, for a request from outside the window.
+@MainActor
+func activateDish() {
+    NSApplication.shared.activate(ignoringOtherApps: true)
+}
+
+/// The scene id the menu bar opens.
 enum DishWindow {
     static let main = "main"
-    static let diagnostics = "diagnostics"
 }
 
 /// The crash-reporting address `bundle.sh` wrote into the plist from the
