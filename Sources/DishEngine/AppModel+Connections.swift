@@ -19,6 +19,9 @@ package struct ConnectionsFacts: Equatable {
     package var moonlight = MoonlightFacts()
     /// The connection whose Forget waits for the user's answer.
     package var pendingForget: String?
+    /// Per connection, the names of the pads remembered for it that it does
+    /// not carry now, which a Forget drops with the rest.
+    package var rememberedPads: [String: [String]] = [:]
     /// The address field whose last entry did not read.
     package var rejectedAddress: AddressField?
 
@@ -95,8 +98,18 @@ package extension AppModel {
         facts.localNetworkDenied = wifi.localNetworkDenied
         facts.pairingInFlight = wifi.pairingInFlight
         facts.moonlight = currentMoonlightFacts()
+        facts.rememberedPads = currentRememberedPads()
         guard facts != shellFacts.connections else { return }
         shellFacts.connections = facts
+    }
+
+    /// A pad attached now goes by its own name; one away by the name its id carries.
+    private func currentRememberedPads() -> [String: [String]] {
+        let names = Dictionary(uniqueKeysWithValues: input.slots.map { ($0.id, $0.name) })
+        let rows = hub.connections.map { row in
+            (row.id, hub.standingSlotIds(of: row.id).map { names[$0] ?? padName(fromSlotId: $0) })
+        }
+        return Dictionary(uniqueKeysWithValues: rows).filter { !$0.value.isEmpty }
     }
 
     private func currentMoonlightFacts() -> MoonlightFacts {

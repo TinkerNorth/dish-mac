@@ -7,10 +7,11 @@ import Foundation
 
 /// Aggregates the satellite pool and the Moonlight hosts into the flat
 /// `[ConnectionSummary]` the UI consumes, and owns the slot → connection
-/// binding table. Mirrors `ConnectionHub.kt` less its Bluetooth rows, which
-/// are Android's own. A satellite carries one pad and evicts the prior one;
-/// a Moonlight host carries up to four, so binding another slot to it evicts
-/// nothing, and what the bindings ask of each host is converged by the app.
+/// binding table and its memory across restarts. Mirrors `ConnectionHub.kt`
+/// less its Bluetooth rows, which are Android's own. A satellite and a
+/// Moonlight host each carry up to four pads, so binding another slot evicts
+/// nothing; a fifth is refused at a satellite, and what the bindings ask of
+/// each host is converged by the app.
 @MainActor
 final class ConnectionHub: ObservableObject {
 
@@ -30,6 +31,12 @@ final class ConnectionHub: ObservableObject {
     private let wifi: WifiConnectionManager
     private let store: ConnectionStore
     private let moonlight: MoonlightConnectionManager?
+    /// The satellite bindings kept across restarts; a Moonlight host's live
+    /// in its manager's store.
+    private let memory: BindingMemoryStore
+    /// The pads whose standing binding was already tried while they stay
+    /// attached, so a refused one is not retried by every emission.
+    private var restoreTried: Set<String> = []
     private var cancellables = Set<AnyCancellable>()
     private var perConnCancellables: [String: AnyCancellable] = [:]
     private var perHostCancellables: [String: AnyCancellable] = [:]
@@ -39,6 +46,7 @@ final class ConnectionHub: ObservableObject {
         self.wifi = wifi
         self.store = store
         self.moonlight = moonlight
+        memory = store.bindingMemory
 
         // Rebuild summaries whenever the connection pool changes or any
         // individual connection's state changes.
@@ -62,9 +70,10 @@ final class ConnectionHub: ObservableObject {
             .sink { [weak self] _ in self?.rebuild() }
             .store(in: &cancellables)
 
-        // Roll back local bindings when the server rejects a controller add.
+        // Roll back local bindings when the server rejects a controller add;
+        // the memory stays, tried again when the pad next attaches.
         wifi.slotRegistrationFailed
-            .sink { [weak self] slotId in self?.unbind(slotId: slotId) }
+            .sink { [weak self] slotId in self?.release(slotId: slotId) }
             .store(in: &cancellables)
 
         if let moonlight { observeMoonlight(moonlight) }
@@ -168,16 +177,17 @@ final class ConnectionHub: ObservableObject {
                 ? .stale
                 : (discoveredIds.contains(id) ? .ready : .saved)
             }
-            let bound = bindings.first { $0.value == id }?.key
+            let bound = satelliteSlotIds(id, conn: conn)
             out.append(ConnectionSummary(
                 id: id,
                 name: server.name,
                 address: server.ip,
                 udpPort: server.udpPort,
                 live: live,
-                boundSlotId: bound,
+                boundSlotId: bound.first,
                 latencyMs: conn?.latencyOneWayMs,
-                compat: conn?.protocolCompat ?? .unknown
+                compat: conn?.protocolCompat ?? .unknown,
+                boundSlotIds: bound
             ))
         }
         connections = (out + moonlightSummaries()).sorted { $0.recordName < $1.recordName }
@@ -210,56 +220,95 @@ final class ConnectionHub: ObservableObject {
         connectionId.hasPrefix(MoonlightHostStore.idPrefix)
     }
 
-    /// Bind `slotId` to `connectionId`. A satellite evicts its prior slot; a
-    /// Moonlight host keeps the others it carries. The slot's prior owner on
-    /// either kind lets go. The pad's detected capabilities become a
-    /// satellite descriptor's claims, and its family picks the catalog type
-    /// it is emulated as; a Moonlight pad's arrival is composed by the app.
-    func bind(slotId: String, connectionId: String, capabilities: ControllerCapabilities, family: PadFamily) {
-        var current = bindings
+    /// Every slot bound to a satellite, in the order of the indices it holds there.
+    private func satelliteSlotIds(_ id: String, conn: WifiConnection?) -> [String] {
+        let bound = bindings.filter { $0.value == id }.keys.sorted()
+        let index = { (slotId: String) in conn?.controllerIndex(of: slotId) ?? SatelliteSlots.maxPerSatellite }
+        return bound.sorted { index($0) < index($1) }
+    }
+}
+
+// MARK: - Binding
+
+extension ConnectionHub {
+
+    /// Bind `slotId` to `connectionId`; false when a satellite already
+    /// carries four pads. The slot's prior owner lets go, the satellite takes
+    /// the pad on the lowest free index before the table publishes (so the
+    /// hot path's route already knows it), and the binding is remembered.
+    /// The pad's detected capabilities become a satellite descriptor's
+    /// claims, and its family picks the catalog type it is emulated as; a
+    /// Moonlight pad's arrival is composed by the app.
+    @discardableResult
+    func bind(slotId: String, connectionId: String, capabilities: ControllerCapabilities, family: PadFamily) -> Bool {
         let toHost = Self.isMoonlight(connectionId)
-        if !toHost, let priorSlot = current.first(where: { $0.value == connectionId })?.key, priorSlot != slotId {
-            current.removeValue(forKey: priorSlot)
-            wifi.get(connectionId)?.detachSlot()
-            wifi.motionStatus.clear(SlotKey(connectionId: connectionId, slotId: priorSlot))
-        }
-        if let priorConnection = current[slotId], priorConnection != connectionId {
+        guard toHost || satelliteHasRoom(connectionId, for: slotId) else { return false }
+        if let priorConnection = bindings[slotId], priorConnection != connectionId {
             releaseSlot(slotId, from: priorConnection)
         }
+        if !toHost {
+            let type = wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family)
+            wifi.get(connectionId)?.attachSlot(slotId, controllerType: type, capabilities: capabilities, family: family)
+        }
+        var current = bindings
         current[slotId] = connectionId
         bindings = current
         rebuild()
-        if toHost {
-            moonlight?.rememberInterest(hostId: connectionId)
-            rememberMoonlightBinding(slotId: slotId, hostId: connectionId)
-            return
-        }
-        wifi.get(connectionId)?.attachSlot(
-            slotId,
-            controllerType: wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family),
-            capabilities: capabilities,
-            family: family
-        )
+        if toHost { moonlight?.rememberInterest(hostId: connectionId) }
+        remember(slotId: slotId, connectionId: connectionId)
+        return true
     }
 
-    /// The slot's connection lets go of it: a satellite detaches, a Moonlight
-    /// host drops the remembered binding and its pad leaves on the next converge.
+    /// A satellite carries four pads; a slot it already carries rebinds in place.
+    private func satelliteHasRoom(_ connectionId: String, for slotId: String) -> Bool {
+        let others = bindings.filter { $0.value == connectionId && $0.key != slotId }.count
+        return others < SatelliteSlots.maxPerSatellite
+    }
+
+    /// The slot's connection lets go of it: a satellite detaches that pad
+    /// alone, a Moonlight host's pad leaves on the next converge.
     private func releaseSlot(_ slotId: String, from connectionId: String) {
-        wifi.get(connectionId)?.detachSlot()
+        wifi.get(connectionId)?.detachSlot(slotId)
         wifi.motionStatus.clear(SlotKey(connectionId: connectionId, slotId: slotId))
-        if Self.isMoonlight(connectionId) { moonlight?.forgetBinding(slotId: slotId) }
     }
 
+    /// The user let the pad go: the binding and its memory both end.
     func unbind(slotId: String) {
+        release(slotId: slotId)
+        forgetMemory(slotId: slotId)
+    }
+
+    /// The pad left, or its satellite refused it: the binding ends and its
+    /// memory stays, for the pad's return.
+    func release(slotId: String) {
         guard let cid = bindings.removeValue(forKey: slotId) else { return }
         releaseSlot(slotId, from: cid)
         rebuild()
     }
 
+    /// The pads attached now, from the emission itself: a binding whose pad
+    /// left is released with its memory kept, and its standing binding is
+    /// due again when the pad returns.
+    func keepPresent(_ present: Set<String>) {
+        restoreTried.formIntersection(present)
+        for slotId in bindings.keys where !present.contains(slotId) {
+            release(slotId: slotId)
+        }
+    }
+
+    /// Forget: every pad bound to the connection lets go, and so does every
+    /// binding remembered for it, whether or not its pad is here.
+    func forgetBindings(of connectionId: String) {
+        for (slotId, bound) in bindings where bound == connectionId {
+            unbind(slotId: slotId)
+        }
+        memory.forgetSatellite(connectionId)
+    }
+
     /// The user's Emulate pick for a bound slot; nil returns to the family's
     /// own type (a satellite) or the host's own pick (a Moonlight host). A
-    /// live satellite binding re-sends its descriptor with the new type; a
-    /// Moonlight pad is re-announced by the app's converge.
+    /// live satellite binding re-sends that pad's descriptor with the new
+    /// type; a Moonlight pad is re-announced by the app's converge.
     func setEmulatedType(slotId: String, type: Int?, family: PadFamily) {
         guard let connectionId = bindings[slotId] else { return }
         let key = SlotKey(connectionId: connectionId, slotId: slotId)
@@ -268,32 +317,106 @@ final class ConnectionHub: ObservableObject {
         } else {
             wifi.typeOverrides.clear(key)
         }
-        if Self.isMoonlight(connectionId) {
-            rememberMoonlightBinding(slotId: slotId, hostId: connectionId)
-            return
-        }
-        wifi.get(connectionId)?.setControllerType(wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family))
+        remember(slotId: slotId, connectionId: connectionId)
+        if Self.isMoonlight(connectionId) { return }
+        let resolved = wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family)
+        wifi.get(connectionId)?.setControllerType(resolved, for: slotId)
     }
 
-    /// The binding as kept across restarts: the pick for this pad, else the host's own.
-    private func rememberMoonlightBinding(slotId: String, hostId: String) {
-        guard let moonlight else { return }
-        let pick = wifi.typeOverrides.typeFor(SlotKey(connectionId: hostId, slotId: slotId))
-        moonlight.rememberBinding(
-            slotId: slotId,
-            hostId: hostId,
-            controllerType: pick ?? Int(moonlight.rememberedEmulatedType(hostId: hostId))
-        )
-    }
-
-    /// The bound pad's claims changed; the descriptor follows while live.
+    /// The bound pad's claims changed; its descriptor follows while live.
     func setCapabilities(slotId: String, _ capabilities: ControllerCapabilities) {
         guard let connectionId = bindings[slotId] else { return }
-        wifi.get(connectionId)?.setCapabilities(capabilities)
+        wifi.get(connectionId)?.setCapabilities(capabilities, for: slotId)
     }
 
     func boundConnection(slotId: String) -> ConnectionSummary? {
         guard let cid = bindings[slotId] else { return nil }
         return connections.first { $0.id == cid }
+    }
+}
+
+// MARK: - Memory across restarts
+
+/// A binding remembered from an earlier run, due to be bound again: the pad,
+/// its destination and the type the user picked, nil for the pad's own.
+struct StandingBinding: Equatable {
+    let slotId: String
+    let connectionId: String
+    let emulatedType: Int?
+}
+
+extension ConnectionHub {
+
+    /// One record per pad, of one kind: a satellite's in `wifi_binding_list`,
+    /// a host's in `moonlight_binding_list`, so a pad that moved between the
+    /// kinds is never restored to both.
+    private func remember(slotId: String, connectionId: String) {
+        let pick = wifi.typeOverrides.typeFor(SlotKey(connectionId: connectionId, slotId: slotId))
+        if Self.isMoonlight(connectionId) {
+            rememberOnHost(slotId: slotId, hostId: connectionId, pick: pick)
+        } else {
+            rememberOnSatellite(slotId: slotId, satelliteId: connectionId, pick: pick)
+        }
+    }
+
+    private func rememberOnSatellite(slotId: String, satelliteId: String, pick: Int?) {
+        memory.remember(RememberedSatelliteBinding(slotId: slotId, satelliteId: satelliteId, emulatedType: pick))
+        moonlight?.forgetBinding(slotId: slotId)
+    }
+
+    /// The host's record keeps the type the pad is emulated as: the pick, else the host's own.
+    private func rememberOnHost(slotId: String, hostId: String, pick: Int?) {
+        memory.forget(slotId: slotId)
+        guard let moonlight else { return }
+        let hostType = Int(moonlight.rememberedEmulatedType(hostId: hostId))
+        moonlight.rememberBinding(slotId: slotId, hostId: hostId, controllerType: pick ?? hostType)
+    }
+
+    private func forgetMemory(slotId: String) {
+        memory.forget(slotId: slotId)
+        moonlight?.forgetBinding(slotId: slotId)
+    }
+
+    /// The remembered bindings to bind now: each of a pad present and unbound
+    /// whose destination is known here (a satellite in the pool, a host on
+    /// record), each tried once while its pad stays attached. A pad that left
+    /// is tried again when it returns.
+    func takeDueStandingBindings(present: Set<String>, satellites: Set<String>, hosts: Set<String>) -> [StandingBinding] {
+        restoreTried.formIntersection(present)
+        let known = satellites.union(hosts)
+        let due = standingBindings().filter { standing in
+            let waiting = present.contains(standing.slotId) && bindings[standing.slotId] == nil
+            return waiting && !restoreTried.contains(standing.slotId) && known.contains(standing.connectionId)
+        }
+        restoreTried.formUnion(due.map(\.slotId))
+        return due
+    }
+
+    /// The pads remembered for a connection that it does not carry now: a
+    /// Forget drops these too, so its confirmation names them.
+    func standingSlotIds(of connectionId: String) -> [String] {
+        standingBindings()
+            .filter { $0.connectionId == connectionId && bindings[$0.slotId] != connectionId }
+            .map(\.slotId)
+            .sorted()
+    }
+
+    /// Every remembered binding. A Moonlight record keeps the type the pad
+    /// was emulated as; it is a pick of its own only where it differs from
+    /// the host's.
+    private func standingBindings() -> [StandingBinding] {
+        let satellites = memory.bindings().map(standingBinding)
+        let hosts = (moonlight?.rememberedBindings ?? []).map(standingBinding)
+        return satellites + hosts
+    }
+
+    private func standingBinding(_ record: RememberedSatelliteBinding) -> StandingBinding {
+        StandingBinding(slotId: record.slotId, connectionId: record.satelliteId, emulatedType: record.emulatedType)
+    }
+
+    private func standingBinding(_ record: RememberedMoonlightBinding) -> StandingBinding {
+        let hostType = moonlight.map { Int($0.rememberedEmulatedType(hostId: record.hostId)) }
+        let pick = record.controllerType == hostType ? nil : record.controllerType
+        return StandingBinding(slotId: record.slotId, connectionId: record.hostId, emulatedType: pick)
     }
 }

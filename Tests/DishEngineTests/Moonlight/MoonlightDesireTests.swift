@@ -139,6 +139,6 @@ final class MoonlightDesireTests: XCTestCase {
         XCTAssertFalse(full.hasRoomForAnotherSlot)
         let satellite = ConnectionSummary(id: "mid:1", name: "Desk", live: .ready, boundSlotId: "a")
         XCTAssertEqual(satellite.boundSlotIds, ["a"], "the one bound slot, as the list")
-        XCTAssertFalse(satellite.hasRoomForAnotherSlot, "a satellite carries one pad")
+        XCTAssertTrue(satellite.hasRoomForAnotherSlot, "a satellite carries four pads")
     }
 }

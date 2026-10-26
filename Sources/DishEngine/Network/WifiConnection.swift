@@ -41,7 +41,8 @@ package final class WifiConnection: ObservableObject, Identifiable {
     package let id: String
     @Published private(set) var server: DiscoveredServer
     @Published private(set) var state: SessionState = .idle
-    @Published private(set) var boundSlotId: String?
+    /// The pads this session carries, each on its own controller index.
+    @Published private(set) var slotTable = SatelliteSlotTable()
     /// True while the manager's per-slot PUT or DELETE is in flight.
     @Published private(set) var isRegisteringController = false
     /// Median heartbeat round trip halved, to 0.1 ms, nil until the first
@@ -58,7 +59,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
 
     /// The slot id the satellite refused to plug, so the hub rolls back.
     let slotRegistrationFailed = PassthroughSubject<String, Never>()
-    /// The bound slot changed while live; the manager converges over REST.
+    /// A bound slot changed while live; the manager converges over REST.
     var onTopologyChanged: (() -> Void)?
     /// The send counter crossed the re-key threshold; fires once per approach.
     var onRekeyNeeded: (() -> Void)?
@@ -70,15 +71,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private(set) var lastAppliedEpoch = -1
     /// Set when the manager's reconcile GET launches, cleared when it lands.
     private(set) var reconcileInFlight = false
-    /// Whether the satellite confirmed the bound slot plugged. The desire can
-    /// exist before the bitmap bit does, and that gap is not drift.
-    private(set) var slotApplied = false
-    /// How many times the satellite has confirmed the slot plugged, this
-    /// session or an earlier one: each is a fresh pad on its side, with the
-    /// audio lanes' sequence numbers started over, so the receiver's windows
-    /// start over too. Monotonic, so the count is never mistaken for a new
-    /// bind when it only rewound.
-    @Published private(set) var slotApplyCount = 0
+    /// The controller indices whose descriptor changed while live and wait
+    /// for the manager's per-slot PUT or DELETE.
+    private var pendingIndices: Set<Int> = []
 
     /// What the last negotiation said about the satellite's version.
     @Published private(set) var protocolCompat: ProtocolCompat = .unknown
@@ -87,10 +82,13 @@ package final class WifiConnection: ObservableObject, Identifiable {
     /// What the satellite will carry of the pad's audio, from its probe at
     /// session open; nothing until then.
     @Published private(set) var hostAudio = HostAudioVerdict.none
-    /// The mic lane's sequence, monotonic for this connection's lifetime:
-    /// across a mute, a re-key and a reconnect, so the satellite's reorder
-    /// window never reads a restart as a burst of late frames.
-    private let micSeq = AtomicInt(0)
+    /// Each controller index's mic lane sequence, monotonic for this
+    /// connection's lifetime: across a mute, a re-key and a reconnect, so the
+    /// satellite's reorder window never reads a restart as a burst of late
+    /// frames.
+    let micSeqs = (0 ..< SatelliteSlots.maxPerSatellite).map { _ in AtomicInt(0) }
+    /// Each pad's audio handlers by controller index, for the receive queue.
+    let padAudio = PadAudioTable()
     /// The version the live session speaks; the floor while no session.
     private(set) var settledProtocolVersion = ProtocolConstants.protocolVersionMin
     /// The version the next pairing or session PUT offers. A 409 whose range
@@ -102,23 +100,14 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private let tickIntervalNs: UInt64
     private var aliveTask: Task<Void, Never>?
     private var rekeyRequested = false
-    private var pendingControllerType = 0
-    private var pendingCapabilities: ControllerCapabilities = .none
-    /// The catalog's and the probe's words the touchpad ladder reads.
-    private(set) var touchpadFacts = TouchpadModeFacts()
-    /// The bound pad's family, so the manager can re-resolve the type it is
-    /// emulated as when a catalog or a pick arrives.
-    private(set) var boundFamily: PadFamily = .other
-    private var forwardingFlags = ForwardingFlags()
     /// Cached so a reconnect's fresh client gets every handler again.
-    var returnPaths = ReturnPathHandlers()
-
-    nonisolated static let defaultCtrlIndex = 0
+    var returnPaths: ReturnPathHandlers
 
     init(id: String, server: DiscoveredServer, tickIntervalNs: UInt64 = 1_000_000_000) {
         self.id = id
         self.server = server
         self.tickIntervalNs = tickIntervalNs
+        returnPaths = ReturnPathHandlers(audio: padAudio)
     }
 
     package static func idFor(_ server: DiscoveredServer) -> String {
@@ -145,28 +134,33 @@ package final class WifiConnection: ObservableObject, Identifiable {
         state = .linking
     }
 
-    /// The whole desired controller set for the session PUT: the bound slot
-    /// as one descriptor, or nil for a valid zero-controller session. The
-    /// caps and the touchpad mode say what the pad has AND the user allows.
-    var desiredDescriptor: ControllerDescriptor? {
-        guard boundSlotId != nil else { return nil }
-        var descriptor = ControllerDescriptor()
-        descriptor.ctrlIdx = Self.defaultCtrlIndex
-        descriptor.type = UInt8(truncatingIfNeeded: pendingControllerType)
-        descriptor.caps = descriptorCaps(pendingCapabilities, forwardingFlags)
-        descriptor.touchpadMode = descriptorTouchpadMode(
-            pendingCapabilities,
-            forwardingFlags,
-            typeOffersDs4: touchpadFacts.typeOffersDs4,
-            hostMouseControl: touchpadFacts.hostMouseControl
-        )
-        return descriptor
+    // MARK: - The pads
+
+    /// Every edit of the pads lands here, published once: each index whose
+    /// descriptor the edit changed converges while live.
+    @discardableResult
+    func editSlots<Result>(_ edit: (inout SatelliteSlotTable) -> Result) -> Result {
+        let before = slotTable.descriptorsByIndex()
+        var table = slotTable
+        let result = edit(&table)
+        if table != slotTable { slotTable = table }
+        convergeIndices(changedIndices(before, table.descriptorsByIndex()))
+        return result
     }
 
-    /// The session-level request the PUT carries: the bound pad's touchpad
-    /// picked as the host's mouse. The grant is the satellite's answer.
-    var wantsMouseControl: Bool {
-        boundSlotId != nil && pendingCapabilities.hasTouchpad && forwardingFlags.touchpad && forwardingFlags.touchpadPick == .mouse
+    /// Queue the indices for the manager's per-slot routes; nothing while no
+    /// session, whose next PUT carries the whole set.
+    func convergeIndices(_ indices: Set<Int>) {
+        guard hasLiveSession, !indices.isEmpty else { return }
+        pendingIndices.formUnion(indices)
+        onTopologyChanged?()
+    }
+
+    /// The indices waiting for the manager, handed over once.
+    func takePendingIndices() -> Set<Int> {
+        let taken = pendingIndices
+        pendingIndices = []
+        return taken
     }
 
     // MARK: - Protocol version
@@ -232,9 +226,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
 
     /// A slot attached while linking missed the PUT's descriptor snapshot.
     private func convergeSlotAttachedWhileLinking() {
-        if boundSlotId != nil, !slotApplied {
-            onTopologyChanged?()
-        }
+        convergeIndices(slotTable.unappliedIndices)
     }
 
     enum TickOutcome {
@@ -289,7 +281,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
             serverEpoch: Int(ack.epoch),
             serverBitmap: Int(ack.bitmap),
             lastAppliedEpoch: lastAppliedEpoch,
-            expectedBitmap: expectedBitmap(appliedBeliefSlots())
+            expectedBitmap: expectedBitmap(slotTable.appliedSlots())
         )
         if drifted {
             hooks.reconcile()
@@ -331,7 +323,8 @@ package final class WifiConnection: ObservableObject, Identifiable {
         lastHeartbeatAck = nil
         lastAppliedEpoch = -1
         reconcileInFlight = false
-        slotApplied = false
+        pendingIndices = []
+        slotTable.clearApplied()
         mouseControlGranted = false
         hostAudio = .none
         hooks = SessionHooks()
@@ -341,12 +334,6 @@ package final class WifiConnection: ObservableObject, Identifiable {
     }
 
     // MARK: - Reconcile state
-
-    func markSlotApplied() {
-        guard boundSlotId != nil else { return }
-        slotApplied = true
-        slotApplyCount += 1
-    }
 
     func setLastAppliedEpoch(_ epoch: Int) {
         lastAppliedEpoch = epoch
@@ -364,99 +351,39 @@ package final class WifiConnection: ObservableObject, Identifiable {
         reconcileInFlight = inFlight
     }
 
-    func desiredSlots() -> [DesiredSlot] {
-        guard let descriptor = desiredDescriptor else { return [] }
-        return [DesiredSlot(ctrlIdx: UInt8(truncatingIfNeeded: descriptor.ctrlIdx), type: descriptor.type)]
-    }
-
-    private func appliedBeliefSlots() -> [DesiredSlot] {
-        slotApplied ? desiredSlots() : []
-    }
-
-    // MARK: - Slot binding
-
-    func attachSlot(_ slotId: String, controllerType: Int, capabilities: ControllerCapabilities, family: PadFamily = .other) {
-        boundSlotId = slotId
-        pendingControllerType = controllerType
-        pendingCapabilities = capabilities
-        boundFamily = family
-        if hasLiveSession { onTopologyChanged?() }
-    }
-
-    /// The pad's claims changed: its audio function enumerated after the
-    /// HID did, or left. The descriptor is sent whole, so a changed claim
-    /// re-sends it while the slot is bound and live.
-    func setCapabilities(_ capabilities: ControllerCapabilities) {
-        guard capabilities != pendingCapabilities else { return }
-        pendingCapabilities = capabilities
-        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
-    }
-
-    /// A changed word re-sends the descriptor only when the mode it declares
-    /// changes: a rung the pick does not use changes nothing on the wire.
-    func setTouchpadFacts(_ facts: TouchpadModeFacts) {
-        let before = desiredDescriptor?.touchpadMode
-        touchpadFacts = facts
-        guard boundSlotId != nil, hasLiveSession, desiredDescriptor?.touchpadMode != before else { return }
-        onTopologyChanged?()
-    }
-
-    /// The type the pad is emulated as changed. The descriptor is sent
-    /// whole, so a new type re-sends it while the slot is bound and live.
-    func setControllerType(_ type: Int) {
-        guard type != pendingControllerType else { return }
-        pendingControllerType = type
-        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
-    }
-
-    /// A switch flipped in Settings. The descriptor is always sent whole, so
-    /// a changed claim re-sends it while a slot is bound and live.
-    func setForwardingFlags(_ flags: ForwardingFlags) {
-        guard flags != forwardingFlags else { return }
-        forwardingFlags = flags
-        if boundSlotId != nil, hasLiveSession { onTopologyChanged?() }
-    }
-
-    /// The belief updates at once; a failed DELETE self-heals via reconcile.
-    func detachSlot() {
-        if boundSlotId == nil { return }
-        boundSlotId = nil
-        slotApplied = false
-        if hasLiveSession { onTopologyChanged?() }
-    }
-
     func setSlotSyncInFlight(_ inFlight: Bool) {
         isRegisteringController = inFlight
     }
 
     // MARK: - Streams (controller callback threads)
 
-    nonisolated func sendReport(_ report: GamepadReport) {
+    nonisolated func sendReport(_ report: GamepadReport, controllerIndex: Int) {
         guard let live = clientRef.get() else { return }
-        live.sendReport(controllerIndex: Self.defaultCtrlIndex, report: report)
+        live.sendReport(controllerIndex: controllerIndex, report: report)
     }
 
-    nonisolated func sendMotion(_ sample: MotionSample, timestampDeltaUs: UInt32) {
+    nonisolated func sendMotion(_ sample: MotionSample, timestampDeltaUs: UInt32, controllerIndex: Int) {
         guard let live = clientRef.get() else { return }
-        live.sendMotion(controllerIndex: Self.defaultCtrlIndex, sample: sample, timestampDeltaUs: timestampDeltaUs)
+        live.sendMotion(controllerIndex: controllerIndex, sample: sample, timestampDeltaUs: timestampDeltaUs)
     }
 
-    nonisolated func sendBattery(level: UInt8, status: BatteryStatus) {
+    nonisolated func sendBattery(level: UInt8, status: BatteryStatus, controllerIndex: Int) {
         guard let live = clientRef.get() else { return }
-        live.sendBattery(controllerIndex: Self.defaultCtrlIndex, level: level, status: status)
+        live.sendBattery(controllerIndex: controllerIndex, level: level, status: status)
     }
 
-    nonisolated func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
+    nonisolated func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, controllerIndex: Int) {
         guard let live = clientRef.get() else { return }
-        live.sendTouchpad(controllerIndex: Self.defaultCtrlIndex, sample: sample, eventTimeMs: eventTimeMs)
+        live.sendTouchpad(controllerIndex: controllerIndex, sample: sample, eventTimeMs: eventTimeMs)
     }
 
-    /// The mic lane, from the capture thread; nothing while no session. The
-    /// sequence advances only for a packet that goes out.
-    nonisolated func sendMicAudio(opus: Data) {
-        guard let live = clientRef.get() else { return }
-        let seq = UInt16(truncatingIfNeeded: micSeq.incrementAndGet() - 1)
-        live.sendMicAudio(AudioFrame(controllerIndex: UInt8(Self.defaultCtrlIndex), seq: seq, opus: opus))
+    /// One pad's mic lane, from the capture thread; nothing while no session
+    /// or for an index beyond the cap. The sequence advances only for a
+    /// packet that goes out.
+    nonisolated func sendMicAudio(opus: Data, controllerIndex: Int) {
+        guard let live = clientRef.get(), micSeqs.indices.contains(controllerIndex) else { return }
+        let seq = UInt16(truncatingIfNeeded: micSeqs[controllerIndex].incrementAndGet() - 1)
+        live.sendMicAudio(AudioFrame(controllerIndex: UInt8(truncatingIfNeeded: controllerIndex), seq: seq, opus: opus))
     }
 }
 

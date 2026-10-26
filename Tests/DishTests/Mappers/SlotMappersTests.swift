@@ -7,17 +7,18 @@ import XCTest
 
 final class SlotMappersTests: XCTestCase {
 
-    private func server(_ live: LinkState, boundTo slotId: String? = nil) -> ConnectionSummary {
-        ConnectionSummary(id: "c-\(live)", name: "Desk", live: live, boundSlotId: slotId)
+    private func server(_ live: LinkState, boundTo slotIds: [String] = []) -> ConnectionSummary {
+        ConnectionSummary(id: "c-\(live)", name: "Desk", live: live, boundSlotId: slotIds.first, boundSlotIds: slotIds)
     }
 
     private let slot = ControllerSlot(id: "pad", name: "DualSense")
 
-    func testBindableExcludesConnectionsBoundToAnotherSlot() {
+    func testASatelliteStaysBindableUntilItCarriesFourOtherPads() {
         let free = server(.ready)
-        let mine = server(.connected, boundTo: "pad")
-        let taken = server(.saved, boundTo: "other")
-        XCTAssertEqual(bindableConnections(for: slot, in: [free, mine, taken]), [free, mine])
+        let mine = server(.connected, boundTo: ["a", "b", "c", "pad"])
+        let three = server(.unstable, boundTo: ["a", "b", "c"])
+        let full = server(.saved, boundTo: ["a", "b", "c", "d"])
+        XCTAssertEqual(bindableConnections(for: slot, in: [free, mine, three, full]), [free, mine, three])
     }
 
     func testAMoonlightHostStaysBindableUntilItCarriesFourPads() {

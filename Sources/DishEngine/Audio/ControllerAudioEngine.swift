@@ -16,17 +16,19 @@ import DishCore
 import DishKernel
 import Foundation
 
-/// What one bound controller's audio needs: where its frames go and what
-/// decides them.
+/// What one bound controller's audio needs: where its frames go (its
+/// satellite and the controller index it holds there) and what decides them.
 package struct AudioBinding {
     package let slotId: String
     package let connection: WifiConnection
+    package let controllerIndex: Int
     package let route: PadAudioFunction?
     package let facts: AudioFacts
 
-    package init(slotId: String, connection: WifiConnection, route: PadAudioFunction?, facts: AudioFacts) {
+    package init(slotId: String, connection: WifiConnection, controllerIndex: Int, route: PadAudioFunction?, facts: AudioFacts) {
         self.slotId = slotId
         self.connection = connection
+        self.controllerIndex = controllerIndex
         self.route = route
         self.facts = facts
     }
@@ -160,6 +162,7 @@ private final class SlotAudio {
     private let onLamp: (String, MicLedState) -> Void
     private var slotId = ""
     private var connection: WifiConnection?
+    private var controllerIndex = 0
     private(set) var plan = AudioPlan.silent
     private var route: PadAudioFunction?
     private var facts = AudioFacts()
@@ -202,8 +205,11 @@ private final class SlotAudio {
         route = binding.route
         facts = binding.facts
         let next = audioPlan(binding.facts)
-        if connection !== binding.connection {
+        let moved = connection !== binding.connection || controllerIndex != binding.controllerIndex
+        if moved {
+            releaseHandlers()
             connection = binding.connection
+            controllerIndex = binding.controllerIndex
             playout.restart()
             installHandlers(binding.connection)
         }
@@ -213,6 +219,7 @@ private final class SlotAudio {
     }
 
     func close() {
+        releaseHandlers()
         applyWatch = nil
         toneTimer?.cancel()
         toneTimer = nil
@@ -314,17 +321,23 @@ private final class SlotAudio {
 
     /// The lanes start over each time the satellite confirms the slot plugged
     /// again: that is a fresh pad on its side, with its sequence numbers
-    /// started over.
+    /// started over. The handlers sit on the pad's own index, so another pad
+    /// on the same satellite keeps its own.
     private func installHandlers(_ connection: WifiConnection) {
         let playout = playout
-        applyWatch = connection.$slotApplyCount.dropFirst().sink { _ in playout.restart() }
-        connection.setSpeakerAudioHandler { frame in playout.enqueue(.speaker, frame) }
-        connection.setHapticAudioHandler { frame in playout.enqueue(.haptic, frame) }
+        applyWatch = connection.applyCountPublisher(of: slotId).dropFirst().sink { _ in playout.restart() }
         let slotId = slotId
         let onLamp = onLamp
-        connection.setMicLedHandler { command in
-            Task { @MainActor in onLamp(slotId, command.state) }
-        }
+        let handlers = PadAudioHandlers(
+            speaker: { frame in playout.enqueue(.speaker, frame) },
+            haptic: { frame in playout.enqueue(.haptic, frame) },
+            micLed: { command in Task { @MainActor in onLamp(slotId, command.state) } }
+        )
+        connection.setPadAudio(handlers, controllerIndex: controllerIndex)
+    }
+
+    private func releaseHandlers() {
+        connection?.setPadAudio(nil, controllerIndex: controllerIndex)
     }
 
     /// The output opens at the device's own width once either voice is
@@ -364,7 +377,8 @@ private final class SlotAudio {
         capture.setDelivering(next.capture)
         guard input == nil else { return }
         let capture = capture
-        capture.onWindow = { opus in connection.sendMicAudio(opus: opus) }
+        let controllerIndex = controllerIndex
+        capture.onWindow = { opus in connection.sendMicAudio(opus: opus, controllerIndex: controllerIndex) }
         input = ports.makeInput(device: route.device.id, channels: AudioWire.micChannels) { buffer, frames in
             capture.push(buffer, frames: frames)
         }

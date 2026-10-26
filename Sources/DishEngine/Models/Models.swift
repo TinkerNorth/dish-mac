@@ -229,8 +229,8 @@ package struct ConnectionSummary: Identifiable, Hashable {
     package var compat: ProtocolCompat
     /// The kind of link, for the tier cue: a satellite, or a Moonlight host.
     package var kind: ConnectionKind
-    /// Every slot bound to this connection: one at most for a satellite, up
-    /// to four for a Moonlight host. `boundSlotId` is the first of them.
+    /// Every slot bound to this connection, up to four: a satellite's in the
+    /// order of the controller indices they hold. `boundSlotId` is the first.
     package var boundSlotIds: [String]
 
     package init(
@@ -257,12 +257,13 @@ package struct ConnectionSummary: Identifiable, Hashable {
         self.boundSlotIds = boundSlotIds.isEmpty ? boundSlotId.map { [$0] } ?? [] : boundSlotIds
     }
 
-    /// Whether one more slot may bind here: a satellite carries one pad, a
-    /// Moonlight session four.
+    /// Whether one more slot may bind here: a satellite and a Moonlight
+    /// session each carry four pads, a Bluetooth link one.
     package var hasRoomForAnotherSlot: Bool {
         switch kind {
-        case .satellite, .bluetooth: boundSlotIds.isEmpty
+        case .satellite: boundSlotIds.count < SatelliteSlots.maxPerSatellite
         case .moonlight: boundSlotIds.count < MoonlightProtocol.maxPads
+        case .bluetooth: boundSlotIds.isEmpty
         }
     }
 }

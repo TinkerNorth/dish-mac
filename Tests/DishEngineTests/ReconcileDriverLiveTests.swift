@@ -138,7 +138,7 @@ final class ReconcileDriverLiveTests: XCTestCase {
             self.satellite.appliedControllers.count == 1 && conn.state == .live
         }
         XCTAssertTrue(healed, "the desired slot is re-applied and the session is live again")
-        XCTAssertEqual(conn.boundSlotId, "slot-a", "the local binding never wavered")
+        XCTAssertEqual(conn.boundSlotIds, ["slot-a"], "the local binding never wavered")
     }
 
     // MARK: - Terminal 401 on the reconcile GET (terminal-auth funnel)

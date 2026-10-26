@@ -250,7 +250,7 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
     /// A burst of input reports and one touchpad frame.
     private func streamUplinkBurst(_ conn: WifiConnection) {
         for i in 0 ..< 5 {
-            conn.sendReport(GamepadReport(buttons: 0x1000, lt: UInt8(i), rt: 0, lx: 1000, ly: -1000, rx: 0, ry: 0))
+            conn.sendReport(GamepadReport(buttons: 0x1000, lt: UInt8(i), rt: 0, lx: 1000, ly: -1000, rx: 0, ry: 0), controllerIndex: 0)
         }
         conn.sendTouchpad(
             sample: TouchpadSample(
@@ -258,7 +258,8 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
                 finger1: .none,
                 buttonPressed: false
             ),
-            eventTimeMs: 12345
+            eventTimeMs: 12345,
+            controllerIndex: 0
         )
     }
 

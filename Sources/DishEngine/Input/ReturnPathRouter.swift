@@ -4,23 +4,50 @@
 import DishCore
 import Foundation
 
+/// How a satellite's feedback reaches a pad: the controller bridge in
+/// production, recorders in tests.
+struct SatelliteFeedbackActuators {
+    var rumble: @MainActor (_ deviceId: String, _ command: RumbleCommand) -> Void
+    var lightbar: @MainActor (_ deviceId: String, _ command: LightbarCommand) -> Void
+    var triggerEffects: @MainActor (_ deviceId: String, _ command: TriggerEffectsCommand) -> Void
+    var playerLeds: @MainActor (_ deviceId: String, _ command: PlayerLedsCommand) -> Void
+
+    @MainActor
+    static func live(_ input: GameControllerInput) -> SatelliteFeedbackActuators {
+        SatelliteFeedbackActuators(
+            rumble: { deviceId, command in
+                input.applyRumble(
+                    deviceId: deviceId,
+                    strongMagnitude: command.strongMagnitude,
+                    weakMagnitude: command.weakMagnitude,
+                    durationMs: command.durationMs
+                )
+            },
+            lightbar: { deviceId, command in input.applyLightbar(deviceId: deviceId, r: command.r, g: command.g, b: command.b) },
+            triggerEffects: { deviceId, command in input.applyTriggerEffects(deviceId: deviceId, command: command) },
+            playerLeds: { deviceId, command in input.applyPlayerLeds(deviceId: deviceId, player: command.playerNumber) }
+        )
+    }
+}
+
 /// Routes the satellite's return paths (rumble, light bar, trigger effects,
-/// player LEDs) from a connection to the controller bound to it. The gate
+/// player LEDs) from a connection to the controller bound to the index each
+/// command names, so a satellite carrying four pads rumbles the right one. The gate
 /// decision is pure and runs on the receive queue against the routing table
 /// (rumble is a per-controller switch, the light bar a global one); the
 /// actuation hops to the main actor. The two feedback paths have no switch:
 /// a pad only receives them when its descriptor claimed them.
 @MainActor
 final class ReturnPathRouter {
-    private let input: GameControllerInput
+    private let actuators: SatelliteFeedbackActuators
     private let gate: ForwardingGate
     private let table: RoutingTable
     /// Connections already wired, pruned to the pool on every pool change so
     /// a forgotten satellite that comes back under the same id is wired again.
     private var wired: Set<String> = []
 
-    init(input: GameControllerInput, gate: ForwardingGate, table: RoutingTable) {
-        self.input = input
+    init(actuators: SatelliteFeedbackActuators, gate: ForwardingGate, table: RoutingTable) {
+        self.actuators = actuators
         self.gate = gate
         self.table = table
     }
@@ -46,19 +73,20 @@ final class ReturnPathRouter {
     }
 
     private func applyTriggerEffects(from connectionId: String, _ command: TriggerEffectsCommand) {
-        guard let deviceId = boundDevice(of: connectionId) else { return }
-        input.applyTriggerEffects(deviceId: deviceId, command: command)
+        guard let deviceId = boundDevice(of: connectionId, command.controllerIndex) else { return }
+        actuators.triggerEffects(deviceId, command)
     }
 
     private func applyPlayerLeds(from connectionId: String, _ command: PlayerLedsCommand) {
-        guard let deviceId = boundDevice(of: connectionId) else { return }
-        input.applyPlayerLeds(deviceId: deviceId, player: command.playerNumber)
+        guard let deviceId = boundDevice(of: connectionId, command.controllerIndex) else { return }
+        actuators.playerLeds(deviceId, command)
     }
 
     /// Receive queue: drop when the bound controller's Rumble switch is off,
     /// else hop.
     private nonisolated func rumbleArrived(from connectionId: String, _ command: RumbleCommand) {
-        guard let bound = table.boundSlot(of: connectionId), ReturnPathRouting.shouldVibrate(flags: bound.flags) else { return }
+        let pad = SatellitePadKey(connectionId: connectionId, controllerIndex: Int(command.controllerIndex))
+        guard let bound = table.boundSlot(of: pad), ReturnPathRouting.shouldVibrate(flags: bound.flags) else { return }
         Task { @MainActor in self.applyRumble(from: connectionId, command) }
     }
 
@@ -68,22 +96,17 @@ final class ReturnPathRouter {
     }
 
     private func applyRumble(from connectionId: String, _ command: RumbleCommand) {
-        guard let deviceId = boundDevice(of: connectionId) else { return }
-        input.applyRumble(
-            deviceId: deviceId,
-            strongMagnitude: command.strongMagnitude,
-            weakMagnitude: command.weakMagnitude,
-            durationMs: command.durationMs
-        )
+        guard let deviceId = boundDevice(of: connectionId, command.controllerIndex) else { return }
+        actuators.rumble(deviceId, command)
     }
 
     private func applyLightbar(from connectionId: String, _ command: LightbarCommand) {
-        guard let deviceId = boundDevice(of: connectionId) else { return }
-        input.applyLightbar(deviceId: deviceId, r: command.r, g: command.g, b: command.b)
+        guard let deviceId = boundDevice(of: connectionId, command.controllerIndex) else { return }
+        actuators.lightbar(deviceId, command)
     }
 
-    /// The slot bound to `connectionId`; slot ids are device ids.
-    private func boundDevice(of connectionId: String) -> String? {
-        table.boundSlot(of: connectionId)?.slotId
+    /// The slot bound to the connection's controller index; slot ids are device ids.
+    private func boundDevice(of connectionId: String, _ controllerIndex: UInt8) -> String? {
+        table.boundSlot(of: SatellitePadKey(connectionId: connectionId, controllerIndex: Int(controllerIndex)))?.slotId
     }
 }

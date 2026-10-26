@@ -7,7 +7,8 @@ import Foundation
 /// The handlers for everything the satellite sends back to a pad: the two
 /// feedback paths, the two version-2 paths, and the three audio messages.
 /// Kept on the connection, not the client, so a reconnect's fresh client is
-/// wired the same way without the router noticing.
+/// wired the same way without the router noticing. The audio messages go
+/// through the connection's table, to the pad that holds the frame's index.
 struct ReturnPathHandlers {
     var rumble: ((RumbleCommand) -> Void)?
     var lightbar: ((LightbarCommand) -> Void)?
@@ -17,6 +18,12 @@ struct ReturnPathHandlers {
     var hapticAudio: ((AudioFrame) -> Void)?
     var micLed: ((MicLedCommand) -> Void)?
 
+    init(audio: PadAudioTable) {
+        speakerAudio = audio.speaker
+        hapticAudio = audio.haptic
+        micLed = audio.micLed
+    }
+
     func install(on client: SatelliteClient) {
         client.onRumble = rumble
         client.onLightbar = lightbar
@@ -25,6 +32,45 @@ struct ReturnPathHandlers {
         client.onSpeakerAudio = speakerAudio
         client.onHapticAudio = hapticAudio
         client.onMicLed = micLed
+    }
+}
+
+/// One pad's audio handlers on a satellite: its two lanes and its lamp.
+struct PadAudioHandlers {
+    let speaker: (AudioFrame) -> Void
+    let haptic: (AudioFrame) -> Void
+    let micLed: (MicLedCommand) -> Void
+}
+
+/// Each pad's audio handlers by controller index: written on the main actor
+/// as a pad's audio binds and lets go, read on the receive queue once per
+/// frame, so the speaker of the pad on index 1 never plays index 0's lane.
+final class PadAudioTable: @unchecked Sendable {
+    private var handlers: [Int: PadAudioHandlers] = [:]
+    private var lock = os_unfair_lock_s()
+
+    func set(_ pad: PadAudioHandlers?, for controllerIndex: Int) {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        handlers[controllerIndex] = pad
+    }
+
+    func handlers(for controllerIndex: UInt8) -> PadAudioHandlers? {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return handlers[Int(controllerIndex)]
+    }
+
+    func speaker(_ frame: AudioFrame) {
+        handlers(for: frame.controllerIndex)?.speaker(frame)
+    }
+
+    func haptic(_ frame: AudioFrame) {
+        handlers(for: frame.controllerIndex)?.haptic(frame)
+    }
+
+    func micLed(_ command: MicLedCommand) {
+        handlers(for: command.controllerIndex)?.micLed(command)
     }
 }
 
@@ -52,19 +98,9 @@ extension WifiConnection {
         client?.onPlayerLeds = handler
     }
 
-    func setSpeakerAudioHandler(_ handler: @escaping (AudioFrame) -> Void) {
-        returnPaths.speakerAudio = handler
-        client?.onSpeakerAudio = handler
-    }
-
-    func setHapticAudioHandler(_ handler: @escaping (AudioFrame) -> Void) {
-        returnPaths.hapticAudio = handler
-        client?.onHapticAudio = handler
-    }
-
-    func setMicLedHandler(_ handler: @escaping (MicLedCommand) -> Void) {
-        returnPaths.micLed = handler
-        client?.onMicLed = handler
+    /// One pad's audio handlers on its index, or none once it lets go.
+    func setPadAudio(_ pad: PadAudioHandlers?, controllerIndex: Int) {
+        padAudio.set(pad, for: controllerIndex)
     }
 
     var hasRumbleHandler: Bool {

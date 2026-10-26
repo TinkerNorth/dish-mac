@@ -261,7 +261,7 @@ being configured (`binding`). No page holds an engine environment object.
   session that is up, captioned with the pad's measured rate and the link's
   latency, else "live"; "idle" and dashed otherwise; crawling while the link
   comes up or an apply runs for it), and the host node (name, address, "slot n
-  of 4", "slot 1 of 1" on a satellite, the link chip); under it the
+  of 4" on a satellite and a Moonlight host alike, the link chip); under it the
   `BindingStrip`: the emulated type as a fact, then the controller's chips,
   the switches among them clickable in place (`SlotChipAction`), the mic's
   word and lamp, and Edit › into `Page.configureBinding`. A pad with no

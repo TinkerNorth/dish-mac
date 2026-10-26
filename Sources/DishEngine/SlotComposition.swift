@@ -8,42 +8,40 @@
 import DishCore
 import Foundation
 
-/// The switches in force per satellite: the global ones folded with the
-/// bound controller's own, or the global ones alone while nothing is bound.
-func connectionFlags(
+/// The switches in force per bound slot: the global ones folded with the
+/// controller's own. A satellite and a Moonlight host each carry up to four
+/// pads, so the switches are always the slot's, never the connection's.
+func slotFlags(
     bindings: [String: String],
-    connectionIds: some Collection<String>,
     global: ForwardingFlags,
     preferences: [String: SlotPreferences]
 ) -> [String: ForwardingFlags] {
-    Dictionary(uniqueKeysWithValues: connectionIds.map { id in
-        let slotId = bindings.first { $0.value == id }?.key
-        let slot = slotId.flatMap { preferences[$0] } ?? SlotPreferences()
-        return (id, effectiveFlags(global: global, slot: slot))
+    Dictionary(uniqueKeysWithValues: bindings.keys.map { slotId in
+        (slotId, effectiveFlags(global: global, slot: preferences[slotId] ?? SlotPreferences()))
     })
 }
 
 /// The hot path's table, both views at once: slot → live sink and its
-/// switches, satellite → bound slot and the same switches. A slot bound to
-/// a Moonlight host routes to its pad on that host's link, under the
-/// switches folded for the slot itself: the host carries up to four pads,
-/// so the switches are the slot's, never the connection's.
+/// switches, and each satellite pad (connection, controller index) → bound
+/// slot and the same switches. A slot routes to its pad on its satellite
+/// under the index it holds there, or to its pad on its Moonlight host's
+/// link; a slot its satellite does not carry yet has no route.
+@MainActor
 func routeSnapshot(
     bindings: [String: String],
     pool: [String: WifiConnection],
     flags: [String: ForwardingFlags],
     global: ForwardingFlags,
-    moonlight: [String: MoonlightConnection] = [:],
-    preferences: [String: SlotPreferences] = [:]
+    moonlight: [String: MoonlightConnection] = [:]
 ) -> RoutingSnapshot {
     var snapshot = RoutingSnapshot()
     for (slotId, connectionId) in bindings {
-        if let conn = pool[connectionId] {
-            let inForce = flags[connectionId] ?? global
-            snapshot.bySlot[slotId] = Route(sink: conn, flags: inForce)
-            snapshot.byConnection[connectionId] = BoundSlotRoute(slotId: slotId, flags: inForce)
+        let inForce = flags[slotId] ?? global
+        if let conn = pool[connectionId], let index = conn.controllerIndex(of: slotId) {
+            snapshot.bySlot[slotId] = Route(sink: SatellitePadSink(connection: conn, controllerIndex: index), flags: inForce)
+            let pad = SatellitePadKey(connectionId: connectionId, controllerIndex: index)
+            snapshot.bySatellitePad[pad] = BoundSlotRoute(slotId: slotId, flags: inForce)
         } else if let host = moonlight[connectionId] {
-            let inForce = effectiveFlags(global: global, slot: preferences[slotId] ?? SlotPreferences())
             snapshot.bySlot[slotId] = Route(sink: MoonlightPadSink(link: host.link, slotId: slotId), flags: inForce)
         }
     }

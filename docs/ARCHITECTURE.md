@@ -101,7 +101,8 @@ binding page's draft is the pure `BindingDraft` reducer and its one apply
 the pure `reduceApply` over `ApplyProgress`, fed by `BindingApplyWatch` (the
 host's words and the 8 s budget); `ControllerTypeStore` and `MotionBackendStatusStore` are
 `StateSource`s keyed by binding, the first written by the Emulate picker and
-read as each descriptor is built, the second written from every apply result;
+read as each descriptor is built (and kept across restarts in the binding
+memory, below), the second written from every apply result;
 `PairingAttempts` is a `StateSource` keyed by satellite that holds what the
 pairing card shows (the client PIN, the approval phase, the typed PIN's
 rejections), written by the two pairing paths and ended when a session takes
@@ -207,10 +208,13 @@ N64's, against the pad's elements once at attach, so the handler walks fixed
 arrays into a `ProfileSample` whose C buttons rail the right stick; no set,
 array or string is built per report), `wireReport` turns it into a `GamepadReport` (up-positive sticks, as XUSB and
 every other client have them), the processor applies the dead zones under its lock,
-`InputRouting` reads the slot's route (its live connection and the switches
-in force for that controller, global and per-controller already folded on
-the main actor) under one `os_unfair_lock`, and `SatelliteClient` seals and
-sends under its own lock. No `Task`, no `await`, no main-actor hop, no
+`InputRouting` reads the slot's route (its pad's sink, a `SatellitePadSink`
+holding the session and the controller index the pad holds there or a
+`MoonlightPadSink` holding the host's link, and the switches in force for
+that controller, global and per-controller already folded on the main actor)
+under one `os_unfair_lock`, and `SatelliteClient` seals and sends under its
+own lock. The sinks are built on the main actor whenever the table is, never
+per report. No `Task`, no `await`, no main-actor hop, no
 Combine on that path. The handler installs are `nonisolated`, so the compiler
 refuses a handler that reaches for main-actor state; the slot bookkeeping
 (attach, detach, the published slot list) stays on the main actor. Session material lives in one `LockedBox`, so a re-key
@@ -218,9 +222,49 @@ swaps key, token and counter as one generation.
 
 The return paths hop the other way: a `RumbleCommand` or `LightbarCommand`
 arrives on the receive queue, the gate decision is pure and runs there (the
-rumble switch read off the same routing table by connection, the light bar's
-off the global gate), and `ReturnPathRouter` hops to the main actor for the
-actuation, coalesced per controller by `ReturnPathApplier`.
+rumble switch read off the same routing table by the connection and the
+controller index the command names, `SatellitePadKey`, the light bar's off
+the global gate), and `ReturnPathRouter` hops to the main actor for the
+actuation, coalesced per controller by `ReturnPathApplier`. The audio
+messages find their pad the same way, through the connection's
+`PadAudioTable`, one locked lookup per frame by the frame's index.
+
+## Several pads on one satellite
+
+A satellite session carries up to four pads (`SatelliteSlots.maxPerSatellite`
+in the core, the desktops' "slot n of 4"). `WifiConnection` holds them as one
+value, `SatelliteSlotTable`: per slot id the controller index it holds (the
+lowest free one when it attached, `SatelliteSlots.lowestFreeIndex`, kept for
+as long as it stays bound), its type, capabilities and family, the switches
+in force for it and whether the satellite confirmed it. Every edit goes
+through `WifiConnection.editSlots`, which publishes once and queues exactly
+the indices whose descriptor appeared, went or changed; while live the
+manager's `syncSlots` PUTs each queued index's descriptor to
+`/api/connections/{id}/controllers/{idx}`, or DELETEs an index no pad holds,
+and the session PUT (open, re-key, reconcile) always carries the whole set in
+index order. The heartbeat's bitmap is checked against every confirmed index,
+and a drift is healed by the GET and the whole re-PUT. `ConnectionHub.bind`
+lets the satellite take the pad before the binding table publishes, so the
+routing table, the audio bindings and the return paths that follow the table
+already know the pad's index; a fifth pad is refused. What is keyed by slot:
+the descriptor, the switches, the route, the return paths and the audio lanes
+(handlers and the mic sequence by index). What stays per connection: the
+session itself, its token and counters, the host-feature grant (the session
+asks for the mouse when any pad picks it) and the host's audio verdict.
+
+## Bindings across restarts
+
+The hub remembers every binding, one record per pad and of one kind: a
+satellite binding under `wifi_binding_list` (`BindingMemoryStore`, the
+satellite's id and the type picked, nil for the pad's own), a Moonlight one
+under the fleet's `moonlight_binding_list`. A bind and a type change write
+it; the user's Unbind and a Forget of the host drop it; a pad that leaves, or
+that its satellite refuses, keeps it. `AppModel+BindingMemory` follows the
+pads, the satellite pool and the Moonlight records, and asks the hub for the
+bindings due (`takeDueStandingBindings`): a remembered binding whose pad is
+attached and unbound and whose destination is known here, tried once while
+its pad stays attached, then again when it returns. Each is bound through the
+same `bind` intent a page uses, its pick written first.
 
 The main actor owns every published property. `LifecycleSignals` carries the
 host's sleep and wake into the engine as publishers, so the engine never

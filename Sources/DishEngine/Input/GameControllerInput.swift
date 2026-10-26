@@ -327,13 +327,16 @@ final class GameControllerInput: ObservableObject {
 
     // MARK: - Identity
 
+    nonisolated static let slotIdPrefix = "gc:"
+    nonisolated static let unknownVendor = "unknown"
+
     /// GameController vends a fresh object on every reconnect and exposes no
     /// per-unit identifier, so the id is the vendor name and product
     /// category, which survive a replug. Two identical pads get the lowest
     /// free ordinal.
     private func stableId(for controller: GCController) -> String {
-        let vendor = controller.vendorName ?? "unknown"
-        let base = "gc:\(vendor):\(controller.productCategory)"
+        let vendor = controller.vendorName ?? Self.unknownVendor
+        let base = "\(Self.slotIdPrefix)\(vendor):\(controller.productCategory)"
         let attached = Set(controllerIds.values)
         if !attached.contains(base) { return base }
         var ordinal = 1
@@ -342,4 +345,14 @@ final class GameControllerInput: ObservableObject {
         }
         return "\(base)#\(ordinal)"
     }
+}
+
+/// The name a pad is listed under, read back from its slot id when the pad
+/// is not attached: the vendor's name, or the product category for a pad
+/// that names no vendor, as the slot list shows it.
+package func padName(fromSlotId slotId: String) -> String {
+    guard slotId.hasPrefix(GameControllerInput.slotIdPrefix), let split = slotId.lastIndex(of: ":") else { return slotId }
+    let vendor = String(slotId[slotId.index(slotId.startIndex, offsetBy: GameControllerInput.slotIdPrefix.count) ..< split])
+    let category = String(slotId[slotId.index(after: split)...].prefix { $0 != "#" })
+    return vendor == GameControllerInput.unknownVendor ? category : vendor
 }

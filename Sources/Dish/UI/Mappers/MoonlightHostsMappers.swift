@@ -98,7 +98,13 @@ func moonlightHostsPageState(_ inputs: MoonlightHostsInputs, draft: String, word
         addTitle: words.addByAddressEllipsis,
         list: moonlightList(inputs, words: words),
         addForm: addHostForm(field, words: words),
-        forget: forgetDialog(inputs.facts.pendingForget, connections: inputs.connections, slots: inputs.slots, words: words)
+        forget: forgetDialog(
+            inputs.facts.pendingForget,
+            connections: inputs.connections,
+            slots: inputs.slots,
+            remembered: inputs.facts.rememberedPads,
+            words: words
+        )
     )
 }
 

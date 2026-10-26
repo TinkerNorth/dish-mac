@@ -100,6 +100,27 @@ final class GameControllerInputTests: XCTestCase {
         XCTAssertEqual(seen.get()?.report.ly, 32767)
         XCTAssertEqual(seen.get()?.onMain, false, "the hot path never waits on the main thread")
     }
+
+    // MARK: - A pad's name read back from its id
+
+    func testAPadThatIsAwayIsNamedAsTheSlotListNamedIt() throws {
+        let (controller, _) = try snapshotPad()
+        let input = GameControllerInput()
+        let slotId = input.slotId(for: controller)
+        let listed = controller.vendorName ?? controller.productCategory
+        XCTAssertEqual(padName(fromSlotId: slotId), listed, "the id carries what the slot list showed")
+    }
+
+    func testTheNameInASlotIdIsItsVendorOrItsCategory() {
+        XCTAssertEqual(padName(fromSlotId: "gc:Xbox Wireless Controller:Xbox One"), "Xbox Wireless Controller")
+        XCTAssertEqual(padName(fromSlotId: "gc:DualSense Wireless Controller:DualSense#1"), "DualSense Wireless Controller")
+        XCTAssertEqual(
+            padName(fromSlotId: "gc:unknown:Nintendo Switch Online N64#2"),
+            "Nintendo Switch Online N64",
+            "no vendor: the category"
+        )
+        XCTAssertEqual(padName(fromSlotId: "pad"), "pad", "an id of another shape is its own name")
+    }
 }
 
 /// Calls a handler the way the framework does, from the queue the pad was

@@ -33,11 +33,10 @@ package extension AppModel {
         return true
     }
 
-    /// Every trace of a connection goes, its bindings first.
+    /// Every trace of a connection goes, its bindings first, the ones
+    /// remembered for an absent pad with them.
     func forget(_ id: String) {
-        for (slotId, connectionId) in hub.bindings where connectionId == id {
-            hub.unbind(slotId: slotId)
-        }
+        hub.forgetBindings(of: id)
         if ConnectionHub.isMoonlight(id) {
             moonlight.forget(hostId: id)
         } else {

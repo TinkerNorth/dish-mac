@@ -169,7 +169,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         let pads = slots().map { slot in
             PadDiagnostics(
                 slot: slot,
-                wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap(slotWireFacts),
+                wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap { slotWireFacts(of: $0, slotId: slot.id) },
                 audio: audio(slot.id),
                 backgroundInput: inBackground,
                 hardwareId: hardwareId(forPadNamed: slot.name, in: devices)

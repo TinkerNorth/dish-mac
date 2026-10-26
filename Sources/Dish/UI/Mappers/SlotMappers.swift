@@ -7,8 +7,8 @@ import Foundation
 import SwiftUI
 
 /// The connections a slot may bind to: the one it is bound to, and every one
-/// with room for another slot (a satellite carries one pad, a Moonlight host
-/// four).
+/// with room for another slot (a satellite and a Moonlight host carry four
+/// pads each).
 func bindableConnections(for slot: ControllerSlot, in connections: [ConnectionSummary]) -> [ConnectionSummary] {
     connections.filter { $0.boundSlotIds.contains(slot.id) || $0.hasRoomForAnotherSlot }
 }

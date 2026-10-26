@@ -181,18 +181,18 @@ package extension AppModel {
     private func follow(_ path: ApplyPath, slotId: String, connectionId: String, boundHere: Bool) {
         switch path {
         case .durable: return
-        case .hostLive: resendWhereBound(connectionId, boundHere: boundHere)
+        case .hostLive: resendWhereBound(slotId, on: connectionId, boundHere: boundHere)
         case .waitingForLink: reachForHost(connectionId)
         }
         bindingWatch.begin(sources: applySources(slotId: slotId, connectionId: connectionId), onEvent: advanceApply)
     }
 
-    /// A pad already bound here may change nothing the descriptor carries,
+    /// A pad already bound here may change nothing its descriptor carries,
     /// so the descriptor is sent again for the host to confirm; a new
     /// binding's attach sends it by itself.
-    private func resendWhereBound(_ connectionId: String, boundHere: Bool) {
+    private func resendWhereBound(_ slotId: String, on connectionId: String, boundHere: Bool) {
         guard boundHere, let conn = wifi.get(connectionId) else { return }
-        Task { await wifi.syncBoundSlot(conn) }
+        Task { await wifi.resendSlot(slotId, on: conn) }
     }
 
     private func reachForHost(_ connectionId: String) {
@@ -211,16 +211,18 @@ package extension AppModel {
         let padLeft = input.$slots
             .filter { slots in !slots.contains { $0.id == slotId } }
             .map { _ in ApplyEvent.padGone }
-        return [confirmations(connectionId), rejected.eraseToAnyPublisher(), linkUp.eraseToAnyPublisher(), padLeft.eraseToAnyPublisher()]
+        let confirmed = confirmations(slotId, on: connectionId)
+        return [confirmed, rejected.eraseToAnyPublisher(), linkUp.eraseToAnyPublisher(), padLeft.eraseToAnyPublisher()]
     }
 
-    /// Every slot the satellite confirms from now on, on whichever
-    /// connection object the pool holds for it.
-    private func confirmations(_ connectionId: String) -> AnyPublisher<ApplyEvent, Never> {
+    /// Every time the satellite confirms this pad from now on, on whichever
+    /// connection object the pool holds for it; another pad's confirmation
+    /// on the same satellite is not this one's.
+    private func confirmations(_ slotId: String, on connectionId: String) -> AnyPublisher<ApplyEvent, Never> {
         wifi.$connections
             .map { pool in pool[connectionId] }
             .removeDuplicates { $0 === $1 }
-            .map(confirmedSlots)
+            .map { conn in confirmedSlot(slotId, on: conn) }
             .switchToLatest()
             .eraseToAnyPublisher()
     }
@@ -249,9 +251,9 @@ package extension AppModel {
 }
 
 @MainActor
-private func confirmedSlots(_ conn: WifiConnection?) -> AnyPublisher<ApplyEvent, Never> {
+private func confirmedSlot(_ slotId: String, on conn: WifiConnection?) -> AnyPublisher<ApplyEvent, Never> {
     guard let conn else { return Empty().eraseToAnyPublisher() }
-    return conn.$slotApplyCount
+    return conn.applyCountPublisher(of: slotId)
         .dropFirst()
         .map { _ in ApplyEvent.hostConfirmed }
         .eraseToAnyPublisher()

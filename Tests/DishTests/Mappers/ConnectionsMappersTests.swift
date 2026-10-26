@@ -326,6 +326,21 @@ final class ConnectionsMappersTests: XCTestCase {
         """)
     }
 
+    func testForgettingAlsoNamesTheBindingsRememberedForPadsThatAreAway() {
+        let dialog = forgetDialog(
+            "mid:den",
+            connections: [satellite(.connected, bound: ["a"])],
+            slots: [pad("a", "DualSense")],
+            remembered: ["mid:den": ["Xbox Wireless Controller"], "mid:loft": ["Pro"]]
+        )
+        XCTAssertEqual(dialog.message, """
+        Its pairing key is deleted — you’ll need the PIN again.
+        2 bindings ride on it and will be dropped:
+        · DualSense
+        · Xbox Wireless Controller
+        """)
+    }
+
     func testForgettingAMoonlightHostSaysTheHostKeepsItsOwnRecord() {
         let dialog = forgetDialog(host().id, connections: [host(bound: ["a", "b"])], slots: [pad("a", "Pro"), pad("b", "Joy-Con")])
         XCTAssertEqual(dialog.title, "Forget PC?")

@@ -14,7 +14,33 @@ protocol InputSink: AnyObject {
     func sendBattery(level: UInt8, status: BatteryStatus)
 }
 
-extension WifiConnection: InputSink {}
+/// One pad on a satellite, as the routing table targets it: the slot's
+/// input onto the session, under the controller index the pad holds there.
+final class SatellitePadSink: InputSink {
+    let connection: WifiConnection
+    let controllerIndex: Int
+
+    init(connection: WifiConnection, controllerIndex: Int) {
+        self.connection = connection
+        self.controllerIndex = controllerIndex
+    }
+
+    func sendReport(_ report: GamepadReport) {
+        connection.sendReport(report, controllerIndex: controllerIndex)
+    }
+
+    func sendMotion(_ sample: MotionSample, timestampDeltaUs: UInt32) {
+        connection.sendMotion(sample, timestampDeltaUs: timestampDeltaUs, controllerIndex: controllerIndex)
+    }
+
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
+        connection.sendTouchpad(sample: sample, eventTimeMs: eventTimeMs, controllerIndex: controllerIndex)
+    }
+
+    func sendBattery(level: UInt8, status: BatteryStatus) {
+        connection.sendBattery(level: level, status: status, controllerIndex: controllerIndex)
+    }
+}
 
 /// One pad on a Moonlight host, as the routing table targets it: the slot's
 /// input onto the host's link, which knows the pad's number.

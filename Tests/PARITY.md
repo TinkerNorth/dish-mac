@@ -15,9 +15,11 @@
 |---|---|---|---|---|
 | Satellite host, protocol 3 | ✅ | ✅ | ✅ | ✅ offers 3, settles on the satellite's range, re-offers on an overlapping 409 |
 | Satellite pairing: the operator's approval and the typed PIN | ✅ request on open, 2 s poll for 120 s | ⚠️ both at once (1 s poll), but the typed PIN waits for six digits on `main` (S-W1) | ⚠️ the same (S-L2) | ✅ both at once on the row's card: a four-digit request the operator approves on the satellite (2 s poll for 120 s; a decline or expiry offers a new code) beside the satellite's PIN typed into four cells; the first to land opens the session and stops the other; closing the card or leaving the Connections page cancels the poll |
+| Pads per satellite | ✅ each on the lowest free index | ✅ four ("slot n of 4") | ✅ the same | ✅ four (`SatelliteSlots.maxPerSatellite`), each on the lowest free controller index for as long as it stays bound: its own descriptor in the session PUT and its own `PUT` / `DELETE /api/connections/{id}/controllers/{idx}` while live, its own route on the hot path, its rumble, light bar, trigger effects, player LEDs, speaker, haptics and mic lanes by that index, and both ends of the heartbeat bitmap reconcile over every index; Home says "slot n of 4", the satellite's card lists every pad, Diagnostics shows each pad's index; a fifth is not offered |
+| Bindings survive a restart | ✅ Moonlight bindings (2.3.0); satellite bindings from the remembered satellites | ✅ standing bindings (2.2.0) | ✅ the same | ✅ satellite bindings under `wifi_binding_list` (the satellite and the type picked), Moonlight bindings read back from `moonlight_binding_list`; bound again once the pad is attached and its satellite is in the pool or its host on record, whichever is later, and again whenever the pad returns; Unbind and Forget end them, a satellite's refusal does not |
 | Moonlight host (Sunshine / Apollo / Wolf) | ✅ | ✅ | ✅ | ⚠️ discovery, PIN pairing with mutual TLS after, one session per host for up to four pads (launch or resume, RTSP, media pings, the ENet control stream), motion / touch / battery up and rumble / light bar back, the app picker and the Emulate pick per pad; every wire piece pinned against Wolf's captures and the whole path run against a loopback host (`IntegrationMoonlightFakeHostTests`), not yet against a live one |
 | Mouse mode on the host | ✅ | ❌ | ❌ (deferred) | ✅ per-controller pick Off / Pad / Mouse; the request rides the session PUT and a flip mid-session converges through the re-key path |
-| Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked; not yet verified on a pad |
+| Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked, each pad's lanes on its own controller index; not yet verified on a pad |
 | DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; not yet verified on a pad |
 | Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ⚠️ mic lamp as a chip on Home's binding strip (GameController reaches no DualSense lamp) |
 | Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery (pad, else the host Mac's) |
@@ -34,7 +36,7 @@
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ a satellite reads Fastest, a Moonlight host Fast |
 | Connections list: found and paired | ✅ | ✅ | ✅ | ✅ the desktops' page: a scan as it opens once the Local Network prompt has been explained (quiet; the Scan button's says when nothing answered), FOUND with its empty states (the local-network refusal as the hint, with Open System Settings) and Pair… rows whose card opens under the row, a "Moonlight hosts ›" row, PAIRED cards (glyph, dot, name, `ip • UDP port`, latency, tier / protocol / link chips, the read-only CARRYING manifest, Disconnect / Pair… / Connect by state, Forget behind ⋯), the add-by-address field |
 | Moonlight hosts page | ✅ | ✅ | ✅ | ✅ pushed from Connections: Paired / Remembered / Not paired, the controllers count and the tier, the app picker, the session's way out (Pair now, Re-pair, Reconnect, Retry, Close the app) and Forget behind ⋯, an inline "Add a host by address" form, and the PIN as an inline card in the host's row (Cancel, New code) |
-| Forget asks first | ✅ | ✅ | ✅ | ✅ "Forget %@?" as the one alert sheet, naming every binding it drops; for a Moonlight host it says the host keeps its own record of this device |
+| Forget asks first | ✅ | ✅ | ✅ | ✅ "Forget %@?" as the one alert sheet, naming every binding it drops, the remembered ones of pads that are unplugged included; for a Moonlight host it says the host keeps its own record of this device |
 | Protocol chip | ✅ | ✅ | ✅ | ✅ |
 | App-wide microphone chip with mute-all | ✅ | ✅ | ✅ | ✅ header chip: live, muted or hidden; one click mutes or unmutes every armed mic |
 | Capability verdict word "Supported" | ✅ | ✅ | ✅ | ✅ "What carries" on every bound slot: pad ∩ Mac ∩ type ∩ host, Off and Pending distinct |
@@ -51,7 +53,7 @@
 | Setup wizard: the one way a binding is created from scratch | ✅ guided setup (Input / Destination / Binding) | ✅ Input · Destination · Type · Session · Feel · Review, three stages, one apply | ✅ the same | ✅ the same as a page on Home (`SetupWizardMachine` in DishCore): Session for Moonlight only, Pair… with the inline card on Destination, one Bind through the apply overlay, "Leave setup?" past page 1, Connection lost / Controller unplugged in the page with Start over / Exit; from the rail's Set up, Settings, Home's empty state and invitation, a pad's ghost Bind…; no Direct path question (one input path) |
 | Help & FAQ | ✅ | ✅ | ✅ | ✅ the desktops' sections and answers word for word, folded until opened, "Walk me through setup", the privacy policy and the source |
 | Permission priming before the system asks | ✅ USB, Bluetooth, local network, microphone | – | – | ✅ local network: "Show me the prompt" on Connections and in Set up before the first scan ever (`local_network_primed`); a refusal offers Open System Settings in the empty state and the toast; the microphone is still asked at its first use |
-| Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ✅ on Configure binding: Auto (the family's type from `emulates`) or a pick, held for the run |
+| Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ✅ on Configure binding: Auto (the family's type from `emulates`) or a pick, kept with the binding across restarts |
 
 ## 2. Input, pad to host, by path (cell = USB · Bluetooth)
 
@@ -96,7 +98,8 @@ does not apply here.
   only at the session PUT), so the socket and the hot path never blip.
 - **Controller identity is the vendor name and product category**, because
   GameController vends a fresh object on every reconnect and exposes no
-  per-unit identifier. Two identical pads take ordinals.
+  per-unit identifier. Two identical pads take ordinals in the order they
+  attach, so a remembered binding returns to the pad that takes its ordinal.
 - **The Android-only surfaces** (on-screen pad, skins, Bluetooth HID host
   mode, Play billing, store screenshots) do not apply.
 - **XUSB carries no Share button and no paddles**, so a pad's Share and

@@ -24,12 +24,16 @@ protocol-1 satellite; see [Protocol](#protocol).
   rotating four-digit PIN can be typed into the same card at the same time,
   and whichever lands first pairs. Dish remembers the satellite by its stable
   identity so a DHCP change keeps it paired.
-- Keeps several satellites paired at once and binds each controller slot to
-  one of them. The Connections page scans as it opens and lists what it
-  found, with Pair… on each row, above a card per paired satellite that
-  shows its address, latency, link chips and the pads it carries, with
-  Disconnect, Pair… or Connect and a Forget that asks first and names the
-  bindings it drops; a typed address reaches a satellite discovery misses.
+- Keeps several satellites paired at once and binds each controller to one
+  of them, up to four controllers on one satellite, each on its own slot
+  there. Bindings survive a restart: a remembered binding is made again as
+  soon as its controller is plugged in and its satellite or host is known.
+  The Connections page scans as it opens (once macOS's Local Network prompt
+  has been explained) and lists what it found, with Pair… on each row, above
+  a card per paired satellite that shows its address, latency, link chips
+  and every pad it carries, with Disconnect, Pair… or Connect and a Forget
+  that asks first and names the bindings it drops; a typed address reaches a
+  satellite discovery misses.
 - Finds Moonlight hosts (Sunshine, Apollo, Wolf) over mDNS (`_nvstream._tcp`)
   or by a typed address on their own page, pairs with the PIN the dish shows
   inside the host's row for you to type into the host, and streams
@@ -44,9 +48,10 @@ protocol-1 satellite; see [Protocol](#protocol).
   buttons drive the right stick, Z and ZR the triggers, as on Android), and
   keeps forwarding them while another app is in front. A game device macOS
   does not hand to GameController is listed under Other input devices in
-  Diagnostics with its hardware ID and connection. Plus motion (gyro and accelerometer) and the touchpad from DualSense
-  and DualShock 4 pads, and the battery level; the touchpad reaches the host
-  as the pad's own or, picked per controller, as the host's mouse.
+  Diagnostics with its hardware ID and connection. Plus motion (gyro and
+  accelerometer) and the touchpad from DualSense and DualShock 4 pads, and
+  the battery level; the touchpad reaches the host as the pad's own or,
+  picked per controller, as the host's mouse.
 - Plays rumble and sets the light bar as the host game asks, each gated by
   its own switch in Settings and, for motion, rumble and the touchpad, by
   the controller's own; on a DualSense it also plays the game's
@@ -80,7 +85,7 @@ protocol-1 satellite; see [Protocol](#protocol).
 - Draws Home as the signal path, the desktops' wiring diagram: a boxed row
   per controller from the pad, along a wire captioned with its measured
   report rate and the link's latency, to the host and the slot it holds
-  there, with the binding printed underneath as chips (the emulated type,
+  there ("slot 2 of 4"), with the binding printed underneath as chips (the emulated type,
   then motion, touchpad, rumble, microphone, speaker and light bar, the
   controller's own switches clickable in place) and an Edit button; a pad
   with nowhere to go is a "Bind…" card, and the live events, sends and total
@@ -170,10 +175,11 @@ fails the build when a file imports outside its module's allowlist, a
 dependency points the wrong way, a view holds a raw colour or an English
 literal, or a mutable static appears.
 
-The hot path never leaves the GameController callback thread: it builds a
-`GamepadReport`, applies the dead zones under a lock, reads the
-slot-to-connection table under one `os_unfair_lock`, seals the frame and
-calls `sendto()`. No queue, no Combine, no async hop, no main-actor hop; the
+The hot path never leaves the controller's input queue: it builds a
+`GamepadReport`, applies the dead zones under a lock, reads the slot's route
+(its satellite and the controller index it holds there, or its pad on a
+Moonlight host) under one `os_unfair_lock`, seals the frame and calls
+`sendto()`. No queue, no Combine, no async hop, no main-actor hop; the
 raw POSIX socket carries `IP_TOS = 0xB8` (DSCP EF) and `SO_NOSIGPIPE`.
 CryptoKit's `ChaChaPoly` produces the exact bytes libsodium produces on the
 server, pinned byte-for-byte by the cross-repo vectors in
@@ -228,7 +234,8 @@ forwards what the host game writes to the virtual pad as `MSG_RUMBLE`
 (`0x0009`, 7 bytes: `ctrlIdx(1) + strong(2 BE) + weak(2 BE) + durationMs(2
 BE)`) and `MSG_LIGHTBAR` (`0x000D`, 4 bytes: `ctrlIdx(1) + R + G + B`) over
 the encrypted UDP socket. `DishCore` parses them as pure decoders;
-`ReturnPathRouter` resolves connection to slot to device; the GameController
+`ReturnPathRouter` resolves the connection and the command's controller
+index to the slot bound there, and so to the device; the GameController
 bridge actuates `GCController.haptics` (one `CHHapticEngine` per handle) and
 sets `GCController.light`. The two are gated and routed independently, so
 Rumble off in Settings leaves the light bar alone, and a pad without the
@@ -239,7 +246,8 @@ Controller audio rides the same socket. `MSG_SPEAKER_AUDIO` (`0x0013`) and
 audio function, the haptics on channels 3–4 of a DualSense's four-channel
 stream; `MSG_MIC_AUDIO` (`0x0012`) carries the pad's microphone up while its
 switch is on and it is not muted; and `MSG_MIC_LED` (`0x0014`) reports the
-lamp the game asked for, shown as a chip. `ControllerAudioEngine` decodes
+lamp the game asked for, shown as a chip. Each of these names its pad by
+controller index, so two pads on one satellite keep their own lanes. `ControllerAudioEngine` decodes
 through the fleet's jitter window and plays on a Core Audio HAL unit.
 
 ## Protocol

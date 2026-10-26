@@ -177,7 +177,7 @@ package final class WifiConnectionManager: ObservableObject {
             .store(in: &bag)
         conn.onTopologyChanged = { [weak self, weak conn] in
             guard let self, let conn else { return }
-            Task { await self.syncBoundSlot(conn) }
+            Task { await self.syncSlots(conn) }
         }
         conn.onRekeyNeeded = { [weak self, weak conn] in
             guard let self, let conn else { return }

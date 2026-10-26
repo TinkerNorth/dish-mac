@@ -10,7 +10,7 @@ import XCTest
 ///   * `ReturnPathRouting` — the pure decision layer that gates `MSG_RUMBLE`
 ///     vibration and `MSG_LIGHTBAR` colour independently, so the Light bar
 ///     setting and the Rumble setting never bleed into each other.
-///   * `WifiConnection.desiredDescriptor` — the declarative-PUT seam; the
+///   * `WifiConnection.desiredDescriptors` — the declarative-PUT seam; the
 ///     caps word itself is `descriptorCaps`, pinned in DescriptorCapsTests.
 ///
 /// Exercised as pure functions: no socket, no live `GCController`.
@@ -66,19 +66,19 @@ final class ReturnPathRoutingTests: XCTestCase {
         )
     }
 
-    // MARK: - desiredDescriptor (the declarative-PUT seam)
+    // MARK: - desiredDescriptors (the declarative-PUT seam)
 
     @MainActor
-    func testDesiredDescriptorNilWithoutBoundSlot() {
+    func testNoDescriptorWithoutABoundSlot() {
         let conn = WifiConnection(
             id: "wifi:127.0.0.1:9876",
             server: DiscoveredServer(name: "S", ip: "127.0.0.1", udpPort: 9876, pairPort: 9443, httpPort: 9443)
         )
-        XCTAssertNil(conn.desiredDescriptor, "zero-controller session: no descriptor")
+        XCTAssertEqual(conn.desiredDescriptors, [], "zero-controller session: no descriptor")
     }
 
     @MainActor
-    func testDesiredDescriptorReflectsBoundSlotCapabilities() {
+    func testTheDescriptorReflectsTheBoundSlotsCapabilities() {
         let conn = WifiConnection(
             id: "wifi:127.0.0.1:9876",
             server: DiscoveredServer(name: "S", ip: "127.0.0.1", udpPort: 9876, pairPort: 9443, httpPort: 9443)
@@ -88,13 +88,13 @@ final class ReturnPathRoutingTests: XCTestCase {
             controllerType: 0,
             capabilities: ControllerCapabilities(hasMotion: true, hasRumble: true, hasLightbar: true)
         )
-        let descriptor = conn.desiredDescriptor
+        let descriptor = conn.descriptor(for: "slot-a")
         XCTAssertEqual(descriptor?.ctrlIdx, 0)
         XCTAssertEqual(descriptor?.type, ProtocolConstants.controllerTypeXbox)
         XCTAssertEqual(descriptor?.caps, 0x000F)
         XCTAssertEqual(descriptor?.touchpadMode, .off)
 
-        conn.detachSlot()
-        XCTAssertNil(conn.desiredDescriptor, "detach empties the desired set")
+        conn.detachSlot("slot-a")
+        XCTAssertEqual(conn.desiredDescriptors, [], "detach empties the desired set")
     }
 }

@@ -205,7 +205,7 @@ final class AppModelBindingTests: XCTestCase {
         defer { satellite.stop() }
         let server = try await liveSatellite(satellite)
         model.bind(slotId: pad.id, connectionId: server.id)
-        let applied = await waitUntil { self.model.wifi.get(server.id)?.slotApplied == true }
+        let applied = await waitUntil { self.model.wifi.get(server.id)?.isSlotApplied(self.pad.id) == true }
         XCTAssertTrue(applied)
         open()
         try model.applyBinding(XCTUnwrap(facts.draft))

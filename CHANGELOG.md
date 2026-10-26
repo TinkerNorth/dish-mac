@@ -21,29 +21,57 @@ the repos share a version number.
 
 ### Added
 
-- **Every GameController pad is adopted, the N64 included.** A pad the
-  framework vends without the extended profile is read through its physical
-  input profile: Apple's documented element names for a generic pad, and for
-  the Nintendo Switch Online N64 pad Android's table (A, B, L, R, Start; Z
-  and ZR pull the triggers fully, Home is Guide, Capture is Back, the C
-  buttons drive the right stick, the control stick is the left). Nintendo's
-  pads are their own family, emulated as the Switch Pro by default. The
-  attach log names every element a pad carries and what the table left
-  unclaimed.
-- **Diagnostics lists the input devices macOS leaves out.** "Other input
-  devices" shows a card per game device on the Mac that GameController does
-  not claim, with its hardware ID and connection, and a controller's card
-  shows its USB ID when the HID census finds it.
-
-- **Home draws the signal path.** A boxed row per controller: the pad, a wire
-  captioned with the measured report rate and the link's latency (dashed and
-  idle until the link is live, crawling while it comes up), and the host with
-  its address, its link chip and "slot n of 4" (a satellite's "slot 1 of 1");
-  under it the binding as chips, the emulated type first and the controller's
-  own switches clickable in place, and an Edit button into Configure binding.
-  A pad with nowhere to go is a ghost "Bind…" card, "Set up a controller"
-  opens the first such pad, and the events, sends and total sent per second
-  are pinned under the page, as on the desktops.
+- **A satellite carries up to four controllers.** Bind a second, third and
+  fourth pad to the same satellite, as on the desktops: each holds its own
+  controller slot on the satellite for as long as it stays bound (the lowest
+  one free when it was bound), with its own type, its own switches and its
+  own rumble, light bar, trigger effects, player LEDs, speaker, haptics and
+  microphone. Home says which one a pad holds ("slot 2 of 4"), the
+  satellite's card lists every pad it carries, and Diagnostics shows each
+  pad's slot. A fifth pad is not offered.
+- **Bindings survive a restart.** Each controller's binding to a satellite
+  (with the type picked for it) is kept, and so is each binding to a
+  Moonlight host, which was written before but never read back. When Dish
+  starts, a remembered binding is made again as soon as its controller is
+  plugged in and its satellite or host is known, whichever comes last, and
+  a controller that is unplugged and plugged back in is bound again the
+  same way. Unbinding or forgetting the host ends it.
+- **Pairing asks the satellite's operator first; the PIN stays typeable.**
+  Pairing opens the satellite's row into a pairing card instead of a PIN
+  sheet. The card shows a four-digit code and files it with the satellite at
+  once, and the satellite's operator approves it there; the card says
+  "Waiting for approval on the satellite…" for about two minutes, then
+  "Approved — connecting…", "The operator declined the pairing." or "No
+  approval — the code expired.", and after a decline or an expiry offers a
+  new code. The satellite's own rotating four-digit PIN can be typed into
+  four cells on the same card at the same time (a pasted PIN lands whole),
+  and whichever lands first opens the session and stops the other. A refused
+  PIN is explained on the card, and from the third refusal on it adds that
+  the code changes when the satellite's screen is refreshed. A row that
+  needs pairing gets a Pair button; Cancel, or leaving the Connections page,
+  stops the request.
+- **Moonlight hosts get their own page.** A "Moonlight hosts ›" row on
+  Connections opens it. Each host says its trust in words (Paired,
+  Remembered, Not paired), how many controllers it carries, its tier, the
+  app its session starts and the way out of where its session stands, with
+  Forget behind ⋯. A host mDNS misses is added in an inline "Add a host by
+  address" form, and the PIN a host asks for shows as a card inside that
+  host's row ("Type 0451 into the Moonlight or Sunshine page on PC.", with
+  Cancel and New code) instead of a sheet.
+- **Forgetting asks first.** Forget on a satellite or a Moonlight host asks
+  "Forget Den?", says the pairing key goes (a Moonlight host also keeps its
+  own record of this device until it is removed there), and names every
+  binding it drops, the remembered ones of controllers that are unplugged
+  included.
+- **Home draws the signal path.** A boxed row per controller: the pad, a
+  wire captioned with the measured report rate and the link's latency
+  (dashed and idle until the link is live, crawling while it comes up), and
+  the host with its address, its link chip and the slot the pad holds
+  there; under it the binding as chips, the emulated type first and the
+  controller's own switches clickable in place, and an Edit button into
+  Configure binding. A pad with nowhere to go is a ghost "Bind…" card, "Set
+  up a controller" opens the first such pad, and the events, sends and total
+  sent per second are pinned under the page, as on the desktops.
 - **Controllers get their cards.** A card per pad: its dot and name, its
   family and measured rate (GameController keeps the transport to itself),
   "Bound · host ›" or "not bound · Bind…", the Gyro, Touchpad, Lightbar and
@@ -60,110 +88,64 @@ the repos share a version number.
   unapplied asks "Leave without applying?" first; Unbind is on the same bar.
 - **Dead zones are per pad.** "Dead zones & motion" sets a pad's stick and
   trigger dead zones on sliders with live readouts, applied to the pad at
-  once and kept under the desktops' key (`deadzone:<id>`, their
-  `{"s":…,"t":…}` shape), with "Reset to defaults" and the pad's own motion
-  switch. The 10 % stick and 5 % trigger floors stay the defaults.
-
-- **Pairing asks the satellite's operator first; the PIN stays typeable.**
-  Pairing a satellite opens its row into a pairing card instead of a PIN
-  sheet. The card shows a four-digit code and files it with the satellite at
-  once, and the satellite's operator approves it there; the card says
-  "Waiting for approval on the satellite…" for about two minutes, then
-  "Approved — connecting…", "The operator declined the pairing." or "No
-  approval — the code expired.", and after a decline or an expiry offers a
-  new code. The satellite's own rotating four-digit PIN can be typed into
-  four cells on the same card at the same time (a pasted PIN lands whole);
-  whichever lands first opens the session and stops the other. A refused
-  PIN is explained on the card, and from the third refusal on it adds that
-  the code changes when the satellite's screen is refreshed. A row that
-  needs pairing gets a Pair button. Cancel, or leaving the Connections
-  page, stops the request.
-- **Guide reaches the host.** A pad's Home button now presses the XUSB Guide
-  button (`0x0400`) on a satellite and on a Moonlight host. XUSB has no Share
-  button and no paddles, so those stay unmapped, as on the other clients.
-- **Input keeps flowing while Dish is in the background.** GameController's
-  background monitoring is on from the first controller connect, so a pad
-  keeps driving the host while another app is in front, and Dish no longer
-  releases every button when it stops being the active app. Diagnostics shows
-  it on each controller as "Background input: On". Dish reads the pad
-  alongside the frontmost app; taking it away from that app is not possible
-  through public API. macOS 15.4 broke background monitoring for every app;
-  macOS 15.5 fixed it.
-- **A closed lid is said, once.** When the lid closed on a stream and put the
-  Mac to sleep, the wake shows "Streaming paused while the lid was closed",
-  and Settings ▸ Power says that closing the lid still sleeps the Mac unless a
-  display and power are connected: macOS has no API that keeps a lidded Mac
-  awake.
-
-- **Moonlight hosts get their own page.** A "Moonlight hosts ›" row on
-  Connections opens it. Each host says its trust in words (Paired,
-  Remembered, Not paired), how many controllers it carries and its tier,
-  the app its session starts, and the way out of where its session stands,
-  with Forget behind ⋯. A host mDNS misses is added in an inline "Add a host
-  by address" form, and the PIN a host asks for shows as a card inside that
-  host's row ("Type 0451 into the Moonlight or Sunshine page on PC.", with
-  Cancel and New code) instead of a sheet.
-- **Forgetting asks first.** Forget on a satellite or a Moonlight host asks
-  "Forget Den?", says the pairing key goes (a Moonlight host also keeps its
-  own record of this device until it is removed there), and names every
-  binding it drops.
+  once and kept under the desktops' key, with "Reset to defaults" and the
+  pad's own motion switch. The 10 % stick and 5 % trigger floors stay the
+  defaults.
 - **A welcome on the first run.** The desktops' four pages cover the window
   until they are left: what Dish is, how it reaches the host, Satellite to
   install there (with its download page) and the walk Finish opens. Back,
-  Skip, Next and Finish, step dots, and Esc as Skip; Skip and Finish are both
-  remembered (`onboarding_welcome_completed`), so it shows once.
+  Skip, Next and Finish, step dots, and Esc as Skip; Skip and Finish are
+  both remembered, so it shows once.
 - **Set up Dish walks a binding through from scratch.** The desktops' wizard
   as a page on Home: Input, Destination, Type, Session (for a Moonlight host
-  only), Feel and Review, in three stages with their pips, "Nothing is changed
-  until the last step", and one Bind on Review through the same apply and
-  overlay Configure binding uses. Destination lists the paired hosts and the
+  only), Feel and Review, in three stages with their pips, "Nothing is
+  changed until the last step", and one Bind on Review through the same
+  apply Configure binding uses. Destination lists the paired hosts and the
   satellites a sweep heard, with Pair… opening the pairing card in the row.
-  Leaving past the first page asks "Leave setup?"; a host that drops or a pad
-  that is unplugged stops the walk in the page with Start over and Exit. It
-  opens from the rail's new Set up action, Settings ▸ Setup & help, Home's
-  empty state and "Set up a controller", and a pad's ghost "Bind…", which
-  answers the first page with that pad.
+  Leaving past the first page asks "Leave setup?"; a host that drops or a
+  pad that is unplugged stops the walk with Start over and Exit. It opens
+  from the rail's Set up action, Settings ▸ Setup & help, Home's empty state
+  and "Set up a controller", and a pad's ghost "Bind…", which answers the
+  first page with that pad.
 - **Help & FAQ is a page.** Settings ▸ Setup & help ▸ Help & FAQ opens the
   desktops' questions under Concepts, Best performance, Troubleshooting and
   About Dish, folded until opened, with "Walk me through setup", the privacy
   policy and the source.
 - **macOS's Local Network prompt is explained before it appears.** Until the
-  first scan ever, Connections and the walk's Destination step say "macOS will
-  ask to let Dish find satellites on your network" with "Show me the prompt",
-  which runs the scan that raises it (`local_network_primed`); the page no
-  longer scans as it opens before then. A refused network's empty state and
-  toast now carry "Open System Settings" (Privacy & Security › Local Network).
+  first scan ever, Connections and the walk's Destination step say "macOS
+  will ask to let Dish find satellites on your network" with "Show me the
+  prompt", which runs the scan that raises it. A refused network's empty
+  state and toast carry "Open System Settings" (Privacy & Security › Local
+  Network).
+- **Every GameController pad is adopted, the N64 included.** A pad the
+  framework vends without the extended profile is read through its physical
+  input profile: Apple's documented element names for a generic pad, and for
+  the Nintendo Switch Online N64 pad Android's table (A, B, L, R, Start; Z
+  and ZR pull the triggers fully, Home is Guide, Capture is Back, the C
+  buttons drive the right stick, the control stick is the left). Nintendo's
+  pads are their own family, emulated as the Switch Pro by default.
+- **Guide reaches the host.** A pad's Home button presses the XUSB Guide
+  button on a satellite and on a Moonlight host. XUSB has no Share button
+  and no paddles, so those stay unmapped, as on the other clients.
+- **Input keeps flowing while Dish is in the background.** A pad keeps
+  driving the host while another app is in front, and Dish no longer
+  releases every button when it stops being the active app. Diagnostics
+  shows "Background input: On" on each controller. Dish reads the pad
+  alongside the frontmost app; taking it away from that app is not possible
+  through public API. macOS 15.4 broke background input for every app;
+  macOS 15.5 fixed it.
+- **Diagnostics lists the input devices macOS leaves out.** "Other input
+  devices" shows a card per game device on the Mac that GameController does
+  not claim, with its hardware ID and connection, and a controller's card
+  shows its USB ID when it can be found.
+- **A closed lid is said, once.** When the lid closed on a stream and put
+  the Mac to sleep, the wake shows "Streaming paused while the lid was
+  closed", and Settings ▸ Power says that closing the lid still sleeps the
+  Mac unless a display and power are connected: macOS has no API that keeps
+  a lidded Mac awake.
 
 ### Changed
 
-- **Views are layout only, and a test keeps them that way.** Every page
-  draws one state built by a pure mapper from the model's published facts
-  and acts only through `AppModel` intents: Settings writes its preferences
-  through `AppModel+Preferences.swift` instead of binding the stores, the
-  Diagnostics and inspector pages read the source, the flight recorder and
-  the inspector through the model, the crash report reads the log the model
-  read, and the colours, fonts, enablement rules and fallback words the
-  pages chose are the mappers'. The window's scene hands its pages the
-  model, the navigation store and the toast centre and no engine object.
-  "Last checked …" under Updates now ticks every minute while Settings
-  shows.
-  `ViewPurityTests` and `NavigationCoverageTests` pin the rules
-  (`docs/UI_CONTRACT.md`, "View purity").
-- The Emulate picker, the touchpad picker and the inline Bind list leave the
-  controller cards: the type and the destination are chosen on Configure
-  binding, and the strip's chips stay the controller's own switches.
-
-- **Connections is the desktops' page.** It scans as it opens, quietly: an
-  empty network is said by the page ("No satellites found", with the
-  local-network refusal when macOS is the reason, Get Satellite ↗ and Scan
-  again), and only the Scan button's sweep still says "No servers found" as
-  a toast. FOUND lists what the sweep heard with a Pair… button whose
-  pairing card opens under the row. PAIRED holds a card per remembered
-  satellite: its name, `ip • UDP port`, latency, the tier, protocol and link
-  chips, what it carries ("DualSense — as DS4"), Disconnect, Pair… or
-  Connect by the link's state, and Forget behind ⋯. The add-by-address field
-  stays at the foot. The engine now vends a connection's name, address and
-  port as data, and the app words them.
 - **One window with a rail and pages replaces the sheets.** The window is
   the desktops' shell: a rail (Home, Controllers, Connections; Support Dish
   and Settings at the foot, with a dot on Settings while an update waits,
@@ -175,34 +157,52 @@ the repos share a version number.
   the crash report and the input inspector were sheets, nested up to three
   deep, and Diagnostics was a second window; they are now pages of the one
   window, so it moves wherever a page is open. Settings follows the
-  desktops' order (Appearance, Forwarded features, Controller tuning,
-  Window, Power, Diagnostics, Updates, About) in two columns on a wide
-  window. Support Dish lists GitHub Sponsors, Ko-fi and Buy Me a Coffee, and
-  Open source licenses shows the bundled third-party notice. The window
-  opens at 980×640 (at least 900×620); ⌘, opens Settings, ⌘1 to ⌘3 the top
-  destinations and ⌘[ goes back; the menu-bar item's Diagnostics opens the
-  window on that page. Every toast shows in one place above every page, and
-  the Home copy no longer says "Tap Manage".
-- **The controller hot path leaves the main thread.** Every controller's
-  handlers run on one serial, user-interactive input queue handed to the pad
-  before any handler is installed, so a busy window never delays a report.
+  desktops' order in two columns on a wide window. Support Dish lists
+  GitHub Sponsors, Ko-fi and Buy Me a Coffee, and Open source licenses shows
+  the bundled third-party notice. The window opens at 980×640 (at least
+  900×620); ⌘, opens Settings, ⌘1 to ⌘3 the top destinations and ⌘[ goes
+  back; the menu-bar item's Diagnostics opens the window on that page.
+  Every toast shows in one place above every page.
+- **Connections is the desktops' page.** Once the Local Network prompt has
+  been explained, it scans as it opens, quietly: an empty network is said by
+  the page ("No satellites found", with the
+  local-network refusal when macOS is the reason, Get Satellite ↗ and Scan
+  again), and only the Scan button's sweep still says "No servers found" as
+  a toast. FOUND lists what the sweep heard with a Pair… button whose
+  pairing card opens under the row. PAIRED holds a card per remembered
+  satellite: its name, `ip • UDP port`, latency, the tier, protocol and link
+  chips, every pad it carries ("DualSense — as DS4"), Disconnect, Pair… or
+  Connect by the link's state, and Forget behind ⋯. The add-by-address field
+  stays at the foot.
+- **The type, the touchpad pick and the destination are chosen on Configure
+  binding.** The Emulate picker, the touchpad picker and the inline Bind
+  list leave the controller cards; the chips stay the controller's own
+  switches.
 - **Sleep closes every session cleanly and wake reopens it.** Going to sleep
   releases every held input, closes each satellite session with its `DELETE`
   and stops each Moonlight session with its pads kept; waking reopens both
   and scans the network again, because a laptop may wake on another one. The
   scan after a wake stays quiet when it hears nothing.
+- **Controller input no longer waits on the window.** Every controller's
+  handlers run on their own high-priority queue, so a busy window never
+  delays a report.
+- **Views are layout only, and a test keeps them that way.** Every page draws
+  one state built from the model's published facts and acts only through the
+  model's intents; `ViewPurityTests` and `NavigationCoverageTests` pin the
+  rules (`docs/UI_CONTRACT.md`, "View purity").
 
 ### Fixed
 
+- **A stick pushed all the way up reads as up, not down, on both links.**
+  GameController reports a stick pushed up as positive, like the XUSB report
+  every client sends, and Dish negated it, so both sticks read upside down on
+  a satellite and on a Moonlight host.
 - **Failures are no longer hidden while pairing.** Every failure used to be
   held back while the PIN sheet was up, including ones about other
   satellites. Now only the pairing card's own failures stay on the card;
   everything else still shows as a toast.
-- **A stick pushed all the way up reads as up, not down, on both links.**
-  GameController reports a stick pushed up as positive, like the XUSB report
-  every client sends, and Dish negated it, so both sticks read upside down on
-  a satellite and on a Moonlight host. The sign now passes through, and a
-  sweep over the whole travel pins it.
+- **"Last checked …" under Updates ticks.** It was read once per draw; it
+  now moves every minute while Settings shows.
 
 ## [1.0.0] - 2026-10-26
 

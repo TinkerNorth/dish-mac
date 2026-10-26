@@ -6,6 +6,21 @@ import XCTest
 
 final class ModelsTests: XCTestCase {
 
+    // MARK: - Room for another pad
+
+    func testASatelliteHasRoomUntilItCarriesFourPadsAndABluetoothLinkOne() {
+        let three = ConnectionSummary(id: "mid:1", name: "Desk", live: .ready, boundSlotId: "a", boundSlotIds: ["a", "b", "c"])
+        var full = three
+        full.boundSlotIds = ["a", "b", "c", "d"]
+        XCTAssertTrue(three.hasRoomForAnotherSlot)
+        XCTAssertFalse(full.hasRoomForAnotherSlot)
+        let link = ConnectionSummary(id: "bt:1", name: "Pad", live: .ready, boundSlotId: nil, kind: .bluetooth)
+        var carrying = link
+        carrying.boundSlotIds = ["a"]
+        XCTAssertTrue(link.hasRoomForAnotherSlot)
+        XCTAssertFalse(carrying.hasRoomForAnotherSlot, "a Bluetooth link carries one pad")
+    }
+
     // MARK: - Manual add-by-address (the discovery-denied escape hatch)
 
     func testManualEntryParsesIPv4WithDefaultAndExplicitPort() throws {

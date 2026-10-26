@@ -262,3 +262,47 @@ package struct OnboardingPreferenceStore {
         defaults.removeObject(forKey: Self.welcomeCompletedKey)
     }
 }
+
+/// A pad's standing binding to a satellite, as kept across restarts: the
+/// satellite's remembered id (its machine id) and the type the user picked,
+/// nil for the pad's own. The pad's switches live under their own keys.
+struct RememberedSatelliteBinding: Equatable, Codable {
+    var slotId: String
+    var satelliteId: String
+    var emulatedType: Int?
+}
+
+/// The satellite bindings under `wifi_binding_list`, one record per pad.
+/// Plain reads over the defaults, so every reader sees one truth; a value
+/// that does not read is nothing stored.
+struct BindingMemoryStore {
+    static let bindingsKey = "wifi_binding_list"
+
+    private let defaults: UserDefaults
+
+    init(defaults: UserDefaults) {
+        self.defaults = defaults
+    }
+
+    func bindings() -> [RememberedSatelliteBinding] {
+        guard let raw = defaults.data(forKey: Self.bindingsKey) else { return [] }
+        return (try? JSONDecoder().decode([RememberedSatelliteBinding].self, from: raw)) ?? []
+    }
+
+    /// The pad's record, replacing whatever it had.
+    func remember(_ binding: RememberedSatelliteBinding) {
+        write(bindings().filter { $0.slotId != binding.slotId } + [binding])
+    }
+
+    func forget(slotId: String) {
+        write(bindings().filter { $0.slotId != slotId })
+    }
+
+    func forgetSatellite(_ satelliteId: String) {
+        write(bindings().filter { $0.satelliteId != satelliteId })
+    }
+
+    private func write(_ bindings: [RememberedSatelliteBinding]) {
+        defaults.set(try? JSONEncoder().encode(bindings), forKey: Self.bindingsKey)
+    }
+}

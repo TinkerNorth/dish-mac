@@ -189,11 +189,12 @@ func hostNode(_ summary: ConnectionSummary, slotId: String, words: L10n = .app) 
     )
 }
 
-/// A satellite carries one pad; a Moonlight session carries four.
+/// A satellite and a Moonlight session each carry four pads; a Bluetooth link one.
 func hostSlotCapacity(_ kind: ConnectionKind) -> Int {
     switch kind {
-    case .satellite, .bluetooth: 1
+    case .satellite: SatelliteSlots.maxPerSatellite
     case .moonlight: MoonlightProtocol.maxPads
+    case .bluetooth: 1
     }
 }
 

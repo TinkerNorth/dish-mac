@@ -57,10 +57,10 @@ final class HomeMappersTests: XCTestCase {
         XCTAssertNotNil(state([Fix.pad(boundTo: Fix.den)]).setUp, "another pad can always be set up, as on the desktops")
     }
 
-    func testABoundPadDrawsTheHostWithTheOneSlotASatelliteHas() throws {
+    func testABoundPadDrawsTheHostAndWhichOfASatellitesFourSlotsItHolds() throws {
         let (host, _) = try host(row(Fix.pad(boundTo: Fix.den)))
         XCTAssertEqual(host.name, "Den")
-        XCTAssertEqual(host.detail, "192.0.2.10 · slot 1 of 1")
+        XCTAssertEqual(host.detail, "192.0.2.10 · slot 1 of 4", "a satellite carries four pads, as on the desktops")
         XCTAssertEqual(host.glyph, .satellite(.connected))
         XCTAssertEqual(host.chip, ChipState(text: "Online", color: DishTheme.success))
         XCTAssertEqual(host.dot, DishTheme.success)

@@ -62,6 +62,7 @@ extension AppModel {
             .store(in: &cancellables)
         observeTelemetry()
         observeBindingFacts()
+        observeBindingMemory()
         observeSetup()
         observePreferences()
         observeDiagnosticsFacts()

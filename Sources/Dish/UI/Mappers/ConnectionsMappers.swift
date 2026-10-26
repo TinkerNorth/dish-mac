@@ -215,7 +215,13 @@ func connectionsPageState(_ inputs: ConnectionsInputs, draft: String, words: L10
         pairedTitle: words.pairedTitle,
         paired: pairedSection(satellites, inputs, words: words),
         address: addressField(draft: draft, placeholder: words.addByAddressPlaceholder, error: addressError, words: words),
-        forget: forgetDialog(inputs.facts.pendingForget, connections: inputs.connections, slots: inputs.slots, words: words)
+        forget: forgetDialog(
+            inputs.facts.pendingForget,
+            connections: inputs.connections,
+            slots: inputs.slots,
+            remembered: inputs.facts.rememberedPads,
+            words: words
+        )
     )
 }
 
@@ -340,13 +346,15 @@ struct ForgetDialogState: Equatable {
     let cancel: String
 }
 
-/// It names every pad it drops, one per line: "some bindings will be lost"
-/// is not a confirmation. A Moonlight host keeps its own record of this
-/// device, and the words say so.
+/// It names every pad it drops, one per line, the ones bound now and the
+/// ones remembered for a pad that is away: "some bindings will be lost" is
+/// not a confirmation. A Moonlight host keeps its own record of this device,
+/// and the words say so.
 func forgetDialog(
     _ pendingId: String?,
     connections: [ConnectionSummary],
     slots: [ControllerSlot],
+    remembered: [String: [String]] = [:],
     words: L10n = .app
 ) -> ForgetDialogState {
     let summary = connections.first { $0.id == pendingId }
@@ -355,7 +363,8 @@ func forgetDialog(
     }
     let name = connectionTitle(summary)
     let lead = summary.kind == .moonlight ? words.forgetMoonlightHelp(name) : words.pairingKeyIsDeleted
-    let pads = summary.boundSlotIds.map { id in slots.first { $0.id == id }?.name ?? id }
+    let bound = summary.boundSlotIds.map { id in slots.first { $0.id == id }?.name ?? id }
+    let pads = bound + (remembered[summary.id] ?? [])
     let dropped = pads.isEmpty ? [] : [words.bindingsRideOnIt(pads.count)] + pads.map { "· \($0)" }
     return ForgetDialogState(
         shown: true,

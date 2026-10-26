@@ -13,9 +13,16 @@ struct Route {
     let flags: ForwardingFlags
 }
 
-/// A satellite's side of the same table: the slot bound to it and the
-/// switches in force for that controller, for the return paths. A Moonlight
-/// host carries up to four pads, so its feedback finds the slot through the
+/// One pad on one satellite: the connection and the controller index the
+/// satellite's return paths name it by.
+struct SatellitePadKey: Hashable {
+    let connectionId: String
+    let controllerIndex: Int
+}
+
+/// A satellite's side of the same table: the slot bound to one of its
+/// controller indices and the switches in force for that controller, for
+/// the return paths. A Moonlight host's feedback finds the slot through the
 /// pad number instead and reads the slot's own route.
 struct BoundSlotRoute {
     let slotId: String
@@ -26,7 +33,7 @@ struct BoundSlotRoute {
 /// disagree.
 struct RoutingSnapshot {
     var bySlot: [String: Route] = [:]
-    var byConnection: [String: BoundSlotRoute] = [:]
+    var bySatellitePad: [SatellitePadKey: BoundSlotRoute] = [:]
 }
 
 /// Thread-safe routing table. Written on the main actor when bindings, the
@@ -42,10 +49,10 @@ final class RoutingTable: @unchecked Sendable {
         return snapshot.bySlot[slotId]
     }
 
-    func boundSlot(of connectionId: String) -> BoundSlotRoute? {
+    func boundSlot(of pad: SatellitePadKey) -> BoundSlotRoute? {
         os_unfair_lock_lock(&lock)
         defer { os_unfair_lock_unlock(&lock) }
-        return snapshot.byConnection[connectionId]
+        return snapshot.bySatellitePad[pad]
     }
 
     func set(_ next: RoutingSnapshot) {

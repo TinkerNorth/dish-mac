@@ -168,7 +168,7 @@ package final class AppModel: ObservableObject {
         diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight, census: hidCensus ?? IOKitHidCensus())
         recorder = DiagnosticsRecorder(store: diagnosticsLog)
         self.crashLog = crashLog
-        returnPaths = ReturnPathRouter(input: input, gate: gate, table: routing.table)
+        returnPaths = ReturnPathRouter(actuators: .live(input), gate: gate, table: routing.table)
         moonlightFeedback = MoonlightFeedbackRouter(actuators: .live(input), gate: gate, table: routing.table)
         audio = AudioPipeline(
             hub: hub,
@@ -307,17 +307,11 @@ package final class AppModel: ObservableObject {
         preferences: [String: SlotPreferences]
     ) {
         let global = settings.flags
-        let flags = connectionFlags(bindings: bindings, connectionIds: pool.keys, global: global, preferences: preferences)
-        routing.table.set(routeSnapshot(
-            bindings: bindings,
-            pool: pool,
-            flags: flags,
-            global: global,
-            moonlight: hosts,
-            preferences: preferences
-        ))
-        for (id, conn) in pool {
-            conn.setForwardingFlags(flags[id] ?? global)
+        let flags = slotFlags(bindings: bindings, global: global, preferences: preferences)
+        routing.table.set(routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global, moonlight: hosts))
+        for conn in pool.values {
+            conn.setForwardingFlags(global)
+            conn.setSlotFlags(flags)
         }
     }
 
@@ -362,19 +356,16 @@ package final class AppModel: ObservableObject {
 
     // MARK: - Slots
 
-    /// Rebuild the slot list and evict bindings whose controller is gone.
-    /// The catalogs and probes are read here; the rest arrived with the
-    /// emission.
+    /// Rebuild the slot list and release bindings whose controller is gone;
+    /// their memory stays for the pad's return. The catalogs and probes are
+    /// read here; the rest arrived with the emission.
     private func rebuildSlots(
         gcSlots: [GameControllerInput.Slot],
         connections: [ConnectionSummary],
         bindings: [String: String],
         facts: SlotFactsSnapshot
     ) {
-        let known = Set(gcSlots.map(\.id))
-        for (slotId, _) in bindings where !known.contains(slotId) {
-            hub.unbind(slotId: slotId)
-        }
+        hub.keepPresent(Set(gcSlots.map(\.id)))
         var facts = facts
         facts.catalogs = wifi.catalogs
         facts.probes = wifi.capabilities

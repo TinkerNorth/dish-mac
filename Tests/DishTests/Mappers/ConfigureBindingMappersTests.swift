@@ -24,8 +24,15 @@ final class ConfigureBindingMappersTests: XCTestCase {
         return facts
     }
 
-    /// Den carries another pad, so only Loft and the Moonlight host have room.
-    private let taken = ConnectionSummary(id: "den", name: "Den", address: "192.0.2.10", live: .connected, boundSlotId: "other")
+    /// Den carries four other pads, so only Loft and the Moonlight host have room.
+    private let taken = ConnectionSummary(
+        id: "den",
+        name: "Den",
+        address: "192.0.2.10",
+        live: .connected,
+        boundSlotId: "a",
+        boundSlotIds: ["a", "b", "c", "d"]
+    )
 
     private func page(_ facts: ShellFacts, slots: [ControllerSlot] = [Fix.pad()]) -> ConfigureBindingPageState {
         configureBindingPageState(BindingInputs(slotId: "pad", slots: slots, connections: [taken, Fix.loft, Fix.host], facts: facts))
@@ -53,7 +60,7 @@ final class ConfigureBindingMappersTests: XCTestCase {
     func testTheDestinationsSplitByKindAndMarkThePick() throws {
         let picked = reduce(unbound, .chooseDestination("loft"))
         let destination = try editor(facts(picked)).destination
-        XCTAssertEqual(destination.satellites.map(\.id), ["loft"], "a satellite carrying another pad is not offered")
+        XCTAssertEqual(destination.satellites.map(\.id), ["loft"], "a satellite carrying four other pads is not offered")
         XCTAssertEqual(destination.satellites.first?.selected, true)
         XCTAssertEqual(destination.satellites.first?.subtitle, "192.0.2.11 • UDP 9876")
         XCTAssertEqual(destination.moonlight.map(\.subtitle), ["Moonlight host · 10.0.0.5"])

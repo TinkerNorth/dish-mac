@@ -108,7 +108,7 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         XCTAssertEqual(conn.settledProtocolVersion, 3)
         XCTAssertEqual(conn.protocolCompat, .current)
 
-        conn.sendTouchpad(sample: touchpadSample, eventTimeMs: 7)
+        conn.sendTouchpad(sample: touchpadSample, eventTimeMs: 7, controllerIndex: 0)
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))
         guard case let .pointer(pointer) = frame.detail else {
             return XCTFail("a v3 session streams the 19-byte frame, got \(frame.detail)")
@@ -130,7 +130,7 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         XCTAssertEqual(conn.protocolCompat, .satelliteUpdateAvailable, "the soft hint, never an error")
         XCTAssertTrue(failures.isEmpty)
 
-        conn.sendTouchpad(sample: touchpadSample, eventTimeMs: 7)
+        conn.sendTouchpad(sample: touchpadSample, eventTimeMs: 7, controllerIndex: 0)
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.touchpad))
         guard case let .touchpad(touchpad) = frame.detail else {
             return XCTFail("a v1 session streams the 16-byte frame, got \(frame.detail)")
