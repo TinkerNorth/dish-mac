@@ -34,7 +34,7 @@ final class CapabilityMappersTests: XCTestCase {
     )
 
     private func bound(_ live: LinkState = .connected) -> ConnectionSummary {
-        ConnectionSummary(id: "sat", label: "Desk", detail: "", live: live, boundSlotId: "pad")
+        ConnectionSummary(id: "sat", name: "Desk", live: live, boundSlotId: "pad")
     }
 
     /// A DualSense bound to a probed satellite that offers its type.

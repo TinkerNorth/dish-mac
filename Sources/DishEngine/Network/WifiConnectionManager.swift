@@ -58,6 +58,8 @@ package final class WifiConnectionManager: ObservableObject {
     @Published package private(set) var connections: [String: WifiConnection] = [:]
     @Published package private(set) var discoveredServers: [DiscoveredServer] = []
     @Published package private(set) var isScanning = false
+    /// Whether macOS refused this app the local network during the last scan.
+    @Published package private(set) var localNetworkDenied = false
     /// Ids in the pair-and-handshake flow; the rows show a spinner.
     @Published package private(set) var pairingInFlight: Set<String> = []
     /// True while any pooled connection converges its slot over REST.
@@ -206,8 +208,9 @@ package final class WifiConnectionManager: ObservableObject {
         return true
     }
 
-    func publishScan(_ servers: [DiscoveredServer]) {
+    func publishScan(_ servers: [DiscoveredServer], localNetworkDenied denied: Bool = false) {
         discoveredServers = servers
+        localNetworkDenied = denied
         isScanning = false
     }
 

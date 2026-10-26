@@ -218,10 +218,10 @@ struct SlotCard: View {
                 StatusDot(color: linkDotColor(conn.live))
             }
             VStack(alignment: .leading, spacing: 1) {
-                Text(conn.label)
+                Text(connectionTitle(conn))
                     .font(DishFont.control)
                     .foregroundColor(DishTheme.onSurface)
-                Text(conn.detail)
+                Text(connectionAddressLine(conn))
                     .font(DishFont.microRegular)
                     .foregroundColor(DishTheme.muted)
             }

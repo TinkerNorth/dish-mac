@@ -19,24 +19,15 @@ final class DiscoveryMappersTests: XCTestCase {
         XCTAssertEqual(serverTitle(DiscoveredServer(name: "", ip: "10.0.0.5")), "10.0.0.5")
     }
 
-    func testDetailIsAddressAndPort() {
-        XCTAssertEqual(serverDetail(DiscoveredServer(ip: "10.0.0.5", udpPort: 9876)), "10.0.0.5 • UDP 9876")
+    func testTheFoundRowSaysWhereTheServerAnsweredAndHowItWasHeard() {
+        XCTAssertEqual(foundServerDetail(DiscoveredServer(ip: "10.0.0.5", source: .mdns)), "10.0.0.5 · mDNS")
     }
 
-    func testDiscoveredStatusNamesThePath() {
-        XCTAssertEqual(discoveredStatusText(DiscoveredServer(ip: "10.0.0.5", source: .mdns)), "Found · mDNS")
-    }
-
-    func testRowsListKnownFirstThenOnlyNewDiscoveries() {
-        let known = [ConnectionSummary(id: "mid:abc", label: "Desk", detail: "", live: .saved, boundSlotId: nil)]
+    func testAServerAPairedCardShowsIsNotFoundAgain() {
+        let known = [ConnectionSummary(id: "mid:abc", name: "Desk", live: .saved, boundSlotId: nil)]
         let alreadyKnown = DiscoveredServer(name: "Desk", ip: "10.0.0.5", machineId: "abc")
         let fresh = DiscoveredServer(name: "Sofa", ip: "10.0.0.6", machineId: "def")
-        let rows = connectionRows(known: known, discovered: [alreadyKnown, fresh])
-        XCTAssertEqual(rows, [.known(known[0]), .discovered(fresh)])
-        XCTAssertEqual(rows.map(\.key), ["mid:abc", "mid:def"])
-    }
-
-    func testNoRowsWhenNothingIsKnownOrHeard() {
-        XCTAssertEqual(connectionRows(known: [], discovered: []), [])
+        XCTAssertEqual(foundServers([alreadyKnown, fresh], known: known), [fresh])
+        XCTAssertEqual(foundServers([], known: []), [])
     }
 }

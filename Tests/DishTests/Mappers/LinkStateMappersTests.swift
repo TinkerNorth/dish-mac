@@ -11,7 +11,7 @@ final class LinkStateMappersTests: XCTestCase {
     private static let allStates: [LinkState] = [.found, .stale, .saved, .ready, .connecting, .connected, .unstable]
 
     private func summary(_ live: LinkState, latencyMs: Double? = nil) -> ConnectionSummary {
-        ConnectionSummary(id: "c", label: "Desk PC", detail: "", live: live, boundSlotId: nil, latencyMs: latencyMs)
+        ConnectionSummary(id: "c", name: "Desk PC", live: live, boundSlotId: nil, latencyMs: latencyMs)
     }
 
     func testEveryStateHasItsChipWord() {

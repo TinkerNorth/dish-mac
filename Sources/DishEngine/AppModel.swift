@@ -44,8 +44,8 @@ package final class AppModel: ObservableObject {
     @Published package private(set) var connections: [ConnectionSummary] = []
     /// The satellite whose row shows the pairing card.
     @Published package internal(set) var pairingTarget: DiscoveredServer?
-    /// The Moonlight host that minted a PIN for the user to type into it; the app presents the sheet.
-    @Published package var moonlightPin: MoonlightPinPrompt?
+    /// The Moonlight host that minted a PIN for the user to type into it; its row shows the card.
+    @Published package internal(set) var moonlightPin: MoonlightPinPrompt?
     /// The most recent failure, until the app clears it.
     @Published package internal(set) var lastFailure: ConnectionFailure?
     /// Every failure as it happens, for a banner.

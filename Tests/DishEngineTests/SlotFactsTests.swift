@@ -143,7 +143,7 @@ final class SlotFactsTests: XCTestCase {
             overrides: [key: 1],
             motion: [key: MotionBackendStatus(sinkSupportedForType: true, backendOk: false)]
         )
-        let summary = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connected, boundSlotId: "pad")
+        let summary = ConnectionSummary(id: "sat", name: "Desk", live: .connected, boundSlotId: "pad")
         let slots = composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"], facts: facts)
         let slot = try XCTUnwrap(slots.first)
         XCTAssertEqual(slot.emulation, try SlotEmulation(type: 1, isOverride: true, offered: offerableTypes(in: catalog())))
@@ -200,7 +200,7 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertTrue(unbound.micMuted)
         XCTAssertNil(unbound.audio, "the engine only speaks for a bound controller")
 
-        let summary = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connected, boundSlotId: "pad")
+        let summary = ConnectionSummary(id: "sat", name: "Desk", live: .connected, boundSlotId: "pad")
         let bound = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"], facts: facts).first)
         XCTAssertEqual(bound.audio, state)
 
@@ -213,7 +213,7 @@ final class SlotFactsTests: XCTestCase {
     @MainActor
     func testABindingWithoutACatalogResolvesTheLegacyTypeAndStaysUnresolved() throws {
         let gc = GameControllerInput.Slot(id: "pad", name: "Pad", capabilities: .none, family: .dualSense)
-        let summary = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connecting, boundSlotId: "pad")
+        let summary = ConnectionSummary(id: "sat", name: "Desk", live: .connecting, boundSlotId: "pad")
         let slot = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"]).first)
         XCTAssertEqual(slot.emulation, SlotEmulation(type: 0, isOverride: false, offered: []))
         XCTAssertNil(slot.emulation?.current)

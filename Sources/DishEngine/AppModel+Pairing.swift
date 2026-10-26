@@ -8,6 +8,11 @@ import Foundation
 package struct OpenPairing: Equatable {
     package let server: DiscoveredServer
     package let attempt: PairingAttempt
+
+    package init(server: DiscoveredServer, attempt: PairingAttempt) {
+        self.server = server
+        self.attempt = attempt
+    }
 }
 
 /// Pairing a satellite from its row, both paths at once as the desktops'
@@ -97,7 +102,7 @@ package extension AppModel {
 
     /// The freshest record of a satellite: the pooled connection's, then the
     /// scan's, then the remembered one.
-    private func pairableServer(_ id: String) -> DiscoveredServer? {
+    internal func pairableServer(_ id: String) -> DiscoveredServer? {
         let pooled = wifi.get(id)?.server
         let discovered = wifi.discoveredServers.first { $0.id == id }
         let remembered = wifi.remembered().first { $0.id == id }?.toDiscovered()

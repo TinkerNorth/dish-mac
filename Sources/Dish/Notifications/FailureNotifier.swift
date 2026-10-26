@@ -6,7 +6,7 @@ import DishEngine
 import Foundation
 
 /// Posts every failure the model reports as a toast, the one surface a
-/// failure has in the window and the Connections sheet. The pairing card's
+/// failure has in the window and on the Connections page. The pairing card's
 /// own failures never reach it: the model keeps those on the card. Keyed, so
 /// back-to-back failures replace one another instead of stacking.
 @MainActor

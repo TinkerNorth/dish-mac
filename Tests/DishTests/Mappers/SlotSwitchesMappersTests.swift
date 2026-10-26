@@ -60,7 +60,7 @@ final class SlotSwitchesMappersTests: XCTestCase {
     func testTheTableFoldsTheControllersOwnSwitches() throws {
         var bound = slot(SlotPreferences(motion: false))
         bound.boundConnectionId = "sat"
-        bound.boundStatus = ConnectionSummary(id: "sat", label: "Desk", detail: "", live: .connected, boundSlotId: "pad")
+        bound.boundStatus = ConnectionSummary(id: "sat", name: "Desk", live: .connected, boundSlotId: "pad")
         bound.typeFeatures = TypeFeatureFacts(
             motion: true,
             touchpad: true,

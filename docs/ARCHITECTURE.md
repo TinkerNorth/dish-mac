@@ -144,7 +144,9 @@ state and `WifiConnectionManager` performs the effects.
    worded, `L10n` is the one place a key becomes a word, and the String
    Catalog is the one place it is translated. The derivations between a
    model value and what a view draws (a chip's text, a dot's colour, a
-   battery glyph) are pure functions under `Sources/Dish/UI/Mappers`. A
+   battery glyph, a connection's title and its `ip • UDP port` line, which
+   the engine vends as name, address and port) are pure functions under
+   `Sources/Dish/UI/Mappers`. A
    decision the fleet shares, such as the capability solver's verdicts or
    the motion indicator's fold, is a reducer in `DishCore`; the mapper only
    builds its inputs from the slot's facts and the user's switches and words

@@ -42,6 +42,28 @@ final class ConnectionHubTests: XCTestCase {
         )
     }
 
+    // MARK: - A row is data
+
+    func testARememberedSatellitesRowCarriesItsNameAddressAndPortUnworded() {
+        let sat = server("13")
+        store.remember(sat)
+        wifi.register(WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max))
+        let row = hub.connections.first
+        XCTAssertEqual(row?.name, "Sat-13")
+        XCTAssertEqual(row?.address, "192.0.2.13")
+        XCTAssertEqual(row?.udpPort, 9876)
+    }
+
+    func testRowsAreOrderedByNameWithAnUnnamedSatelliteByItsAddress() {
+        let named = server("14")
+        let unnamed = DiscoveredServer(name: "", ip: "192.0.2.1", udpPort: 9876, machineId: "sat-unnamed")
+        store.remember(named)
+        store.remember(unnamed)
+        wifi.register(WifiConnection(id: named.id, server: named, tickIntervalNs: .max))
+        wifi.register(WifiConnection(id: unnamed.id, server: unnamed, tickIntervalNs: .max))
+        XCTAssertEqual(hub.connections.map(\.recordName), ["192.0.2.1", "Sat-14"])
+    }
+
     // MARK: - Forget removes the row synchronously (emitted-pool rebuild)
 
     func testForgetIdleRememberedSatelliteRemovesRowSynchronously() {

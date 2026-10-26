@@ -12,7 +12,7 @@ final class DiagnosticsMappersTests: XCTestCase {
     private let english = Locale(identifier: "en_US")
 
     private func summary(_ live: LinkState = .connected) -> ConnectionSummary {
-        ConnectionSummary(id: "sat", label: "Desk", detail: "10.0.0.2 • UDP 9876", live: live, boundSlotId: nil)
+        ConnectionSummary(id: "sat", name: "Desk", address: "10.0.0.2", udpPort: 9876, live: live, boundSlotId: nil)
     }
 
     private func liveFacts(

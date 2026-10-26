@@ -12,6 +12,10 @@ package enum ObservedPage: Equatable {
     case inspector(slotId: String)
     /// Settings shows the crash-report row while a log waits.
     case settings
+    /// Connections scans as it opens; leaving it closes its pairing card.
+    case connections
+    /// Moonlight hosts scans as it opens; leaving it ends the pairing its PIN card waits on.
+    case moonlightHosts
 }
 
 /// The pages' lifecycle as intents: a view's `onAppear` and `onDisappear`
@@ -23,6 +27,8 @@ package extension AppModel {
         case .diagnostics: diagnostics.start()
         case let .inspector(slotId): inspect(slotId: slotId)
         case .settings: refreshCrashLogPresence()
+        case .connections: scanAsThePageOpens()
+        case .moonlightHosts: scanMoonlightHosts()
         }
     }
 
@@ -32,6 +38,8 @@ package extension AppModel {
         case .diagnostics: diagnostics.stop()
         case let .inspector(slotId): leaveInspector(slotId: slotId)
         case .settings: break
+        case .connections: leftConnections()
+        case .moonlightHosts: leftMoonlightHosts()
         }
     }
 

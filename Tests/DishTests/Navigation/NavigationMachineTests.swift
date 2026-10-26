@@ -96,6 +96,18 @@ final class NavigationMachineTests: XCTestCase {
         XCTAssertEqual(pages.map(homeDestination), [.settings, .settings, .settings, .settings])
     }
 
+    func testMoonlightHostsIsPushedOntoConnectionsAndShownThereFromOutside() {
+        let onConnections = step(root, .select(.connections)).state
+        let pushedHosts = step(onConnections, .push(.moonlightHosts)).state
+        XCTAssertEqual(pushedHosts.destination, .connections)
+        XCTAssertEqual(pushedHosts.path, [.moonlightHosts])
+        XCTAssertEqual(homeDestination(of: .moonlightHosts), .connections)
+        let shown = step(root, .external(.showPage(.moonlightHosts)))
+        XCTAssertEqual(shown.state.destination, .connections, "a PIN minted elsewhere brings its page up")
+        XCTAssertEqual(shown.state.path, [.moonlightHosts])
+        XCTAssertEqual(shown.effects, [.activateWindow])
+    }
+
     func testAnAnswerWithNothingHeldChangesNothing() {
         XCTAssertEqual(step(pushed, .leaveGuard(.leave)), NavigationStep(state: pushed, effects: []))
         XCTAssertEqual(step(pushed, .leaveGuard(.stay)), NavigationStep(state: pushed, effects: []))

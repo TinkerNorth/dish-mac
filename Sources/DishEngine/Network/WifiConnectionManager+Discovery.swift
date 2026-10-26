@@ -23,10 +23,12 @@ extension WifiConnectionManager {
     }
 
     /// Who asked for a scan. Only the user's own scan says it heard nothing;
-    /// the one after a wake re-homes what it hears and stays quiet.
+    /// the one after a wake re-homes what it hears and stays quiet, and the
+    /// one a page runs as it opens lets its empty state speak instead.
     enum ScanTrigger {
         case user
         case wake
+        case pageOpened
     }
 
     /// Run the discovery paths and adopt what they heard. One scan at a time.
@@ -82,7 +84,7 @@ extension WifiConnectionManager {
         let summary = "broadcast=\(scan.broadcast.count) mdns=\(scan.mdns.count) merged=\(merged.count)"
             + " localNetworkDenied=\(scan.localNetworkDenied)"
         Self.discoveryLog.info("discovery scan: \(summary, privacy: .public)")
-        publishScan(merged)
+        publishScan(merged, localNetworkDenied: scan.localNetworkDenied)
         store.refreshFromDiscovery(merged)
         rehomeIdleConnections(to: merged)
         let userAsked = trigger == .user

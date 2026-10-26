@@ -19,12 +19,65 @@ extension L10n {
         catalog.text("Scanning…")
     }
 
-    var wifiServersSection: String {
-        catalog.text("WI-FI SERVERS")
+    var scanAgain: String {
+        catalog.text("Scan again")
     }
 
-    var pressScanHint: String {
-        catalog.text("Press Scan to look for servers on your LAN")
+    var lookingForSatellites: String {
+        catalog.text("Looking for satellites")
+    }
+
+    var scanningOverMdnsAndBroadcast: String {
+        catalog.text("Scanning your network over mDNS and UDP broadcast. Hosts appear here as they answer.")
+    }
+
+    var noSatellitesFound: String {
+        catalog.text("No satellites found")
+    }
+
+    var satelliteShowsUpHere: String {
+        catalog.text("A PC shows up here once the free Satellite app is running on it and both machines are on the same network.")
+    }
+
+    var getSatellite: String {
+        catalog.text("Get Satellite ↗")
+    }
+
+    var pairEllipsis: String {
+        catalog.text("Pair…")
+    }
+
+    var moonlightHosts: String {
+        catalog.text("Moonlight hosts")
+    }
+
+    var streamToASunshinePc: String {
+        catalog.text("Stream to a PC running Sunshine, Apollo or Wolf instead of a satellite.")
+    }
+
+    var nothingPairedYet: String {
+        catalog.text("Nothing paired yet")
+    }
+
+    var pairASatelliteAndDishSavesIt: String {
+        catalog.text("Pair a satellite and Dish saves it here for next time.")
+    }
+
+    var carrying: String {
+        catalog.text("Carrying")
+    }
+
+    var nothingBoundYet: String {
+        catalog.text("Nothing bound yet")
+    }
+
+    /// A manifest line: the pad, and the type the binding emulates it as.
+    func padAsType(_ pad: String, _ type: String) -> String {
+        catalog.format("%@ — as %@", pad, type)
+    }
+
+    func moreActionsFor(_ name: String) -> String {
+        catalog.format("More actions for %@", name)
     }
 
     var addByAddressPlaceholder: String {
@@ -59,8 +112,18 @@ extension L10n {
         catalog.text("Pairing…")
     }
 
-    func foundVia(_ source: String) -> String {
-        catalog.format("Found · %@", source)
+    // MARK: - Forget asks first
+
+    func forgetQuestion(_ name: String) -> String {
+        catalog.format("Forget %@?", name)
+    }
+
+    var pairingKeyIsDeleted: String {
+        catalog.text("Its pairing key is deleted — you’ll need the PIN again.")
+    }
+
+    func bindingsRideOnIt(_ count: Int) -> String {
+        catalog.format("%lld bindings ride on it and will be dropped:", count)
     }
 }
 

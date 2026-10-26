@@ -46,7 +46,6 @@ struct DishApp: App {
                 .environmentObject(model)
                 .environmentObject(navigation)
                 .environmentObject(model.wifi)
-                .environmentObject(model.moonlight)
                 .environmentObject(model.settings)
                 .environmentObject(model.theme)
                 .environmentObject(model.background)

@@ -169,18 +169,18 @@ final class ConnectionHub: ObservableObject {
                 : (discoveredIds.contains(id) ? .ready : .saved)
             }
             let bound = bindings.first { $0.value == id }?.key
-            let label = server.name.isEmpty ? server.ip : server.name
             out.append(ConnectionSummary(
                 id: id,
-                label: label,
-                detail: "\(server.ip) • UDP \(server.udpPort)",
+                name: server.name,
+                address: server.ip,
+                udpPort: server.udpPort,
                 live: live,
                 boundSlotId: bound,
                 latencyMs: conn?.latencyOneWayMs,
                 compat: conn?.protocolCompat ?? .unknown
             ))
         }
-        connections = (out + moonlightSummaries()).sorted { $0.label < $1.label }
+        connections = (out + moonlightSummaries()).sorted { $0.recordName < $1.recordName }
     }
 
     /// One row per Moonlight host in the pool or the records.

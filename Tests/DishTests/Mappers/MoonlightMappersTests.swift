@@ -7,7 +7,7 @@ import DishEngine
 import XCTest
 @testable import Dish
 
-/// The Moonlight words: the sheet's two sections, a host's trust, status,
+/// The Moonlight words: the page's rows, a host's trust, status,
 /// actions and controllers, the Emulate picker of a Moonlight pad, and what
 /// each of the hosts' events says.
 final class MoonlightMappersTests: XCTestCase {
@@ -17,8 +17,8 @@ final class MoonlightMappersTests: XCTestCase {
     private func summary(_ live: LinkState, bound: [String] = [], label: String = "PC") -> ConnectionSummary {
         ConnectionSummary(
             id: "moonlight:10.0.0.5",
-            label: label,
-            detail: "10.0.0.5 • Moonlight",
+            name: label,
+            address: "10.0.0.5",
             live: live,
             boundSlotId: bound.first,
             kind: .moonlight,
@@ -27,27 +27,32 @@ final class MoonlightMappersTests: XCTestCase {
     }
 
     private func satellite() -> ConnectionSummary {
-        ConnectionSummary(id: "mid:1", label: "Desk", detail: "", live: .ready, boundSlotId: nil)
+        ConnectionSummary(id: "mid:1", name: "Desk", live: .ready, boundSlotId: nil)
     }
 
-    func testTheSheetSplitsTheKindsAndListsDiscoveredHostsAfterTheKnown() {
+    func testThePageListsKnownHostsThenOnlyTheNewlyDiscovered() {
         let known = [satellite(), summary(.ready)]
-        XCTAssertEqual(satelliteSummaries(known).map(\.id), ["mid:1"])
         let other = MoonlightHost(name: "", address: "10.0.0.9")
         let rows = moonlightRows(known: known, discovered: [host, other])
         XCTAssertEqual(rows, [.known(summary(.ready)), .discovered(other)], "a discovered host the records know is not listed twice")
         XCTAssertEqual(rows.map(\.key), ["moonlight:10.0.0.5", "moonlight:10.0.0.9"])
         XCTAssertEqual(moonlightHostTitle(other), "10.0.0.9", "a host with no name is shown by its address")
-        XCTAssertEqual(moonlightHostDetail(host), "10.0.0.5 • Moonlight")
-        XCTAssertEqual(moonlightDiscoveredStatusText(), "Found · Moonlight host")
     }
 
-    func testTheTrustWordTheControllerCountAndTheChipColour() {
-        XCTAssertEqual(moonlightTrustText(summary(.ready)), "Paired")
-        XCTAssertEqual(moonlightTrustText(summary(.saved)), "Paired", "the records hold a pairing, proved or not")
-        XCTAssertEqual(moonlightTrustText(summary(.stale)), "Not paired")
-        XCTAssertEqual(moonlightTrustColor(summary(.stale)), DishTheme.muted)
-        XCTAssertEqual(moonlightTrustColor(summary(.connected)), DishTheme.success)
+    func testTheTrustWordIsPairedRememberedOrNotPaired() {
+        XCTAssertEqual(moonlightTrustText(.ready), "Paired")
+        XCTAssertEqual(moonlightTrustText(.connected), "Paired")
+        XCTAssertEqual(moonlightTrustText(.connecting), "Paired")
+        XCTAssertEqual(moonlightTrustText(.unstable), "Paired")
+        XCTAssertEqual(moonlightTrustText(.saved), "Remembered", "paired and out of sight")
+        XCTAssertEqual(moonlightTrustText(.stale), "Not paired")
+        XCTAssertEqual(moonlightTrustText(.found), "Not paired")
+        XCTAssertEqual(moonlightTrustColor(.ready), DishTheme.success)
+        XCTAssertEqual(moonlightTrustColor(.saved), DishTheme.muted, "a host switched off is not a fault")
+        XCTAssertEqual(moonlightTrustColor(.stale), DishTheme.muted)
+    }
+
+    func testTheControllerCountAppearsOnceAPadIsBound() {
         XCTAssertNil(moonlightControllersText(summary(.ready)))
         XCTAssertEqual(moonlightControllersText(summary(.ready, bound: ["a"])), "1 controller")
         XCTAssertEqual(moonlightControllersText(summary(.connected, bound: ["a", "b", "c"])), "3 controllers")

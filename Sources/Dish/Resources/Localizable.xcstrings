@@ -631,6 +631,41 @@
         }
       }
     },
+    "%@ — as %@" : {
+      "comment" : "Connections: a manifest line, the pad and the controller type the binding sends it as.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — kao %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — als %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — como %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — comme %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ — como %@"
+          }
+        }
+      }
+    },
     "%@: %@ → %@" : {
       "comment" : "Event line: a link, the state before, the state after.",
       "localizations" : {
@@ -988,6 +1023,125 @@
                 "stringUnit" : {
                   "state" : "translated",
                   "value" : "%lld conexões ativas"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "%lld bindings ride on it and will be dropped:" : {
+      "comment" : "The Forget confirmation: how many bindings go, before the list of their pads.",
+      "localizations" : {
+        "bs" : {
+          "variations" : {
+            "plural" : {
+              "few" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld povezivanja se oslanjaju na njega i bit će uklonjena:"
+                }
+              },
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld povezivanje se oslanja na njega i bit će uklonjeno:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld povezivanja se oslanja na njega i bit će uklonjeno:"
+                }
+              }
+            }
+          }
+        },
+        "de" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Zuordnung hängt daran und wird entfernt:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld Zuordnungen hängen daran und werden entfernt:"
+                }
+              }
+            }
+          }
+        },
+        "en" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld binding rides on it and will be dropped:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld bindings ride on it and will be dropped:"
+                }
+              }
+            }
+          }
+        },
+        "es" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld vínculo depende de esta conexión y se perderá:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld vínculos dependen de esta conexión y se perderán:"
+                }
+              }
+            }
+          }
+        },
+        "fr" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld liaison en dépend et sera supprimée :"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld liaisons en dépendent et seront supprimées :"
+                }
+              }
+            }
+          }
+        },
+        "pt-BR" : {
+          "variations" : {
+            "plural" : {
+              "one" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld vínculo depende dele e será removido:"
+                }
+              },
+              "other" : {
+                "stringUnit" : {
+                  "state" : "translated",
+                  "value" : "%lld vínculos dependem dele e serão removidos:"
                 }
               }
             }
@@ -1720,6 +1874,76 @@
         }
       }
     },
+    "A PC appears here once Sunshine, Apollo or Wolf is running on it and both machines are on the same network." : {
+      "comment" : "Moonlight hosts: the empty list's line after a sweep; its Add by address… button says the rest.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PC se pojavi ovdje čim na njemu radi Sunshine, Apollo ili Wolf i obje mašine su na istoj mreži."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein PC erscheint hier, sobald Sunshine, Apollo oder Wolf darauf läuft und beide Rechner im selben Netzwerk sind."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un PC aparece aquí en cuanto ejecuta Sunshine, Apollo o Wolf y ambas máquinas están en la misma red."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un PC apparaît ici dès que Sunshine, Apollo ou Wolf y tourne et que les deux machines sont sur le même réseau."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um PC aparece aqui assim que o Sunshine, o Apollo ou o Wolf estiver rodando nele e as duas máquinas estiverem na mesma rede."
+          }
+        }
+      }
+    },
+    "A PC shows up here once the free Satellite app is running on it and both machines are on the same network." : {
+      "comment" : "Connections: the empty FOUND list's line after a sweep.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "PC se pojavljuje ovdje kada na njemu radi besplatna aplikacija Satellite i kada su oba PC-a na istoj mreži."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ein PC erscheint hier, sobald die kostenlose Satellite-App darauf läuft und beide Rechner im selben Netzwerk sind."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un PC aparece aquí en cuanto la app gratuita Satellite se ejecuta en él y ambas máquinas están en la misma red."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Un PC apparaît ici dès que l'app gratuite Satellite y est lancée et que les deux machines sont sur le même réseau."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Um PC aparece aqui assim que o app Satellite gratuito estiver rodando nele e as duas máquinas estiverem na mesma rede."
+          }
+        }
+      }
+    },
     "A Satellite link: our own wire, one hop, every feature." : {
       "comment" : "Link tier tooltip.",
       "localizations" : {
@@ -2035,6 +2259,41 @@
         }
       }
     },
+    "Add a host by address" : {
+      "comment" : "Moonlight hosts: the inline add form's heading.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj host po adresi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Host per Adresse hinzufügen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir un host por dirección"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter un hôte par adresse"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar um host por endereço"
+          }
+        }
+      }
+    },
     "Add by IP — e.g. 192.168.1.50 or 192.168.1.50:9876" : {
       "comment" : "Placeholder of the manual-address field.",
       "localizations" : {
@@ -2066,6 +2325,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Adicionar por IP — ex.: 192.168.1.50 ou 192.168.1.50:9876"
+          }
+        }
+      }
+    },
+    "Add by address…" : {
+      "comment" : "Moonlight hosts: opens the inline form that adds a host by its address.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodaj po adresi…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Per Adresse hinzufügen…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Añadir por dirección…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter par adresse…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adicionar por endereço…"
           }
         }
       }
@@ -3326,6 +3620,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cartão, PayPal, crédito do GitHub"
+          }
+        }
+      }
+    },
+    "Carrying" : {
+      "comment" : "Connections: the eyebrow over a paired host's read-only list of the pads bound to it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prenosi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Überträgt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmite"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmet"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmitindo"
           }
         }
       }
@@ -5605,6 +5934,41 @@
         }
       }
     },
+    "Enter the host IP address or hostname. Dish uses the standard Moonlight ports." : {
+      "comment" : "Moonlight hosts: the inline add form's line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Unesite IP adresu ili ime hosta. Dish koristi standardne Moonlight portove."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gib die IP-Adresse oder den Hostnamen ein. Dish verwendet die Standard-Moonlight-Ports."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Introduce la dirección IP o el nombre del host. Dish usa los puertos estándar de Moonlight."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Saisissez l'adresse IP ou le nom de l'hôte. Dish utilise les ports Moonlight standard."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Digite o endereço IP ou o nome do host. O Dish usa as portas padrão do Moonlight."
+          }
+        }
+      }
+    },
     "Enter the host address" : {
       "comment" : "Connections page: an empty Moonlight address was submitted.",
       "localizations" : {
@@ -6095,6 +6459,41 @@
         }
       }
     },
+    "Forget %@?" : {
+      "comment" : "The Forget confirmation's title; %@ is the satellite or the Moonlight host.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zaboraviti %@?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ entfernen?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Olvidar %@?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Oublier %@ ?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esquecer %@?"
+          }
+        }
+      }
+    },
     "Forward gyroscope and accelerometer to the host — used for motion aiming in games that support it." : {
       "comment" : "Settings toggle detail.",
       "localizations" : {
@@ -6270,41 +6669,6 @@
         }
       }
     },
-    "Found · %@" : {
-      "comment" : "Status chip of a discovered, unpaired server; the argument is the discovery path.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pronađen · %@"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Gefunden · %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Encontrado · %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Trouvé · %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Encontrado · %@"
-          }
-        }
-      }
-    },
     "GFE version" : {
       "comment" : "A Moonlight host card line key: the GameStream version the host reports.",
       "localizations" : {
@@ -6441,6 +6805,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Controle • %@"
+          }
+        }
+      }
+    },
+    "Get Satellite ↗" : {
+      "comment" : "Connections: opens the Satellite download page in the browser.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preuzmi Satellite ↗"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Satellite holen ↗"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obtener Satellite ↗"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obtenir Satellite ↗"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obter o Satellite ↗"
+          }
+        }
+      }
+    },
+    "Get Sunshine ↗" : {
+      "comment" : "Moonlight hosts: opens the Sunshine project page in the browser.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preuzmi Sunshine ↗"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sunshine holen ↗"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obtener Sunshine ↗"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obtenir Sunshine ↗"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Obter o Sunshine ↗"
           }
         }
       }
@@ -6966,6 +7400,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inspecionar entrada"
+          }
+        }
+      }
+    },
+    "Its pairing key is deleted — you’ll need the PIN again." : {
+      "comment" : "The Forget confirmation's line for a satellite.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Njegov ključ uparivanja se briše — ponovo će vam trebati PIN."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Kopplungsschlüssel wird gelöscht — du brauchst die PIN erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se borra su clave de emparejamiento — necesitarás el PIN otra vez."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sa clé d'appairage est supprimée — vous aurez de nouveau besoin du PIN."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A chave de pareamento dele é apagada — você vai precisar do PIN de novo."
           }
         }
       }
@@ -7600,37 +8069,72 @@
         }
       }
     },
-    "MOONLIGHT HOSTS" : {
-      "comment" : "Connections page: the Moonlight section's header.",
+    "Looking for Moonlight hosts" : {
+      "comment" : "Moonlight hosts: the list's title while the sweep runs and nothing has answered.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MOONLIGHT HOSTOVI"
+            "value" : "Traženje Moonlight hostova"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "MOONLIGHT-HOSTS"
+            "value" : "Suche nach Moonlight-Hosts"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HOSTS MOONLIGHT"
+            "value" : "Buscando hosts de Moonlight"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HÔTES MOONLIGHT"
+            "value" : "Recherche d'hôtes Moonlight"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "HOSTS MOONLIGHT"
+            "value" : "Procurando hosts Moonlight"
+          }
+        }
+      }
+    },
+    "Looking for satellites" : {
+      "comment" : "Connections: the FOUND list's title while the sweep runs and nothing has answered.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Traženje satelita"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suche nach Satelliten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando satélites"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche de satellites"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Procurando satélites"
           }
         }
       }
@@ -7950,37 +8454,107 @@
         }
       }
     },
-    "Moonlight host" : {
-      "comment" : "Connections page: what a discovered Moonlight host was found as.",
+    "Moonlight host (Sunshine, Apollo or Wolf)" : {
+      "comment" : "Moonlight hosts: the kind of host a row is, in words.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moonlight host"
+            "value" : "Moonlight host (Sunshine, Apollo ili Wolf)"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moonlight-Host"
+            "value" : "Moonlight-Host (Sunshine, Apollo oder Wolf)"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Host Moonlight"
+            "value" : "Host de Moonlight (Sunshine, Apollo o Wolf)"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hôte Moonlight"
+            "value" : "Hôte Moonlight (Sunshine, Apollo ou Wolf)"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Host Moonlight"
+            "value" : "Host Moonlight (Sunshine, Apollo ou Wolf)"
+          }
+        }
+      }
+    },
+    "Moonlight hosts" : {
+      "comment" : "Connections: the row that opens the Moonlight hosts page, and that page's title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moonlight hostovi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moonlight-Hosts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hosts de Moonlight"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hôtes Moonlight"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hosts Moonlight"
+          }
+        }
+      }
+    },
+    "More actions for %@" : {
+      "comment" : "Connections: the accessible name of a host's ⋯ menu; %@ is the host.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Više radnji za %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Weitere Aktionen für %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Más acciones para %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus d'actions pour %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mais ações para %@"
           }
         }
       }
@@ -8580,37 +9154,37 @@
         }
       }
     },
-    "No Moonlight hosts yet. Scan your network or add one by address." : {
-      "comment" : "Connections page: the Moonlight section with nothing in it.",
+    "No Moonlight hosts found" : {
+      "comment" : "Moonlight hosts: the list's title once a sweep heard nothing.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Još nema Moonlight hostova. Skenirajte mrežu ili dodajte adresu."
+            "value" : "Nema pronađenih Moonlight hostova"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Noch keine Moonlight-Hosts. Netzwerk scannen oder per Adresse hinzufügen."
+            "value" : "Keine Moonlight-Hosts gefunden"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aún no hay hosts Moonlight. Busca en tu red o añade uno por dirección."
+            "value" : "No se encontró ningún host de Moonlight"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aucun hôte Moonlight. Scannez le réseau ou ajoutez-en un par adresse."
+            "value" : "Aucun hôte Moonlight trouvé"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nenhum host Moonlight ainda. Busque na rede ou adicione por endereço."
+            "value" : "Nenhum host Moonlight encontrado"
           }
         }
       }
@@ -9035,6 +9609,41 @@
         }
       }
     },
+    "No satellites found" : {
+      "comment" : "Connections: the FOUND list's title once a sweep heard nothing.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema pronađenih satelita"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Satelliten gefunden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se encontraron satélites"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun satellite trouvé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum satélite encontrado"
+          }
+        }
+      }
+    },
     "No satellites yet. Pair one on the Connections page and its session shows here." : {
       "comment" : "Diagnostics empty hosts note.",
       "localizations" : {
@@ -9416,6 +10025,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ainda não pareado"
+          }
+        }
+      }
+    },
+    "Nothing bound yet" : {
+      "comment" : "Connections: a paired host's manifest while no pad is bound to it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još ništa nije povezano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts verknüpft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay nada enlazado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune liaison pour l'instant"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada vinculado ainda"
+          }
+        }
+      }
+    },
+    "Nothing paired yet" : {
+      "comment" : "Connections: the PAIRED list's title while it is empty.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još ništa nije upareno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nichts gekoppelt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aún no hay nada emparejado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun appairage pour l'instant"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada pareado ainda"
           }
         }
       }
@@ -9875,6 +10554,41 @@
         }
       }
     },
+    "Pair a satellite and Dish saves it here for next time." : {
+      "comment" : "Connections: the empty PAIRED list's line.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uparite satelit i Dish ga čuva ovdje za sljedeći put."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppele einen Satelliten und Dish merkt ihn sich hier fürs nächste Mal."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Empareja un satélite y Dish lo guarda aquí para la próxima vez."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairez un satellite et Dish le mémorise ici pour la prochaine fois."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pareie um satélite e o Dish o salva aqui para a próxima vez."
+          }
+        }
+      }
+    },
     "Pair now" : {
       "comment" : "Row action: pair with a Moonlight host for the first time.",
       "localizations" : {
@@ -10116,6 +10830,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pareando…"
+          }
+        }
+      }
+    },
+    "Pair…" : {
+      "comment" : "Connections: a found or revoked satellite's button that opens its pairing card.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Upari…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Koppeln…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Emparejar…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Appairer…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parear…"
           }
         }
       }
@@ -10431,41 +11180,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conecte um e escolha para onde ele vai"
-          }
-        }
-      }
-    },
-    "Press Scan to look for servers on your LAN" : {
-      "comment" : "Connections page empty-state hint. Mac-specific copy.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press Scan to look for servers on your LAN"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press Scan to look for servers on your LAN"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press Scan to look for servers on your LAN"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press Scan to look for servers on your LAN"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Press Scan to look for servers on your LAN"
           }
         }
       }
@@ -11030,6 +11744,41 @@
         }
       }
     },
+    "Remembered" : {
+      "comment" : "Moonlight hosts: the trust chip of a paired host that is out of sight.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapamćen"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemerkt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recordado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mémorisé"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lembrado"
+          }
+        }
+      }
+    },
     "Report copied." : {
       "comment" : "Confirmation after the copy.",
       "localizations" : {
@@ -11551,6 +12300,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Buscar"
+          }
+        }
+      }
+    },
+    "Scan again" : {
+      "comment" : "Connections: the empty FOUND list's button that sweeps the network again.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skeniraj ponovo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erneut suchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar de nuevo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relancer la recherche"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar de novo"
+          }
+        }
+      }
+    },
+    "Scanning your network for hosts advertising GameStream. They appear here as they answer." : {
+      "comment" : "Moonlight hosts: the list's line while the sweep runs.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skeniranje vaše mreže za hostove koji oglašavaju GameStream. Pojavljuju se ovdje čim odgovore."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Netzwerk wird nach Hosts durchsucht, die GameStream anbieten. Sie erscheinen hier, sobald sie antworten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando en tu red hosts que anuncian GameStream. Aparecen aquí en cuanto responden."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche sur votre réseau des hôtes annonçant GameStream. Ils apparaissent ici dès qu'ils répondent."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando na sua rede hosts que anunciam GameStream. Eles aparecem aqui assim que respondem."
+          }
+        }
+      }
+    },
+    "Scanning your network over mDNS and UDP broadcast. Hosts appear here as they answer." : {
+      "comment" : "Connections: the FOUND list's line while the sweep runs.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Skeniranje vaše mreže preko mDNS-a i UDP emitovanja. Hostovi se pojavljuju ovdje kako odgovaraju."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dein Netzwerk wird über mDNS und UDP-Broadcast durchsucht. Hosts erscheinen hier, sobald sie antworten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando en tu red por mDNS y difusión UDP. Los hosts aparecen aquí a medida que responden."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Analyse de votre réseau via mDNS et diffusion UDP. Les hôtes apparaissent ici dès qu'ils répondent."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscando na sua rede por mDNS e transmissão UDP. Os hosts aparecem aqui conforme respondem."
           }
         }
       }
@@ -12146,6 +13000,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Parar"
+          }
+        }
+      }
+    },
+    "Stream to a PC running Sunshine, Apollo or Wolf instead of a satellite." : {
+      "comment" : "Connections: the line under the Moonlight hosts row.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Strimujte na PC s pokrenutim Sunshineom, Apollom ili Wolfom umjesto na satelit."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Streame auf einen PC mit Sunshine, Apollo oder Wolf statt auf einen Satelliten."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmite a un PC con Sunshine, Apollo o Wolf en lugar de a un satélite."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diffusez vers un PC équipé de Sunshine, Apollo ou Wolf plutôt que vers un satellite."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Transmita para um PC com Sunshine, Apollo ou Wolf em vez de um satélite."
           }
         }
       }
@@ -14211,41 +15100,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Controles virtuais"
-          }
-        }
-      }
-    },
-    "WI-FI SERVERS" : {
-      "comment" : "Section header on the Connections page. Mac-specific surface (Android uses SATELLITES); marked new for localization.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "WI-FI SERVERS"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "WI-FI SERVERS"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "WI-FI SERVERS"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "WI-FI SERVERS"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "WI-FI SERVERS"
           }
         }
       }

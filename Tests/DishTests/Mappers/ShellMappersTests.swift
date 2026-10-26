@@ -47,6 +47,7 @@ final class ShellMappersTests: XCTestCase {
         )
         XCTAssertEqual(pageTitle(NavigationState(destination: .settings, path: [.crashReport])), "Crash report")
         XCTAssertEqual(pageTitle(NavigationState(destination: .settings, path: [.licenses])), "Open source licenses")
+        XCTAssertEqual(pageTitle(NavigationState(destination: .connections, path: [.moonlightHosts])), "Moonlight hosts")
     }
 
     func testTheBackChevronShowsOnlyOverAPushedPage() {
@@ -83,7 +84,7 @@ final class ShellMappersTests: XCTestCase {
     }
 
     func testTheStatusLineIsTheDashboardsUnlessThePageHasItsOwn() {
-        let live = ConnectionSummary(id: "a", label: "Den", detail: "", live: .connected, boundSlotId: nil)
+        let live = ConnectionSummary(id: "a", name: "Den", live: .connected, boundSlotId: nil)
         XCTAssertEqual(
             shellSubline(NavigationState(), connections: [live]),
             .status(headline: "Den", summary: "1 of 1 online", accent: DishTheme.success)
@@ -106,6 +107,9 @@ final class ShellMappersTests: XCTestCase {
         )
         if case .note = shellSubline(NavigationState(destination: .support, path: [.diagnostics]), connections: []) {
             XCTFail("a page pushed over Support Dish carries the dashboard's line")
+        }
+        if case .note = shellSubline(NavigationState(destination: .connections, path: [.moonlightHosts]), connections: []) {
+            XCTFail("Moonlight hosts carries the dashboard's line")
         }
     }
 }

@@ -25,9 +25,14 @@ protocol-1 satellite; see [Protocol](#protocol).
   and whichever lands first pairs. Dish remembers the satellite by its stable
   identity so a DHCP change keeps it paired.
 - Keeps several satellites paired at once and binds each controller slot to
-  one of them.
+  one of them. The Connections page scans as it opens and lists what it
+  found, with Pair… on each row, above a card per paired satellite that
+  shows its address, latency, link chips and the pads it carries, with
+  Disconnect, Pair… or Connect and a Forget that asks first and names the
+  bindings it drops; a typed address reaches a satellite discovery misses.
 - Finds Moonlight hosts (Sunshine, Apollo, Wolf) over mDNS (`_nvstream._tcp`)
-  or by a typed address, pairs with the PIN the host asks for, and streams
+  or by a typed address on their own page, pairs with the PIN the dish shows
+  inside the host's row for you to type into the host, and streams
   controller input into the host's own game-streaming session: up to four
   controllers on one host, each plugged in as the Xbox, PlayStation or
   Nintendo pad you pick or the one that fits it, with rumble and the light

@@ -8,7 +8,7 @@ import XCTest
 final class SlotMappersTests: XCTestCase {
 
     private func server(_ live: LinkState, boundTo slotId: String? = nil) -> ConnectionSummary {
-        ConnectionSummary(id: "c-\(live)", label: "Desk", detail: "", live: live, boundSlotId: slotId)
+        ConnectionSummary(id: "c-\(live)", name: "Desk", live: live, boundSlotId: slotId)
     }
 
     private let slot = ControllerSlot(id: "pad", name: "DualSense")
@@ -23,8 +23,7 @@ final class SlotMappersTests: XCTestCase {
     func testAMoonlightHostStaysBindableUntilItCarriesFourPads() {
         let three = ConnectionSummary(
             id: "moonlight:a",
-            label: "PC",
-            detail: "",
+            name: "PC",
             live: .ready,
             boundSlotId: "x",
             kind: .moonlight,
@@ -32,8 +31,7 @@ final class SlotMappersTests: XCTestCase {
         )
         let four = ConnectionSummary(
             id: "moonlight:b",
-            label: "PC",
-            detail: "",
+            name: "PC",
             live: .ready,
             boundSlotId: "x",
             kind: .moonlight,
@@ -41,8 +39,7 @@ final class SlotMappersTests: XCTestCase {
         )
         let mine = ConnectionSummary(
             id: "moonlight:c",
-            label: "PC",
-            detail: "",
+            name: "PC",
             live: .ready,
             boundSlotId: "x",
             kind: .moonlight,

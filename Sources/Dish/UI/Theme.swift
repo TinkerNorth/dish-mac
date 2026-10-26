@@ -105,8 +105,6 @@ enum DishSpace {
 
 /// The type scale. Every font a view sets is one of these names.
 enum DishFont {
-    /// The PIN a Moonlight host waits for.
-    static let windowTitle = Font.system(size: 18, weight: .semibold)
     /// The shell header's page title.
     static let pageTitle = Font.system(size: 20, weight: .bold)
     /// The Support page's headline.
@@ -115,8 +113,6 @@ enum DishFont {
     static let railLabel = Font.system(size: 13)
     /// The rail item of the destination on screen.
     static let railLabelActive = Font.system(size: 13, weight: .semibold)
-    /// The Moonlight PIN sheet's headline.
-    static let sheetTitle = Font.system(size: 16, weight: .semibold)
     /// A row's name or a toggle's title.
     static let body = Font.system(size: 14, weight: .medium)
     /// An icon-only button's glyph.

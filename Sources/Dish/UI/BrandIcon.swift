@@ -21,9 +21,9 @@ enum BrandIconKind {
     case pad
 }
 
-/// Lifecycle state for a connection row. The label vocabulary mirrors
-/// `LinkState` in [ConnectionsView.statusText]; the glyph for each state is
-/// chosen by [BrandIcon.body] below.
+/// Lifecycle state for a connection row, from its `LinkState` by
+/// `brandIconState(for:)`; the glyph for each state is chosen by
+/// [BrandIcon.body] below.
 enum BrandIconState {
     case `default`
     case connected

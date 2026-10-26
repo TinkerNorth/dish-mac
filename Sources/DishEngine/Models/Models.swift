@@ -209,10 +209,16 @@ struct PairResponse: Codable {
 /// `SessionState.stale`, the death→silent-retry backoff window (gap G15).
 package enum LinkState { case found, stale, saved, ready, connecting, connected, unstable }
 
+/// A connection as data: who it is, where it lives, and how its link stands.
+/// The words a row shows (its title and its address line) are the app's.
 package struct ConnectionSummary: Identifiable, Hashable {
     package let id: String
-    package let label: String
-    package let detail: String
+    /// The advertised name; empty when the beacon or the host carried none.
+    package let name: String
+    /// The IPv4 address or host name it is reached at.
+    package let address: String
+    /// A satellite's UDP port; nil for a Moonlight host.
+    package let udpPort: Int?
     package let live: LinkState
     package let boundSlotId: String?
     /// One-way latency readout (median heartbeat RTT ÷ 2, rounded to
@@ -229,8 +235,9 @@ package struct ConnectionSummary: Identifiable, Hashable {
 
     package init(
         id: String,
-        label: String,
-        detail: String,
+        name: String,
+        address: String = "",
+        udpPort: Int? = nil,
         live: LinkState,
         boundSlotId: String?,
         latencyMs: Double? = nil,
@@ -239,8 +246,9 @@ package struct ConnectionSummary: Identifiable, Hashable {
         boundSlotIds: [String] = []
     ) {
         self.id = id
-        self.label = label
-        self.detail = detail
+        self.name = name
+        self.address = address
+        self.udpPort = udpPort
         self.live = live
         self.boundSlotId = boundSlotId
         self.latencyMs = latencyMs

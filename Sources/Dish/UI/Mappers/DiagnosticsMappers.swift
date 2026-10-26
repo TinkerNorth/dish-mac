@@ -29,7 +29,7 @@ func hostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n =
 
 func satelliteHostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> [FactLine] {
     let facts = host.facts
-    let opening = [FactLine(key: words.address, value: host.summary.detail)]
+    let opening = [FactLine(key: words.address, value: connectionAddressLine(host.summary))]
         + (facts.compat == .unknown && !facts.live ? [] : [FactLine(key: words.protocolKey, value: protocolText(facts, words: words))])
     guard facts.live else { return opening + [FactLine(key: words.session, value: words.noSessionRightNow)] }
     return opening + [
@@ -118,7 +118,7 @@ func roundTripText(_ latency: LatencySummary, locale: Locale = .current, words: 
 func moonlightHostLines(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> [FactLine] {
     let facts = host.moonlight ?? .resting(info: nil)
     var lines = [
-        FactLine(key: words.address, value: host.summary.detail),
+        FactLine(key: words.address, value: connectionAddressLine(host.summary)),
         FactLine(key: words.session, value: moonlightPhaseText(facts.phase, summary: host.summary, words: words))
     ]
     if let info = facts.info {
@@ -227,7 +227,7 @@ func micLampText(_ state: MicLedState?, words: L10n = .app) -> String {
 /// host said back.
 func bindingLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
     guard let bound = pad.slot.boundStatus else { return [FactLine(key: words.binding, value: words.notBound)] }
-    let binding = FactLine(key: words.binding, value: "\(bound.label) · \(words.satellite)")
+    let binding = FactLine(key: words.binding, value: "\(connectionTitle(bound)) · \(words.satellite)")
     guard let wire = pad.wire else { return [binding, FactLine(key: words.onTheWire, value: words.notDeclaredToTheHostYet)] }
     return [
         binding,

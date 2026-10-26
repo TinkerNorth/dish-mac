@@ -14,7 +14,7 @@ final class MoonlightDiagnosticsMappersTests: XCTestCase {
     private let hostId = "moonlight:10.0.0.5"
 
     private func summary(_ live: LinkState = .connected) -> ConnectionSummary {
-        ConnectionSummary(id: hostId, label: "PC", detail: "10.0.0.5 • Moonlight", live: live, boundSlotId: nil, kind: .moonlight)
+        ConnectionSummary(id: hostId, name: "PC", address: "10.0.0.5", live: live, boundSlotId: nil, kind: .moonlight)
     }
 
     private func serverInfo(hostname: String, currentGame: Int, versions: String = "") throws -> MoonlightServerInfo {

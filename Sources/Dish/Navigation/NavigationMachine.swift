@@ -18,12 +18,14 @@ enum Page: Hashable {
     case inspector(slotId: String)
     case crashReport
     case licenses
+    case moonlightHosts
 }
 
 /// Where a page lives when something outside the window asks for it.
 func homeDestination(of page: Page) -> Destination {
     switch page {
     case .diagnostics, .inspector, .crashReport, .licenses: .settings
+    case .moonlightHosts: .connections
     }
 }
 

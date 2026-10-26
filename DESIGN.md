@@ -42,7 +42,7 @@ Fills derived from the palette, named so no view multiplies an alpha itself
 | Token | Dark | Light | Role |
 |---|---|---|---|
 | `DishTheme.pressedFill` | accent @ 12 % | accent @ 12 % | A pressed outlined button |
-| `DishTheme.chipFill` | accent @ 14 % | accent @ 14 % | A capability chip whose feature is on |
+| `DishTheme.chipFill` | accent @ 14 % | accent @ 14 % | A capability chip whose feature is on; every `StateChip` |
 | `DishTheme.errorFill` | error @ 12 % | error @ 12 % | The inline error strip |
 | `DishTheme.spinnerTrack` | accent @ 25 % | accent @ 25 % | The spinner's resting ring |
 | `DishTheme.barTrack` | accent @ 22 % | accent @ 22 % | The indeterminate bar's track |
@@ -73,9 +73,7 @@ The brand glyphs (`BrandIcon`) use the brand book's colours, not the accent:
 |---|---|---|
 | `DishFont.pinDigit` | 22 semibold monospaced | A PIN cell's digit on the pairing card |
 | `DishFont.pageTitle` | 20 bold | The shell header's page title |
-| `DishFont.windowTitle` | 18 semibold | The PIN a Moonlight host waits for |
 | `DishFont.title` | 17 semibold | The Support page's headline, a notice's first heading |
-| `DishFont.sheetTitle` | 16 semibold | The Moonlight PIN sheet's headline |
 | `DishFont.body` | 14 medium | A row's name, a toggle's title |
 | `DishFont.icon` | 14 | An icon-only button's glyph |
 | `DishFont.toastGlyph` | 14 semibold | A toast's leading glyph |
@@ -138,7 +136,8 @@ Also in `Theme.swift`:
 The shell's own pieces live in `Sources/Dish/UI/Kit` and follow the kit
 rules in [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md): `ShellHeader` (with
 `StreamingPill` and `MicChip`), `RailItem`, `EmptyStateCard`,
-`TwoColumnLayout`, `PairingCard` and `PinCells`.
+`TwoColumnLayout`, `PairingCard`, `PinCells`, `ScanHeader` and `StateChip`
+(a word on the chip tint, coloured by its state's token).
 
 Words are not design values but follow the same rule: a view reads them from
 `L10n` ([Sources/Dish/L10n](Sources/Dish/L10n)), never from a

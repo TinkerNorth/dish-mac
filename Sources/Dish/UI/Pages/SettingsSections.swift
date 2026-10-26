@@ -170,11 +170,15 @@ struct AboutSection: View {
     }
 }
 
-/// The places Settings and Support Dish link to.
+/// The places Settings, Support Dish and the Connections pages link to.
 enum DishLinks {
     static let help = "https://dish.tinkernorth.com"
     static let privacy = "https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md"
     static let sponsors = "https://github.com/sponsors/TinkerNorth"
     static let koFi = "https://ko-fi.com/tinkernorth"
     static let buyMeACoffee = "https://buymeacoffee.com/tinkernorth"
+    /// The free Satellite host app, as the desktops' wizard and Connections page offer it.
+    static let satellite = "https://dish.tinkernorth.com/downloads/satellite"
+    /// A Moonlight host for a user without one.
+    static let sunshine = "https://github.com/LizardByte/Sunshine"
 }

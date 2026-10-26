@@ -33,8 +33,8 @@ the repos share a version number.
   whichever lands first opens the session and stops the other. A refused
   PIN is explained on the card, and from the third refusal on it adds that
   the code changes when the satellite's screen is refreshed. A row that
-  needs pairing gets a Pair button. Cancel, or closing the Connections
-  sheet, stops the request.
+  needs pairing gets a Pair button. Cancel, or leaving the Connections
+  page, stops the request.
 - **Guide reaches the host.** A pad's Home button now presses the XUSB Guide
   button (`0x0400`) on a satellite and on a Moonlight host. XUSB has no Share
   button and no paddles, so those stay unmapped, as on the other clients.
@@ -52,8 +52,32 @@ the repos share a version number.
   display and power are connected: macOS has no API that keeps a lidded Mac
   awake.
 
+- **Moonlight hosts get their own page.** A "Moonlight hosts ›" row on
+  Connections opens it. Each host says its trust in words (Paired,
+  Remembered, Not paired), how many controllers it carries and its tier,
+  the app its session starts, and the way out of where its session stands,
+  with Forget behind ⋯. A host mDNS misses is added in an inline "Add a host
+  by address" form, and the PIN a host asks for shows as a card inside that
+  host's row ("Type 0451 into the Moonlight or Sunshine page on PC.", with
+  Cancel and New code) instead of a sheet.
+- **Forgetting asks first.** Forget on a satellite or a Moonlight host asks
+  "Forget Den?", says the pairing key goes (a Moonlight host also keeps its
+  own record of this device until it is removed there), and names every
+  binding it drops.
+
 ### Changed
 
+- **Connections is the desktops' page.** It scans as it opens, quietly: an
+  empty network is said by the page ("No satellites found", with the
+  local-network refusal when macOS is the reason, Get Satellite ↗ and Scan
+  again), and only the Scan button's sweep still says "No servers found" as
+  a toast. FOUND lists what the sweep heard with a Pair… button whose
+  pairing card opens under the row. PAIRED holds a card per remembered
+  satellite: its name, `ip • UDP port`, latency, the tier, protocol and link
+  chips, what it carries ("DualSense — as DS4"), Disconnect, Pair… or
+  Connect by the link's state, and Forget behind ⋯. The add-by-address field
+  stays at the foot. The engine now vends a connection's name, address and
+  port as data, and the app words them.
 - **One window with a rail and pages replaces the sheets.** The window is
   the desktops' shell: a rail (Home, Controllers, Connections; Support Dish
   and Settings at the foot, with a dot on Settings while an update waits,

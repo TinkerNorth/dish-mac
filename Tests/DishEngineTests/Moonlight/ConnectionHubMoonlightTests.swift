@@ -58,7 +58,7 @@ final class ConnectionHubMoonlightTests: XCTestCase {
         XCTAssertEqual(hub.connections.map(\.id), [host.id])
         XCTAssertEqual(hub.connections.first?.kind, .moonlight)
         XCTAssertEqual(hub.connections.first?.live, .stale, "no pairing: Needs pairing")
-        XCTAssertEqual(hub.connections.first?.label, "PC")
+        XCTAssertEqual(hub.connections.first?.name, "PC")
         remember(paired: true)
         XCTAssertEqual(hub.connections.first?.live, .saved, "paired and out of sight")
         moonlight.mergeDiscovered(host)
@@ -66,7 +66,7 @@ final class ConnectionHubMoonlightTests: XCTestCase {
         let sat = satellite("10")
         store.remember(sat)
         wifi.register(WifiConnection(id: sat.id, server: sat, tickIntervalNs: .max))
-        XCTAssertEqual(hub.connections.map(\.label), ["PC", "Sat-10"], "both kinds, name-sorted")
+        XCTAssertEqual(hub.connections.map(\.name), ["PC", "Sat-10"], "both kinds, name-sorted")
     }
 
     func testFourSlotsBindToOneHostWithoutEvictionAndTheRowNamesThemAll() {

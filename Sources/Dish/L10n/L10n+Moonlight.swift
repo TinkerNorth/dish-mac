@@ -5,14 +5,46 @@ import Foundation
 
 extension L10n {
 
-    // MARK: - Moonlight hosts on the Connections page
+    // MARK: - The Moonlight hosts page
 
-    var moonlightHostsSection: String {
-        catalog.text("MOONLIGHT HOSTS")
+    var lookingForMoonlightHosts: String {
+        catalog.text("Looking for Moonlight hosts")
     }
 
-    var noMoonlightHostsHint: String {
-        catalog.text("No Moonlight hosts yet. Scan your network or add one by address.")
+    var scanningForGameStreamHosts: String {
+        catalog.text("Scanning your network for hosts advertising GameStream. They appear here as they answer.")
+    }
+
+    var noMoonlightHostsFound: String {
+        catalog.text("No Moonlight hosts found")
+    }
+
+    var moonlightHostAppearsHere: String {
+        catalog.text("A PC appears here once Sunshine, Apollo or Wolf is running on it and both machines are on the same network.")
+    }
+
+    var getSunshine: String {
+        catalog.text("Get Sunshine ↗")
+    }
+
+    var addByAddressEllipsis: String {
+        catalog.text("Add by address…")
+    }
+
+    var moonlightHostKind: String {
+        catalog.text("Moonlight host (Sunshine, Apollo or Wolf)")
+    }
+
+    var addAHostByAddress: String {
+        catalog.text("Add a host by address")
+    }
+
+    var enterTheHostAddressOrName: String {
+        catalog.text("Enter the host IP address or hostname. Dish uses the standard Moonlight ports.")
+    }
+
+    var remembered: String {
+        catalog.text("Remembered")
     }
 
     var moonlightAddressPlaceholder: String {
@@ -23,11 +55,7 @@ extension L10n {
         catalog.text("Enter the host address")
     }
 
-    var moonlightHost: String {
-        catalog.text("Moonlight host")
-    }
-
-    var pairedTrust: String {
+    var pairedTitle: String {
         catalog.text("Paired")
     }
 
@@ -78,7 +106,7 @@ extension L10n {
         catalog.format("Without a pick, Dish starts whatever %@ lists first.", host)
     }
 
-    // MARK: - The PIN sheet
+    // MARK: - The PIN card
 
     func typePinInto(_ pin: String, _ host: String) -> String {
         catalog.format("Type %@ into the Moonlight or Sunshine page on %@.", pin, host)

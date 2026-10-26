@@ -44,7 +44,7 @@ struct DiagnosticsPage: View {
             }
             ForEach(diagnostics.state.hosts) { host in
                 DiagnosticsCard(
-                    title: host.summary.label,
+                    title: connectionTitle(host.summary),
                     dot: linkDotColor(host.summary.live),
                     chip: linkStateText(host.summary.live),
                     lines: hostLines(host)

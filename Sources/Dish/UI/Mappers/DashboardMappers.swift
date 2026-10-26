@@ -16,7 +16,7 @@ func dashboardStatusText(_ connections: [ConnectionSummary], words: L10n = .app)
     switch (live.count, connections.count) {
     case (0, 0): return words.noConnectionsYet
     case let (0, total): return words.paired(total)
-    case (1, _): return live[0].label
+    case (1, _): return connectionTitle(live[0])
     case let (count, _): return words.activeConnections(count)
     }
 }

@@ -5,10 +5,15 @@ import Combine
 import DishCore
 import Foundation
 
-/// The Moonlight host that minted a PIN, as the app presents it.
+/// The Moonlight host that minted a PIN, as its row's card shows it.
 package struct MoonlightPinPrompt: Equatable, Identifiable {
     package let host: MoonlightHost
     package let pin: String
+
+    package init(host: MoonlightHost, pin: String) {
+        self.host = host
+        self.pin = pin
+    }
 
     package var id: String {
         host.id
@@ -90,8 +95,19 @@ package extension AppModel {
         if moonlightPin?.host.id == hostId { moonlightPin = nil }
     }
 
-    func addMoonlightHost(_ address: String) {
+    /// False for an address that is blank once trimmed; anything else is
+    /// probed, and a host that does not answer is told as an event.
+    @discardableResult
+    func addMoonlightHost(_ text: String) -> Bool {
+        guard let address = moonlightAddress(from: text) else { return false }
         moonlight.addManualHost(address)
+        return true
+    }
+
+    /// Leaving the Moonlight hosts page ends the pairing its PIN card waits on.
+    func leftMoonlightHosts() {
+        guard let prompt = moonlightPin else { return }
+        cancelMoonlightPairing(prompt.host.id)
     }
 
     /// Ask the host to close the app it runs; the way past a session somebody else holds.
@@ -108,4 +124,10 @@ package extension AppModel {
     func setMoonlightApp(_ hostId: String, appId: String, appName: String) {
         moonlight.rememberApp(hostId: hostId, appId: appId, appName: appName)
     }
+}
+
+/// A typed Moonlight address, trimmed; nil when nothing is left.
+package func moonlightAddress(from text: String) -> String? {
+    let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+    return trimmed.isEmpty ? nil : trimmed
 }

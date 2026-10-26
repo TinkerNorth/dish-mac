@@ -61,8 +61,8 @@ final class WakeStateControllerTests: XCTestCase {
 
     func testStreamingSlotCountReadsTheSummaries() {
         let summaries = [
-            ConnectionSummary(id: "c1", label: "", detail: "", live: .connected, boundSlotId: "a"),
-            ConnectionSummary(id: "c2", label: "", detail: "", live: .saved, boundSlotId: "b")
+            ConnectionSummary(id: "c1", name: "", live: .connected, boundSlotId: "a"),
+            ConnectionSummary(id: "c2", name: "", live: .saved, boundSlotId: "b")
         ]
         XCTAssertEqual(streamingSlotCount(bindings: ["a": "c1", "b": "c2"], summaries: summaries), 1)
     }

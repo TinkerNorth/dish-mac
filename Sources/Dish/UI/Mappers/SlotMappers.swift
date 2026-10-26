@@ -18,11 +18,11 @@ func bindableConnections(for slot: ControllerSlot, in connections: [ConnectionSu
 func bindLabel(_ bound: ConnectionSummary?, words: L10n = .app) -> String {
     guard let bound else { return words.unbound }
     switch bound.live {
-    case .connected: return words.boundTo(bound.label)
-    case .unstable: return words.boundUnsteady(bound.label)
-    case .connecting: return words.boundConnecting(bound.label)
-    case .ready: return words.boundReady(bound.label)
-    case .saved, .found, .stale: return words.boundOffline(bound.label)
+    case .connected: return words.boundTo(connectionTitle(bound))
+    case .unstable: return words.boundUnsteady(connectionTitle(bound))
+    case .connecting: return words.boundConnecting(connectionTitle(bound))
+    case .ready: return words.boundReady(connectionTitle(bound))
+    case .saved, .found, .stale: return words.boundOffline(connectionTitle(bound))
     }
 }
 

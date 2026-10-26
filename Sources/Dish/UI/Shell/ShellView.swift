@@ -6,7 +6,8 @@ import SwiftUI
 
 /// The one window: the rail as the split view's sidebar, and the content
 /// column with the shell header over a navigation stack whose root is the
-/// rail's destination. The shell owns the one toast host, above every page.
+/// rail's destination. The shell owns the one toast host, above every page,
+/// and registers no sheet: pairing and the Moonlight PIN are inline cards.
 struct ShellView: View {
 
     @EnvironmentObject var model: AppModel
@@ -42,10 +43,8 @@ struct ShellView: View {
         .overlay(alignment: .bottom) {
             NotificationOverlay()
         }
-        .sheet(item: $model.moonlightPin) { prompt in
-            MoonlightPinSheet(prompt: prompt)
-        }
         .onChange(of: model.pairingTarget?.id, perform: showPairing)
+        .onChange(of: model.moonlightPin?.id, perform: showMoonlightPin)
     }
 
     private var headerActions: ShellHeader.Actions {
@@ -70,6 +69,7 @@ struct ShellView: View {
         case let .inspector(slotId): InspectorPage(slotId: slotId).shellPage()
         case .crashReport: CrashReportPage().shellPage()
         case .licenses: LicensesPage(state: licensesState).shellPage()
+        case .moonlightHosts: MoonlightHostsPage().shellPage()
         }
     }
 
@@ -93,6 +93,12 @@ struct ShellView: View {
     /// satellite that asks to pair brings the page up.
     private func showPairing(_ serverId: String?) {
         if serverId != nil { navigation.send(.select(.connections)) }
+    }
+
+    /// The Moonlight PIN lives on its host's row, so a host that minted one
+    /// brings the Moonlight hosts page up.
+    private func showMoonlightPin(_ hostId: String?) {
+        if hostId != nil { navigation.send(.external(.showPage(.moonlightHosts))) }
     }
 }
 
