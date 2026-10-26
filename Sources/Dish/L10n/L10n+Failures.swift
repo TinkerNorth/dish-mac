@@ -59,6 +59,12 @@ extension L10n {
         catalog.text("No servers found — check your network")
     }
 
+    var localNetworkDenied: String {
+        catalog.text(
+            "macOS is blocking Dish from the local network. Check Privacy & Security › Local Network, or add the satellite by address."
+        )
+    }
+
     var pairingFailed: String {
         catalog.text("Pairing failed")
     }

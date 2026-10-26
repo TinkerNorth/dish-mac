@@ -21,6 +21,26 @@ the repos share a version number.
 
 ### Fixed
 
+- **A satellite on a dual-stack host is found.** The Bonjour browse resolved
+  each satellite with a connection that took whichever address the host's name
+  answered with. A Windows host also answers its own name over IPv6, so the
+  satellite resolved to a link-local IPv6 address, was dropped as one the data
+  plane cannot dial, and the scan reported nothing. The resolving connection
+  now asks for IPv4 only, the address the data plane dials.
+- **Local builds are no longer blocked from the network, and a blocked one
+  says so.** macOS enforces the Local Network permission in the kernel, flow
+  by flow, against the app's signing identifier. `bundle.sh` left the
+  executable with the linker's ad hoc signature, whose identifier is `Dish`, so
+  the rule granted to `com.tinkernorth.dish.mac` never matched a local build:
+  every satellite resolved to nothing and every beacon went unheard, which
+  read as "No servers found" while Privacy & Security listed Dish as allowed.
+  The bundle is now signed as a whole (ad hoc), with the bundle identifier as
+  its signing identifier as in a release build; on the same Mac the next scan
+  heard the satellite on both paths. For a Mac whose switch is off, a scan
+  also opens one flow to the default gateway, and a refusal there is reported
+  as macOS blocking Dish from the local network, with the pane to check and
+  the add-by-address fallback. `NSBonjourServices` names `_nvstream._tcp`
+  beside `_satellite._udp`.
 - **A failure says itself once.** A scan that found nothing showed its message
   three times: inline in the Connections sheet, inline at the bottom of the
   window, and as a toast under them that stretched to the window's full

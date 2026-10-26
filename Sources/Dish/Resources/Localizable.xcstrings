@@ -13935,6 +13935,47 @@
         }
       }
     },
+    "macOS is blocking Dish from the local network. Check Privacy & Security › Local Network, or add the satellite by address." : {
+      "comment" : "Failure: macOS refused the app every flow to the local network. The pane named is macOS's own, in each language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS blokira Dish na lokalnoj mreži. Provjerite Privacy & Security › Local Network ili dodajte satelit putem adrese."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS blockiert Dish im lokalen Netzwerk. Prüfe Datenschutz & Sicherheit › Lokales Netzwerk, oder füge den Satelliten per Adresse hinzu."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS is blocking Dish from the local network. Check Privacy & Security › Local Network, or add the satellite by address."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS está bloqueando a Dish en la red local. Revisa Privacidad y seguridad › Red local, o añade el satélite por dirección."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS bloque l'accès de Dish au réseau local. Vérifiez Confidentialité et sécurité › Réseau local, ou ajoutez le satellite par adresse."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS está bloqueando o Dish na rede local. Verifique Privacidade e Segurança › Rede Local, ou adicione o satélite pelo endereço."
+          }
+        }
+      }
+    },
     "macOS lists more than one audio device under its name, so it is not routed" : {
       "comment" : "Diagnostics value (the sibling line, for a Mac).",
       "localizations" : {

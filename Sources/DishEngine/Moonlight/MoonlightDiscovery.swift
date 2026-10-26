@@ -14,9 +14,10 @@ enum MoonlightDiscovery {
     static let defaultTimeoutMs = 4000
 
     static func discover(timeoutMs: Int = defaultTimeoutMs) async -> [MoonlightHost] {
-        await BonjourScan.discover(serviceType: serviceType, txtKeys: [], timeoutMs: timeoutMs) { name, host, _ in
+        let outcome = await BonjourScan.discover(serviceType: serviceType, txtKeys: [], timeoutMs: timeoutMs) { name, host, _ in
             let found = MoonlightHost(name: name.isEmpty ? host : name, address: host)
             return (found.id, found)
         }
+        return outcome.found
     }
 }

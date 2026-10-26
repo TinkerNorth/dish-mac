@@ -88,7 +88,7 @@ app keeps no other log file.
 
 | Traffic | What it carries | Who receives it |
 |---|---|---|
-| Discovery: a Bonjour browse for `_satellite._udp` and a listener on UDP port 9879 | Nothing of yours is sent; the app reads the satellites' announcements | Your local network |
+| Discovery: a Bonjour browse for `_satellite._udp`, a listener on UDP port 9879, and one empty UDP flow to your router's discard port (9) | Nothing of yours is sent; the app reads the satellites' announcements, and the flow to the router only tells it whether macOS lets it on the network | Your local network |
 | Pairing and the control plane: HTTPS on port 9443 to the satellite you chose | Your `deviceId`, your Mac's name as shown in System Settings (the satellite lists paired devices by it), the PIN you typed or the app generated, the controller type and features you bound, and a proof of possession of the pairing key | The satellite |
 | Streaming: encrypted UDP on port 9876 to the satellite you chose | Controller input (buttons, sticks, triggers), and, when the switches are on and the pad has them, motion samples, touchpad positions and the battery level of the pad or of your Mac; with that controller's mic switch on and not muted, the sound its own microphone hears, as 20 ms Opus frames | The satellite |
 | Return paths over the same UDP channel | Rumble, light-bar, adaptive-trigger, player-LED and mic-lamp commands from the satellite to the pad, and the host's voice chat and haptics audio for the pad's own speaker and actuators | Your Mac |
@@ -198,7 +198,7 @@ so treat it as sensitive before attaching it to a public issue.
 
 | Capability | Why |
 |---|---|
-| Local network access and Bonjour (`_satellite._udp`) | Finding satellites and talking to the one you chose. Everything stays on your LAN. |
+| Local network access and Bonjour (`_satellite._udp`, `_nvstream._tcp`) | Finding satellites and talking to the one you chose. Everything stays on your LAN. |
 | GameController framework | Reading controller input, and writing rumble and light-bar output back to the controller. |
 | Keychain | Storing the pairing key of each satellite. |
 | A power-management assertion (IOKit) | Keeping the Mac awake while a bound controller is being used, or for as long as one is connected, as your keep-awake mode says; the display too only if you ask. Released when the condition ends. |

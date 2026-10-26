@@ -38,6 +38,10 @@ package enum ConnectionFailure: Equatable {
     case controllerNotApplied
     /// A scan found no satellite on the network.
     case noServersFound
+    /// macOS refused this app every flow to the local network: Dish is off
+    /// under Privacy & Security › Local Network, or the rule there no longer
+    /// matches this build.
+    case localNetworkDenied
     /// A PIN pairing was refused; `detail` is the satellite's `error` string.
     case pairingRejected(detail: String?)
 }

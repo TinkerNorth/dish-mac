@@ -58,13 +58,20 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSMicrophoneUsageDescription</key>
         <string>Dish captures a controller’s own microphone and sends it to the satellite you paired with, only while that controller’s mic switch is on.</string>
     <key>NSBonjourServices</key>
-        <array><string>_satellite._udp</string></array>
+        <array><string>_satellite._udp</string><string>_nvstream._tcp</string></array>
     <!-- The crash-reporting address, from the release secret; empty means the
          build cannot send a report whatever the switch says (PRIVACY.md §3). -->
     <key>DishSentryDSN</key>           <string>${DISH_SENTRY_DSN:-}</string>
 </dict>
 </plist>
 PLIST
+
+# Sign the bundle as a whole (ad hoc): the signature then covers Info.plist
+# and the resources, and the signing identifier is the bundle identifier, as
+# it is for a release build. The linker's signature on the bare executable
+# names it "Dish", which the kernel's Local Network rule for
+# com.tinkernorth.dish.mac never matched: every flow to the LAN was refused.
+codesign --force --sign - "$APP"
 
 echo "Built $APP"
 echo "Launch: open $APP"
