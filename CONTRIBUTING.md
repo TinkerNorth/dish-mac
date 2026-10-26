@@ -405,6 +405,9 @@ Before you tag:
   `## [X.Y.Z] - YYYY-MM-DD` and updating the compare link.
   `version-consistency.yml` fails a PR that moves one without the other.
 - **Update `PRIVACY.md` first** if anything about data collection changed.
+- **Keep `packaging/Dish.entitlements` honest.** The release signature carries
+  it under the hardened runtime; a new restricted capability (camera, location,
+  automation) needs its entitlement there or the signed build is denied it.
 
 After the workflow finishes, download `dish-X.Y.Z.zip`, run
 `spctl --assess --type execute Dish.app`, launch it and pair once. The asset

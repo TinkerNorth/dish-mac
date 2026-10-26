@@ -163,12 +163,17 @@ jobs:
           echo "keychain=${KEYCHAIN}" >> "$GITHUB_OUTPUT"
           echo "present=true" >> "$GITHUB_OUTPUT"
 
+      # The hardened runtime denies audio input unless the entitlement in
+      # packaging/Dish.entitlements rides the signature; a controller's own
+      # microphone is the one audio input Dish opens.
       - name: Sign Dish.app
         if: steps.sign.outputs.present == 'true'
         run: |
           codesign --force --options runtime --timestamp \
+            --entitlements packaging/Dish.entitlements \
             --sign "${{ steps.sign.outputs.identity }}" --deep Dish.app
           codesign --verify --strict --deep --verbose=2 Dish.app
+          codesign --display --entitlements - Dish.app 2>&1 | grep -q "com.apple.security.device.audio-input"
 
       - name: Notarize
         if: steps.sign.outputs.present == 'true'

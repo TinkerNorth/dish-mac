@@ -224,6 +224,11 @@ the repos share a version number.
 
 ### Fixed
 
+- **A signed build keeps the controller's microphone.** The release signature
+  runs under the hardened runtime, which denies every audio-input API without
+  the `com.apple.security.device.audio-input` entitlement; the signature now
+  carries `packaging/Dish.entitlements`, so a Developer ID build captures the
+  pad's mic exactly as a local build does.
 - **A satellite on a dual-stack host is found.** The Bonjour browse resolved
   each satellite with a connection that took whichever address the host's name
   answered with. A Windows host also answers its own name over IPv6, so the
