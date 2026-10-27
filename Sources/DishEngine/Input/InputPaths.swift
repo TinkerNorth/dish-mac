@@ -18,7 +18,8 @@ import os
 /// Where a pad's "Not responding?" check stands.
 package enum InputCheckPhase: Equatable {
     case idle
-    case running(sinceMs: Int64)
+    /// Whole seconds left in the window, counted down on the check's tick.
+    case running(secondsLeft: Int)
     case concluded(CheckVerdict, offer: CheckOffer)
 }
 
@@ -122,12 +123,15 @@ struct CheckOutcome: Equatable {
 }
 
 /// A controller GameController shows for a Direct-by-model pad: no input
-/// slot of its own unless its model is picked Standard, and the carrier of
-/// the pad's rumble and lights when the pairing is unambiguous.
+/// slot of its own unless its model is picked Standard or Dish's reader
+/// never opened the pad (`CarrierStanding`), and the carrier of the pad's
+/// rumble and lights when the pairing is unambiguous.
 struct PathCarrier {
     let productId: UInt16
+    let name: String
     let gate: PadGate
     let hasRumble: Bool
+    var standing = CarrierStanding.waiting
 }
 
 @MainActor

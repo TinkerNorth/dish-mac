@@ -38,6 +38,9 @@ public struct PadPathFacts: Equatable, Sendable {
     public var gameController: GameControllerSupport
     /// The model's stored `usb_path_choices` entry.
     public var stored: InputSource?
+    /// GameController's controller for the model fell back to Standard
+    /// (`standCarrier`): macOS already reads the pad, for this connection.
+    public var fellBackToStandard = false
 
     public init(model: DirectModel?, decodable: Bool, gameController: GameControllerSupport, stored: InputSource?) {
         self.model = model
@@ -60,6 +63,8 @@ public enum InputSourceReason: Equatable, Sendable {
     case macOSReads
     /// The user's pick, live or stored.
     case userPicked
+    /// A Direct-by-model pad Dish's reader had no lane for in time.
+    case dishCouldNotRead
 }
 
 public enum PathDecision: Equatable, Sendable {
@@ -78,10 +83,12 @@ public func decidePath(_ facts: PadPathFacts) -> PathDecision {
 }
 
 /// A stored Standard is honoured only for a model that offers it, and only
-/// while GameController shows the pad.
+/// while GameController shows the pad; a fallen-back carrier is Standard
+/// already.
 private func decideByModel(_ facts: PadPathFacts) -> PathDecision {
     let offersStandard = facts.model?.offersStandard == true
     let pickedStandard = facts.stored == .standard && offersStandard
+    if facts.fellBackToStandard { return .forward(.standard, pickedStandard ? .userPicked : .dishCouldNotRead) }
     guard pickedStandard else { return .forward(.direct, .directByModel) }
     switch facts.gameController {
     case .pending: return .awaitGameController

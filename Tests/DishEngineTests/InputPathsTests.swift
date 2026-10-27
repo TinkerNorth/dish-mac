@@ -166,12 +166,12 @@ final class InputPathsTests: XCTestCase {
         spinMainUntil { paths.state[Self.n64]?.proven == true }
         posts.set([])
         paths.startCheck(slotId: Self.n64)
-        XCTAssertEqual(paths.state[Self.n64]?.check, .running(sinceMs: clock.nowMs))
+        XCTAssertEqual(paths.state[Self.n64]?.check, .running(secondsLeft: 5))
         for _ in 0 ..< 10 {
             feedReport(DirectFixtures.n64Idle, to: arrival.lane)
             feedReport(DirectFixtures.n64PressedA, to: arrival.lane)
         }
-        spinMainUntil { paths.state[Self.n64]?.check != .running(sinceMs: clock.nowMs) }
+        spinMainUntil { paths.state[Self.n64]?.check != .running(secondsLeft: 5) }
         XCTAssertEqual(posts.get(), [.direct], "twenty changes, one event")
         XCTAssertEqual(paths.state[Self.n64]?.check, .concluded(.dishReadsIt, offer: CheckOffer.none))
         XCTAssertEqual(records.last?.note, .verdict(.dishReadsIt))
@@ -183,7 +183,7 @@ final class InputPathsTests: XCTestCase {
         let timer = try XCTUnwrap(scheduler.liveTimers.first)
         clock.nowMs += 4000
         timer.fire()
-        XCTAssertEqual(paths.state[Self.n64]?.check, .running(sinceMs: clock.nowMs - 4000), "four seconds in, still watching")
+        XCTAssertEqual(paths.state[Self.n64]?.check, .running(secondsLeft: 1), "four seconds in, still watching, one to go")
         clock.nowMs += 1000
         timer.fire()
         XCTAssertEqual(

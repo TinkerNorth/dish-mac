@@ -285,6 +285,23 @@ read the same way. Everything else stays on GameController.
   paths reach it unchanged; otherwise the slot's facts say why rumble is
   unavailable. A Standard pick (offered only for a Pro GameController shows)
   hides the Direct slot and attaches the carrier again as an ordinary pad.
+- **A carrier with no lane falls back to Standard.** R7 must never leave a
+  pad silent: when Dish's reader has no lane of a carrier's product ID (it
+  missed the device, a Switch Pro over Bluetooth that did not match) the
+  pad would get input nowhere. Each carrier has a `CarrierStanding`
+  (DishCore, `standCarrier`): `waiting` from its arrival, publishing
+  nothing; `followsLanes` once a lane of its model is there (R7 as above);
+  `fellBack` when the 2 s settle window (`CarrierFallbackRule.settleMs`, on
+  the paths' injected scheduler) closes with no lane. A fallen-back carrier
+  is read through GameController under a stand-in machine of its own, whose
+  decision (`PadPathFacts.fellBackToStandard`) is Standard with the reason
+  "Dish couldn't read it directly, so macOS reads it" (or "Your pick" for a
+  stored Standard), so it is proven, checked and numbered like any pad. The
+  standing is sticky for the connection: a lane of the model that arrives
+  later joins on Standard too (its machine takes over from the stand-in,
+  the carrier keeps publishing, the lane publishes nothing), so nothing
+  flaps and nothing is read twice; only a reconnect or the user's pick
+  ("Use Direct", now that a lane decodes it) moves it.
 
 ## Several pads on one satellite
 

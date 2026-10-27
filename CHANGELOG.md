@@ -37,6 +37,32 @@ the repos share a version number.
   Diagnostics names each pad's path, its reason and a Direct pad's report
   rate, and the flight recorder logs every path decision, check verdict and
   disconnect burst.
+- **A pad says how Dish reads it.** Each Controllers card, the pad's node on
+  Home and its Diagnostics card show "Standard" or "Direct" with one reason
+  line, and "Press any button on this controller" until a real input proves
+  the path. Where both paths work (a Switch Pro macOS shows), the card has
+  the desktops' Input path control; the N64 pad, which only Direct reads, is
+  never offered Standard.
+- **A pad that seems silent can be checked.** "Not responding?" on the card
+  and in the inspector asks for a press of A and counts down five seconds
+  while it watches both paths, then says what it found and offers its one
+  way on: Use Direct, Help support this controller (Diagnostics for now), or
+  "Check the cable or the Bluetooth connection, then try again".
+- **Identical pads can be told apart.** Each card and Home node names its
+  pad's player ("Player 1", by connection order), and a card's outline
+  lights while its pad reports input, read four times a second from the
+  processor's tally.
+- **A pad that keeps disconnecting says so.** Three drops of one pad within
+  a minute raise one warning toast per burst, and its Diagnostics card says
+  "Keeps disconnecting".
+- **A Nintendo pad Dish's reader misses still works.** A Switch Pro, N64 or
+  SNES pad macOS lists but Dish's own reader never opened (a Bluetooth pad
+  that did not match, say) was left with no input at all. After a 2 s
+  settle window with no Direct reader of its model it is read through macOS,
+  "Dish couldn't read it directly, so macOS reads it", and stays that way
+  for the connection: a reader that turns up later moves nothing, so the
+  pad never flaps between paths or is read twice, until it reconnects or
+  you pick Use Direct.
 
 ## [1.0.2] - 2026-10-26
 

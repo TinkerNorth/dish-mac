@@ -253,15 +253,20 @@ name, address and port as data; `connectionTitle` and
 ## The controller pages
 
 Home, Controllers, Configure binding and Dead zones are drawn from the
-model's slots and connections and from four parts of `ShellFacts`: the
+model's slots and connections and from five parts of `ShellFacts`: the
 global switches (`forwarding`), the stored dead zones (`deadzones`), the
 live rates (`telemetry`, a `TelemetrySource` that ticks while Home or
-Controllers shows: `pageAppeared(.home / .controllers)`) and the binding
-being configured (`binding`). No page holds an engine environment object.
+Controllers shows: `pageAppeared(.home / .controllers)`; the rates once a
+second, and four times a second `reporting`, the pads whose report count
+moved, published only when that set changes), each pad's input path
+(`inputPaths`) and the binding being configured (`binding`). No page holds
+an engine environment object.
 
 - **Home** ([`HomeMappers.swift`](../Sources/Dish/UI/Mappers/HomeMappers.swift)):
   the desktops' signal-path diagram. A boxed row per pad: the pad node (its
-  name; its family, battery and "Unbound"), the `WireLine` (live only on a
+  name; its family, battery and "Unbound"; "Player 1 · Direct · its reason"
+  once the paths have facts for it; "Press any button on this controller"
+  until a real change proves its path), the `WireLine` (live only on a
   session that is up, captioned with the pad's measured rate and the link's
   latency, else "live"; "idle" and dashed otherwise; crawling while the link
   comes up or an apply runs for it), and the host node (name, address, "slot n
@@ -278,7 +283,25 @@ being configured (`binding`). No page holds an engine environment object.
   keeps the transport to itself, so there is no Bluetooth / USB word and no
   Poll Hz, which is the Direct path's), "Bound · host ›" or "not bound" with
   Bind…, the Gyro / Touchpad / Lightbar / battery chips, the mic's live or
-  muted button, the motion rate, and Dead zones… into `Page.deadZones`.
+  muted button, the motion rate, the pad's path block (`PadPathSection`,
+  from `padPathState` in [`InputPathMappers.swift`](../Sources/Dish/UI/Mappers/InputPathMappers.swift)),
+  and Dead zones… into `Page.deadZones`. The card names the pad's player
+  ("Player 2") beside its name and its outline takes the accent while the
+  pad is in `telemetry.reporting`, so identical pads can be told apart. The
+  path block: "Standard" or "Direct" with its one reason, or, only where
+  the pad's facts offer the other path (`picks`, R6: never the N64), the
+  desktops' "Input path" segmented control, whose pick is `pickInputPath`;
+  "Press any button on this controller" until the path is proven; and the
+  check: "Not responding?" calls `startInputCheck`, the engine's
+  `.running(secondsLeft:)` reads "Press A now · 5 s" counting down, and the
+  finding then shows with its one action: Use Direct (`pickInputPath(.direct)`),
+  Help support this controller (`helpSupportPage(forSlot:)`, Diagnostics
+  until the guided capture has a page of its own) or the connection hint.
+  The inspector draws the same block under its title, as its "Input path"
+  section. A pad that drops three times within a minute raises one "… keeps
+  disconnecting" warning toast per burst (`PadNotifier`, from
+  `padKeepsDisconnecting`), and its Diagnostics card says so on a
+  Disconnects line under the path, beside its Player line.
 - **Configure binding** ([`ConfigureBindingMappers.swift`](../Sources/Dish/UI/Mappers/ConfigureBindingMappers.swift)):
   `pageAppeared(.configureBinding(slotId:))` opens a `BindingDraft` (DishCore)
   seeded from the binding, the type pick and the controller's switches, and

@@ -59,6 +59,32 @@ final class InputTelemetryTests: XCTestCase {
         XCTAssertEqual(next.pads["a"]?.reportHz, 10)
     }
 
+    func testAPadReportsWhileItsCountMovesAndItsFirstSampleIsTheBaseline() {
+        var rates = TelemetryRates()
+        XCTAssertEqual(rates.sample(InputCounts(reports: ["a": 5, "b": 9]), nowUs: 0).reporting, [], "a baseline lights nothing")
+        XCTAssertEqual(rates.activity(["a": 6, "b": 9]), ["a"])
+        XCTAssertEqual(rates.activity(["a": 6, "b": 9]), [], "still pads go dark")
+        XCTAssertEqual(rates.sample(InputCounts(reports: ["a": 6, "b": 12]), nowUs: 1_000_000).reporting, ["b"])
+    }
+
+    func testTheQuarterTicksPublishOnlyTheActivityAndEveryFourthTheRates() {
+        let source = TelemetrySource()
+        var counts = InputCounts(reports: ["a": 0])
+        var ridden = 0
+        source.use(counts: { counts }, clockUs: { 0 })
+        source.useTick { ridden += 1 }
+        source.refresh()
+        counts.reports["a"] = 3
+        source.tick()
+        XCTAssertEqual(source.state.reporting, ["a"])
+        XCTAssertEqual(ridden, 1, "a quarter tick rides nothing")
+        source.tick()
+        source.tick()
+        XCTAssertEqual(source.state.reporting, [])
+        source.tick()
+        XCTAssertEqual(ridden, 2, "the fourth tick is the rates'")
+    }
+
     func testTheSourceTicksWhileAPageShowsAndStopsWhenTheLastLeaves() {
         let source = TelemetrySource()
         XCTAssertFalse(source.isTicking)

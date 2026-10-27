@@ -17,17 +17,20 @@ extension InputPaths {
         pads[arrival.slotId] = PathPad(arrival: arrival, name: candidate.name, gate: arrival.lane.gate)
         scheduler.after(ms: Self.devcapsDelayMs) { [weak self] in self?.logDevcaps(arrival) }
         let byModel = candidate.model?.rule == .byModel
-        if byModel { reduce(arrival.slotId, .connected(pathFacts(candidate, support: .pending))) }
+        let fellBack = joinFallback(candidate)
+        if byModel { reduce(arrival.slotId, .connected(pathFacts(candidate, support: .pending, fellBack: fellBack))) }
         settle(arrival, attempt: 1)
     }
 
-    func pathFacts(_ candidate: HidPadCandidate, support: GameControllerSupport) -> PadPathFacts {
-        PadPathFacts(
+    func pathFacts(_ candidate: HidPadCandidate, support: GameControllerSupport, fellBack: Bool = false) -> PadPathFacts {
+        var facts = PadPathFacts(
             model: candidate.model,
             decodable: true,
             gameController: support,
             stored: choices.choice(vendorId: candidate.vendorId, productId: candidate.productId)
         )
+        facts.fellBackToStandard = fellBack
+        return facts
     }
 
     /// A lane replaced under the same id ends the old one's checks.
@@ -94,7 +97,8 @@ extension InputPaths {
         if let existing = pads[id]?.gate ?? carriers[id]?.gate { return existing }
         let gate = makeGate(key: id)
         if let model = directModel(gameControllerCategory: category) {
-            carriers[id] = PathCarrier(productId: model.productId, gate: gate, hasRumble: hasRumble)
+            carriers[id] = PathCarrier(productId: model.productId, name: name, gate: gate, hasRumble: hasRumble)
+            scheduler.after(ms: CarrierFallbackRule.settleMs) { [weak self] in self?.carrierWindowClosed(id, gate: gate) }
             refreshOutputs()
             raiseCarrierAttention(id)
             publishFacts()
@@ -115,6 +119,7 @@ extension InputPaths {
         if let carrier = carriers.removeValue(forKey: id) {
             let visible = carrier.gate.routed == .standard
             carrier.gate.route(nil)
+            retireFallbackPad(id)
             if visible { recordDrop(id, name: name) }
             refreshOutputs()
             publishFacts()

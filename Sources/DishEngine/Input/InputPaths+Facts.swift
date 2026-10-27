@@ -28,19 +28,26 @@ func outputCarriage(model: DirectModel?, carriers: [CarrierSeat], padsOfModel: I
     return OutputCarriage(carrierId: only.id, rumble: only.hasRumble ? .carried : .carrierHasNoMotors)
 }
 
-/// A running check, else the last one's verdict, else nothing.
-func checkPhase(_ check: PadCheck?, outcome: CheckOutcome?) -> InputCheckPhase {
-    if let check { return .running(sinceMs: check.startedAtMs) }
+/// A running check with its whole seconds left, else the last one's
+/// verdict, else nothing.
+func checkPhase(_ check: PadCheck?, outcome: CheckOutcome?, nowMs: Int64) -> InputCheckPhase {
+    if let check { return .running(secondsLeft: checkSecondsLeft(check, nowMs: nowMs)) }
     guard let outcome else { return .idle }
     return .concluded(outcome.verdict, offer: outcome.offer)
 }
 
+/// Rounded up, so the countdown reads 5 at the start and 1 in its last second.
+func checkSecondsLeft(_ check: PadCheck, nowMs: Int64) -> Int {
+    let leftMs = max(InputCheckWindow.durationMs - (nowMs - check.startedAtMs), 0)
+    return Int((leftMs + 999) / 1000)
+}
+
 /// The facts every forwarding pad has, whichever path it is on.
-func basePathFacts(_ machine: InputSourceState, outcome: CheckOutcome?) -> SlotInputPath? {
+func basePathFacts(_ machine: InputSourceState, outcome: CheckOutcome?, nowMs: Int64) -> SlotInputPath? {
     guard case let .forwarding(source) = machine.phase else { return nil }
     var facts = SlotInputPath(source: source, reason: machine.reason ?? .macOSReads)
     facts.proven = machine.proven
-    facts.check = checkPhase(machine.check, outcome: outcome)
+    facts.check = checkPhase(machine.check, outcome: outcome, nowMs: nowMs)
     facts.picks = InputSource.allCases.filter(machine.canPick)
     return facts
 }
@@ -96,17 +103,34 @@ extension InputPaths {
         nintendoPads(productId: productId).contains { pads[$0]?.machine.phase == .forwarding(.standard) }
     }
 
+    func lanesOfModel(_ productId: UInt16) -> Int {
+        nintendoPads(productId: productId).count
+    }
+
+    /// A waiting carrier publishes nothing; one that fell back publishes
+    /// through its stand-in machine, or, once a lane of its model joined,
+    /// as the lanes' machines say, like any carrier.
+    private func carrierForwards(_ id: String, _ carrier: PathCarrier) -> Bool {
+        switch carrier.standing {
+        case .waiting: false
+        case .followsLanes: modelForwardsStandard(productId: carrier.productId)
+        case .fellBack: pads[id] != nil || modelForwardsStandard(productId: carrier.productId)
+        }
+    }
+
     // MARK: - The slot list and the return paths
 
     /// Idempotent: every Direct lane's slot shown or hidden, every
-    /// carrier's input slot and gate set, every pad's output carrier named.
+    /// carrier's standing, input slot and gate set, every pad's output
+    /// carrier named.
     func refreshOutputs() {
         for key in pads.keys.sorted() {
             showOrHide(key)
         }
+        standCarriers(windowClosed: false)
         for id in carriers.keys.sorted() {
             guard let carrier = carriers[id] else { continue }
-            let forwards = modelForwardsStandard(productId: carrier.productId)
+            let forwards = carrierForwards(id, carrier)
             carrier.gate.route(forwards ? .standard : nil)
             host?.showCarrierSlot(id, forwards)
         }
@@ -140,19 +164,20 @@ extension InputPaths {
     // MARK: - The facts
 
     func publishFacts() {
+        let nowMs = clockMs()
         var facts: [String: SlotInputPath] = [:]
         for key in pads.keys {
-            facts[key] = padFacts(key)
+            facts[key] = padFacts(key, nowMs: nowMs)
         }
         for id in carriers.keys where showsInputSlot(id) {
-            facts[id] = carrierFacts(id)
+            facts[id] = carrierFacts(id, nowMs: nowMs)
         }
         setState(facts)
     }
 
     /// A Direct lane has facts only while its own slot shows.
-    private func padFacts(_ key: String) -> SlotInputPath? {
-        guard let pad = pads[key], var facts = basePathFacts(pad.machine, outcome: pad.outcome) else { return nil }
+    private func padFacts(_ key: String, nowMs: Int64) -> SlotInputPath? {
+        guard let pad = pads[key], var facts = basePathFacts(pad.machine, outcome: pad.outcome, nowMs: nowMs) else { return nil }
         facts.playerNumber = players.number(for: key)
         facts.keepsDisconnecting = bursts.noticed.contains(key)
         guard let candidate = pad.arrival?.candidate else { return facts }
@@ -166,9 +191,9 @@ extension InputPaths {
     }
 
     /// A carrier read through GameController shows its pad's machine.
-    private func carrierFacts(_ id: String) -> SlotInputPath? {
+    private func carrierFacts(_ id: String, nowMs: Int64) -> SlotInputPath? {
         guard let owner = machineKey(forSlot: id), let pad = pads[owner] else { return nil }
-        var facts = basePathFacts(pad.machine, outcome: pad.outcome)
+        var facts = basePathFacts(pad.machine, outcome: pad.outcome, nowMs: nowMs)
         facts?.playerNumber = players.number(for: id)
         facts?.keepsDisconnecting = bursts.noticed.contains(id)
         facts?.transport = pad.arrival?.candidate.transport

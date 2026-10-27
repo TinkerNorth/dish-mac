@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// A pad's input path, as Diagnostics words it.
+/// A pad's input path, as its card, Home, the inspector and Diagnostics word it.
 extension L10n {
 
     // MARK: - A controller's lines
@@ -52,6 +52,74 @@ extension L10n {
 
     var reasonUserPicked: String {
         catalog.text("Your pick")
+    }
+
+    var reasonDishCouldNotRead: String {
+        catalog.text("Dish couldn’t read it directly, so macOS reads it")
+    }
+
+    // MARK: - A card's path and its check
+
+    func playerNumber(_ number: Int) -> String {
+        catalog.format("Player %lld", number)
+    }
+
+    var pressAnyButtonOnThisController: String {
+        catalog.text("Press any button on this controller")
+    }
+
+    var notResponding: String {
+        catalog.text("Not responding?")
+    }
+
+    func pressANow(_ secondsLeft: Int) -> String {
+        catalog.format("Press A now · %lld s", secondsLeft)
+    }
+
+    var checkRespondsThroughMacOS: String {
+        catalog.text("It responds through macOS")
+    }
+
+    var checkRespondsReadDirectly: String {
+        catalog.text("It responds when Dish reads it directly")
+    }
+
+    var checkNothingDishCanRead: String {
+        catalog.text("Nothing arrived, and Dish can’t read this controller yet")
+    }
+
+    var checkNothingArrived: String {
+        catalog.text("Nothing arrived from this controller")
+    }
+
+    var useDirect: String {
+        catalog.text("Use Direct")
+    }
+
+    var helpSupportThisController: String {
+        catalog.text("Help support this controller")
+    }
+
+    var connectionHint: String {
+        catalog.text("Check the cable or the Bluetooth connection, then try again")
+    }
+
+    // MARK: - Drops
+
+    var playerWord: String {
+        catalog.text("Player")
+    }
+
+    var disconnects: String {
+        catalog.text("Disconnects")
+    }
+
+    var padKeepsDropping: String {
+        catalog.text("Keeps disconnecting")
+    }
+
+    func padKeepsDisconnecting(_ name: String) -> String {
+        catalog.format("%@ keeps disconnecting", name)
     }
 
     // MARK: - A check's verdict

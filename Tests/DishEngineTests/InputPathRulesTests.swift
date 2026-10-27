@@ -28,8 +28,18 @@ final class InputPathRulesTests: XCTestCase {
 
     func testTheCheckPhaseReadsTheRunningCheckBeforeTheLastVerdict() {
         let outcome = CheckOutcome(verdict: .dishReadsIt, offer: .none)
-        XCTAssertEqual(checkPhase(nil, outcome: nil), .idle)
-        XCTAssertEqual(checkPhase(nil, outcome: outcome), .concluded(.dishReadsIt, offer: CheckOffer.none))
-        XCTAssertEqual(checkPhase(PadCheck(startedAtMs: 7), outcome: outcome), .running(sinceMs: 7))
+        XCTAssertEqual(checkPhase(nil, outcome: nil, nowMs: 0), .idle)
+        XCTAssertEqual(checkPhase(nil, outcome: outcome, nowMs: 0), .concluded(.dishReadsIt, offer: CheckOffer.none))
+        XCTAssertEqual(checkPhase(PadCheck(startedAtMs: 7), outcome: outcome, nowMs: 7), .running(secondsLeft: 5))
+    }
+
+    func testTheCountdownRoundsUpAndStopsAtZero() {
+        let check = PadCheck(startedAtMs: 1000)
+        XCTAssertEqual(checkSecondsLeft(check, nowMs: 1000), 5)
+        XCTAssertEqual(checkSecondsLeft(check, nowMs: 1001), 5)
+        XCTAssertEqual(checkSecondsLeft(check, nowMs: 2000), 4)
+        XCTAssertEqual(checkSecondsLeft(check, nowMs: 5999), 1)
+        XCTAssertEqual(checkSecondsLeft(check, nowMs: 6000), 0)
+        XCTAssertEqual(checkSecondsLeft(check, nowMs: 9000), 0)
     }
 }

@@ -1,17 +1,22 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import SwiftUI
 
-/// One pad on Controllers: its dot, name and link, the binding's hand-off,
-/// its capability chips, the microphone's control, its motion rate and the
-/// way to its dead zones.
+/// One pad on Controllers: its dot, name, player number and link, the
+/// binding's hand-off, its capability chips, the microphone's control, its
+/// motion rate, its input path with the "Not responding?" check, and the
+/// way to its dead zones. The outline lights while the pad reports input.
 struct ControllerCard: View {
 
     struct Actions {
         let configure: (String) -> Void
         let deadZones: (String) -> Void
         let setMicMuted: (Bool, String) -> Void
+        let checkInput: (String) -> Void
+        let pickPath: (InputSource, String) -> Void
+        let helpSupport: (String) -> Void
     }
 
     let state: ControllerCardState
@@ -25,6 +30,11 @@ struct ControllerCard: View {
                     .font(DishFont.body)
                     .foregroundColor(DishTheme.onSurface)
                     .lineLimit(1)
+                if let player = state.path?.player {
+                    Text(player)
+                        .font(DishFont.monoChip)
+                        .foregroundColor(DishTheme.muted)
+                }
                 Spacer(minLength: DishSpace.s4)
                 Text(state.link)
                     .font(DishFont.mono)
@@ -47,12 +57,16 @@ struct ControllerCard: View {
                         .foregroundColor(DishTheme.muted)
                 }
             }
+            if let path = state.path {
+                PadPathSection(state: path, actions: pathActions)
+            }
             Button(state.deadZones, action: openDeadZones)
                 .buttonStyle(DishOutlinedButtonStyle())
         }
         .padding(DishSpace.s6)
         .background(DishTheme.surface)
-        .overlay(RoundedRectangle(cornerRadius: DishSize.cardRadius).stroke(DishTheme.cardStroke, lineWidth: DishSize.hairline))
+        .overlay(RoundedRectangle(cornerRadius: DishSize.cardRadius).stroke(state.stroke, lineWidth: DishSize.hairline))
+        .animation(.easeOut(duration: 0.2), value: state.stroke)
         .clipShape(RoundedRectangle(cornerRadius: DishSize.cardRadius))
     }
 
@@ -71,8 +85,24 @@ struct ControllerCard: View {
         }
     }
 
+    private var pathActions: PadPathSection.Actions {
+        PadPathSection.Actions(check: checkInput, pick: pickPath, helpSupport: helpSupport)
+    }
+
     private func configure() {
         actions.configure(state.id)
+    }
+
+    private func checkInput() {
+        actions.checkInput(state.id)
+    }
+
+    private func pickPath(_ source: InputSource) {
+        actions.pickPath(source, state.id)
+    }
+
+    private func helpSupport() {
+        actions.helpSupport(state.id)
     }
 
     private func openDeadZones() {

@@ -9,6 +9,15 @@ import Foundation
 /// pick between Standard and Direct.
 package extension AppModel {
 
+    /// The pad's name, once per burst of three drops within a minute, for
+    /// the app to word as its "keeps disconnecting" toast.
+    var padKeepsDisconnecting: AnyPublisher<String, Never> {
+        input.paths.records
+            .filter { $0.note == .keepsDisconnecting }
+            .map(\.subject)
+            .eraseToAnyPublisher()
+    }
+
     /// Watches both paths for five seconds on the pad's machine; the
     /// verdict lands in the slot's path facts and the flight recorder.
     func startInputCheck(slotId: String) {

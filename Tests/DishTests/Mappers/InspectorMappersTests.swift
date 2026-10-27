@@ -118,6 +118,15 @@ final class InspectorPageMappersTests: XCTestCase {
         return inspectorPageState(slotId: "pad", slots: slots, facts: facts, micPermitted: micPermitted, locale: english)
     }
 
+    func testTheInspectorOffersThePadsCheckFromItsPathFacts() {
+        var facts = ShellFacts()
+        facts.inputPaths["pad"] = SlotInputPath(source: .standard, reason: .macOSReads)
+        let page = inspectorPageState(slotId: "pad", slots: [full], facts: facts, micPermitted: true, locale: english)
+        XCTAssertEqual(page.path?.check.link, "Not responding?")
+        XCTAssertEqual(page.path?.reason, "macOS reads it")
+        XCTAssertNil(state([full]).path, "no facts yet, no section")
+    }
+
     func testAPadThatLeftIsNamedByItsIdAndHasNoBenches() {
         let page = state([])
         XCTAssertEqual(page.title, "pad")

@@ -171,6 +171,8 @@ struct InspectorPageState: Equatable {
     let stickTestStatus: String?
     /// Nil while the pad is not attached.
     let benches: InspectorBenchState?
+    /// The pad's input path and its "Not responding?" check.
+    var path: PadPathState?
 }
 
 struct LiveInputState: Equatable {
@@ -224,7 +226,8 @@ func inspectorPageState(
         touch: touchText(snapshot?.touch, words: words),
         stickTestsEnabled: inspection.bench.phase != .running,
         stickTestStatus: stickTestText(inspection, words: words),
-        benches: slot.map { inspectorBenches($0, micPermitted: micPermitted, words: words) }
+        benches: slot.map { inspectorBenches($0, micPermitted: micPermitted, words: words) },
+        path: padPathState(facts.inputPaths[slotId], words: words)
     )
 }
 

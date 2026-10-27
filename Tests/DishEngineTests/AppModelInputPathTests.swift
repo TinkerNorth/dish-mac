@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import Combine
 import DishCore
 import XCTest
 @testable import DishEngine
@@ -89,5 +90,16 @@ final class AppModelInputPathTests: XCTestCase {
         XCTAssertEqual(pad.hardwareId, HidHardwareId(vendorId: 0x057E, productId: 0x2019), "a Direct pad names its own USB ID")
         XCTAssertNotNil(pad.inputPath?.rawReportHz, "sampled on the Diagnostics tick")
         model.pageDisappeared(.diagnostics)
+    }
+
+    func testAPadThatKeepsDroppingReachesTheAppOncePerBurstByName() throws {
+        var names: [String] = []
+        let subscription = model.padKeepsDisconnecting.sink { names.append($0) }
+        for _ in 0 ..< 4 {
+            _ = try arriveN64() // The lane is not under test here.
+            model.input.paths.hidPadRemoved(slotId: Self.n64)
+        }
+        XCTAssertEqual(names, ["Nintendo N64 Online Controller"], "the fourth drop is the same burst")
+        subscription.cancel()
     }
 }

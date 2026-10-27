@@ -113,6 +113,8 @@ final class PathClock {
 final class FakePathHost: InputPathHost {
     private(set) var directSlots: [String: GameControllerInput.Slot] = [:]
     private(set) var carriersShown: [String: Bool] = [:]
+    /// Every show and hide of each carrier's slot, in order.
+    private(set) var carrierShowings: [String: [Bool]] = [:]
     private(set) var outputCarriers: [String: String] = [:]
     private(set) var batteries: [String: PadBattery] = [:]
 
@@ -126,6 +128,7 @@ final class FakePathHost: InputPathHost {
 
     func showCarrierSlot(_ gameControllerId: String, _ shown: Bool) {
         carriersShown[gameControllerId] = shown
+        carrierShowings[gameControllerId, default: []].append(shown)
     }
 
     func carryOutput(directSlotId: String, via gameControllerId: String?) {
