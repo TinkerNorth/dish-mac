@@ -17,6 +17,16 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **The release's provenance is generated.** The SLSA generator is pinned by
+  commit, as every action in the workflows is, and a commit pin only works
+  when the generator is built from that source (`compile-generator: true`, as
+  the other clients have it); without it the generator refused the ref and
+  the release stopped before it was published.
+
 ## [1.0.1] - 2026-10-26
 
 The first published build. 1.0.0 was tagged the same day and never built: its
