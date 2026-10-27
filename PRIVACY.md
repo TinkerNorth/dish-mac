@@ -1,6 +1,6 @@
 # Dish for macOS: Privacy Policy
 
-**Effective date:** 2026-10-26.
+**Effective date:** 2026-10-27.
 **Canonical copy:** this file, at
 [`https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md`](https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md).
 
