@@ -17,7 +17,7 @@ the repos share a version number.
 
 ---
 
-## [Unreleased]
+## [1.1.0] - 2026-10-27
 
 ### Added
 
@@ -578,6 +578,7 @@ Tagged, never published: its release workflow was refused before it started.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[1.1.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.1.0
 [1.0.2]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.2
 [1.0.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.1
 [1.0.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.0
