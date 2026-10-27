@@ -248,6 +248,15 @@ read the same way. Everything else stays on GameController.
   need no Input Monitoring permission and no entitlement, so no access is
   requested. Arrival and removal hop to the main actor; a pad GameController
   turns out to read is released again.
+- **One device, one lane.** IOHIDManager hands back a separate device
+  reference for every matching rule a device satisfies, so a Nintendo pad,
+  which matches its model rule and the game-usage rule, arrives twice and
+  leaves twice. `HidEntryRegistry` keys the reader's devices by IORegistry
+  entry ID: the first reference opens the lane, a second is ignored (also
+  after the pad was released to GameController), and the device ends once
+  whichever reference reports the removal. Once a second the reader also
+  checks its lanes against the devices the manager still lists and ends any
+  whose device is gone, so a missed removal cannot leave a ghost pad.
 - **A lane per device.** `HidPadLane` holds the report buffer IOKit writes
   into, sized from `kIOHIDMaxInputReportSizeKey`, the decoder and its state
   (the Switch sticks' reach, or the descriptor's `HidGamepadLayout`), the

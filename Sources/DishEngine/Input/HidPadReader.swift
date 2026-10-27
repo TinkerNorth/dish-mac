@@ -64,6 +64,8 @@ final class InertHidPadReader: HidPadReading {
 final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     static let log = Logger(subsystem: "com.tinkernorth.dish", category: "Direct")
     static let threadName = "com.tinkernorth.dish.hid"
+    /// How often the lanes are checked against the devices macOS lists.
+    static let reconcileSeconds: CFTimeInterval = 1
 
     private struct Entry {
         let device: IOHIDDevice
@@ -76,7 +78,7 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
 
     // Touched only on the reader's thread.
     private var manager: IOHIDManager?
-    private var entries: [ObjectIdentifier: Entry] = [:]
+    private var entries = HidEntryRegistry<Entry>()
     private var wiring: HidPadWiring?
     private var events: HidPadEvents?
 
@@ -108,7 +110,18 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         IOHIDManagerRegisterDeviceRemovalCallback(manager, hidPadRemoved, context)
         IOHIDManagerScheduleWithRunLoop(manager, runLoop, CFRunLoopMode.defaultMode.rawValue)
         self.manager = manager
+        scheduleReconcile(on: runLoop)
         CFRunLoopRun()
+    }
+
+    /// The reconcile runs on the reader's own run loop, beside the
+    /// manager's callbacks, so the entries stay single-threaded.
+    private func scheduleReconcile(on runLoop: CFRunLoop) {
+        let firstFire = CFAbsoluteTimeGetCurrent() + Self.reconcileSeconds
+        let timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, firstFire, Self.reconcileSeconds, 0, 0) { [weak self] _ in
+            self?.reconcile()
+        }
+        CFRunLoopAddTimer(runLoop, timer, .defaultMode)
     }
 
     private func perform(_ work: @escaping () -> Void) {
@@ -119,15 +132,17 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
 
     // MARK: - On the reader's thread
 
+    /// A device that matches several rules arrives once per rule; only its
+    /// first reference opens a lane.
     fileprivate func matched(_ device: IOHIDDevice) {
-        let key = ObjectIdentifier(device)
-        guard entries[key] == nil, let wiring, let events else { return }
+        let registryId = Self.registryId(of: device)
+        guard !entries.knows(registryId), let wiring, let events else { return }
         guard let candidate = hidPadCandidate(Self.properties(of: device)) else { return }
-        let taken = Set(entries.values.map(\.lane.slotId))
+        let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
         let lane = HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: DispatchTime.now().uptimeNanoseconds)
         guard open(device, lane: lane) else { return }
-        entries[key] = Entry(device: device, lane: lane)
+        entries.file(registryId, Entry(device: device, lane: lane))
         events.arrived(HidPadArrival(slotId: slotId, lane: lane, probe: .live(device)))
     }
 
@@ -143,15 +158,31 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         return true
     }
 
+    /// The device leaves once, whichever of its references reports it.
     fileprivate func removed(_ device: IOHIDDevice) {
-        guard let entry = entries.removeValue(forKey: ObjectIdentifier(device)) else { return }
+        guard let entry = entries.remove(Self.registryId(of: device)) else { return }
+        end(entry)
+    }
+
+    /// Every lane whose device macOS no longer lists is ended.
+    private func reconcile() {
+        guard let manager else { return }
+        let devices = (IOHIDManagerCopyDevices(manager) as? Set<IOHIDDevice>) ?? []
+        let present = Set(devices.map(Self.registryId(of:)))
+        for entry in entries.reconcile(present: present) {
+            end(entry)
+        }
+    }
+
+    private func end(_ entry: Entry) {
         close(entry)
         events?.removed(entry.lane.slotId)
     }
 
+    /// The device stays known as released, so its other reference never
+    /// opens a lane GameController already reads.
     private func releaseOnThread(_ slotId: String) {
-        guard let key = entries.first(where: { $0.value.lane.slotId == slotId })?.key,
-              let entry = entries.removeValue(forKey: key) else { return }
+        guard let entry = entries.release(where: { $0.lane.slotId == slotId }) else { return }
         close(entry)
     }
 
@@ -159,6 +190,17 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         IOHIDDeviceRegisterInputReportCallback(entry.device, entry.lane.buffer, entry.lane.capacity, nil, nil)
         IOHIDDeviceClose(entry.device, IOOptionBits(kIOHIDOptionsTypeNone))
         Unmanaged.passUnretained(entry.lane).release()
+    }
+
+    /// The IORegistry entry behind a reference: the identity every reference
+    /// IOHIDManager hands back for one device shares. Should the lookup fail,
+    /// the reference's own identity stands in, which reads such a device once
+    /// per reference, as before.
+    private static func registryId(of device: IOHIDDevice) -> UInt64 {
+        var registryId: UInt64 = 0
+        let status = IORegistryEntryGetRegistryEntryID(IOHIDDeviceGetService(device), &registryId)
+        let fallback = UInt64(UInt(bitPattern: ObjectIdentifier(device).hashValue))
+        return status == KERN_SUCCESS ? registryId : fallback
     }
 
     private static func properties(of device: IOHIDDevice) -> [String: Any] {
