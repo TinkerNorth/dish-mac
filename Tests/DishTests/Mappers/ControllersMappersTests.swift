@@ -79,4 +79,42 @@ final class ControllersMappersTests: XCTestCase {
         facts.telemetry = InputTelemetry(eventsPerSecond: 5, sendsPerSecond: 4, totalSent: 3)
         XCTAssertEqual(controllersPageState(slots: [], facts: facts).footer, telemetryFooter(facts.telemetry))
     }
+
+    func testACardCarriesItsPadsPathPlayerAndCheck() throws {
+        var facts = ShellFacts()
+        var path = SlotInputPath(source: .direct, reason: .directByModel)
+        path.playerNumber = 2
+        facts.inputPaths["pad"] = path
+        guard case let .cards(cards) = controllersPageState(slots: [Fix.pad()], facts: facts).content else {
+            return XCTFail("a card per pad")
+        }
+        let state = try XCTUnwrap(cards.first?.path)
+        XCTAssertEqual(state.player, "Player 2")
+        XCTAssertEqual(state.path, "Direct")
+        XCTAssertEqual(state.prompt, "Press any button on this controller")
+        XCTAssertEqual(state.check.link, "Not responding?")
+        XCTAssertNil(card(Fix.pad()).path, "no facts yet, no path block")
+    }
+
+    func testACardLightsWhileItsPadReportsInput() {
+        XCTAssertEqual(controllerCard(Fix.pad(), InputTelemetry(reporting: ["pad"])).stroke, DishTheme.primary)
+        XCTAssertEqual(controllerCard(Fix.pad(), InputTelemetry(reporting: ["other"])).stroke, DishTheme.cardStroke)
+    }
+
+    func testAGuessedDirectPadWearsTheChipAndItsMenuChecksItsButtons() throws {
+        var facts = ShellFacts()
+        var path = SlotInputPath(source: .direct, reason: .macOSCannotRead)
+        path.layoutGuessed = true
+        path.remappable = true
+        facts.inputPaths["pad"] = path
+        guard case let .cards(cards) = controllersPageState(slots: [Fix.pad()], facts: facts).content else {
+            return XCTFail("a card per pad")
+        }
+        let card = try XCTUnwrap(cards.first)
+        XCTAssertEqual(card.layoutChip?.text, "Layout guessed")
+        XCTAssertEqual(card.menu, [.checkButtons("Check the buttons"), .helpSupport("Help support this controller")])
+        XCTAssertEqual(card.menuLabel, "More actions")
+        XCTAssertNil(self.card(Fix.pad()).layoutChip)
+        XCTAssertEqual(self.card(Fix.pad()).menu, [], "a pad macOS reads has no menu")
+    }
 }

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import DishEngine
 import Foundation
 
@@ -46,8 +47,14 @@ func inputDeviceCard(_ device: HidDeviceFacts, words: L10n = .app) -> Diagnostic
         dot: nil,
         chip: nil,
         lines: inputDeviceLines(device, words: words),
-        inspects: nil
+        inspects: nil,
+        supportKey: supportTarget(of: device).deviceKey
     )
+}
+
+/// The device by its USB identity, which the census always knows.
+func supportTarget(of device: HidDeviceFacts) -> SupportTarget {
+    .usb(vendorId: UInt16(clamping: device.hardwareId.vendorId), productId: UInt16(clamping: device.hardwareId.productId))
 }
 
 /// Why Dish leaves it out, its hardware ID and how it is connected.

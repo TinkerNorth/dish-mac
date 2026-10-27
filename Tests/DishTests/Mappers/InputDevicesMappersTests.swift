@@ -24,6 +24,7 @@ final class InputDevicesMappersTests: XCTestCase {
         XCTAssertEqual(card.id, "hid:7")
         XCTAssertEqual(card.title, "N64 Controller")
         XCTAssertNil(card.inspects, "there is no input to inspect")
+        XCTAssertEqual(card.supportKey, "057e:2019", "its help-support capture opens it by its USB identity")
         XCTAssertEqual(card.lines, [
             FactLine(key: "Status", value: "Not a controller: not claimed by GameController"),
             FactLine(key: "Hardware ID", value: "057e:2019"),

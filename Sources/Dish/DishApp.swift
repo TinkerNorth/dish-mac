@@ -21,6 +21,7 @@ struct DishApp: App {
     @StateObject private var moonlightNotifier = MoonlightNotifier()
     @StateObject private var updateNotifier = UpdateNotifier()
     @StateObject private var lidNotifier = LidNotifier()
+    @StateObject private var padNotifier = PadNotifier()
     @StateObject private var navigation = NavigationStore(
         preferences: UiPreferenceStore(defaults: .standard),
         onboarding: OnboardingPreferenceStore(defaults: .standard),
@@ -71,6 +72,7 @@ struct DishApp: App {
         moonlightNotifier.bind(events: model.moonlight.events.eraseToAnyPublisher(), center: notifications, quitApp: quitMoonlightApp)
         updateNotifier.bind(checker: model.updates, center: notifications)
         lidNotifier.bind(lidPausedStreaming: model.lidPausedStreaming, center: notifications)
+        padNotifier.bind(keepsDisconnecting: model.padKeepsDisconnecting, center: notifications)
         delegate.bind(background: model.background, announcer: BackgroundAnnouncer())
     }
 

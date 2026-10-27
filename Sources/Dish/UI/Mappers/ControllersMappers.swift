@@ -33,6 +33,14 @@ struct ControllerCardState: Equatable, Identifiable {
     /// The motion rate, once the pad sends motion.
     let motionRate: String?
     let deadZones: String
+    /// The pad's input path, once the paths have facts for it.
+    let path: PadPathState?
+    let layoutChip: LayoutChipState?
+    /// Empty for a pad macOS reads: the card then has no menu.
+    let menu: [CardMenuItemState]
+    let menuLabel: String
+    /// The accent while the pad reports input, so identical pads can be told apart.
+    let stroke: Color
 }
 
 /// The binding's hand-off: the host it is bound to, or the way to bind it.
@@ -62,7 +70,7 @@ func controllersPageState(
     registering: Bool = false,
     words: L10n = .app
 ) -> ControllersPageState {
-    let cards = slots.map { controllerCard($0, facts.telemetry, words: words) }
+    let cards = slots.map { controllerCard($0, facts.telemetry, path: facts.inputPaths[$0.id], words: words) }
     return ControllersPageState(
         registering: registering,
         content: cards.isEmpty ? .empty(title: words.noControllersConnected, body: words.plugOneIn) : .cards(cards),
@@ -70,7 +78,12 @@ func controllersPageState(
     )
 }
 
-func controllerCard(_ slot: ControllerSlot, _ telemetry: InputTelemetry, words: L10n = .app) -> ControllerCardState {
+func controllerCard(
+    _ slot: ControllerSlot,
+    _ telemetry: InputTelemetry,
+    path: SlotInputPath? = nil,
+    words: L10n = .app
+) -> ControllerCardState {
     let rates = telemetry.pads[slot.id]
     return ControllerCardState(
         id: slot.id,
@@ -81,7 +94,12 @@ func controllerCard(_ slot: ControllerSlot, _ telemetry: InputTelemetry, words: 
         chips: deviceChips(slot, words: words),
         mic: micToggle(slot, words: words),
         motionRate: motionRateText(rates?.motionHz ?? 0, words: words),
-        deadZones: words.deadZonesEllipsis
+        deadZones: words.deadZonesEllipsis,
+        path: padPathState(path, words: words),
+        layoutChip: layoutChip(path, words: words),
+        menu: cardMenu(path, words: words),
+        menuLabel: words.moreActions,
+        stroke: telemetry.reporting.contains(slot.id) ? DishTheme.primary : DishTheme.cardStroke
     )
 }
 

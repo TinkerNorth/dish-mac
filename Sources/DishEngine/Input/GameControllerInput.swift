@@ -61,6 +61,11 @@ final class GameControllerInput: ObservableObject {
     @Published var slots: [Slot] = []
 
     nonisolated let processor = GamepadInputProcessor()
+    /// Each pad's input source, and the Direct reader behind it.
+    let paths: InputPaths
+    /// The framework's category word for a controller; a seam, since every
+    /// snapshot controller a test can build reads "MFi".
+    let categoryOf: (GCController) -> String
     /// The one serial queue every controller's handlers run on, so the hot
     /// path never waits behind the main thread.
     nonisolated let inputQueue = DispatchQueue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
@@ -118,8 +123,14 @@ final class GameControllerInput: ObservableObject {
     }
 
     /// `connected` is the launch sweep, the framework's list unless a test
-    /// hands in its own.
-    init(connected: [GCController] = GCController.controllers()) {
+    /// hands in its own. The paths start reading HID once they can publish.
+    init(
+        connected: [GCController] = GCController.controllers(),
+        paths: InputPaths? = nil,
+        categoryOf: @escaping (GCController) -> String = { $0.productCategory }
+    ) {
+        self.paths = paths ?? InputPaths(choices: UsbPathChoiceStore())
+        self.categoryOf = categoryOf
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: .GCControllerDidConnect, object: nil, queue: .main) { [weak self] note in
             guard let self, let controller = note.object as? GCController else { return }
@@ -129,6 +140,8 @@ final class GameControllerInput: ObservableObject {
             guard let self, let controller = note.object as? GCController else { return }
             Task { @MainActor in self.detach(controller) }
         })
+        self.paths.host = self
+        self.paths.start(processor: processor)
         for controller in connected {
             attach(controller)
         }
@@ -144,8 +157,11 @@ final class GameControllerInput: ObservableObject {
 
     /// The queue is the controller's before any handler is, so no event
     /// lands on the main queue first. Recording the slot is what hands the
-    /// pad its dead zones (`observeDeadzones`), before its first report.
-    private func attach(_ controller: GCController) {
+    /// pad its dead zones (`observeDeadzones`), before its first report. A
+    /// controller of a Direct-by-model category attaches as a carrier: its
+    /// gate publishes nothing and its slot stays hidden until its model is
+    /// picked Standard, which attaches it again.
+    func attach(_ controller: GCController) {
         Self.monitorBackgroundEvents()
         if let pad = controller.extendedGamepad {
             attachExtended(controller, pad: pad)
@@ -157,12 +173,13 @@ final class GameControllerInput: ObservableObject {
     /// A pad with the extended profile is read through its named inputs.
     private func attachExtended(_ controller: GCController, pad: GCExtendedGamepad) {
         let id = slotId(for: controller)
+        let gate = admit(controller, id: id)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
         controller.handlerQueue = inputQueue
-        installReportHandler(id: id, pad: pad)
-        installMotionHandler(id: id, controller: controller)
-        installTouchpadHandlers(id: id, pad: pad)
+        installReportHandler(id: id, pad: pad, gate: gate)
+        installMotionHandler(id: id, controller: controller, gate: gate)
+        installTouchpadHandlers(id: id, pad: pad, gate: gate)
         startBatteryTimer(deviceId: id, controller: controller)
     }
 
@@ -216,15 +233,11 @@ final class GameControllerInput: ObservableObject {
     }
 
     /// The DEVCAPS line names everything the framework says of the pad, so
-    /// a pad nobody here has held can be read from a log.
+    /// a pad nobody here has held can be read from a log; a carrier's is
+    /// logged with no slot recorded.
     func recordSlot(id: String, controller: GCController, capabilities: ControllerCapabilities, family: PadFamily) {
         let name = controller.vendorName ?? controller.productCategory
-        if let index = slots.firstIndex(where: { $0.id == id }) {
-            slots[index].capabilities = capabilities
-            slots[index].family = family
-        } else {
-            slots.append(Slot(id: id, name: name, capabilities: capabilities, family: family))
-        }
+        if paths.showsInputSlot(id) { upsertSlot(Slot(id: id, name: name, capabilities: capabilities, family: family)) }
         let extended = controller.extendedGamepad == nil ? "no" : "yes"
         let profile = Self.profileCensus(controller.physicalInputProfile)
         Self.log.info("""
@@ -242,9 +255,9 @@ final class GameControllerInput: ObservableObject {
     /// handler rebuilds the whole report from the snapshot every time.
     /// Nonisolated, so the compiler refuses a handler that reaches for
     /// main-actor state: it runs on the input queue.
-    private nonisolated func installReportHandler(id: String, pad: GCExtendedGamepad) {
+    private nonisolated func installReportHandler(id: String, pad: GCExtendedGamepad, gate: PadGate) {
         pad.valueChangedHandler = { [weak self] pad, _ in
-            self?.pushReport(id: id, pad: pad)
+            self?.pushReport(id: id, pad: pad, gate: gate)
         }
     }
 
@@ -260,6 +273,7 @@ final class GameControllerInput: ObservableObject {
         }
         slots.removeAll { $0.id == id }
         processor.remove(deviceId: id)
+        paths.gameControllerDetached(id: id, name: controller.vendorName ?? controller.productCategory)
         controllersById.removeValue(forKey: id)
         actuators.removeValue(forKey: id)?.shutdown()
         batteryTimers.removeValue(forKey: id)?.cancel()
@@ -295,7 +309,9 @@ final class GameControllerInput: ObservableObject {
 
     // MARK: - Hot path
 
-    private nonisolated func pushReport(id: String, pad: GCExtendedGamepad) {
+    /// Every handler call is a change; the gate says whether it is published.
+    private nonisolated func pushReport(id: String, pad: GCExtendedGamepad, gate: PadGate) {
+        guard gate.pass(.standard, changed: true) else { return }
         let sample = Self.padSample(pad)
         processor.publish(deviceId: id, state: wireReport(sample))
     }
@@ -337,13 +353,7 @@ final class GameControllerInput: ObservableObject {
     private func stableId(for controller: GCController) -> String {
         let vendor = controller.vendorName ?? Self.unknownVendor
         let base = "\(Self.slotIdPrefix)\(vendor):\(controller.productCategory)"
-        let attached = Set(controllerIds.values)
-        if !attached.contains(base) { return base }
-        var ordinal = 1
-        while attached.contains("\(base)#\(ordinal)") {
-            ordinal += 1
-        }
-        return "\(base)#\(ordinal)"
+        return lowestFreeSlotId(base: base, taken: Set(controllerIds.values))
     }
 }
 

@@ -97,6 +97,19 @@ private struct PadNode: View {
                     .font(DishFont.caption)
                     .foregroundColor(DishTheme.muted)
                     .lineLimit(1)
+                if let path = state.path {
+                    Text(path)
+                        .font(DishFont.caption)
+                        .foregroundColor(DishTheme.muted)
+                        .lineLimit(1)
+                        .help(path)
+                }
+                if let prompt = state.prompt {
+                    Text(prompt)
+                        .font(DishFont.caption)
+                        .foregroundColor(DishTheme.primary)
+                        .lineLimit(1)
+                }
             }
         }
         .help(state.name)

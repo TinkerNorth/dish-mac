@@ -4,7 +4,8 @@
 // The live figures Home and Controllers show: events and sends per second,
 // the total sent, and each pad's report and motion rates for its wire line
 // and card. Read off the processor's tally and the router's send count at
-// 1 Hz while a page that shows them is on screen; nothing is measured twice.
+// 1 Hz while a page that shows them is on screen, and which pads reported
+// at 4 Hz for the cards that light; nothing is measured twice.
 
 import Combine
 import DishCore
@@ -27,12 +28,22 @@ package struct InputTelemetry: Equatable {
     package var sendsPerSecond = 0
     package var totalSent: UInt64 = 0
     package var pads: [String: PadRates] = [:]
+    /// The pads whose input reached the processor since the last tick, for
+    /// the card that lights while its pad reports.
+    package var reporting: Set<String> = []
 
-    package init(eventsPerSecond: Int = 0, sendsPerSecond: Int = 0, totalSent: UInt64 = 0, pads: [String: PadRates] = [:]) {
+    package init(
+        eventsPerSecond: Int = 0,
+        sendsPerSecond: Int = 0,
+        totalSent: UInt64 = 0,
+        pads: [String: PadRates] = [:],
+        reporting: Set<String> = []
+    ) {
         self.eventsPerSecond = eventsPerSecond
         self.sendsPerSecond = sendsPerSecond
         self.totalSent = totalSent
         self.pads = pads
+        self.reporting = reporting
     }
 }
 
@@ -49,11 +60,13 @@ struct TelemetryRates {
     private var reports: [String: InputRateTracker] = [:]
     private var motion: [String: InputRateTracker] = [:]
     private var sends = InputRateTracker()
+    private var lastReports: [String: UInt64] = [:]
 
     mutating func sample(_ counts: InputCounts, nowUs: UInt64) -> InputTelemetry {
         let padIds = Set(counts.reports.keys).union(counts.motion.keys)
         reports = reports.filter { padIds.contains($0.key) }
         motion = motion.filter { padIds.contains($0.key) }
+        let reporting = activity(counts.reports)
         var pads: [String: PadRates] = [:]
         for id in padIds {
             let reportHz = reports[id, default: InputRateTracker()].sample(count: counts.reports[id] ?? 0, nowUs: nowUs)
@@ -62,17 +75,31 @@ struct TelemetryRates {
         }
         let sendsHz = sends.sample(count: counts.sends, nowUs: nowUs)
         let events = pads.values.map(\.reportHz).reduce(0, +)
-        return InputTelemetry(eventsPerSecond: events, sendsPerSecond: sendsHz, totalSent: counts.sends, pads: pads)
+        return InputTelemetry(eventsPerSecond: events, sendsPerSecond: sendsHz, totalSent: counts.sends, pads: pads, reporting: reporting)
+    }
+
+    /// The pads whose report count moved since the last sample, rates or
+    /// activity alone; a pad's first sample only sets its baseline.
+    mutating func activity(_ counts: [String: UInt64]) -> Set<String> {
+        let moved = counts.filter { id, count in lastReports[id].map { count > $0 } ?? false }.keys
+        lastReports = counts
+        return Set(moved)
     }
 }
 
 @MainActor
 package final class TelemetrySource: StateSource<InputTelemetry> {
 
+    /// The tick runs four times a second for the cards' activity; the
+    /// rates, and the work that rides them, every fourth tick.
+    static let ticksPerRate = 4
+
     private var counts: () -> InputCounts = { InputCounts() }
     private var clockUs: () -> UInt64 = uptimeUs
+    private var onTick: () -> Void = {}
     private var rates = TelemetryRates()
     private var viewers = 0
+    private var ticks = 0
     private var timer: DispatchSourceTimer?
 
     package init() {
@@ -83,6 +110,11 @@ package final class TelemetrySource: StateSource<InputTelemetry> {
     func use(counts: @escaping () -> InputCounts, clockUs: @escaping () -> UInt64) {
         self.counts = counts
         self.clockUs = clockUs
+    }
+
+    /// Work that rides the same 1 Hz tick, set once by the owner.
+    func useTick(_ work: @escaping () -> Void) {
+        onTick = work
     }
 
     var isTicking: Bool {
@@ -105,15 +137,29 @@ package final class TelemetrySource: StateSource<InputTelemetry> {
     }
 
     func refresh() {
+        onTick()
         setState(rates.sample(counts(), nowUs: clockUs()))
+    }
+
+    /// One quarter-second tick: the rates on every fourth, else only which
+    /// pads reported, published when that changed.
+    func tick() {
+        ticks = (ticks + 1) % Self.ticksPerRate
+        guard ticks != 0 else { return refresh() }
+        let reporting = rates.activity(counts().reports)
+        guard reporting != state.reporting else { return }
+        var next = state
+        next.reporting = reporting
+        setState(next)
     }
 
     private func arm() {
         guard timer == nil else { return }
         let source = DispatchSource.makeTimerSource(queue: .main)
-        source.schedule(deadline: .now() + .seconds(1), repeating: .seconds(1))
+        let interval = DispatchTimeInterval.milliseconds(1000 / Self.ticksPerRate)
+        source.schedule(deadline: .now() + interval, repeating: interval)
         source.setEventHandler { [weak self] in
-            MainActor.assumeIsolated { self?.refresh() }
+            MainActor.assumeIsolated { self?.tick() }
         }
         source.resume()
         timer = source

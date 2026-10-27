@@ -163,4 +163,16 @@ final class HomeMappersTests: XCTestCase {
         XCTAssertEqual(signalRowFill(bound.destination), DishTheme.surface)
         XCTAssertEqual(signalRowFill(.ghost(GhostCardState(title: "Bind…", subtitle: ""))), Color.clear)
     }
+
+    func testAPadNodeNamesItsPlayerAndPathAndAsksForAButtonUntilProven() throws {
+        var facts = ShellFacts()
+        var path = SlotInputPath(source: .standard, reason: .dishCouldNotRead)
+        path.playerNumber = 1
+        facts.inputPaths["pad"] = path
+        let unproven = try row(Fix.pad(), facts: facts).pad
+        XCTAssertEqual(unproven.path, "Player 1 · Standard · Dish couldn’t read it directly, so macOS reads it")
+        XCTAssertEqual(unproven.prompt, "Press any button on this controller")
+        facts.inputPaths["pad"]?.proven = true
+        XCTAssertNil(try row(Fix.pad(), facts: facts).pad.prompt, "the first real change takes the prompt away")
+    }
 }

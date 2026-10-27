@@ -130,6 +130,15 @@ final class NavigationMachineTests: XCTestCase {
         XCTAssertEqual(shown.state.path, [.deadZones(slotId: "pad")])
     }
 
+    func testTheControllerSupportPagesArePushedWhereTheyWereAskedForAndLiveOnControllers() {
+        let onDiagnostics = NavigationState(destination: .settings, path: [.diagnostics])
+        let capture = step(onDiagnostics, .push(.helpSupport(deviceKey: "057e:2019"))).state
+        XCTAssertEqual(capture.destination, .settings)
+        XCTAssertEqual(capture.path, [.diagnostics, .helpSupport(deviceKey: "057e:2019")])
+        XCTAssertEqual(homeDestination(of: .helpSupport(deviceKey: "057e:2019")), .controllers)
+        XCTAssertEqual(homeDestination(of: .checkButtons(slotId: "pad")), .controllers)
+    }
+
     func testADirtyBindingHoldsTheRailUntilThePageAnswers() {
         var editing = NavigationState(destination: .home, path: [.configureBinding(slotId: "pad")])
         editing = step(editing, .guardLeave(true)).state

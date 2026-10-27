@@ -42,6 +42,10 @@ struct HomeRowState: Equatable, Identifiable {
 struct PadNodeState: Equatable {
     let name: String
     let detail: String
+    /// "Player 1 · Direct · its reason", once the paths have facts for the pad.
+    var path: String?
+    /// "Press any button on this controller" until its path is proven.
+    var prompt: String?
 }
 
 struct WireState: Equatable {
@@ -124,7 +128,7 @@ func telemetryFooter(_ telemetry: InputTelemetry, words: L10n = .app) -> Telemet
 private func homeRow(_ slot: ControllerSlot, _ inputs: HomeInputs, words: L10n) -> HomeRowState {
     HomeRowState(
         id: slot.id,
-        pad: PadNodeState(name: slot.name, detail: padNodeDetail(slot, words: words)),
+        pad: padNode(slot, path: inputs.facts.inputPaths[slot.id], words: words),
         wire: wireState(slot, inputs.facts, words: words),
         destination: rowDestination(slot, inputs, words: words)
     )
@@ -141,6 +145,18 @@ private func rowDestination(_ slot: ControllerSlot, _ inputs: HomeInputs, words:
         editHelp: words.configureBinding
     )
     return .bound(hostNode(summary, slotId: slot.id, words: words), strip)
+}
+
+/// The pad's name and detail, then its player number, path and reason, and
+/// the prompt while its path is unproven.
+func padNode(_ slot: ControllerSlot, path: SlotInputPath?, words: L10n = .app) -> PadNodeState {
+    let state = padPathState(path, words: words)
+    return PadNodeState(
+        name: slot.name,
+        detail: padNodeDetail(slot, words: words),
+        path: state.map(padNodePathLine),
+        prompt: state?.prompt
+    )
 }
 
 /// The pad's family (GameController keeps the transport to itself), its

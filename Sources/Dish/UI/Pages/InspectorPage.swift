@@ -12,6 +12,7 @@ import SwiftUI
 struct InspectorPage: View {
 
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var navigation: NavigationStore
     let slotId: String
 
     private let words = L10n.app
@@ -24,6 +25,9 @@ struct InspectorPage: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 header
+                if let path = state.path {
+                    InspectorPathSection(state: path, actions: pathActions)
+                }
                 liveInputSection
                 motionSection
                 stickTestsSection
@@ -40,6 +44,22 @@ struct InspectorPage: View {
         Text(state.title)
             .font(DishFont.body)
             .foregroundColor(DishTheme.onSurface)
+    }
+
+    private var pathActions: PadPathSection.Actions {
+        PadPathSection.Actions(check: checkInput, pick: pickPath, helpSupport: helpSupport)
+    }
+
+    private func checkInput() {
+        model.startInputCheck(slotId: slotId)
+    }
+
+    private func pickPath(_ source: InputSource) {
+        model.pickInputPath(slotId: slotId, source)
+    }
+
+    private func helpSupport() {
+        navigation.send(.push(helpSupportPage(forSlot: slotId, slots: model.slots, paths: model.shellFacts.inputPaths)))
     }
 
     // MARK: - Live input

@@ -46,9 +46,14 @@ protocol-1 satellite; see [Protocol](#protocol).
   GameController vends, including the ones it vends without the extended
   profile, such as the Nintendo Switch Online N64 and SNES pads (the N64's C
   buttons drive the right stick, Z and ZR the triggers, as on Android), and
-  keeps forwarding them while another app is in front. A game device macOS
-  does not hand to GameController is listed under Other input devices in
-  Diagnostics with its hardware ID and connection. Plus motion (gyro and
+  keeps forwarding them while another app is in front. The Switch Pro, N64
+  and SNES Online pads, and gamepads GameController does not support, are
+  read Direct from their HID reports alongside macOS; a generic pad whose
+  layout is guessed can have its buttons corrected with "Check the buttons",
+  and "Help support this controller" records what a pad sends for a GitHub
+  issue you file yourself. A game device macOS does not hand to
+  GameController is listed under Other input devices in Diagnostics with its
+  hardware ID and connection. Plus motion (gyro and
   accelerometer) and the touchpad from DualSense and DualShock 4 pads, and
   the battery level; the touchpad reaches the host as the pad's own or,
   picked per controller, as the host's mouse.

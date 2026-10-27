@@ -47,12 +47,13 @@ extension GameControllerInput {
             return
         }
         let id = slotId(for: controller)
+        let gate = admit(controller, id: id)
         let firstSight = !slots.contains { $0.id == id }
         recordSlot(id: id, controller: controller, capabilities: Self.profileCapabilities(controller), family: Self.family(of: controller))
         if firstSight { Self.logProfile(subject: id, choice: choice, resolved: resolved, adopted: true) }
         controller.handlerQueue = inputQueue
-        installProfileHandler(id: id, profile: profile, inputs: Self.profileInputs(resolved, profile: profile))
-        installMotionHandler(id: id, controller: controller)
+        installProfileHandler(id: id, profile: profile, inputs: Self.profileInputs(resolved, profile: profile), gate: gate)
+        installMotionHandler(id: id, controller: controller, gate: gate)
         startBatteryTimer(deviceId: id, controller: controller)
     }
 
@@ -111,13 +112,15 @@ extension GameControllerInput {
     /// Any change re-reads the whole pad, as the extended path does.
     /// Nonisolated, so the compiler refuses a handler that reaches for
     /// main-actor state: it runs on the input queue.
-    private nonisolated func installProfileHandler(id: String, profile: GCPhysicalInputProfile, inputs: ProfileInputs) {
+    private nonisolated func installProfileHandler(id: String, profile: GCPhysicalInputProfile, inputs: ProfileInputs, gate: PadGate) {
         profile.valueDidChangeHandler = { [weak self] _, _ in
-            self?.pushProfileReport(id: id, inputs: inputs)
+            self?.pushProfileReport(id: id, inputs: inputs, gate: gate)
         }
     }
 
-    nonisolated func pushProfileReport(id: String, inputs: ProfileInputs) {
+    /// Every handler call is a change; the gate says whether it is published.
+    nonisolated func pushProfileReport(id: String, inputs: ProfileInputs, gate: PadGate) {
+        guard gate.pass(.standard, changed: true) else { return }
         let sample = Self.profileSample(inputs)
         processor.publish(deviceId: id, state: wireReport(from: sample))
     }

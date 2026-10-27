@@ -14,19 +14,21 @@ extension GameControllerInput {
     /// sensors are switched on; pads that manage their own need no opt-in.
     /// Nonisolated like every handler install, since the closure runs on the
     /// input queue.
-    nonisolated func installMotionHandler(id: String, controller: GCController) {
+    nonisolated func installMotionHandler(id: String, controller: GCController, gate: PadGate) {
         guard let motion = controller.motion else { return }
         if motion.sensorsRequireManualActivation {
             motion.sensorsActive = true
         }
         motion.valueChangedHandler = { [weak self] motion in
-            self?.pushMotion(id: id, motion: motion)
+            self?.pushMotion(id: id, motion: motion, gate: gate)
         }
     }
 
     /// A surface the pad lacks is sent as zeros rather than a stale reading;
-    /// a pad with neither surface sends nothing.
-    nonisolated func pushMotion(id: String, motion: GCMotion) {
+    /// a pad with neither surface sends nothing, and neither does a pad
+    /// whose input Dish reads directly.
+    nonisolated func pushMotion(id: String, motion: GCMotion, gate: PadGate) {
+        guard gate.forwards(.standard) else { return }
         let haveGyro = motion.hasRotationRate
         let haveAccel = motion.hasGravityAndUserAcceleration
         guard haveGyro || haveAccel else { return }
@@ -45,10 +47,10 @@ extension GameControllerInput {
 
     /// GameController has no per-finger touch-down event, so each of the
     /// three inputs re-reads the whole touchpad, as the report path does.
-    nonisolated func installTouchpadHandlers(id: String, pad: GCExtendedGamepad) {
+    nonisolated func installTouchpadHandlers(id: String, pad: GCExtendedGamepad, gate: PadGate) {
         guard let touchpad = Self.touchpadInputs(pad) else { return }
         let rebuild: () -> Void = { [weak self] in
-            self?.pushTouchpad(id: id, touchpad: touchpad)
+            self?.pushTouchpad(id: id, touchpad: touchpad, gate: gate)
         }
         touchpad.primary.valueChangedHandler = { _, _, _ in rebuild() }
         touchpad.secondary.valueChangedHandler = { _, _, _ in rebuild() }
@@ -57,7 +59,8 @@ extension GameControllerInput {
 
     /// A finger is down when its pad reads non-zero, which is the only signal
     /// the framework exposes.
-    nonisolated func pushTouchpad(id: String, touchpad: TouchpadInputs) {
+    nonisolated func pushTouchpad(id: String, touchpad: TouchpadInputs, gate: PadGate) {
+        guard gate.forwards(.standard) else { return }
         let finger0Active = touchpad.primary.xAxis.value != 0 || touchpad.primary.yAxis.value != 0
         let finger1Active = touchpad.secondary.xAxis.value != 0 || touchpad.secondary.yAxis.value != 0
         let position0 = gcTouchpadAxisToWire(x: touchpad.primary.xAxis.value, y: touchpad.primary.yAxis.value)

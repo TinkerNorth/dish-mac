@@ -28,6 +28,10 @@ package enum ObservedPage: Equatable {
     case configureBinding(slotId: String)
     /// The setup walk opens, pre-answered with a pad or not; leaving drops it.
     case setup(seedSlotId: String?)
+    /// "Check the buttons" listens to the pad while its page shows.
+    case checkButtons(slotId: String)
+    /// "Help support this controller" opens the device while its page shows.
+    case helpSupport(deviceKey: String)
 }
 
 /// The pages' lifecycle as intents: a view's `onAppear` and `onDisappear`
@@ -45,6 +49,8 @@ package extension AppModel {
         case .home, .controllers: telemetry.show()
         case let .configureBinding(slotId): openBindingDraft(slotId: slotId)
         case let .setup(seedSlotId): startSetup(seed: seedSlotId)
+        case let .checkButtons(slotId): input.paths.beginButtonCheck(slotId: slotId)
+        case let .helpSupport(deviceKey): input.paths.support.begin(deviceKey: deviceKey)
         }
     }
 
@@ -60,6 +66,8 @@ package extension AppModel {
         case .home, .controllers: telemetry.hide()
         case .configureBinding: closeBindingDraft()
         case .setup: endSetup()
+        case .checkButtons: input.paths.buttonCheck.end()
+        case .helpSupport: input.paths.support.end()
         }
     }
 

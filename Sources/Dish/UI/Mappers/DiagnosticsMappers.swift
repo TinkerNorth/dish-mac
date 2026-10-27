@@ -163,7 +163,8 @@ func moonlightPadText(_ pad: MoonlightPadFacts, words: L10n = .app) -> String {
 
 func padLines(_ pad: PadDiagnostics, words: L10n = .app) -> [FactLine] {
     let slot = pad.slot
-    let opening = [FactLine(key: words.connection, value: words.gameControllerFramework)]
+    let opening = [FactLine(key: words.connection, value: connectionText(pad.inputPath, words: words))]
+        + inputPathLines(pad.inputPath, words: words)
         + (pad.hardwareId.map { [FactLine(key: words.usbId, value: hardwareIdText($0))] } ?? [])
         + [FactLine(key: words.backgroundInput, value: backgroundInputText(pad.backgroundInput, words: words))]
         + (slot.emulation.map { [FactLine(key: words.type, value: emulatedTypeName($0, words: words))] } ?? [])
@@ -285,6 +286,7 @@ func eventText(_ event: DiagnosticsEvent, words: L10n = .app) -> String {
     case .padDetached: words.eventPadDetached(event.subject)
     case .padBound: words.eventPadBound(event.subject, event.host)
     case .padUnbound: words.eventPadUnbound(event.subject, event.host)
+    case .padPathChosen, .padCheckConcluded, .padKeepsDisconnecting: pathEventText(event, words: words)
     }
 }
 
@@ -347,6 +349,9 @@ struct DiagnosticsCardState: Equatable, Identifiable {
     let lines: [FactLine]
     /// The pad Inspect input opens; nil on a host's card.
     let inspects: String?
+    /// The device "Help support this controller" captures; only on the
+    /// cards of the game devices Dish cannot read.
+    var supportKey: String?
 }
 
 struct DiagnosticsEventLine: Equatable, Identifiable {
@@ -385,8 +390,17 @@ func hostCard(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = 
     )
 }
 
+/// A generic pad whose layout is guessed says so in the chip.
 func padCard(_ pad: PadDiagnostics, words: L10n = .app) -> DiagnosticsCardState {
-    DiagnosticsCardState(id: pad.id, title: pad.slot.name, dot: nil, chip: nil, lines: padLines(pad, words: words), inspects: pad.slot.id)
+    let chip = pad.inputPath?.layoutGuessed == true ? words.layoutGuessed : nil
+    return DiagnosticsCardState(
+        id: pad.id,
+        title: pad.slot.name,
+        dot: nil,
+        chip: chip,
+        lines: padLines(pad, words: words),
+        inspects: pad.slot.id
+    )
 }
 
 /// The whole log for the clipboard, oldest first.

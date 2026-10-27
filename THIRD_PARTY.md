@@ -27,7 +27,7 @@ TinkerNorth artwork, covered by this repository's own license.
 
 ## 2. Reused facts, not reused code
 
-Three sets of published facts are implemented here from their documentation,
+Five sets of published facts are implemented here from their documentation,
 not copied as code, and one protocol is ported as adapted logic (section 2c):
 
 - **The XUSB (XInput) gamepad report layout and button bits**, from Microsoft's
@@ -48,6 +48,19 @@ not copied as code, and one protocol is ported as adapted logic (section 2c):
   and captures, the same hex dish-android, dish-linux and dish-windows pin. No
   GPL-licensed Moonlight code (moonlight-common-c, moonlight-qt,
   moonlight-android, Sunshine, Apollo) was consulted or copied.
+- **The Switch input report layout** that `Sources/DishCore/DirectInput/`
+  decodes (report 0x30: the battery byte, the three button bytes, the packed
+  12-bit sticks and the IMU frames), as the Linux kernel's
+  `drivers/hid/hid-nintendo.c` documents it, reached through the decoders of
+  dish-android and the desktop clients that this port follows. Only offsets
+  and field meanings were used. The kernel is `GPL-2.0-only`
+  (<https://github.com/torvalds/linux>); none of its code is here.
+- **SDL's default Switch Pro motion scaling** (gyro raw / 14.2842 deg/s, accel
+  raw / 4096 g), folded into the wire's full scales as the divisors 28568 and
+  16384 in `Sources/DishCore/DirectInput/SwitchImu.swift`, and the fact from
+  SDL's controller list that the PDP Afterglow Wireless (0e6f:0186) speaks the
+  Switch Pro protocol, which is why `DirectModels.swift` leaves it out. A reuse
+  of constants and device facts, not SDL code; section 2d carries SDL's notice.
 
 ## 2a. sentry-cocoa
 
@@ -166,6 +179,38 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+```
+
+## 2d. SDL (Switch Pro motion scaling and a device fact)
+
+Simple DirectMedia Layer, SPDX `Zlib`. Upstream:
+<https://github.com/libsdl-org/SDL> (`src/joystick/hidapi/SDL_hidapi_switch.c`,
+`src/joystick/controller_list.h`).
+
+**No SDL code is compiled into Dish.** Section 2 lists the two constants and
+the one device fact reused; dish-android and the desktop clients carry the
+same attribution for the decoders these were mirrored from.
+
+```
+Simple DirectMedia Layer
+Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+Controller list portions Copyright (C) Valve Corporation
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
 ```
 
 ## 3. Keeping this in sync

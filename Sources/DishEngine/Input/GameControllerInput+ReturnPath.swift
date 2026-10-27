@@ -139,6 +139,8 @@ extension GameControllerInput {
     /// weak `controller` so they tolerate the pad going away between ticks
     /// (they no-op until `detach` cancels them).
     func startBatteryTimer(deviceId: String, controller: GCController) {
+        cancelBatteryTimers(deviceId)
+        guard paths.showsInputSlot(deviceId) else { return }
         let timer = DispatchSource.makeTimerSource(queue: .main)
         let delay: DispatchTime = .now() + .seconds(kBatteryFirstReportDelaySec)
         timer.schedule(deadline: delay, repeating: .seconds(kBatteryPollIntervalSec))
@@ -163,6 +165,11 @@ extension GameControllerInput {
         }
         watch.resume()
         batteryStateTimers[deviceId] = watch
+    }
+
+    func cancelBatteryTimers(_ deviceId: String) {
+        batteryTimers.removeValue(forKey: deviceId)?.cancel()
+        batteryStateTimers.removeValue(forKey: deviceId)?.cancel()
     }
 
     /// Resolve the battery reading for a controller and forward it. A pad has
