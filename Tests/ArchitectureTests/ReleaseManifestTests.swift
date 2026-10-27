@@ -49,10 +49,18 @@ final class ReleaseManifestTests: XCTestCase {
 
     func testTheSigningGateIsAdvisoryAndTheStableNameNeverCarriesASuffix() throws {
         let workflow = try RepoFiles.read(Self.workflowPath)
-        XCTAssertTrue(workflow.contains("ENFORCE: ${{ vars.ENFORCE_RELEASE_SIGNING }}"), "the hard gate is a repository variable")
-        XCTAssertTrue(workflow.contains("signed: ${{ steps.check.outputs.signed }}"), "later jobs learn whether the app is signed")
-        XCTAssertTrue(workflow.contains("\"dist/dish-mac.zip\""), "the stable asset keeps its name, signed or not")
-        XCTAssertFalse(workflow.contains("dish-mac${suffix}.zip"), "the stable asset never carries the -unsigned suffix")
+        let gateIsAVariable = workflow.contains("ENFORCE: ${{ vars.ENFORCE_RELEASE_SIGNING }}")
+        let laterJobsLearnTheOutcome = workflow.contains("signed: ${{ steps.check.outputs.signed }}")
+        let stableNameKept = workflow.contains("\"dist/dish-mac.zip\"")
+        let stableNameSuffixed = workflow.contains("dish-mac${suffix}.zip")
+        let gatesGrantWhatIsAsked = workflow.contains("pull-requests: read\n      security-events: write")
+        let dispatchNamesTheTag = workflow.contains("tag=\"${{ inputs.tag || github.ref_name }}\"")
+        XCTAssertTrue(gateIsAVariable, "the hard gate is a repository variable")
+        XCTAssertTrue(laterJobsLearnTheOutcome, "later jobs learn whether the app is signed")
+        XCTAssertTrue(stableNameKept, "the stable asset keeps its name, signed or not")
+        XCTAssertFalse(stableNameSuffixed, "the stable asset never carries the -unsigned suffix")
+        XCTAssertTrue(gatesGrantWhatIsAsked, "the gates job grants what the shared workflow asks for")
+        XCTAssertTrue(dispatchNamesTheTag, "a dispatch run names the zip after the tag, not the branch")
     }
 
     func testTheWorkflowReadsTheFloorFromThePolicyFile() throws {

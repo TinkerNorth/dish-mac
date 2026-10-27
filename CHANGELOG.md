@@ -401,6 +401,10 @@ the repos share a version number.
 
 ### Fixed
 
+- **The release workflow starts.** Its security gates, hardening and publish
+  jobs are granted the permissions the shared workflow asks for (the first
+  tag was refused before it ran), and a dispatch run names the zip after the
+  tag it releases, not the branch it ran from.
 - **A stick pushed all the way up reads as up, not down, on both links.**
   GameController reports a stick pushed up as positive, like the XUSB report
   every client sends, and Dish negated it, so both sticks read upside down on

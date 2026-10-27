@@ -48,6 +48,12 @@ concurrency:
 jobs:
   gates:
     name: PR-time gates against tag
+    # The shared workflow asks for these; a caller job that grants less is
+    # refused before the run starts (the 1.0.0 tag's first run did).
+    permissions:
+      contents: read
+      pull-requests: read
+      security-events: write
     uses: ./.github/workflows/_security.yml
     with:
       osv_scan_paths: |
@@ -221,7 +227,7 @@ jobs:
         id: stage
         run: |
           mkdir -p dist
-          tag="${GITHUB_REF_NAME:-${{ inputs.tag }}}"
+          tag="${{ inputs.tag || github.ref_name }}"
           suffix=""
           if [ "${{ steps.sign.outputs.present }}" != "true" ]; then
             suffix="-unsigned"
@@ -319,6 +325,10 @@ jobs:
     name: Harden artifacts (scan, SBOM, sign)
     needs: [release, manifest]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
     outputs:
       hashes: ${{ steps.hashes.outputs.hashes }}
     steps:
@@ -452,6 +462,8 @@ jobs:
     name: Publish to GitHub Releases
     needs: [required-secrets, harden, provenance]
     runs-on: ubuntu-24.04
+    permissions:
+      contents: write
     steps:
       - name: Download hardened bundle
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
