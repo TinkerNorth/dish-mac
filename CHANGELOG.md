@@ -17,7 +17,22 @@ the repos share a version number.
 
 ---
 
+## [1.0.1] - 2026-10-26
+
+The first published build. 1.0.0 was tagged the same day and never built: its
+release workflow was refused before it started, and the fix below is the only
+difference between the two tags.
+
+### Fixed
+
+- **The release workflow starts.** Its security gates, hardening and publish
+  jobs are granted the permissions the shared workflow asks for (the first
+  tag was refused before it ran), and a dispatch run names the zip after the
+  tag it releases, not the branch it ran from.
+
 ## [1.0.0] - 2026-10-26
+
+Tagged, never published; 1.0.1 is this entry plus one workflow fix.
 
 ### Added
 
@@ -401,10 +416,6 @@ the repos share a version number.
 
 ### Fixed
 
-- **The release workflow starts.** Its security gates, hardening and publish
-  jobs are granted the permissions the shared workflow asks for (the first
-  tag was refused before it ran), and a dispatch run names the zip after the
-  tag it releases, not the branch it ran from.
 - **A stick pushed all the way up reads as up, not down, on both links.**
   GameController reports a stick pushed up as positive, like the XUSB report
   every client sends, and Dish negated it, so both sticks read upside down on
@@ -489,4 +500,5 @@ the repos share a version number.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[1.0.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.1
 [1.0.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.0
