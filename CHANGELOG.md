@@ -17,10 +17,19 @@ the repos share a version number.
 
 ---
 
-## [Unreleased]
+## [1.0.2] - 2026-10-26
+
+The first published build. 1.0.0 and 1.0.1 were tagged the same day and never
+published: the release workflow was refused before it started, then stopped
+at its provenance step. The two fixes below are the only difference from
+1.0.0.
 
 ### Fixed
 
+- **The release workflow starts.** Its security gates, hardening and publish
+  jobs are granted the permissions the shared workflow asks for (the first
+  tag was refused before it ran), and a dispatch run names the zip after the
+  tag it releases, not the branch it ran from.
 - **The release's provenance is generated.** The SLSA generator is pinned by
   commit, as every action in the workflows is, and a commit pin only works
   when the generator is built from that source (`compile-generator: true`, as
@@ -29,20 +38,13 @@ the repos share a version number.
 
 ## [1.0.1] - 2026-10-26
 
-The first published build. 1.0.0 was tagged the same day and never built: its
-release workflow was refused before it started, and the fix below is the only
-difference between the two tags.
-
-### Fixed
-
-- **The release workflow starts.** Its security gates, hardening and publish
-  jobs are granted the permissions the shared workflow asks for (the first
-  tag was refused before it ran), and a dispatch run names the zip after the
-  tag it releases, not the branch it ran from.
+Tagged, never published: its release stopped at the provenance step. 1.0.2
+carries it.
 
 ## [1.0.0] - 2026-10-26
 
-Tagged, never published; 1.0.1 is this entry plus one workflow fix.
+Tagged, never published: its release workflow was refused before it started.
+1.0.2 carries it.
 
 ### Added
 
@@ -510,5 +512,6 @@ Tagged, never published; 1.0.1 is this entry plus one workflow fix.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[1.0.2]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.2
 [1.0.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.1
 [1.0.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.0
