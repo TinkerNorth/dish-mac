@@ -25,7 +25,8 @@ the repos share a version number.
   reports.** The Switch Online N64 pad, which macOS lists but passes no input
   for, the Switch Pro and the SNES Online pad are read by Dish's own HID
   reader, on a thread of its own and alongside macOS (the device is never
-  seized and nothing is sent to it). A gamepad GameController does not
+  seized; the one thing sent to a Switch pad is the start sequence that
+  makes it stream, as on Android). A gamepad GameController does not
   support is read the same way when its report descriptor decodes, its
   layout marked guessed unless the model is a verified one. Each pad's path
   (Standard or Direct) lives in one machine per pad, is proven by a real

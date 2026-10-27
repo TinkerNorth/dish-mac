@@ -8,6 +8,10 @@
 // game controller is not possible through public API, and would blind
 // GameController). Enumerating and reading gamepad usages needs no Input
 // Monitoring permission and no entitlement, so no access is ever requested.
+// The one thing Dish sends is the Switch start sequence (dish-android's USB
+// handshake, timeout disable and full report mode), and only to a Switch
+// pad whose full reports have not arrived: macOS's driver does not leave the
+// N64 streaming.
 
 import DishCore
 import Foundation
@@ -66,6 +70,11 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     static let threadName = "com.tinkernorth.dish.hid"
     /// How often the lanes are checked against the devices macOS lists.
     static let reconcileSeconds: CFTimeInterval = 1
+    /// How often a Switch pad's stream is checked; the start sequence goes
+    /// out one packet per tick, so starting one pad never stalls another's
+    /// reports behind a sleep.
+    static let streamWatchSeconds: CFTimeInterval = 0.25
+    private static let nsPerMs: UInt64 = 1_000_000
 
     private struct Entry {
         let device: IOHIDDevice
@@ -79,6 +88,8 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     // Touched only on the reader's thread.
     private var manager: IOHIDManager?
     private var entries = HidEntryRegistry<Entry>()
+    /// The start sequence's watch per Switch lane, by slot id.
+    private var watches: [String: SwitchStreamWatch] = [:]
     private var wiring: HidPadWiring?
     private var events: HidPadEvents?
 
@@ -111,7 +122,16 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         IOHIDManagerScheduleWithRunLoop(manager, runLoop, CFRunLoopMode.defaultMode.rawValue)
         self.manager = manager
         scheduleReconcile(on: runLoop)
+        scheduleStreamWatch(on: runLoop)
         CFRunLoopRun()
+    }
+
+    private func scheduleStreamWatch(on runLoop: CFRunLoop) {
+        let firstFire = CFAbsoluteTimeGetCurrent() + Self.streamWatchSeconds
+        let timer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, firstFire, Self.streamWatchSeconds, 0, 0) { [weak self] _ in
+            self?.tickStreams()
+        }
+        CFRunLoopAddTimer(runLoop, timer, .defaultMode)
     }
 
     /// The reconcile runs on the reader's own run loop, beside the
@@ -143,7 +163,57 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         let lane = HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: DispatchTime.now().uptimeNanoseconds)
         guard open(device, lane: lane) else { return }
         entries.file(registryId, Entry(device: device, lane: lane))
+        startWatching(lane)
         events.arrived(HidPadArrival(slotId: slotId, lane: lane, probe: .live(device)))
+    }
+
+    private func startWatching(_ lane: HidPadLane) {
+        guard lane.startsWithSwitchSequence else { return }
+        watches[lane.slotId] = SwitchStreamWatch(openedMs: Self.nowMs())
+    }
+
+    // MARK: - The Switch start sequence
+
+    private func tickStreams() {
+        let nowMs = Self.nowMs()
+        for entry in entries.reading where entry.lane.startsWithSwitchSequence {
+            watchStream(entry, nowMs: nowMs)
+        }
+    }
+
+    private func watchStream(_ entry: Entry, nowMs: Int64) {
+        let slotId = entry.lane.slotId
+        guard var watch = watches[slotId] else { return }
+        let lastFullReportMs = entry.lane.lastFullReportNs.map(Self.ms)
+        switch watch.due(lastFullReportMs: lastFullReportMs, nowMs: nowMs) {
+        case .streaming:
+            watch.noteStreaming()
+        case .wait:
+            break
+        case let .send(step):
+            send(step, to: entry)
+            watch.noteSent(step, nowMs: nowMs)
+        }
+        watches[slotId] = watch
+    }
+
+    /// One packet of the sequence as an output report; a refusal is logged,
+    /// and the watch sends the sequence again on its own schedule.
+    private func send(_ step: SwitchStartStep, to entry: Entry) {
+        var packet = switchStartPacket(step)
+        let reportId = CFIndex(switchStartReportId(step))
+        let status = IOHIDDeviceSetReport(entry.device, kIOHIDReportTypeOutput, reportId, &packet, packet.count)
+        let slotId = entry.lane.slotId
+        let stepName = String(describing: step)
+        Self.log.info("DIRECT start id=\(slotId, privacy: .public) step=\(stepName, privacy: .public) status=\(status)")
+    }
+
+    private static func nowMs() -> Int64 {
+        ms(DispatchTime.now().uptimeNanoseconds)
+    }
+
+    private static func ms(_ ns: UInt64) -> Int64 {
+        Int64(ns / nsPerMs)
     }
 
     /// The lane is retained for the callback until `close` unregisters it.
@@ -179,6 +249,11 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         events?.removed(entry.lane.slotId)
     }
 
+    /// A lane that stops being read takes its start sequence's watch with it.
+    private func forgetWatch(_ entry: Entry) {
+        watches.removeValue(forKey: entry.lane.slotId)
+    }
+
     /// The device stays known as released, so its other reference never
     /// opens a lane GameController already reads.
     private func releaseOnThread(_ slotId: String) {
@@ -187,6 +262,7 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     }
 
     private func close(_ entry: Entry) {
+        forgetWatch(entry)
         IOHIDDeviceRegisterInputReportCallback(entry.device, entry.lane.buffer, entry.lane.capacity, nil, nil)
         IOHIDDeviceClose(entry.device, IOOptionBits(kIOHIDOptionsTypeNone))
         Unmanaged.passUnretained(entry.lane).release()

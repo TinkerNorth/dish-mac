@@ -74,6 +74,32 @@ final class HidPadLaneTests: XCTestCase {
         XCTAssertEqual(lane.latestBattery, PadBattery(level: 100, status: .charging))
     }
 
+    // MARK: - The stream the start sequence watches
+
+    func testAFullSwitchReportMarksTheStreamAndASubcommandReplyDoesNot() throws {
+        let lane = try n64Lane()
+        lane.gate.route(.direct)
+        feedReport([0x21, 0x00, 0x00], to: lane)
+        XCTAssertNil(lane.lastFullReportNs)
+        feedReport(DirectFixtures.n64Idle, to: lane)
+        XCTAssertNotNil(lane.lastFullReportNs)
+    }
+
+    func testALaneNotForwardedStillMarksItsStream() throws {
+        let lane = try n64Lane()
+        feedReport(DirectFixtures.n64Idle, to: lane)
+        XCTAssertNotNil(lane.lastFullReportNs)
+    }
+
+    func testOnlyASwitchLaneTakesTheStartSequence() throws {
+        let switchLane = try n64Lane()
+        let gamepadLane = try gamepadLane(captures: LockedBox([]))
+        XCTAssertTrue(switchLane.startsWithSwitchSequence)
+        XCTAssertFalse(gamepadLane.startsWithSwitchSequence)
+        feedReport([0x80, 0x80, 0x80, 0x80, 0x0F, 0x00, 0x00], to: gamepadLane)
+        XCTAssertNil(gamepadLane.lastFullReportNs)
+    }
+
     func testAReportThatIsNotASwitchReportIsCountedAndDropped() throws {
         let lane = try n64Lane()
         lane.gate.route(.direct)

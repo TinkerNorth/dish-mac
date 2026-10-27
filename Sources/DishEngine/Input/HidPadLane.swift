@@ -96,6 +96,9 @@ final class HidPadLane: @unchecked Sendable {
     private let remapBox = LockedBox<HidRemapTable?>(nil)
 
     // Touched only on the reader's thread.
+    /// When the pad last sent a full Switch report, for the start sequence's
+    /// watch; never set on a lane that does not read Switch reports.
+    private(set) var lastFullReportNs: UInt64?
     private var calibration = SwitchStickCalibration()
     private var lastSeen: GamepadReport?
     private var lastPublished: GamepadReport?
@@ -133,10 +136,19 @@ final class HidPadLane: @unchecked Sendable {
         remapBox.get()
     }
 
-    /// One report off the wire, on the reader's thread.
+    /// Whether the pad streams only after the start sequence: the Switch
+    /// family, whose decoder reads only full 0x30 reports.
+    var startsWithSwitchSequence: Bool {
+        if case .switchReport = candidate.decoder { true } else { false }
+    }
+
+    /// One report off the wire, on the reader's thread. A decoded Switch
+    /// report is a full one, so it marks the stream whether or not the lane
+    /// is forwarded.
     func receive(_ report: UnsafeBufferPointer<UInt8>, nowNs: UInt64) {
         tally.count(nowNs: nowNs)
         guard let reading = decode(report) else { return }
+        if startsWithSwitchSequence { lastFullReportNs = nowNs }
         deliver(reading)
     }
 

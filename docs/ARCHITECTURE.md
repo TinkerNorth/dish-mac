@@ -244,10 +244,24 @@ read the same way. Everything else stays on GameController.
   (`com.tinkernorth.dish.hid`), never the main one. Each candidate
   (`hidPadCandidate`, decided from the device's properties alone) is opened
   with `kIOHIDOptionsTypeNone`: Dish reads the reports alongside macOS and
-  never seizes the device, and nothing is ever sent to it. Gamepad usages
+  never seizes the device. The one thing ever sent is the Switch start
+  sequence (see below). Gamepad usages
   need no Input Monitoring permission and no entitlement, so no access is
   requested. Arrival and removal hop to the main actor; a pad GameController
   turns out to read is released again.
+- **The Switch start sequence.** A Switch-family pad on USB streams its full
+  0x30 reports only after three commands: the USB handshake (`80 02`), the
+  timeout disable that keeps it reporting (`80 04`), and subcommand `03 30`,
+  full report mode. macOS's driver does not leave the N64 streaming (a pad
+  that streamed before was most likely started by Chrome's own Nintendo
+  support), so a lane that reads Switch reports marks the time of each full
+  report, and `SwitchStreamWatch` (DishCore) decides on a 250 ms tick on the
+  reader's thread: a pad that streams is never sent anything; a silent one
+  waits out a one-second grace for Apple's own handshake, then gets
+  dish-android's three packets, one per tick, so starting one pad never
+  stalls another's reports; a stream that stops for two seconds gets them
+  again; sequences that bring nothing repeat every three seconds, then every
+  ten. Rumble over HID is still never sent.
 - **One device, one lane.** IOHIDManager hands back a separate device
   reference for every matching rule a device satisfies, so a Nintendo pad,
   which matches its model rule and the game-usage rule, arrives twice and
