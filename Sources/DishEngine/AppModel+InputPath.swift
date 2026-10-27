@@ -34,6 +34,17 @@ package extension AppModel {
 
 extension AppModel {
 
+    /// The paths over the stores they keep, and the Direct reader and the
+    /// support capture the app hands in (neither opens anything otherwise).
+    static func inputPaths(_ prefs: AppPreferenceStores, reader: HidPadReading?, capture: HidReportCapturing?) -> InputPaths {
+        InputPaths(
+            choices: prefs.usbPaths,
+            remaps: prefs.remaps,
+            reader: reader ?? InertHidPadReader(),
+            capture: capture ?? InertHidReportCapture()
+        )
+    }
+
     /// The paths' facts into the shell's, every decision into the flight
     /// recorder, the slot list into the player numbers, and the Direct pads'
     /// raw rates onto the ticks Diagnostics and the live rates already run.
@@ -44,6 +55,12 @@ extension AppModel {
             .store(in: &cancellables)
         paths.records
             .sink { [weak self] record in self?.recordInputPath(record) }
+            .store(in: &cancellables)
+        paths.buttonCheck.statePublisher
+            .sink { [weak self] facts in self?.shellFacts.buttonCheck = facts }
+            .store(in: &cancellables)
+        paths.support.statePublisher
+            .sink { [weak self] facts in self?.shellFacts.supportCapture = facts }
             .store(in: &cancellables)
         input.$slots
             .sink { [weak paths] slots in paths?.slotsChanged(slots.map(\.id)) }

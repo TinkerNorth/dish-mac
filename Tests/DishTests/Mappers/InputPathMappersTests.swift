@@ -148,8 +148,41 @@ final class InputPathMappersTests: XCTestCase {
         XCTAssertEqual(picker.selected, .direct)
     }
 
-    func testHelpingSupportAControllerOpensDiagnosticsForNow() {
-        XCTAssertEqual(helpSupportPage(forSlot: "gc:pad"), .diagnostics)
+    func testHelpingSupportAControllerOpensTheCaptureOverItsUsbIdentityElseItsName() {
+        var path = directPath()
+        path.hardwareId = HidHardwareId(vendorId: 0x057E, productId: 0x2019)
+        let slots = [ControllerSlot(id: "gc:pad", name: "Odd Pad")]
+        XCTAssertEqual(
+            helpSupportPage(forSlot: "hid:057e:2019", slots: slots, paths: ["hid:057e:2019": path]),
+            .helpSupport(deviceKey: "057e:2019")
+        )
+        XCTAssertEqual(helpSupportPage(forSlot: "gc:pad", slots: slots, paths: [:]), .helpSupport(deviceKey: "named:Odd Pad"))
+        XCTAssertEqual(
+            helpSupportPage(forSlot: "gone", slots: slots, paths: [:]),
+            .helpSupport(deviceKey: "named:gone"),
+            "a pad gone is named by its id"
+        )
+    }
+
+    func testAGuessedLayoutWearsTheChip() throws {
+        var path = directPath()
+        XCTAssertNil(layoutChip(path))
+        XCTAssertNil(layoutChip(nil))
+        path.layoutGuessed = true
+        let chip = try XCTUnwrap(layoutChip(path))
+        XCTAssertEqual(chip.text, "Layout guessed")
+        XCTAssertEqual(chip.help, "Dish guessed how this controller’s buttons are laid out. Check the buttons to correct it.")
+        XCTAssertEqual(chip.look.ink, DishTheme.warning)
+    }
+
+    func testADirectPadsMenuChecksItsButtonsWhereItCanAndAlwaysHelpsSupportIt() {
+        var path = directPath()
+        XCTAssertEqual(cardMenu(path), [.helpSupport("Help support this controller")], "a Nintendo pad's fixed decoder cannot be remapped")
+        path.remappable = true
+        XCTAssertEqual(cardMenu(path), [.checkButtons("Check the buttons"), .helpSupport("Help support this controller")])
+        XCTAssertEqual(cardMenu(SlotInputPath(source: .standard, reason: .macOSReads)), [], "macOS reads it: no menu")
+        XCTAssertEqual(cardMenu(nil), [])
+        XCTAssertEqual(cardMenu(path).map(\.id), ["checkButtons", "helpSupport"])
     }
 
     func testAHomeNodeReadsThePlayerPathAndReasonOnOneLine() throws {

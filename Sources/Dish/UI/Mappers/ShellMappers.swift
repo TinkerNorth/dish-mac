@@ -132,6 +132,8 @@ func pushedPageTitle(_ page: Page, words: L10n = .app) -> String {
     case .deadZones: words.deadZonesAndMotion
     case .setup: words.setUpDish
     case .help: words.helpAndFaq
+    case .checkButtons: words.checkTheButtons
+    case .helpSupport: words.helpSupportThisController
     }
 }
 
@@ -193,7 +195,7 @@ func shellSubline(_ navigation: NavigationState, connections: [ConnectionSummary
     case .licenses: return .note(words.licensesSubtitle)
     case .setup: return .note(words.nothingIsChangedUntilTheLastStep)
     case .help: return .note(words.helpSubline)
-    case .diagnostics, .inspector, .crashReport, .moonlightHosts, .configureBinding, .deadZones: return status
+    case .diagnostics, .inspector, .crashReport, .moonlightHosts, .configureBinding, .deadZones, .checkButtons, .helpSupport: return status
     case nil: return navigation.destination == .support ? .note(words.donationsKeepItFree) : status
     }
 }

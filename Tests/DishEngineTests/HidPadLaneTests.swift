@@ -93,4 +93,62 @@ final class HidPadLaneTests: XCTestCase {
         XCTAssertEqual(snapshot.reportsFirstSecond, 2, "a report at the one-second mark is past the window")
         XCTAssertEqual(snapshot.reports, 3)
     }
+
+    // MARK: - A generic pad
+
+    private static let gamepadRest: [UInt8] = [0x7F, 0x7F, 0x7F, 0x7F, 0x08, 0x00, 0x00]
+    private static let gamepadButton9: [UInt8] = [0x7F, 0x7F, 0x7F, 0x7F, 0x08, 0x00, 0x02]
+
+    private func gamepadLane(captures: LockedBox<[RawCapture]>) throws -> HidPadLane {
+        let reports = reports
+        processor.reportSender = { _, report in reports.set(reports.get() + [report]) }
+        let wiring = HidPadWiring(
+            processor: processor,
+            notify: { _, _ in },
+            battery: { _, _ in },
+            captured: { _, capture in captures.set(captures.get() + [capture]) }
+        )
+        let candidate = try DirectFixtures.candidate(DirectFixtures.gamepadProperties())
+        return DirectFixtures.lane(candidate, slotId: "hid:1234:5678", wiring: wiring)
+    }
+
+    func testAStoredRemapIsReadThroughItsTableFromTheNextReport() throws {
+        let lane = try gamepadLane(captures: LockedBox([]))
+        lane.gate.route(.direct)
+        feedReport(Self.gamepadButton9, to: lane)
+        var remap = defaultRemap(order: .western)
+        remap.setButton(.rightThumb, -1)
+        remap.setButton(.faceA, 9)
+        lane.useRemap(HidRemapTable(remap: remap))
+        feedReport(Self.gamepadRest, to: lane)
+        feedReport(Self.gamepadButton9, to: lane)
+        let buttons = reports.get().map(\.buttons)
+        XCTAssertEqual(buttons, [WireButton.rightThumb.bit, 0, WireButton.faceA.bit], "R3 by the model's order, then A by the remap")
+        lane.useRemap(nil)
+        feedReport(Self.gamepadRest, to: lane)
+        feedReport(Self.gamepadButton9, to: lane)
+        XCTAssertEqual(reports.get().last?.buttons, WireButton.rightThumb.bit, "no table reads the model's order again")
+    }
+
+    func testAListeningWalkHearsTheNextRawChangeOncePerWish() throws {
+        let captures = LockedBox<[RawCapture]>([])
+        let lane = try gamepadLane(captures: captures)
+        feedReport(Self.gamepadButton9, to: lane)
+        XCTAssertEqual(captures.get(), [], "nobody listens")
+        lane.gate.listenForCapture()
+        feedReport(Self.gamepadRest, to: lane)
+        XCTAssertEqual(captures.get(), [], "the first report is the walk's rest")
+        feedReport(Self.gamepadButton9, to: lane)
+        feedReport(Self.gamepadRest, to: lane)
+        feedReport(Self.gamepadButton9, to: lane)
+        XCTAssertEqual(captures.get(), [RawCapture(kind: .button, index: 9)], "one change per wish")
+        lane.gate.listenForCapture()
+        feedReport(Self.gamepadRest, to: lane)
+        feedReport(Self.gamepadButton9, to: lane)
+        XCTAssertEqual(captures.get().count, 2)
+        lane.gate.closeCapture()
+        feedReport(Self.gamepadRest, to: lane)
+        feedReport(Self.gamepadButton9, to: lane)
+        XCTAssertEqual(captures.get().count, 2, "a closed walk hears nothing")
+    }
 }

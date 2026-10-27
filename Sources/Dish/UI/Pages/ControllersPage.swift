@@ -55,7 +55,8 @@ struct ControllersPage: View {
             setMicMuted: model.setMicMuted,
             checkInput: model.startInputCheck,
             pickPath: pickPath,
-            helpSupport: helpSupport
+            helpSupport: helpSupport,
+            checkButtons: checkButtons
         )
     }
 
@@ -64,7 +65,11 @@ struct ControllersPage: View {
     }
 
     private func helpSupport(_ slotId: String) {
-        navigation.send(.push(helpSupportPage(forSlot: slotId)))
+        navigation.send(.push(helpSupportPage(forSlot: slotId, slots: model.slots, paths: model.shellFacts.inputPaths)))
+    }
+
+    private func checkButtons(_ slotId: String) {
+        navigation.send(.push(.checkButtons(slotId: slotId)))
     }
 
     private func configure(_ slotId: String) {

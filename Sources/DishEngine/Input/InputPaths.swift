@@ -52,6 +52,8 @@ package struct SlotInputPath: Equatable {
     /// Reports per second off the wire, for a Direct pad.
     package var rawReportHz: Int?
     package var layoutGuessed = false
+    /// Dish reads it through its declared layout, so "Check the buttons" can remap it.
+    package var remappable = false
     package var rumble = RumbleCarriage.ownController
     /// The pad dropped three times within a minute.
     package var keepsDisconnecting = false
@@ -146,6 +148,10 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
     weak var host: InputPathHost?
 
     let choices: UsbPathChoiceStore
+    /// Each generic model's remap; a change swaps the lanes' tables.
+    let remaps: JoystickRemapStore
+    let buttonCheck: ButtonCheck
+    let support: SupportCaptureService
     let reader: HidPadReading
     let scheduler: InputPathScheduler
     let clockMs: () -> Int64
@@ -157,25 +163,33 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
     var rawHz: [String: Int] = [:]
     var checkTimer: InputPathTimer?
     /// What the other threads' posts reach the paths through.
-    private let relay = PathsRelay()
+    let relay = PathsRelay()
+    private var remapWatch: AnyCancellable?
 
     init(
         choices: UsbPathChoiceStore,
+        remaps: JoystickRemapStore? = nil,
         reader: HidPadReading = InertHidPadReader(),
+        capture: HidReportCapturing = InertHidReportCapture(),
         scheduler: InputPathScheduler = LiveInputPathScheduler(),
         clockMs: @escaping () -> Int64 = uptimeMs
     ) {
         self.choices = choices
+        let remaps = remaps ?? JoystickRemapStore()
+        self.remaps = remaps
+        buttonCheck = ButtonCheck(store: remaps)
+        support = SupportCaptureService(capture: capture, scheduler: scheduler)
         self.reader = reader
         self.scheduler = scheduler
         self.clockMs = clockMs
         super.init(initial: [:])
         relay.paths = self
+        remapWatch = remaps.statePublisher.dropFirst().sink { [weak self] stored in self?.remapsChanged(stored) }
     }
 
     /// The reader starts once the processor it publishes into exists.
     func start(processor: GamepadInputProcessor) {
-        let wiring = HidPadWiring(processor: processor, notify: makeNotify(), battery: makeBatteryPost())
+        let wiring = HidPadWiring(processor: processor, notify: makeNotify(), battery: makeBatteryPost(), captured: makeCapturePost())
         reader.start(wiring: wiring, events: HidPadEvents(arrived: makeArrivalPost(), removed: makeRemovalPost()))
     }
 

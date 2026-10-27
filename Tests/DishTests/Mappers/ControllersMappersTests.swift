@@ -100,4 +100,21 @@ final class ControllersMappersTests: XCTestCase {
         XCTAssertEqual(controllerCard(Fix.pad(), InputTelemetry(reporting: ["pad"])).stroke, DishTheme.primary)
         XCTAssertEqual(controllerCard(Fix.pad(), InputTelemetry(reporting: ["other"])).stroke, DishTheme.cardStroke)
     }
+
+    func testAGuessedDirectPadWearsTheChipAndItsMenuChecksItsButtons() throws {
+        var facts = ShellFacts()
+        var path = SlotInputPath(source: .direct, reason: .macOSCannotRead)
+        path.layoutGuessed = true
+        path.remappable = true
+        facts.inputPaths["pad"] = path
+        guard case let .cards(cards) = controllersPageState(slots: [Fix.pad()], facts: facts).content else {
+            return XCTFail("a card per pad")
+        }
+        let card = try XCTUnwrap(cards.first)
+        XCTAssertEqual(card.layoutChip?.text, "Layout guessed")
+        XCTAssertEqual(card.menu, [.checkButtons("Check the buttons"), .helpSupport("Help support this controller")])
+        XCTAssertEqual(card.menuLabel, "More actions")
+        XCTAssertNil(self.card(Fix.pad()).layoutChip)
+        XCTAssertEqual(self.card(Fix.pad()).menu, [], "a pad macOS reads has no menu")
+    }
 }

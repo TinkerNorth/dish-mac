@@ -5,7 +5,10 @@
 // the lane's preallocated buffer and calls `hidPadReportCallback`, which
 // decodes it in place: no Data, Array or String is built per report, and a
 // report only reaches the processor when it changed something while the
-// pad's source is Direct.
+// pad's source is Direct. A generic pad with a stored remap is read through
+// the remap's fixed table, swapped whole when the store changes; while
+// "Check the buttons" listens, the lane watches the declared sources for
+// the next raw change and posts it once.
 
 import DishCore
 import Foundation
@@ -63,14 +66,20 @@ final class LaneTally: @unchecked Sendable {
 }
 
 /// What a lane reaches beyond itself: the processor, and the main actor for
-/// a battery change.
+/// a battery change and a raw change "Check the buttons" asked for.
 struct HidPadWiring {
     let processor: GamepadInputProcessor
     /// The gate's "tell me" post, which hops to the main actor itself.
     let notify: PadGate.Notify
     /// A battery change, posted to the main actor for the slot card.
     let battery: @Sendable (_ slotId: String, _ battery: PadBattery) -> Void
+    /// The raw change the walk wished for, posted to the main actor once per wish.
+    var captured: @Sendable (_ slotId: String, _ capture: RawCapture) -> Void = ignoreCapture
 }
+
+/// A lane nobody asked to listen posts nowhere.
+@Sendable
+func ignoreCapture(_: String, _: RawCapture) {}
 
 final class HidPadLane: @unchecked Sendable {
     let slotId: String
@@ -83,12 +92,17 @@ final class HidPadLane: @unchecked Sendable {
     private let wiring: HidPadWiring
     /// The last battery seen, for the 30 s heartbeat on the main actor.
     private let batteryBox = LockedBox<PadBattery?>(nil)
+    /// The stored remap as a table; nil reads the model's own order.
+    private let remapBox = LockedBox<HidRemapTable?>(nil)
 
     // Touched only on the reader's thread.
     private var calibration = SwitchStickCalibration()
     private var lastSeen: GamepadReport?
     private var lastPublished: GamepadReport?
     private var lastBattery: PadBattery?
+    /// The declared sources when the walk opened, and in the last report.
+    private var captureRest: HidRawState?
+    private var capturePrevious = HidRawState()
 
     init(slotId: String, candidate: HidPadCandidate, wiring: HidPadWiring, openedNs: UInt64) {
         self.slotId = slotId
@@ -110,6 +124,15 @@ final class HidPadLane: @unchecked Sendable {
         batteryBox.get()
     }
 
+    /// Swapped by the main actor; the next report reads it.
+    func useRemap(_ table: HidRemapTable?) {
+        remapBox.set(table)
+    }
+
+    var remapTable: HidRemapTable? {
+        remapBox.get()
+    }
+
     /// One report off the wire, on the reader's thread.
     func receive(_ report: UnsafeBufferPointer<UInt8>, nowNs: UInt64) {
         tally.count(nowNs: nowNs)
@@ -123,9 +146,38 @@ final class HidPadLane: @unchecked Sendable {
             guard let reading = decodeSwitchReport(report, kind: kind, calibration: &calibration) else { return nil }
             return LaneReading(report: reading.report, motion: reading.motion, battery: reading.battery)
         case let .hidGamepad(layout):
-            guard let state = layout.decode(report) else { return nil }
-            return LaneReading(report: state, motion: nil, battery: nil)
+            return decodeGamepad(layout, report)
         }
+    }
+
+    /// The plain decode unless a remap is stored or the walk listens; then
+    /// the declared sources once, for the table and the walk alike.
+    private func decodeGamepad(_ layout: HidGamepadLayout, _ report: UnsafeBufferPointer<UInt8>) -> LaneReading? {
+        let capturing = gate.capturing
+        let table = remapBox.get()
+        if !capturing { captureRest = nil }
+        guard capturing || table != nil else { return gamepadReading(layout.decode(report)) }
+        guard let raw = layout.decodeRaw(report) else { return nil }
+        if capturing { watchCapture(raw) }
+        guard let table else { return gamepadReading(layout.decode(report)) }
+        return gamepadReading(table.apply(raw))
+    }
+
+    private func gamepadReading(_ report: GamepadReport?) -> LaneReading? {
+        guard let report else { return nil }
+        return LaneReading(report: report, motion: nil, battery: nil)
+    }
+
+    /// The first report after the walk opens is its rest; a change posts
+    /// only while the walk wishes for one.
+    private func watchCapture(_ raw: HidRawState) {
+        defer { capturePrevious = raw }
+        guard let rest = captureRest else {
+            captureRest = raw
+            return
+        }
+        guard let capture = rawCapture(rest: rest, previous: capturePrevious, now: raw), gate.takeCaptureWish() else { return }
+        wiring.captured(slotId, capture)
     }
 
     /// The first report is the baseline, never a change. A lane that is not

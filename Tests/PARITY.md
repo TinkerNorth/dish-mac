@@ -7,7 +7,7 @@
 >
 > Legend: ✅ works · ⚠️ shipped, not yet verified on real hardware · ❌ not
 > available · – not applicable · 🔜 decided and in progress. Verified against
-> the code on 2026-10-26.
+> the code on 2026-10-27.
 
 ## 1. What works, per client
 
@@ -31,7 +31,7 @@
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional; a closed lid still sleeps the Mac (no API keeps a lidded Mac awake: `IOPMLib.h` calls `kIOPMAssertionTypePreventSystemSleep` "not supported in any OS X releases"; clamshell mode needs power and a display) |
 | Input while another app is in front | – (stops by design) | ✅ | ✅ | ✅ GameController's background monitoring, on from the first connect (broken in macOS 15.4, fixed in 15.5) |
 | Diagnostics screen | ✅ | ✅ | ✅ | ✅ page (pushed from Settings, or opened by the menu-bar item): session facts for satellites and Moonlight hosts (the session's standing, the app, the control round trip, each pad's reports), each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, the rumble bench, the test tone and the microphone meter) |
-| Diagnostics: other input devices | ✅ "Other input devices" cards (2.4.1, #258) | – (SDL takes every device) | – (the same) | ✅ the HID census (IOHIDManager over Joystick / GamePad / MultiAxisController, synthetic devices excluded, watched while the page shows): a card per game device GameController does not claim, with "Not a controller: not claimed by GameController", its hardware ID and its connection |
+| Diagnostics: other input devices | ✅ "Other input devices" cards (2.4.1, #258) | – (SDL takes every device) | – (the same) | ✅ the HID census (IOHIDManager over Joystick / GamePad / MultiAxisController, synthetic devices excluded, watched while the page shows): a card per game device GameController does not claim, with "Not a controller: not claimed by GameController", its hardware ID, its connection and Help support this controller |
 | Diagnostics: a controller's USB ID | ❌ | ✅ "USB ID" (2.4.0) | ✅ the same | ✅ "USB ID" on a controller's card when the census finds exactly one claimed device under the pad's name |
 | Link-tier cue on host rows | ✅ | ✅ | ✅ | ✅ a satellite reads Fastest, a Moonlight host Fast |
 | Connections list: found and paired | ✅ | ✅ | ✅ | ✅ the desktops' page: a scan as it opens once the Local Network prompt has been explained (quiet; the Scan button's says when nothing answered), FOUND with its empty states (the local-network refusal as the hint, with Open System Settings) and Pair… rows whose card opens under the row, a "Moonlight hosts ›" row, PAIRED cards (glyph, dot, name, `ip • UDP port`, latency, tier / protocol / link chips, the read-only CARRYING manifest, Disconnect / Pair… / Connect by state, Forget behind ⋯), the add-by-address field |
@@ -44,7 +44,7 @@
 | Six languages (en, bs, de, es, fr, pt-BR) | ✅ | ✅ | ✅ | ✅ every word, plural forms included |
 | Per-controller motion, rumble and touchpad switches | ✅ | ✅ | ✅ | ✅ the chips on Home's binding strip, clickable in place, and the switches on Configure binding; the light bar stays global, as on the desktops |
 | Home: the signal-path diagram | – | ✅ | ✅ | ✅ a boxed row per pad (pad node, a wire captioned with the measured rate and latency, the host node with its address, link chip and "slot n of 4"), the binding strip with Edit ›, ghost "Bind…" cards that open Set up on the pad, "Set up a controller" and the empty state's "Set up Dish ›" into the walk, and the events / sends / total footer; no row menu yet |
-| Controllers: a card per pad | – | ✅ | ✅ | ✅ dot, name, player number, family and rate (GameController hides the transport, so no Bluetooth / USB word), "Bound · host ›", Gyro / Touchpad / Lightbar / battery chips, the mic's live / muted button, the motion rate, the input path ("Standard" / "Direct") with its one reason, "Press any button on this controller" until a real change proves the path, "Not responding?" (a 5 s check, "Press A now", then a finding with Use Direct, Help support this controller or the connection hint), the desktops' Input path segmented control only where both paths work (never for the N64), an outline that lights while the pad reports input, Dead zones…; no Poll Hz (that is the Direct path's figure) |
+| Controllers: a card per pad | – | ✅ | ✅ | ✅ dot, name, player number, family and rate (GameController hides the transport, so no Bluetooth / USB word), "Bound · host ›", Gyro / Touchpad / Lightbar / battery chips, the mic's live / muted button, the motion rate, the input path ("Standard" / "Direct") with its one reason, "Press any button on this controller" until a real change proves the path, "Not responding?" (a 5 s check, "Press A now", then a finding with Use Direct, Help support this controller or the connection hint), the desktops' Input path segmented control only where both paths work (never for the N64), an outline that lights while the pad reports input, a Direct pad's menu (Check the buttons, Help support this controller) and the "Layout guessed" chip, Dead zones…; no Poll Hz (that is the Direct path's figure) |
 | Configure binding: a draft and one apply | – | ✅ | ✅ | ✅ Input · Destination (satellites and Moonlight hosts with link chips) · Functions · Emulate as · What carries, Unbind / Cancel / Apply; the in-page "Applying binding…" overlay (Binding, Applying on the host, done or why not), cancellable until the host's link is up, 8 s for the host to answer; "Leave without applying?" on a dirty draft |
 | Per-pad dead zones | – | ✅ | ✅ | ✅ stick and trigger sliders (0–30 %) with live readouts under `deadzone:<id>` in the desktops' `{"s","t"}` shape, applied as the pad attaches and as they move; Reset to defaults (10 % · 5 %) |
 | Light, dark and system theme | ✅ | ✅ | ✅ | ✅ |
@@ -54,6 +54,9 @@
 | Help & FAQ | ✅ | ✅ | ✅ | ✅ the desktops' sections and answers word for word, folded until opened, "Walk me through setup", the privacy policy and the source |
 | Permission priming before the system asks | ✅ USB, Bluetooth, local network, microphone | – | – | ✅ local network: "Show me the prompt" on Connections and in Set up before the first scan ever (`local_network_primed`); a refusal offers Open System Settings in the empty state and the toast; the microphone is still asked at its first use |
 | Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ✅ on Configure binding: Auto (the family's type from `emulates`) or a pick, kept with the binding across restarts |
+| Layout guessed | – | ✅ (the Direct card's badge) | ✅ (the same) | ⚠️ the desktops' "Layout guessed" chip on a generic Direct pad whose model is not in the verified table (by vendor, as `isKnownFastLaneModel`), on its Controllers card (a click opens Check the buttons) and as its Diagnostics card's chip; unverified on hardware here |
+| Check the buttons (per-model remap) | – | ✅ Configure controls (click a row, press the input) | ✅ (the same) | ⚠️ a guided press-to-assign walk over A B X Y LB RB Back Start Guide L3 R3, the d-pad, both triggers and each stick's Y direction ("Press the button you want as A"; Skip, Reset to defaults, Check again), each landing stored at once under `joystick_remaps` in the desktops' fields (Guide in one extra field `gd` the desktops ignore) and applied from the next report through a fixed table on the reader's thread; only for pads read through their descriptor; sticks are read by usage and not walked; unverified on hardware here |
+| Help support this controller | ❌ | ❌ | ❌ | ⚠️ a guided 14-step capture (at rest, A B X Y, the shoulders and triggers, Select, Start, d-pad up, each stick up; Skip per step) over a Direct pad, a check's "no input Dish can decode" finding or a Diagnostics "Other input devices" card, the device opened alongside macOS (never seized); VID:PID, product, manufacturer, transport, the HID report descriptor and each step's distinct reports as hex, copied by the user and pasted into a GitHub issue the app opens with its title; nothing is sent; not yet run against a device |
 
 ## 2. Input, pad to host, by path (cell = USB · Bluetooth)
 
@@ -142,7 +145,8 @@ updates the rows above.
 1. Exclusive capture (decided: not built). Dish reads the pad alongside the
    frontmost app. Seizing it is not possible through public API (an Apple
    frameworks engineer, Apple Developer Forums thread 775975), and seizing
-   the HID device would blind GameController, Dish's only input path.
+   the HID device would blind GameController, Dish's Standard path; the
+   Direct reader and the support capture open pads without seizing them.
 2. A run against a live Moonlight host: Sunshine and Wolf, a DualSense and
    an Xbox pad, the resume path and a host that ends the session. (Theme,
    background mode, keep-awake modes, the update check, About, the Emulate

@@ -45,7 +45,7 @@ frameworks each one may import.
 
 | Module | Role | Depends on | May import |
 |---|---|---|---|
-| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step, the binding draft and its apply, a pad's dead zones), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock; and under `DirectInput/` the pads Dish reads itself: the Switch report decoders, the generic HID descriptor parser and its per-report decode, the Direct model table, the input-source machine (which path a pad is forwarded from, its proof and the "Not responding?" check), the disconnect-burst rule and the player numbers | nothing | Foundation, CryptoKit |
+| `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step, the binding draft and its apply, a pad's dead zones), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock; and under `DirectInput/` the pads Dish reads itself: the Switch report decoders, the generic HID descriptor parser and its per-report decode, the Direct model table, the input-source machine (which path a pad is forwarded from, its proof and the "Not responding?" check), the disconnect-burst rule, the player numbers, the per-model remap with its press-to-assign walk and the fixed table the reader applies, and the support capture's sequence and report | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
 | `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
@@ -263,9 +263,14 @@ read the same way. Everything else stays on GameController.
   alike, and runs its effects: the gate's route, the slot list, the stored
   pick (`usb_path_choices`, `UsbPathChoiceStore`), the flight recorder. Its
   per-slot `SlotInputPath` facts (path, reason, proof, check, picks, raw
-  rate, layout guessed, rumble carriage, player number, disconnect burst)
-  reach the UI through `ShellFacts.inputPaths`; the intents are
-  `startInputCheck` and `pickInputPath`.
+  rate, layout guessed, whether it can be remapped, rumble carriage, player
+  number, disconnect burst) reach the UI through `ShellFacts.inputPaths`;
+  the intents are `startInputCheck` and `pickInputPath`. The button walk
+  (`ButtonCheck`) and the support capture (`SupportCaptureService`) are the
+  paths' own objects too, so the composition root gains no property: they
+  publish into `ShellFacts.buttonCheck` and `ShellFacts.supportCapture`,
+  start and end with their pages (`pageAppeared`), and take their intents
+  in `AppModel+ControllerSupport.swift`.
 - **The hot path never hops per report.** Each pad's `PadGate` is the one
   word its hot path reads: which source is published, and a "tell me" bit
   per source. The main actor raises both bits while the machine needs an
@@ -274,6 +279,39 @@ read the same way. Everything else stays on GameController.
   main actor, so a check hears each source at most once however fast the
   pad sends; nothing else on the path touches the main actor. The word is
   under an unfair lock: Swift's `Atomic` needs macOS 15.
+- **A stored remap is a fixed table on the hot path.** "Check the buttons"
+  writes a generic pad's remap per model under `joystick_remaps`
+  (`JoystickRemapStore`, the desktops' `JoystickRemapStore` fields, with
+  Guide as one extra field they ignore). `InputPaths` turns the model's
+  entry into a `HidRemapTable` (DishCore: each declared button's wire bits
+  in a `SIMD16`, the hat flag, the trigger sources, the stick axes and their
+  Y inversion, no collection) and swaps it into each lane of the model
+  whole, behind a lock, when the store changes and at arrival. The lane's
+  decode reads the declared sources (`HidRawState`: the button bits by
+  declared index, the d-pad, the six axes) and the table maps them to the
+  wire; with no table the lane reads the model's own button order as
+  before. Nothing is allocated per report on either road. The walk itself
+  (`RemapAssign` in DishCore, the desktops' `withAssignment` and their
+  capture gates) listens through the same `PadGate`: while its page shows
+  the gate is open, the lane keeps the pad's rest, and a raised wish posts
+  the next raw change once (a button newly held, the d-pad moved off
+  centre, an axis crossing out past 16000 from rest); the walk raises the
+  next wish as each control lands, and nothing else hops to the main actor.
+- **"Help support this controller" opens the device, never seizes it.**
+  `SupportCaptureService` (main actor, owned by `InputPaths`) drives the
+  core's `SupportCapture` sequence. Its `IOKitHidReportCapture` runs one
+  session at a time on a thread of its own
+  (`com.tinkernorth.dish.hid-capture`): an `IOHIDManager` matching the
+  device the page names (its USB identity, or the product name
+  GameController shows, among the game usages), `GCSyntheticDevice` false,
+  the first match opened with `kIOHIDOptionsTypeNone` alongside macOS and
+  Dish's own reader. The report callback copies each report into a
+  `HidReportRing` of 64 preallocated 128-byte slots (a repeat of the last
+  report is not written), so the hot path builds nothing; the service drains
+  the ring every 100 ms on its own timer, not a view's. The descriptor
+  (`kIOHIDReportDescriptorKey`), product, manufacturer and transport are
+  read once as the device opens. The result is text on the page: nothing is
+  sent, and the issue link opens with only its title filled in.
 - **R7: a Nintendo controller GameController lists is a carrier.** A
   `GCController` whose product category names a Direct-by-model pad ("Switch
   Pro Controller", "Switch N64 Controller", the SNES pad's) gets no input slot
@@ -419,9 +457,10 @@ Each entry names the decided shape, so a change lands on it.
   the audio tests, and the HID census lists the game devices GameController
   does not claim. The radios section the desktops show is not there yet.
 - **A pad neither path can read is listed, not read.** The census shows it
-  in Diagnostics. A pad GameController does not vend is read Direct when its
-  descriptor decodes, with its layout marked guessed unless the model is in
-  the verified table. The N64 profile table's names for the C
+  in Diagnostics, with "Help support this controller" to record what it
+  sends for an issue. A pad GameController does not vend is read Direct when
+  its descriptor decodes, with its layout marked guessed unless the model is
+  in the verified table, and "Check the buttons" to correct it. The N64 profile table's names for the C
   buttons, Z, ZR and Capture are Apple's undocumented ones, so each row
   tries the plausible names and the attach logs (`DEVCAPS PROFILE`) what
   bound, what is missing and what no row claims.

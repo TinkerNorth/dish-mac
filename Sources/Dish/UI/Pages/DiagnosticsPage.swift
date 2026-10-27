@@ -62,6 +62,10 @@ struct DiagnosticsPage: View {
             emptyNote(others.note)
             ForEach(others.cards) { card in
                 DiagnosticsCard(state: card, inspectLabel: words.inspectInput, inspect: inspect)
+                if let key = card.supportKey {
+                    Button(words.helpSupportThisController) { helpSupport(key) }
+                        .buttonStyle(DishOutlinedButtonStyle())
+                }
             }
         }
     }
@@ -99,6 +103,10 @@ struct DiagnosticsPage: View {
 
     private func inspect(_ slotId: String) {
         navigation.send(.push(.inspector(slotId: slotId)))
+    }
+
+    private func helpSupport(_ deviceKey: String) {
+        navigation.send(.push(.helpSupport(deviceKey: deviceKey)))
     }
 
     private func copyEvents() {

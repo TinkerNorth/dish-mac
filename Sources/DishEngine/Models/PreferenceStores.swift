@@ -261,6 +261,58 @@ package final class UsbPathChoiceStore: StateSource<[String: InputSource]> {
     }
 }
 
+/// Each generic pad model's remap under the fleet's `joystick_remaps` key:
+/// one dictionary of "vvvv:pppp" to the desktops' `JoystickRemapStore`
+/// fields (`lsx`, `btn`, `hat`, …, with the entry's own key as `vk`). A
+/// field that does not read keeps its default, and a value that is not a
+/// dictionary is no remap, so a newer build's entry never breaks this one.
+@MainActor
+package final class JoystickRemapStore: StateSource<[String: JoystickRemap]> {
+    static let remapsKey = "joystick_remaps"
+
+    private let defaults: UserDefaults
+
+    package init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        super.init(initial: Self.read(defaults))
+    }
+
+    package func remap(vendorId: UInt16, productId: UInt16) -> JoystickRemap? {
+        state[usbPathKey(vendorId: vendorId, productId: productId)]
+    }
+
+    package func setRemap(_ remap: JoystickRemap, vendorId: UInt16, productId: UInt16) {
+        let key = usbPathKey(vendorId: vendorId, productId: productId)
+        guard state[key] != remap else { return }
+        var next = state
+        next[key] = remap
+        write(next)
+    }
+
+    package func clearRemap(vendorId: UInt16, productId: UInt16) {
+        let key = usbPathKey(vendorId: vendorId, productId: productId)
+        guard state[key] != nil else { return }
+        var next = state
+        next.removeValue(forKey: key)
+        write(next)
+    }
+
+    private func write(_ remaps: [String: JoystickRemap]) {
+        let stored = Dictionary(uniqueKeysWithValues: remaps.map { key, remap in (key, Self.entry(key, remap)) })
+        defaults.set(stored, forKey: Self.remapsKey)
+        setState(remaps)
+    }
+
+    private static func entry(_ key: String, _ remap: JoystickRemap) -> [String: Any] {
+        remapFields(remap).merging([RemapField.key: key]) { field, _ in field }
+    }
+
+    private static func read(_ defaults: UserDefaults) -> [String: JoystickRemap] {
+        let stored = defaults.dictionary(forKey: remapsKey) ?? [:]
+        return stored.compactMapValues { ($0 as? [String: Any]).map(remap(fields:)) }
+    }
+}
+
 /// The first-run flags: whether the welcome was skipped or finished (the
 /// desktops' key), and whether the scan that raises macOS's Local Network
 /// prompt has run once after being explained (Android's key). Plain reads

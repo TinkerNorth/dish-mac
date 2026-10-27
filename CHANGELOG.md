@@ -37,6 +37,13 @@ the repos share a version number.
   Diagnostics names each pad's path, its reason and a Direct pad's report
   rate, and the flight recorder logs every path decision, check verdict and
   disconnect burst.
+- **A Nintendo pad Dish's reader misses still works.** A Switch Pro, N64 or
+  SNES pad macOS lists but Dish's own reader never opened (a Bluetooth pad
+  that did not match, say) is read through macOS once a 2 s settle window
+  passes with no Direct reader of its model, "Dish couldn't read it
+  directly, so macOS reads it", and stays that way for the connection: a
+  reader that turns up later moves nothing, so the pad never flaps between
+  paths or is read twice, until it reconnects or you pick Use Direct.
 - **A pad says how Dish reads it.** Each Controllers card, the pad's node on
   Home and its Diagnostics card show "Standard" or "Direct" with one reason
   line, and "Press any button on this controller" until a real input proves
@@ -46,8 +53,8 @@ the repos share a version number.
 - **A pad that seems silent can be checked.** "Not responding?" on the card
   and in the inspector asks for a press of A and counts down five seconds
   while it watches both paths, then says what it found and offers its one
-  way on: Use Direct, Help support this controller (Diagnostics for now), or
-  "Check the cable or the Bluetooth connection, then try again".
+  way on: Use Direct, Help support this controller, or "Check the cable or
+  the Bluetooth connection, then try again".
 - **Identical pads can be told apart.** Each card and Home node names its
   pad's player ("Player 1", by connection order), and a card's outline
   lights while its pad reports input, read four times a second from the
@@ -55,14 +62,25 @@ the repos share a version number.
 - **A pad that keeps disconnecting says so.** Three drops of one pad within
   a minute raise one warning toast per burst, and its Diagnostics card says
   "Keeps disconnecting".
-- **A Nintendo pad Dish's reader misses still works.** A Switch Pro, N64 or
-  SNES pad macOS lists but Dish's own reader never opened (a Bluetooth pad
-  that did not match, say) was left with no input at all. After a 2 s
-  settle window with no Direct reader of its model it is read through macOS,
-  "Dish couldn't read it directly, so macOS reads it", and stays that way
-  for the connection: a reader that turns up later moves nothing, so the
-  pad never flaps between paths or is read twice, until it reconnects or
-  you pick Use Direct.
+- **An unrecognised pad's buttons can be checked.** A generic pad Dish
+  reads whose model is not a verified one wears the desktops' "Layout
+  guessed" chip on its card and in Diagnostics. The chip, or the card's
+  menu, opens "Check the buttons": it asks for one control at a time ("Press
+  the button you want as A", through the d-pad and both triggers, then each
+  stick pushed up for its direction), and the next press becomes that
+  control, with Skip and Reset to defaults. Each answer is stored per model
+  under `joystick_remaps`, in the desktops' shape, and applies from the
+  pad's next report.
+- **A pad Dish can't read can be reported.** "Help support this controller",
+  on a Direct pad's card menu, as the check's finding when nothing Dish can
+  decode arrived, and on each Diagnostics "Other input devices" card, walks
+  fourteen short steps ("Press A", "Pull the left trigger", "Move the left
+  stick up", each one skippable) while it records what the pad sends,
+  opened alongside macOS and never seized. It ends with a plain-text report
+  (the pad's USB ID, name, maker, connection, its HID report descriptor and
+  the reports of each step), a Copy button and "Open a GitHub issue", which
+  opens dish-mac's new-issue page with the title filled in for you to paste
+  the report into. Nothing is sent unless you paste it.
 
 ## [1.0.2] - 2026-10-26
 

@@ -24,6 +24,10 @@ enum Page: Hashable {
     /// The setup walk, pre-answered with a pad or not.
     case setup(seedSlotId: String?)
     case help
+    /// "Check the buttons" for a generic pad, from its card.
+    case checkButtons(slotId: String)
+    /// "Help support this controller", over a device key `SupportTarget` reads.
+    case helpSupport(deviceKey: String)
 }
 
 /// Where a page lives when something outside the window asks for it.
@@ -32,7 +36,7 @@ func homeDestination(of page: Page) -> Destination {
     case .diagnostics, .inspector, .crashReport, .licenses, .help: .settings
     case .moonlightHosts: .connections
     case .configureBinding, .setup: .home
-    case .deadZones: .controllers
+    case .deadZones, .checkButtons, .helpSupport: .controllers
     }
 }
 

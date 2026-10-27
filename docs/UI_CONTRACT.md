@@ -46,8 +46,12 @@ Configure binding (`Page.configureBinding(slotId:)`, pushed from a Home row
 or a Controllers card onto the destination that asked, home `Home`), Dead
 zones & motion (`Page.deadZones(slotId:)`, pushed from a Controllers card),
 Set up Dish (`Page.setup(seedSlotId:)`, always on Home's stack through
-`openSetup`) and Help & FAQ (`Page.help`, pushed from Settings ▸ Setup &
-help).
+`openSetup`), Help & FAQ (`Page.help`, pushed from Settings ▸ Setup &
+help), Check the buttons (`Page.checkButtons(slotId:)`, pushed from a
+generic Direct pad's card) and Help support this controller
+(`Page.helpSupport(deviceKey:)`, pushed from a Direct pad's card, a check's
+finding, the inspector or a Diagnostics "Other input devices" card; both
+live on Controllers when shown from outside).
 
 ### The welcome
 
@@ -252,15 +256,17 @@ name, address and port as data; `connectionTitle` and
 
 ## The controller pages
 
-Home, Controllers, Configure binding and Dead zones are drawn from the
-model's slots and connections and from five parts of `ShellFacts`: the
+Home, Controllers, Configure binding, Dead zones, Check the buttons and
+Help support this controller are drawn from the model's slots and
+connections and from seven parts of `ShellFacts`: the
 global switches (`forwarding`), the stored dead zones (`deadzones`), the
 live rates (`telemetry`, a `TelemetrySource` that ticks while Home or
 Controllers shows: `pageAppeared(.home / .controllers)`; the rates once a
 second, and four times a second `reporting`, the pads whose report count
 moved, published only when that set changes), each pad's input path
-(`inputPaths`) and the binding being configured (`binding`). No page holds
-an engine environment object.
+(`inputPaths`), the binding being configured (`binding`), the button walk
+on screen (`buttonCheck`) and the support capture on screen
+(`supportCapture`). No page holds an engine environment object.
 
 - **Home** ([`HomeMappers.swift`](../Sources/Dish/UI/Mappers/HomeMappers.swift)):
   the desktops' signal-path diagram. A boxed row per pad: the pad node (its
@@ -295,8 +301,14 @@ an engine environment object.
   check: "Not responding?" calls `startInputCheck`, the engine's
   `.running(secondsLeft:)` reads "Press A now · 5 s" counting down, and the
   finding then shows with its one action: Use Direct (`pickInputPath(.direct)`),
-  Help support this controller (`helpSupportPage(forSlot:)`, Diagnostics
-  until the guided capture has a page of its own) or the connection hint.
+  Help support this controller (`helpSupportPage(forSlot:slots:paths:)`,
+  the guided capture over the pad's USB identity when the paths know it,
+  else over its name) or the connection hint. A Direct pad's card has a
+  menu (`cardMenu`): Check the buttons where Dish reads it through its
+  declared layout (`SlotInputPath.remappable`), and Help support this
+  controller; a pad whose layout is guessed wears the desktops' "Layout
+  guessed" chip (`layoutChip`), which opens Check the buttons, and its
+  Diagnostics card carries the same word as its chip.
   The inspector draws the same block under its title, as its "Input path"
   section. A pad that drops three times within a minute raises one "… keeps
   disconnecting" warning toast per burst (`PadNotifier`, from
@@ -319,6 +331,34 @@ an engine environment object.
   the pad's stick and trigger flats as `SliderRow`s over 0 to 30 % with
   their readouts, `setStickDeadzone` / `setTriggerDeadzone` on every move,
   `resetDeadzones` back to the defaults, and the pad's own motion switch.
+- **Check the buttons** ([`CheckButtonsMappers.swift`](../Sources/Dish/UI/Mappers/CheckButtonsMappers.swift)):
+  `pageAppeared(.checkButtons(slotId:))` opens the walk on the pad's lane
+  (`ShellFacts.buttonCheck`); `pageDisappeared` closes it. The desktops'
+  press-to-assign, guided: "Step 3 of 19", "Press the button you want as
+  A" (A B X Y LB RB Back Start Guide L3 R3, the d-pad, then "Pull the
+  trigger you want as …", then "Push the left stick up" / "… right stick
+  up" for each Y direction), and the pad's next raw change becomes that
+  control and is stored at once; the table under the prompt reads every
+  control's source in the desktops' words ("Button 3", "Hat 0", "Axis 2 ·
+  analog", "Button 7 · digital", "Unassigned"), the asked-for row in the
+  accent. Skip (`skipButtonCheckStep`), Reset to defaults
+  (`resetButtonCheck`, the model's own order again, the stored remap
+  dropped) and, once every control is checked, Check again
+  (`restartButtonCheck`), over the desktops' "Stored for this controller
+  model" note. A pad Dish reads with a fixed decoder or through macOS is
+  "Not remappable"; one that left says to connect it.
+- **Help support this controller** ([`HelpSupportMappers.swift`](../Sources/Dish/UI/Mappers/HelpSupportMappers.swift)):
+  `pageAppeared(.helpSupport(deviceKey:))` opens the device the key names
+  (`SupportTarget`: "057e:2019", or "named:<product>") alongside macOS
+  (`ShellFacts.supportCapture`); `pageDisappeared` closes it. It looks for
+  the device, then walks fourteen steps ("Leave the controller untouched",
+  "Press A", …, "Pull the left trigger", "Move the left stick up"), each
+  with its count of distinct reports seen, Next (`nextSupportStep`) and
+  Skip (`skipSupportStep`). The result is read-only text (VID:PID,
+  product, manufacturer, transport, the report descriptor as hex, each
+  step's reports as hex) with Copy through the `pasteboard` value and "Open
+  a GitHub issue" through `openURL` (dish-mac's new-issue page with the
+  title filled in; the user pastes the body). Nothing is sent from the app.
 
 ## The setup walk
 

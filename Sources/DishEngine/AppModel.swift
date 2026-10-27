@@ -103,7 +103,8 @@ package final class AppModel: ObservableObject {
             crashLog: crashLog,
             crashUploader: crashUploader,
             moonlight: moonlight,
-            hidPads: IOKitHidPadReader()
+            hidPads: IOKitHidPadReader(),
+            hidCapture: IOKitHidReportCapture()
         )
         Self.mintMoonlightIdentity(into: moonlight, gateway: gateway)
     }
@@ -136,6 +137,7 @@ package final class AppModel: ObservableObject {
         clamshell: ClamshellStateReading? = nil,
         hidCensus: HidCensusReading? = nil,
         hidPads: HidPadReading? = nil,
+        hidCapture: HidReportCapturing? = nil,
         discovery: WifiConnectionManager.DiscoveryPaths = .live,
         approvalPolling: WifiConnectionManager.ApprovalPolling = .standard
     ) {
@@ -143,7 +145,7 @@ package final class AppModel: ObservableObject {
         let moonlight = moonlight ?? Self.defaultMoonlight(defaults: defaults, store: store)
         let hub = ConnectionHub(wifi: wifi, store: store, moonlight: moonlight)
         let prefs = AppPreferenceStores(defaults: defaults)
-        let input = GameControllerInput(paths: InputPaths(choices: prefs.usbPaths, reader: hidPads ?? InertHidPadReader()))
+        let input = GameControllerInput(paths: Self.inputPaths(prefs, reader: hidPads, capture: hidCapture))
         self.store = store
         self.wifi = wifi
         self.moonlight = moonlight

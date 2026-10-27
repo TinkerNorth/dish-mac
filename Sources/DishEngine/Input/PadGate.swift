@@ -14,8 +14,10 @@ import os
 /// event: the pad is unproven, or a "Not responding?" check is running. A
 /// change that finds its source's bit raised clears it and posts one event,
 /// so a check hears at most one event per source however fast the pad sends.
-/// The word is guarded by an unfair lock rather than an atomic: Swift's
-/// `Atomic` needs macOS 15 and Dish runs on 13.
+/// "Check the buttons" listens through the same gate: while its walk is
+/// open a generic pad's lane keeps the pad's rest, and a raised wish posts
+/// the next raw change once. The word is guarded by an unfair lock rather
+/// than an atomic: Swift's `Atomic` needs macOS 15 and Dish runs on 13.
 final class PadGate: @unchecked Sendable {
     /// Posts one input event for the pad `key` to the main actor; called on
     /// the hot path's thread, at most once per raised bit.
@@ -26,6 +28,8 @@ final class PadGate: @unchecked Sendable {
     private var forwarded: InputSource?
     private var tellStandard = false
     private var tellDirect = false
+    private var captureOpen = false
+    private var captureWished = false
     private var lock = os_unfair_lock_s()
 
     init(key: String, notify: @escaping Notify) {
@@ -82,6 +86,37 @@ final class PadGate: @unchecked Sendable {
         case .standard: return tellStandard
         case .direct: return tellDirect
         }
+    }
+
+    /// Opens the walk if it is not, and wishes for the next raw change.
+    func listenForCapture() {
+        os_unfair_lock_lock(&lock)
+        captureOpen = true
+        captureWished = true
+        os_unfair_lock_unlock(&lock)
+    }
+
+    func closeCapture() {
+        os_unfair_lock_lock(&lock)
+        captureOpen = false
+        captureWished = false
+        os_unfair_lock_unlock(&lock)
+    }
+
+    /// Whether a walk is open, read once per report.
+    var capturing: Bool {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        return captureOpen
+    }
+
+    /// Reads and lowers the wish: true once per `listenForCapture`.
+    func takeCaptureWish() -> Bool {
+        os_unfair_lock_lock(&lock)
+        defer { os_unfair_lock_unlock(&lock) }
+        let wished = captureWished
+        captureWished = false
+        return wished
     }
 
     private func setTells(_ raised: Bool) {

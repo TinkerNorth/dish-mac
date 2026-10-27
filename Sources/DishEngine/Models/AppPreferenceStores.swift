@@ -15,6 +15,7 @@ struct AppPreferenceStores {
     let slots: SlotPreferenceStore
     let deadzones: DeadzonePreferenceStore
     let usbPaths: UsbPathChoiceStore
+    let remaps: JoystickRemapStore
 
     @MainActor
     init(defaults: UserDefaults) {
@@ -26,5 +27,6 @@ struct AppPreferenceStores {
         slots = SlotPreferenceStore(defaults: defaults)
         deadzones = DeadzonePreferenceStore(defaults: defaults)
         usbPaths = UsbPathChoiceStore(defaults: defaults)
+        remaps = JoystickRemapStore(defaults: defaults)
     }
 }

@@ -35,6 +35,10 @@ struct ControllerCardState: Equatable, Identifiable {
     let deadZones: String
     /// The pad's input path, once the paths have facts for it.
     let path: PadPathState?
+    let layoutChip: LayoutChipState?
+    /// Empty for a pad macOS reads: the card then has no menu.
+    let menu: [CardMenuItemState]
+    let menuLabel: String
     /// The accent while the pad reports input, so identical pads can be told apart.
     let stroke: Color
 }
@@ -92,6 +96,9 @@ func controllerCard(
         motionRate: motionRateText(rates?.motionHz ?? 0, words: words),
         deadZones: words.deadZonesEllipsis,
         path: padPathState(path, words: words),
+        layoutChip: layoutChip(path, words: words),
+        menu: cardMenu(path, words: words),
+        menuLabel: words.moreActions,
         stroke: telemetry.reporting.contains(slot.id) ? DishTheme.primary : DishTheme.cardStroke
     )
 }

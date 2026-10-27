@@ -102,4 +102,23 @@ final class AppModelInputPathTests: XCTestCase {
         XCTAssertEqual(names, ["Nintendo N64 Online Controller"], "the fourth drop is the same burst")
         subscription.cancel()
     }
+
+    func testTheControllerSupportPagesOpenTheirWorkAsTheyShowAndEndItAsTheyGo() throws {
+        _ = try arriveN64() // The lane is not under test here.
+        model.pageAppeared(.checkButtons(slotId: Self.n64))
+        XCTAssertEqual(model.shellFacts.buttonCheck?.phase, .notRemappable, "the N64 is read by its fixed decoder")
+        model.skipButtonCheckStep()
+        model.resetButtonCheck()
+        model.restartButtonCheck()
+        XCTAssertEqual(model.shellFacts.buttonCheck?.phase, .notRemappable, "a pad with no walk ignores the walk's intents")
+        model.pageDisappeared(.checkButtons(slotId: Self.n64))
+        XCTAssertNil(model.shellFacts.buttonCheck)
+        model.pageAppeared(.helpSupport(deviceKey: "057e:2019"))
+        XCTAssertEqual(model.shellFacts.supportCapture?.known, true)
+        model.nextSupportStep()
+        model.skipSupportStep()
+        XCTAssertEqual(model.shellFacts.supportCapture?.capture.records, [], "no device found, no step taken")
+        model.pageDisappeared(.helpSupport(deviceKey: "057e:2019"))
+        XCTAssertNil(model.shellFacts.supportCapture)
+    }
 }

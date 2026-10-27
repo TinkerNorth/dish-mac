@@ -15,6 +15,7 @@ extension InputPaths {
     func hidPadArrived(_ arrival: HidPadArrival) {
         let candidate = arrival.candidate
         pads[arrival.slotId] = PathPad(arrival: arrival, name: candidate.name, gate: arrival.lane.gate)
+        arrival.lane.useRemap(remapTable(for: candidate, in: remaps.state))
         scheduler.after(ms: Self.devcapsDelayMs) { [weak self] in self?.logDevcaps(arrival) }
         let byModel = candidate.model?.rule == .byModel
         let fellBack = joinFallback(candidate)
@@ -83,6 +84,7 @@ extension InputPaths {
         rawRates.removeValue(forKey: slotId)
         rawHz.removeValue(forKey: slotId)
         host?.hideDirectSlot(slotId)
+        buttonCheck.laneGone(slotId: slotId)
         recordDrop(slotId, name: name)
         refreshOutputs()
         publishFacts()

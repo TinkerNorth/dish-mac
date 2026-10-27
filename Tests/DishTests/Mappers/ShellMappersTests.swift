@@ -50,6 +50,10 @@ final class ShellMappersTests: XCTestCase {
         XCTAssertEqual(pageTitle(NavigationState(destination: .connections, path: [.moonlightHosts])), "Moonlight hosts")
         XCTAssertEqual(pageTitle(NavigationState(destination: .home, path: [.configureBinding(slotId: "a")])), "Configure binding")
         XCTAssertEqual(pageTitle(NavigationState(destination: .controllers, path: [.deadZones(slotId: "a")])), "Dead zones & motion")
+        XCTAssertEqual(pageTitle(NavigationState(destination: .controllers, path: [.checkButtons(slotId: "a")])), "Check the buttons")
+        let capture = NavigationState(destination: .settings, path: [.helpSupport(deviceKey: "057e:2019")])
+        XCTAssertEqual(pageTitle(capture), "Help support this controller")
+        if case .note = shellSubline(capture, connections: []) { XCTFail("the capture carries the dashboard's line") }
     }
 
     func testTheSetupWalkAndHelpAreTitledAndCarryTheirOwnLines() {

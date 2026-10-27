@@ -59,7 +59,7 @@ struct InspectorPage: View {
     }
 
     private func helpSupport() {
-        navigation.send(.push(helpSupportPage(forSlot: slotId)))
+        navigation.send(.push(helpSupportPage(forSlot: slotId, slots: model.slots, paths: model.shellFacts.inputPaths)))
     }
 
     // MARK: - Live input

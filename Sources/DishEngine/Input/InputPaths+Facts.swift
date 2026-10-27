@@ -184,6 +184,7 @@ extension InputPaths {
         guard facts.source == .direct else { return nil }
         facts.rawReportHz = rawHz[key] ?? 0
         facts.layoutGuessed = candidate.layoutGuessed
+        facts.remappable = readsDeclaredLayout(candidate)
         facts.rumble = carriage(of: key).rumble
         facts.transport = candidate.transport
         facts.hardwareId = candidate.hardwareId

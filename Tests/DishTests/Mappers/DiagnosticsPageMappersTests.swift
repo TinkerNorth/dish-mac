@@ -59,6 +59,20 @@ final class DiagnosticsPageMappersTests: XCTestCase {
         XCTAssertEqual(card.inspects, "pad")
     }
 
+    func testAGuessedLayoutIsTheCardsChip() {
+        var path = SlotInputPath(source: .direct, reason: .macOSCannotRead)
+        path.layoutGuessed = true
+        var facts = ShellFacts()
+        facts.diagnostics = DiagnosticsSnapshot(pads: [PadDiagnostics(
+            slot: ControllerSlot(id: "pad", name: "Pad"),
+            wire: nil,
+            inputPath: path
+        )])
+        guard case let .cards(cards) = diagnosticsPageState(facts: facts).pads else { return XCTFail("a pad is a card") }
+        XCTAssertEqual(cards.first?.chip, "Layout guessed")
+        XCTAssertNil(cards.first?.supportKey, "a pad Dish reads is helped from its card on Controllers")
+    }
+
     func testTheRecorderShowsNewestFirstAndCopiesOldestFirst() throws {
         var facts = ShellFacts()
         facts.diagnosticsEvents = [

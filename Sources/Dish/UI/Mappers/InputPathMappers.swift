@@ -4,6 +4,7 @@
 import DishCore
 import DishEngine
 import Foundation
+import SwiftUI
 
 /// What a Diagnostics card's Connection line says: GameController, or the
 /// HID reports Dish reads itself.
@@ -170,11 +171,52 @@ func pathPicker(_ path: SlotInputPath, words: L10n = .app) -> PathPickerState? {
     return PathPickerState(title: words.inputPath, options: options, selected: path.source)
 }
 
-/// Where "Help support this controller" goes. Diagnostics for now, whose
-/// "Other input devices" cards carry the USB ID; the guided capture will
-/// get a page of its own and this target moves to it.
-func helpSupportPage(forSlot _: String) -> Page {
-    .diagnostics
+/// Where "Help support this controller" goes: the guided capture, over the
+/// pad's USB identity when the paths know it (a Direct pad), else over the
+/// product name GameController shows for it.
+func helpSupportPage(forSlot slotId: String, slots: [ControllerSlot], paths: [String: SlotInputPath]) -> Page {
+    .helpSupport(deviceKey: supportTarget(forSlot: slotId, slots: slots, paths: paths).deviceKey)
+}
+
+func supportTarget(forSlot slotId: String, slots: [ControllerSlot], paths: [String: SlotInputPath]) -> SupportTarget {
+    guard let id = paths[slotId]?.hardwareId else { return .named(slots.first { $0.id == slotId }?.name ?? slotId) }
+    return .usb(vendorId: UInt16(clamping: id.vendorId), productId: UInt16(clamping: id.productId))
+}
+
+// MARK: - A Direct pad's extras
+
+/// "Layout guessed" on a generic pad whose model is not in the verified
+/// set; a click opens "Check the buttons".
+struct LayoutChipState: Equatable {
+    let text: String
+    let help: String
+    let look: CapabilityChipLook
+}
+
+/// The card's menu: "Check the buttons" where Dish reads the pad through
+/// its declared layout, and "Help support this controller" for any Direct pad.
+enum CardMenuItemState: Equatable, Identifiable {
+    case checkButtons(String)
+    case helpSupport(String)
+
+    var id: String {
+        switch self {
+        case .checkButtons: "checkButtons"
+        case .helpSupport: "helpSupport"
+        }
+    }
+}
+
+func layoutChip(_ path: SlotInputPath?, words: L10n = .app) -> LayoutChipState? {
+    guard path?.layoutGuessed == true else { return nil }
+    let look = CapabilityChipLook(ink: DishTheme.warning, on: false, absent: false)
+    return LayoutChipState(text: words.layoutGuessed, help: words.layoutGuessedHelp, look: look)
+}
+
+func cardMenu(_ path: SlotInputPath?, words: L10n = .app) -> [CardMenuItemState] {
+    guard let path, path.source == .direct else { return [] }
+    let check: [CardMenuItemState] = path.remappable ? [.checkButtons(words.checkTheButtons)] : []
+    return check + [.helpSupport(words.helpSupportThisController)]
 }
 
 /// A Home node's path line: "Player 1 · Direct · Dish reads this model itself".

@@ -39,6 +39,10 @@ package struct ShellFacts: Equatable {
     package var controllerRegistering = false
     /// Each visible slot's input path: Standard or Direct, why, the check.
     package var inputPaths: [String: SlotInputPath] = [:]
+    /// The "Check the buttons" walk on screen, nil while none is.
+    package var buttonCheck: ButtonCheckFacts?
+    /// The "Help support this controller" capture on screen, nil while none is.
+    package var supportCapture: SupportCaptureFacts?
 
     package init(wake: WakeState = WakeState(), update: UpdateStatus = UpdateStatus(), crashLogPresent: Bool = false) {
         self.wake = wake

@@ -7,7 +7,9 @@ import SwiftUI
 /// One pad on Controllers: its dot, name, player number and link, the
 /// binding's hand-off, its capability chips, the microphone's control, its
 /// motion rate, its input path with the "Not responding?" check, and the
-/// way to its dead zones. The outline lights while the pad reports input.
+/// way to its dead zones. A Direct pad has a menu ("Check the buttons",
+/// "Help support this controller"), and a guessed layout a chip that opens
+/// the first. The outline lights while the pad reports input.
 struct ControllerCard: View {
 
     struct Actions {
@@ -17,6 +19,7 @@ struct ControllerCard: View {
         let checkInput: (String) -> Void
         let pickPath: (InputSource, String) -> Void
         let helpSupport: (String) -> Void
+        let checkButtons: (String) -> Void
     }
 
     let state: ControllerCardState
@@ -40,10 +43,20 @@ struct ControllerCard: View {
                     .font(DishFont.mono)
                     .foregroundColor(DishTheme.muted)
                 binding
+                if !state.menu.isEmpty {
+                    menu
+                }
             }
             FlowLayout(spacing: DishSpace.s3) {
                 ForEach(state.chips) { chip in
                     CapabilityChip(text: chip.text, look: chip.look, help: chip.help)
+                }
+                if let layout = state.layoutChip {
+                    Button(action: checkButtons) {
+                        CapabilityChip(text: layout.text, look: layout.look, help: layout.help)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint(layout.help)
                 }
                 if let mic = state.mic {
                     Button(mic.title, action: toggleMic)
@@ -85,6 +98,30 @@ struct ControllerCard: View {
         }
     }
 
+    private var menu: some View {
+        Menu {
+            ForEach(state.menu) { item in
+                menuItem(item)
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(DishFont.icon)
+                .foregroundColor(DishTheme.primary)
+        }
+        .menuStyle(.borderlessButton)
+        .fixedSize()
+        .help(state.menuLabel)
+        .accessibilityLabel(state.menuLabel)
+    }
+
+    @ViewBuilder
+    private func menuItem(_ item: CardMenuItemState) -> some View {
+        switch item {
+        case let .checkButtons(title): Button(title, action: checkButtons)
+        case let .helpSupport(title): Button(title, action: helpSupport)
+        }
+    }
+
     private var pathActions: PadPathSection.Actions {
         PadPathSection.Actions(check: checkInput, pick: pickPath, helpSupport: helpSupport)
     }
@@ -103,6 +140,10 @@ struct ControllerCard: View {
 
     private func helpSupport() {
         actions.helpSupport(state.id)
+    }
+
+    private func checkButtons() {
+        actions.checkButtons(state.id)
     }
 
     private func openDeadZones() {

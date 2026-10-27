@@ -62,4 +62,19 @@ final class PadGateTests: XCTestCase {
         pad.route(nil)
         XCTAssertFalse(pad.pass(.direct, changed: false), "a pad routed nowhere publishes nothing")
     }
+
+    func testACaptureWishIsTakenOnceWhileTheWalkStaysOpen() {
+        let pad = gate()
+        XCTAssertFalse(pad.capturing)
+        XCTAssertFalse(pad.takeCaptureWish())
+        pad.listenForCapture()
+        XCTAssertTrue(pad.capturing)
+        XCTAssertTrue(pad.takeCaptureWish())
+        XCTAssertFalse(pad.takeCaptureWish(), "one raw change per wish")
+        XCTAssertTrue(pad.capturing, "the walk stays open between its steps")
+        pad.listenForCapture()
+        pad.closeCapture()
+        XCTAssertFalse(pad.capturing)
+        XCTAssertFalse(pad.takeCaptureWish(), "closing drops a pending wish")
+    }
 }
