@@ -457,6 +457,10 @@ jobs:
       base64-subjects: ${{ needs.harden.outputs.hashes }}
       provenance-name: dish-mac.intoto.jsonl
       upload-assets: false
+      # The generator is pinned by commit, as every action here is; a commit pin
+      # only works when the generator is built from that source. A download
+      # wants a vX.Y.Z tag and refuses the ref, as 1.0.1's release did.
+      compile-generator: true
 
   publish:
     name: Publish to GitHub Releases

@@ -55,12 +55,14 @@ final class ReleaseManifestTests: XCTestCase {
         let stableNameSuffixed = workflow.contains("dish-mac${suffix}.zip")
         let gatesGrantWhatIsAsked = workflow.contains("pull-requests: read\n      security-events: write")
         let dispatchNamesTheTag = workflow.contains("tag=\"${{ inputs.tag || github.ref_name }}\"")
+        let generatorBuiltFromThePin = workflow.contains("compile-generator: true")
         XCTAssertTrue(gateIsAVariable, "the hard gate is a repository variable")
         XCTAssertTrue(laterJobsLearnTheOutcome, "later jobs learn whether the app is signed")
         XCTAssertTrue(stableNameKept, "the stable asset keeps its name, signed or not")
         XCTAssertFalse(stableNameSuffixed, "the stable asset never carries the -unsigned suffix")
         XCTAssertTrue(gatesGrantWhatIsAsked, "the gates job grants what the shared workflow asks for")
         XCTAssertTrue(dispatchNamesTheTag, "a dispatch run names the zip after the tag, not the branch")
+        XCTAssertTrue(generatorBuiltFromThePin, "a commit-pinned SLSA generator is built from its source")
     }
 
     func testTheWorkflowReadsTheFloorFromThePolicyFile() throws {
