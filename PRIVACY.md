@@ -59,6 +59,7 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 | `feature_motion_enabled`, `feature_rumble_enabled`, `feature_touchpad_enabled`, `feature_lightbar_mode` | Your forwarding switches | Deciding which controller features to forward or act on |
 | `motion_preferences`, `rumble_preferences`, `touchpad_preferences`, `touchpad_mode_preferences`, `mic_preferences`, `speaker_preferences` | Each controller's own switches and touchpad pick, by the controller's vendor and kind (no serial number) | Deciding the same per controller |
 | `deadzone:<controller>` | Each controller's stick and trigger dead zones, by the controller's vendor and kind | Applying the dead zones you set when the controller attaches |
+| `usb_path_choices` | Which input path you picked for a controller model (Standard or Direct), by its USB vendor and product id (no serial number) | Reading that model through GameController or through Dish's own HID reader the next time it connects |
 | `wifi_binding_list` | Which controller is bound to which satellite, by the controller's vendor and kind and the satellite's machine id (both already kept above), and the controller type picked for it | Binding a controller to its satellite again after a restart or a replug |
 | `theme_mode` | `system`, `light` or `dark` | Drawing the window in the appearance you chose |
 | `background_run_enabled`, `background_notice_shown` | Whether closing the window keeps Dish running, and whether the one-time notice about it was shown | The close-to-background rule |

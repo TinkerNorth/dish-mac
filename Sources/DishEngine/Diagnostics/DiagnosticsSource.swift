@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import DishKernel
 import Foundation
 
@@ -44,8 +45,11 @@ package struct PadDiagnostics: Equatable, Identifiable {
     package let audio: PadAudioDiagnostics?
     /// Whether the pad's input reaches Dish while another app is in front.
     package let backgroundInput: Bool
-    /// The HID device under the pad, when the census finds exactly one by its name.
+    /// The HID device under the pad: a Direct pad's own, else the one the
+    /// census finds by its name, when exactly one carries it.
     package let hardwareId: HidHardwareId?
+    /// Standard or Direct, why, and a Direct pad's report rate.
+    package let inputPath: SlotInputPath?
 
     package var id: String {
         slot.id
@@ -56,13 +60,15 @@ package struct PadDiagnostics: Equatable, Identifiable {
         wire: SlotWireFacts?,
         audio: PadAudioDiagnostics? = nil,
         backgroundInput: Bool = false,
-        hardwareId: HidHardwareId? = nil
+        hardwareId: HidHardwareId? = nil,
+        inputPath: SlotInputPath? = nil
     ) {
         self.slot = slot
         self.wire = wire
         self.audio = audio
         self.backgroundInput = backgroundInput
         self.hardwareId = hardwareId
+        self.inputPath = inputPath
     }
 }
 
@@ -95,6 +101,8 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     private var slots: () -> [ControllerSlot] = { [] }
     private var audio: (String) -> PadAudioDiagnostics? = { _ in nil }
     private var backgroundInput: () -> Bool = { false }
+    private var inputPath: (String) -> SlotInputPath? = { _ in nil }
+    private var onTick: () -> Void = {}
     private var timer: DispatchSourceTimer?
 
     init(
@@ -125,6 +133,13 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         backgroundInput = provider
     }
 
+    /// Each slot's input path, and the work that rides the same tick (the
+    /// Direct pads' raw rates), set once the owner has both.
+    func useInputPaths(_ provider: @escaping (String) -> SlotInputPath?, tick: @escaping () -> Void) {
+        inputPath = provider
+        onTick = tick
+    }
+
     override package func start() {
         MainActor.assumeIsolated {
             census.start { [weak self] in self?.refresh() }
@@ -142,6 +157,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     }
 
     package func refresh() {
+        onTick()
         setState(compose())
     }
 
@@ -167,12 +183,14 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         let inBackground = backgroundInput()
         let devices = census.devices()
         let pads = slots().map { slot in
-            PadDiagnostics(
+            let path = inputPath(slot.id)
+            return PadDiagnostics(
                 slot: slot,
                 wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap { slotWireFacts(of: $0, slotId: slot.id) },
                 audio: audio(slot.id),
                 backgroundInput: inBackground,
-                hardwareId: hardwareId(forPadNamed: slot.name, in: devices)
+                hardwareId: path?.hardwareId ?? hardwareId(forPadNamed: slot.name, in: devices),
+                inputPath: path
             )
         }
         return DiagnosticsSnapshot(hosts: hosts, pads: pads, inputDevices: devices)

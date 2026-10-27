@@ -71,6 +71,7 @@ package final class TelemetrySource: StateSource<InputTelemetry> {
 
     private var counts: () -> InputCounts = { InputCounts() }
     private var clockUs: () -> UInt64 = uptimeUs
+    private var onTick: () -> Void = {}
     private var rates = TelemetryRates()
     private var viewers = 0
     private var timer: DispatchSourceTimer?
@@ -83,6 +84,11 @@ package final class TelemetrySource: StateSource<InputTelemetry> {
     func use(counts: @escaping () -> InputCounts, clockUs: @escaping () -> UInt64) {
         self.counts = counts
         self.clockUs = clockUs
+    }
+
+    /// Work that rides the same 1 Hz tick, set once by the owner.
+    func useTick(_ work: @escaping () -> Void) {
+        onTick = work
     }
 
     var isTicking: Bool {
@@ -105,6 +111,7 @@ package final class TelemetrySource: StateSource<InputTelemetry> {
     }
 
     func refresh() {
+        onTick()
         setState(rates.sample(counts(), nowUs: clockUs()))
     }
 

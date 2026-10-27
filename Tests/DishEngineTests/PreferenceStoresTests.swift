@@ -113,4 +113,30 @@ final class PreferenceStoresTests: XCTestCase {
         XCTAssertEqual(defaults.bool(forKey: "updates_check_enabled"), false)
         XCTAssertEqual(defaults.string(forKey: "updates_skipped_version"), "0.2.0")
     }
+
+    // MARK: - USB path choices
+
+    func testUsbPathChoicesRoundTripUnderTheFleetsKeyAndShape() {
+        let store = UsbPathChoiceStore(defaults: defaults)
+        var bag = Set<AnyCancellable>()
+        let seen = emissions(store.statePublisher, &bag)
+        XCTAssertNil(store.choice(vendorId: 0x057E, productId: 0x2009))
+        store.setChoice(.standard, vendorId: 0x057E, productId: 0x2009)
+        store.setChoice(.standard, vendorId: 0x057E, productId: 0x2009)
+        store.setChoice(.direct, vendorId: 0x2DC8, productId: 0x5006)
+        XCTAssertEqual(seen().count, 2, "a repeat set does not re-emit")
+        XCTAssertEqual(
+            defaults.dictionary(forKey: "usb_path_choices") as? [String: String],
+            ["057e:2009": "standard", "2dc8:5006": "direct"]
+        )
+        let reread = UsbPathChoiceStore(defaults: defaults)
+        XCTAssertEqual(reread.choice(vendorId: 0x057E, productId: 0x2009), .standard)
+        XCTAssertEqual(reread.choice(vendorId: 0x2DC8, productId: 0x5006), .direct)
+    }
+
+    func testAnUnknownUsbPathTokenIsNoChoice() {
+        defaults.set(["057e:2009": "auto", "2dc8:5006": 7, "054c:0cda": "direct"], forKey: "usb_path_choices")
+        let store = UsbPathChoiceStore(defaults: defaults)
+        XCTAssertEqual(store.state, ["054c:0cda": .direct], "a newer build's token, or a value that does not read, is dropped")
+    }
 }

@@ -159,8 +159,12 @@ extensions derive from them), turned into the page's state by its mapper.
 draws (`preferences`, with the global switches in `forwarding`), the
 update clock (`updateClock`, re-read every 60 s while Settings shows, so
 "last checked 5 minutes ago" ticks with no clock in a view), the crash
-log's text, the Diagnostics source's snapshot, the flight recorder's lines
-and the inspector's reading. Every setter a page reaches is an intent:
+log's text, the Diagnostics source's snapshot, the flight recorder's lines,
+the inspector's reading, and each visible slot's input path
+(`inputPaths`: Standard or Direct, the reason, the proof, the "Not
+responding?" check, the picks, a Direct pad's raw rate, the player number;
+the intents `startInputCheck` and `pickInputPath` are in
+`AppModel+InputPath.swift`). Every setter a page reaches is an intent:
 Settings' are in `AppModel+Preferences.swift` (`setThemeMode`,
 `setRumbleForwarded`, `setKeepAwakeMode`, `checkForUpdatesNow`,
 `skipAvailableUpdate`, …). A copy goes through the `pasteboard` environment

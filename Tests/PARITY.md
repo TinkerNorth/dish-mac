@@ -50,7 +50,7 @@
 | Light, dark and system theme | ✅ | ✅ | ✅ | ✅ |
 | Views are layout: one state per page from a pure mapper, intents only | ✅ composers / ViewModels, never an Activity | ✅ the QML contract ("AppViewModel is a thin adapter") | ✅ the same | ✅ enforced by `ViewPurityTests` (no clock, IO, formatting, subscription, engine object or domain decision in a view; only `AppModel`, `NavigationStore` and the toast centre observed) and `NavigationCoverageTests` (every destination and page titled, drawn and mapper-tested) |
 | First-run welcome | – (replaced by the guided setup) | ✅ four pages, dots, Back / Skip / Next / Finish, Esc = Skip | ✅ the same | ✅ the same, full-window over the shell; Skip and Finish set `onboarding_welcome_completed`, Finish opens Set up |
-| Setup wizard: the one way a binding is created from scratch | ✅ guided setup (Input / Destination / Binding) | ✅ Input · Destination · Type · Session · Feel · Review, three stages, one apply | ✅ the same | ✅ the same as a page on Home (`SetupWizardMachine` in DishCore): Session for Moonlight only, Pair… with the inline card on Destination, one Bind through the apply overlay, "Leave setup?" past page 1, Connection lost / Controller unplugged in the page with Start over / Exit; from the rail's Set up, Settings, Home's empty state and invitation, a pad's ghost Bind…; no Direct path question (one input path) |
+| Setup wizard: the one way a binding is created from scratch | ✅ guided setup (Input / Destination / Binding) | ✅ Input · Destination · Type · Session · Feel · Review, three stages, one apply | ✅ the same | ✅ the same as a page on Home (`SetupWizardMachine` in DishCore): Session for Moonlight only, Pair… with the inline card on Destination, one Bind through the apply overlay, "Leave setup?" past page 1, Connection lost / Controller unplugged in the page with Start over / Exit; from the rail's Set up, Settings, Home's empty state and invitation, a pad's ghost Bind…; no Direct path question (each pad's path is decided by its model and GameController's support) |
 | Help & FAQ | ✅ | ✅ | ✅ | ✅ the desktops' sections and answers word for word, folded until opened, "Walk me through setup", the privacy policy and the source |
 | Permission priming before the system asks | ✅ USB, Bluetooth, local network, microphone | – | – | ✅ local network: "Show me the prompt" on Connections and in Set up before the first scan ever (`local_network_primed`); a refusal offers Open System Settings in the empty state and the toast; the microphone is still asked at its first use |
 | Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ✅ on Configure binding: Auto (the family's type from `emulates`) or a pick, kept with the binding across restarts |
@@ -60,16 +60,24 @@
 | | Android | Windows | Linux | macOS (this) |
 |---|---|---|---|---|
 | Buttons, sticks, triggers | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ (sticks up-positive like XUSB; Guide from the pad's Home button) |
-| Nintendo Switch Online N64 pad | ✅ · ✅ (2.4.0, #244: the N64 table, C buttons rail the right stick) | ⚠️ · ⚠️ (Switch Pro decoder, or SDL in Standard) | ⚠️ · ⚠️ (the same) | ⚠️ · ⚠️ adopted through `physicalInputProfile` when GameController vends it without the extended profile, under Android's table (Z / ZR → LT / RT 255, Home → Guide, Capture → Back, C buttons → RY / RX ±32767); Apple names no C, Z, ZR or Capture element, so the rows try plausible names and the attach logs the rest; a pad GameController does not claim is listed in Diagnostics, not read (the raw-HID Direct path is a later wave) |
+| Nintendo Switch Online N64 pad | ✅ · ✅ (2.4.0, #244: the N64 table, C buttons rail the right stick) | ⚠️ · ⚠️ (Switch Pro decoder, or SDL in Standard) | ⚠️ · ⚠️ (the same) | ✅ · ⚠️ read Direct from its 0x30 reports (`hid:057e:2019`) under Android's N64 table (Z / ZR → LT / RT 255, Home → Guide, Capture → Back, C buttons → RY / RX ±32767), because GameController lists it and delivers none of its input; the report stream was measured on a Mac over USB with an IOHIDManager probe (~83 reports/s; the captured idle report decodes to nothing held), Dish's own reader not yet run against the pad; Bluetooth unverified (same layout); its GameController controller gets no input slot (R7) and carries rumble and the player lights when it is the only one; never offered Standard |
+| Nintendo Switch Pro and SNES Online pads | ✅ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ read Direct by model under Android's Pro table (Home → Guide, ZL / ZR → LT / RT 255), the Pro's motion from its three IMU frames (Android's axis rotation; roll and the accel signs unverified on hardware); the Pro may be sent back to Standard when GameController shows it (`usb_path_choices`); unverified on hardware here |
+| A second identical Nintendo pad | ✅ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ its own lane and slot (`hid:057e:2019#1`) and player number; GameController keeps one controller for pads that share a USB serial (the Pro and the N64 both say `000000000001`), so with two pads of a kind which carrier drives which is unknown and rumble is unavailable, said so on the card |
+| Pads GameController does not support (generic HID) | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ read Direct when `supportsHIDDevice` stays no over ~30 ms and the report descriptor decodes (the desktops' parser, button orders and known-models table); "Layout guessed" unless the model is in the verified table; unverified on hardware here |
 | Pads without the extended profile (SNES, micro-profile pads) | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ | ⚠️ · ⚠️ the generic table of Apple's `GCInput…` names; the family is Nintendo (emulated as the Switch Pro by `emulates`) when the framework's words name one |
 | Motion | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (GCMotion on DualSense and DualShock 4) |
 | Touchpad | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (DualSense and DualShock 4 profiles) |
 | Battery | ⚠️ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ |
 | Controller mic | ✅ · ❌ | ✅ · ❌ | ✅ · ❌ | ⚠️ · ❌ (the USB audio function; unverified on a pad) |
 
-The macOS client has one input path: GameController.framework. There is no
-raw-HID "Direct" claim, so the "USB Direct" column the other clients carry
-does not apply here.
+The macOS client has two input paths, one per pad: Standard
+(GameController.framework) and Direct (Dish's own HID reader). Direct reads
+the HID reports alongside macOS, opened without seizing the device (seizing a
+game controller is not possible through public API and would blind
+GameController), and sends nothing to the pad: rumble and the player lights
+of a Direct pad ride GameController's controller for it when the pairing is
+unambiguous. Nintendo's pads are Direct by model; any other pad is Direct
+only when GameController does not support it.
 
 ## 3. Receiving, host to pad, by path (cell = USB · Bluetooth)
 
@@ -85,10 +93,15 @@ does not apply here.
 
 ## 4. Decisions, not gaps
 
-- **One input path.** GameController.framework is the only way an unsigned,
-  unentitled macOS app reads a pad, so there is no Direct claim, no per-model
-  report parser and no "Layout guessed" chip. What the framework exposes is
-  what Dish forwards.
+- **Two input paths, never both for one pad.** GameController is not the
+  only way an unsigned, unentitled macOS app reads a pad: an IOHIDManager
+  opened with `kIOHIDOptionsTypeNone` reads gamepad usages with no Input
+  Monitoring permission and no entitlement. Each pad's source lives in one
+  pure machine and is sticky for a connection; a Nintendo controller
+  GameController lists gets no input slot of its own while Dish reads the
+  pad (R7). Direct is input only: sending HID output reports (Direct rumble)
+  could confuse Apple's driver and needs per-model hardware runs, so it is
+  not done.
 - **Mouse mode is the pad's own touchpad routed by the host**, as on
   Android: the pick is per controller, the descriptor declares `mouse` only
   when the pad has a touchpad and the host advertises mouse control, the

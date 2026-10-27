@@ -229,6 +229,63 @@ actuation, coalesced per controller by `ReturnPathApplier`. The audio
 messages find their pad the same way, through the connection's
 `PadAudioTable`, one locked lookup per frame by the frame's index.
 
+## Direct input: the HID reader beside GameController
+
+Nintendo's Switch Pro (057e:2009), N64 (057e:2019) and SNES (057e:2017)
+pads are read by Dish itself, by model: macOS lists the N64 pad and
+delivers none of its input. A gamepad GameController does not support
+(`GCController.supportsHIDDevice` still no after four checks over about
+30 ms, as SDL waits) and whose report descriptor the core can decode is
+read the same way. Everything else stays on GameController.
+
+- **The reader.** `IOKitHidPadReader` owns one `IOHIDManager`, matching the
+  three Nintendo models by identity and every game usage, all with
+  `GCSyntheticDevice` false, scheduled on the run loop of a thread of its own
+  (`com.tinkernorth.dish.hid`), never the main one. Each candidate
+  (`hidPadCandidate`, decided from the device's properties alone) is opened
+  with `kIOHIDOptionsTypeNone`: Dish reads the reports alongside macOS and
+  never seizes the device, and nothing is ever sent to it. Gamepad usages
+  need no Input Monitoring permission and no entitlement, so no access is
+  requested. Arrival and removal hop to the main actor; a pad GameController
+  turns out to read is released again.
+- **A lane per device.** `HidPadLane` holds the report buffer IOKit writes
+  into, sized from `kIOHIDMaxInputReportSizeKey`, the decoder and its state
+  (the Switch sticks' reach, or the descriptor's `HidGamepadLayout`), the
+  last report seen and published, and a lock-guarded raw counter. The
+  callback decodes in place (no `Data`, `Array` or `String` per report) and
+  publishes through the processor under the pad's slot id (`hid:057e:2019`,
+  `#n` for identical pads) only when the report changed something and only
+  while the pad's source is Direct; motion every report the Pro carries one,
+  the battery on change and on the 30 s heartbeat. The first second's count
+  is logged once per attach as `DEVCAPS DIRECT`.
+- **One machine per pad.** `InputPaths` runs the core's input-source machine
+  on the main actor for every pad, Direct lanes and GameController pads
+  alike, and runs its effects: the gate's route, the slot list, the stored
+  pick (`usb_path_choices`, `UsbPathChoiceStore`), the flight recorder. Its
+  per-slot `SlotInputPath` facts (path, reason, proof, check, picks, raw
+  rate, layout guessed, rumble carriage, player number, disconnect burst)
+  reach the UI through `ShellFacts.inputPaths`; the intents are
+  `startInputCheck` and `pickInputPath`.
+- **The hot path never hops per report.** Each pad's `PadGate` is the one
+  word its hot path reads: which source is published, and a "tell me" bit
+  per source. The main actor raises both bits while the machine needs an
+  event (the pad is unproven, or a "Not responding?" check runs). A change
+  that finds its source's bit raised lowers it and posts one event to the
+  main actor, so a check hears each source at most once however fast the
+  pad sends; nothing else on the path touches the main actor. The word is
+  under an unfair lock: Swift's `Atomic` needs macOS 15.
+- **R7: a Nintendo controller GameController lists is a carrier.** A
+  `GCController` whose product category names a Direct-by-model pad ("Switch
+  Pro Controller", "Switch N64 Controller", the SNES pad's) gets no input slot
+  and publishes nothing, so no pad is read twice; its handlers stay
+  installed and only tell its pad's machine of a change during a check. When
+  exactly one such controller and exactly one HID device of the model are
+  connected it carries the Direct pad's rumble and player lights: it is
+  filed under the Direct pad's slot id in `controllersById`, so the return
+  paths reach it unchanged; otherwise the slot's facts say why rumble is
+  unavailable. A Standard pick (offered only for a Pro GameController shows)
+  hides the Direct slot and attaches the carrier again as an ordinary pad.
+
 ## Several pads on one satellite
 
 A satellite session carries up to four pads (`SatelliteSlots.maxPerSatellite`
@@ -311,8 +368,8 @@ Each entry names the decided shape, so a change lands on it.
   possible through public API: an Apple frameworks engineer confirms an app
   cannot take a controller away from the OS's game controller support
   (Apple Developer Forums thread 775975), and seizing the HID device
-  (`kIOHIDOptionsTypeSeizeDevice`) would blind GameController, which is
-  Dish's only input path. macOS 15.4 broke background monitoring for every
+  (`kIOHIDOptionsTypeSeizeDevice`) would blind GameController; the Direct
+  reader opens its pads without seizing them for the same reason. macOS 15.4 broke background monitoring for every
   app; 15.5 fixed it.
 - **A closed lid still sleeps the Mac.** `IOPMLib.h` says
   `kIOPMAssertionTypePreventSystemSleep` is deprecated and "not supported in
@@ -344,9 +401,10 @@ Each entry names the decided shape, so a change lands on it.
   adds the live input, the stick drift and range tests, the rumble bench and
   the audio tests, and the HID census lists the game devices GameController
   does not claim. The radios section the desktops show is not there yet.
-- **A pad GameController does not vend is listed, not read.** The census
-  shows it in Diagnostics; reading it needs the raw-HID Direct backend the
-  other clients carry, a later wave. The N64 table's names for the C
+- **A pad neither path can read is listed, not read.** The census shows it
+  in Diagnostics. A pad GameController does not vend is read Direct when its
+  descriptor decodes, with its layout marked guessed unless the model is in
+  the verified table. The N64 profile table's names for the C
   buttons, Z, ZR and Capture are Apple's undocumented ones, so each row
   tries the plausible names and the attach logs (`DEVCAPS PROFILE`) what
   bound, what is missing and what no row claims.

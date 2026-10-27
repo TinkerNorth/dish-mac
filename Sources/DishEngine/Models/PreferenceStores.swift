@@ -227,6 +227,40 @@ package final class DeadzonePreferenceStore: StateSource<[String: DeadzoneSettin
     }
 }
 
+/// Each model's input path under the fleet's `usb_path_choices` key: one
+/// dictionary of "vvvv:pppp" to "standard" or "direct", the desktops'
+/// `UsbPathPreferenceStore` shape. A value that does not read (one a newer
+/// build wrote) is no choice, so a downgrade never guesses.
+@MainActor
+package final class UsbPathChoiceStore: StateSource<[String: InputSource]> {
+    static let choicesKey = "usb_path_choices"
+
+    private let defaults: UserDefaults
+
+    package init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        super.init(initial: Self.read(defaults))
+    }
+
+    package func choice(vendorId: UInt16, productId: UInt16) -> InputSource? {
+        state[usbPathKey(vendorId: vendorId, productId: productId)]
+    }
+
+    package func setChoice(_ source: InputSource, vendorId: UInt16, productId: UInt16) {
+        let key = usbPathKey(vendorId: vendorId, productId: productId)
+        guard state[key] != source else { return }
+        var next = state
+        next[key] = source
+        defaults.set(next.mapValues(\.rawValue), forKey: Self.choicesKey)
+        setState(next)
+    }
+
+    private static func read(_ defaults: UserDefaults) -> [String: InputSource] {
+        let stored = defaults.dictionary(forKey: choicesKey) ?? [:]
+        return stored.compactMapValues { InputSource.fromStorage($0 as? String) }
+    }
+}
+
 /// The first-run flags: whether the welcome was skipped or finished (the
 /// desktops' key), and whether the scan that raises macOS's Local Network
 /// prompt has run once after being explained (Android's key). Plain reads

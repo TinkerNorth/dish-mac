@@ -37,6 +37,8 @@ package struct ShellFacts: Equatable {
     package var setup: SetupWizardState?
     /// A satellite is still registering a controller.
     package var controllerRegistering = false
+    /// Each visible slot's input path: Standard or Direct, why, the check.
+    package var inputPaths: [String: SlotInputPath] = [:]
 
     package init(wake: WakeState = WakeState(), update: UpdateStatus = UpdateStatus(), crashLogPresent: Bool = false) {
         self.wake = wake
@@ -66,6 +68,7 @@ extension AppModel {
         observeSetup()
         observePreferences()
         observeDiagnosticsFacts()
+        observeInputPaths()
     }
 
     /// The pages fold the global switches with each controller's own.

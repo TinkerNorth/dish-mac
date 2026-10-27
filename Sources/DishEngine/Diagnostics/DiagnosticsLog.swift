@@ -8,6 +8,7 @@
 // session's opening inventory. Pure functions over the shapes the UI already
 // renders; the recorder feeds them and the store keeps the lines.
 
+import DishCore
 import Foundation
 
 package struct LinkSnapshot: Equatable {
@@ -46,6 +47,27 @@ package enum DiagnosticsEventKind: Equatable {
     case padDetached
     case padBound
     case padUnbound
+    /// Which source a pad's input comes from, and why.
+    case padPathChosen
+    /// A "Not responding?" check's verdict.
+    case padCheckConcluded
+    /// A pad dropped three times within a minute.
+    case padKeepsDisconnecting
+}
+
+/// What an input-path line says beyond its pad.
+package enum PadPathNote: Equatable {
+    case chosen(InputSource, InputSourceReason)
+    case verdict(CheckVerdict)
+    case keepsDisconnecting
+
+    package var kind: DiagnosticsEventKind {
+        switch self {
+        case .chosen: .padPathChosen
+        case .verdict: .padCheckConcluded
+        case .keepsDisconnecting: .padKeepsDisconnecting
+        }
+    }
 }
 
 /// One line of the log. `from` and `to` mean something for a link (one that
@@ -59,6 +81,8 @@ package struct DiagnosticsEvent: Equatable, Identifiable {
     package var from: LinkState = .saved
     package var to: LinkState = .saved
     package var host = ""
+    /// What an input-path line decided; nil on every other line.
+    package var path: PadPathNote?
 
     package var id: Int {
         sequence
@@ -66,7 +90,7 @@ package struct DiagnosticsEvent: Equatable, Identifiable {
 
     package init(
         sequence: Int = 0, atMs: Int64, kind: DiagnosticsEventKind, subject: String,
-        from: LinkState = .saved, to: LinkState = .saved, host: String = ""
+        from: LinkState = .saved, to: LinkState = .saved, host: String = "", path: PadPathNote? = nil
     ) {
         self.sequence = sequence
         self.atMs = atMs
@@ -75,6 +99,7 @@ package struct DiagnosticsEvent: Equatable, Identifiable {
         self.from = from
         self.to = to
         self.host = host
+        self.path = path
     }
 }
 
@@ -90,6 +115,11 @@ package extension ConnectionSummary {
     var recordName: String {
         name.isEmpty ? address : name
     }
+}
+
+/// An input-path record as a line of the log.
+package func pathEvent(_ subject: String, _ note: PadPathNote, atMs: Int64) -> DiagnosticsEvent {
+    DiagnosticsEvent(atMs: atMs, kind: note.kind, subject: subject, path: note)
 }
 
 package func linkSnapshot(of summary: ConnectionSummary) -> LinkSnapshot {

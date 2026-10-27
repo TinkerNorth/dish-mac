@@ -17,6 +17,27 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **Nintendo and unrecognised pads are read directly from their HID
+  reports.** The Switch Online N64 pad, which macOS lists but passes no input
+  for, the Switch Pro and the SNES Online pad are read by Dish's own HID
+  reader, on a thread of its own and alongside macOS (the device is never
+  seized and nothing is sent to it). A gamepad GameController does not
+  support is read the same way when its report descriptor decodes, its
+  layout marked guessed unless the model is a verified one. Each pad's path
+  (Standard or Direct) lives in one machine per pad, is proven by a real
+  input change, and has a five-second "Not responding?" check behind it;
+  GameController's own controller for a Nintendo pad gets no input slot, so
+  no pad is read twice, and carries the pad's rumble and player lights when
+  the pairing is unambiguous. A Switch Pro GameController shows can be sent
+  back to Standard, remembered per model under `usb_path_choices`.
+  Diagnostics names each pad's path, its reason and a Direct pad's report
+  rate, and the flight recorder logs every path decision, check verdict and
+  disconnect burst.
+
 ## [1.0.2] - 2026-10-26
 
 The first published build. 1.0.0 and 1.0.1 were tagged the same day and never

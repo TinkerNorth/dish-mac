@@ -911,6 +911,41 @@
         }
       }
     },
+    "%@: check found %@" : {
+      "comment" : "Event line: a pad and its check's verdict.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: provjera je pronašla: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: Prüfung ergab %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: la comprobación encontró %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ : la vérification a trouvé %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: a verificação encontrou %@"
+          }
+        }
+      }
+    },
     "%@: detached" : {
       "comment" : "Event line.",
       "localizations" : {
@@ -942,6 +977,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@: desconectado"
+          }
+        }
+      }
+    },
+    "%@: input path %@ (%@)" : {
+      "comment" : "Event line: a pad, its input path and the reason.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: način unosa %@ (%@)"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: Eingabepfad %@ (%@)"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: ruta de entrada %@ (%@)"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ : voie d'entrée %@ (%@)"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: caminho de entrada %@ (%@)"
+          }
+        }
+      }
+    },
+    "%@: keeps disconnecting" : {
+      "comment" : "Event line: a pad that dropped three times within a minute.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: stalno se prekida veza"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: trennt sich ständig"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: se desconecta una y otra vez"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ : se déconnecte sans cesse"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: continua se desconectando"
           }
         }
       }
@@ -1012,6 +1117,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@: desvinculado de %@"
+          }
+        }
+      }
+    },
+    "%lld Hz" : {
+      "comment" : "A rate per second.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Hz"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Hz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Hz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Hz"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld Hz"
           }
         }
       }
@@ -6249,6 +6389,41 @@
         }
       }
     },
+    "Direct" : {
+      "comment" : "The input path Dish reads from the pad's HID reports.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Brzi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direkt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Directo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direct"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direto"
+          }
+        }
+      }
+    },
     "Discard" : {
       "comment" : "Button: deletes the crash log.",
       "localizations" : {
@@ -7015,6 +7190,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Dish no Mac não transmite %@."
+          }
+        }
+      }
+    },
+    "Dish reads its input" : {
+      "comment" : "A check's verdict: Dish's own reader sees the pad's input.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish čita njegov unos"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish liest seine Eingaben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish lee su entrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish lit ses entrées"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish lê a entrada dele"
+          }
+        }
+      }
+    },
+    "Dish reads this model itself" : {
+      "comment" : "Diagnostics: why a Nintendo pad is Direct.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish sam čita ovaj model"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish liest dieses Modell selbst"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish lee este modelo por sí mismo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish lit ce modèle lui-même"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish lê este modelo por conta própria"
           }
         }
       }
@@ -9014,6 +9259,41 @@
         }
       }
     },
+    "HID reports" : {
+      "comment" : "Diagnostics: a controller Dish reads from its HID reports.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HID izvještaji"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "HID-Berichte"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informes HID"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rapports HID"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relatórios HID"
+          }
+        }
+      }
+    },
     "Haptic audio" : {
       "comment" : "A caps word feature.",
       "localizations" : {
@@ -9605,6 +9885,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Entrada"
+          }
+        }
+      }
+    },
+    "Input path" : {
+      "comment" : "Diagnostics: the line naming where a controller's input comes from.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Način unosa"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eingabepfad"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ruta de entrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Voie d'entrée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Caminho de entrada"
           }
         }
       }
@@ -15629,6 +15944,41 @@
         }
       }
     },
+    "Reason" : {
+      "comment" : "Diagnostics: why a controller is on its input path.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Razlog"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grund"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Motivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Raison"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Motivo"
+          }
+        }
+      }
+    },
     "Recommended" : {
       "comment" : "Support Dish: the eyebrow on the recommended way to give.",
       "localizations" : {
@@ -15905,6 +16255,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Taxa de relatórios: medida. Latência: mediana do tempo de ida e volta ÷ 2 nos últimos 64 pings."
+          }
+        }
+      }
+    },
+    "Reports from the pad" : {
+      "comment" : "Diagnostics: the reports per second a Direct controller sends.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izvještaji s kontrolera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Berichte vom Controller"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informes del mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rapports de la manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relatórios do controle"
           }
         }
       }
@@ -17550,6 +17935,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Patrocine no GitHub Sponsors"
+          }
+        }
+      }
+    },
+    "Standard" : {
+      "comment" : "The input path GameController reads.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standardni"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Estándar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Standard"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Padrão"
           }
         }
       }
@@ -21684,6 +22104,41 @@
         }
       }
     },
+    "Your pick" : {
+      "comment" : "Diagnostics: the path is the one the user picked.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaš izbor"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ihre Wahl"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu elección"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre choix"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua escolha"
+          }
+        }
+      }
+    },
     "You’re set" : {
       "comment" : "The first-run welcome: youre set.",
       "localizations" : {
@@ -22349,6 +22804,41 @@
         }
       }
     },
+    "macOS does not read it, so Dish does" : {
+      "comment" : "Diagnostics: why a pad macOS cannot read is Direct.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS ga ne čita, pa ga čita Dish"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS liest ihn nicht, also liest Dish ihn"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS no lo lee, así que lo lee Dish"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS ne la lit pas, donc Dish la lit"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS não o lê, então o Dish lê"
+          }
+        }
+      }
+    },
     "macOS is blocking Dish from the local network. Check Privacy & Security › Local Network, or add the satellite by address." : {
       "comment" : "Failure: macOS refused the app every flow to the local network. The pane named is macOS's own, in each language.",
       "localizations" : {
@@ -22456,6 +22946,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O macOS lista mais de um dispositivo de áudio com o nome deste controle, então seu áudio não é roteado."
+          }
+        }
+      }
+    },
+    "macOS passes its input" : {
+      "comment" : "A check's verdict: GameController delivers the pad's input.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS prosljeđuje njegov unos"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS gibt seine Eingaben weiter"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS pasa su entrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS transmet ses entrées"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS repassa a entrada dele"
+          }
+        }
+      }
+    },
+    "macOS reads it" : {
+      "comment" : "Diagnostics: why a pad is Standard.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS ga čita"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS liest ihn"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS lo lee"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS la lit"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS o lê"
           }
         }
       }
@@ -22666,6 +23226,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "este controle não tem função de áudio USB"
+          }
+        }
+      }
+    },
+    "no input Dish can decode" : {
+      "comment" : "A check's verdict: nothing arrived and Dish has no decoder for the pad.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nema unosa koji Dish može dekodirati"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "keine Eingaben, die Dish entschlüsseln kann"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ninguna entrada que Dish pueda decodificar"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune entrée que Dish sache décoder"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nenhuma entrada que o Dish consiga decodificar"
+          }
+        }
+      }
+    },
+    "no input at all" : {
+      "comment" : "A check's verdict: nothing arrived on either path.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nikakav unos"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "überhaupt keine Eingaben"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ninguna entrada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "aucune entrée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "nenhuma entrada"
           }
         }
       }
