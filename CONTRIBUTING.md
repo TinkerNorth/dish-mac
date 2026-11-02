@@ -441,10 +441,12 @@ rate and must never block. If you're modifying `GameControllerInput`,
 
 - No `Task`, no `await`, no main-actor hop on the send path.
 - No Combine on the per-event chain; direct calls only.
-- One locked read of the routing table and the client's own send lock are the
-  only locks allowed; hold each briefly. `LockLawTests` lists, per thread
-  role, every lock the hot threads take today; a lock you add fails it, and a
-  lock you remove must be deleted from its list.
+- No lock on the Input, HidReader or Receive thread. What they share with
+  the main actor travels in atomic words, mailboxes and seqlocked records,
+  and senders meet only at the session's send gate. `LockLawTests` runs the
+  production objects in their roles and fails on any lock those roles take,
+  and `measurements.yml` fails a release whose lock-statistics bench shows
+  one.
 - A new lock is a `TrackedLock` with an `area.thing` name, and a new queue or
   thread on the hot path takes its `ThreadRole` where it is made.
 - Preserve `IP_TOS = 0xB8` (DSCP EF) and `SO_NOSIGPIPE` on every send.

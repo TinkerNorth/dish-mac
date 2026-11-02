@@ -196,25 +196,31 @@ state and `WifiConnectionManager` performs the effects.
 
 ## Threading and the hot path
 
-Every controller event takes one path. GameController calls the pad's
-handlers on `GameControllerInput.inputQueue`, one serial `userInteractive`
-queue (`com.tinkernorth.dish.input`) handed to each controller as its
-`handlerQueue` before any handler is installed, so no event waits behind the
-main thread. The handler samples the pad into the core's `PadSample`
+Every controller event takes one path, and takes no lock on it.
+GameController calls a pad's handlers on that controller's own serial
+`userInteractive` queue (`com.tinkernorth.dish.input.<slot id>`, one per slot,
+kept across a re-attach), handed to it as its `handlerQueue` before any
+handler is installed, so no event waits behind the main thread or another
+pad. The handler samples the pad into the core's `PadSample`
 (a pad GameController vends without the extended profile is read through
 `physicalInputProfile` instead: `GameControllerInput+Profile` resolves the
 core's `ProfileLayout`, the generic table of Apple's `GCInput…` names or the
 N64's, against the pad's elements once at attach, so the handler walks fixed
 arrays into a `ProfileSample` whose C buttons rail the right stick; no set,
 array or string is built per report), `wireReport` turns it into a `GamepadReport` (up-positive sticks, as XUSB and
-every other client have them), the processor applies the dead zones under its lock,
-`InputRouting` reads the slot's route (its pad's sink, a `SatellitePadSink`
-holding the session and the controller index the pad holds there or a
-`MoonlightPadSink` holding the host's link, and the switches in force for
-that controller, global and per-controller already folded on the main actor)
-under one `os_unfair_lock`, and `SatelliteClient` seals and sends under its
-own lock. The sinks are built on the main actor whenever the table is, never
-per report. No `Task`, no `await`, no main-actor hop, no
+every other client have them), and the pad's `PadFeed` takes it: a report
+that repeats the last one published is dropped there, the dead zones come
+from an atomic word, the record the inspector and the telemetry read is
+written under a seqlock, and the report goes to the route the feed holds
+(a `SatelliteClientSink` with the connection's live client and the pad's
+controller index, or a `MoonlightPadSink`, and the switches in force, all
+resolved on the main actor and handed over through a mailbox). The client
+then encodes, seals and sends from a stack buffer under its send gate, a
+compare-exchange flag held from the counter's claim to the `sendto`, so the
+session's datagrams leave in counter order; CryptoKit's sealed box is the one
+allocation. The routes are built on the main actor whenever the table is,
+and again when a connection's client comes or goes, never per report. No
+`Task`, no `await`, no main-actor hop, no
 Combine on that path. The handler installs are `nonisolated`, so the compiler
 refuses a handler that reaches for main-actor state; the slot bookkeeping
 (attach, detach, the published slot list) stays on the main actor. Session material is one `SessionGeneration`

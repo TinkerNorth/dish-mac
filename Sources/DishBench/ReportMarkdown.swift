@@ -53,7 +53,7 @@ private func lockGateLine(_ gate: LockGate) -> String {
     let rule = "the Input, HidReader and Receive roles take no lock in the lock-stats runs"
     let enforcement = gate.enforced
         ? "Enforced: a failure fails the job."
-        : "Reported, not enforced: it fails today, and the optimisation PR enforces it once the hot path is lock-free."
+        : "Reported, not enforced: the release workflow passes `--enforce-lock-gate`, which fails the job on it."
     let verdict = if !gate.sawLocks {
         "**FAIL**: the lock-stats runs recorded no lock at all, so nothing was judged."
     } else if gate.passed {

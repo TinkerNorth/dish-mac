@@ -187,11 +187,12 @@ fails the build when a file imports outside its module's allowlist, a
 dependency points the wrong way, a view holds a raw colour or an English
 literal, or a mutable static appears.
 
-The hot path never leaves the controller's input queue: it builds a
-`GamepadReport`, applies the dead zones under a lock, reads the slot's route
-(its satellite and the controller index it holds there, or its pad on a
-Moonlight host) under one `os_unfair_lock`, seals the frame and calls
-`sendto()`. No queue, no Combine, no async hop, no main-actor hop; the
+The hot path never leaves the controller's queue and takes no lock: it
+builds a `GamepadReport`, applies the dead zones, sends through the route its
+pad's feed holds (its satellite's live client and the controller index it
+holds there, or its pad on a Moonlight host), seals the frame in a stack
+buffer and calls `sendto()`. No queue hop, no Combine, no async hop, no
+main-actor hop; the
 raw POSIX socket carries `IP_TOS = 0xB8` (DSCP EF) and `SO_NOSIGPIPE`.
 CryptoKit's `ChaChaPoly` produces the exact bytes libsodium produces on the
 server, pinned byte-for-byte by the cross-repo vectors in

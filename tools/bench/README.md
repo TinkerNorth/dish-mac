@@ -6,10 +6,11 @@ release and attaches the record to the release. This file is the method and the 
 
 ## What is timed
 
-A pad's report travels, on one thread, from GameController's handler queue (`com.tinkernorth.dish.input`)
-through the pad's gate, `GamepadInputProcessor.publish`, the routing table, the connection's client
-reference and `SatelliteClient.sendEncrypted` to `sendto`; a Direct pad's report makes the same trip from
-IOKit's input-report callback on the reader's thread. The bench drives exactly those objects:
+A pad's report travels, on one thread, from its controller's own handler queue
+(`com.tinkernorth.dish.input.<slot id>`) through the pad's gate, its `PadFeed` (latch, dead zones, record,
+the route it holds) and `SatelliteClient.sendEncrypted` to `sendto`; a Direct pad's report makes the same
+trip from IOKit's input-report callback on the reader's thread. (Before the optimisation it went through the
+processor's lock, the routing table and the connection's client reference instead of the feed.) The bench drives exactly those objects:
 `FramePathRig` (`Sources/DishEngine/Measurement`) wires the processor, the routing table, a
 `WifiConnection` and its `SatelliteClient` the way `AppModel` wires them, with the client's receive loop,
 heartbeat and alive tick running, and routes the return paths to counters where a pad would be actuated.
@@ -31,7 +32,7 @@ matched to their send stamps through it, across the sequence's wrap.
 | scenario | runs |
 | --- | --- |
 | S1 | pad A on the input queue at `--rate` (1000 Hz) |
-| S2 | S1 and pad B at 250 Hz on the same serial queue, as GameController shares one |
+| S2 | S1 and pad B at 250 Hz on a queue of its own, as each controller has one (one queue shared by both before the optimisation, as GameController then shared one) |
 | S3 | S2 and the main actor refreshing the routing table every 100 ms, as `AppModel.refreshRouting` does, and reading the tally every second |
 | S4 | S3 and the satellite sending 100 rumble and 10 light-bar commands a second into the real receive path |
 | S5 | S4 and the 2 s heartbeat and microphone packets from the capture queue at `--mic-hz` (50; also run at 1000) |
@@ -97,8 +98,8 @@ plain build, nothing else. Each queue and thread on those paths takes its `Threa
 Receive, Heartbeat, Main, AudioDecode, AudioCapture, MoonlightUdp, Other) where it is made. `LockLawTests`
 runs the production objects in their roles for about two and a half seconds and compares, per role, the
 locks taken with a list: Input, HidReader and Receive, the locks held across a blocking call, and the
-locks taken inside another, plus a check that the nesting has no cycle. Every entry today is debt; a lock
-that appears fails the test, and so does a listed lock no longer taken until its entry is deleted.
+locks taken inside another, plus a check that the nesting has no cycle. Every list is empty: a lock that
+appears on a hot role fails the test.
 
 ## Release measurements
 
@@ -110,9 +111,8 @@ more with `--only S5 --mic-hz 1000`, and has `DishBench report` write `measureme
 summary) and `measurements-<version>.json`; both are the `measurements` artifact and every rep is
 `measurements-raw`.
 
-- **Lock gate (reported, not enforced).** The Input, HidReader and Receive roles take no lock in any
-  lock-stats run. It fails today; until the optimisation PR adds `--enforce-lock-gate`, the summary
-  reports it and the job passes. A lock-stats run that recorded no lock cannot pass.
+- **Lock gate (fails the job).** The Input, HidReader and Receive roles take no lock in any lock-stats
+  run (`--enforce-lock-gate`). A lock-stats run that recorded no lock at all cannot pass either.
 - **Trend (warnings only).** A pad's p99.9 or max more than twice the previous release's and over 100 us
   above it is a `::warning::`; no earlier release carrying measurements skips it.
 
@@ -222,3 +222,79 @@ role.
 The send lock is where the threads meet. The receive loop takes it every time it reads the socket and
 found it held 187 times in 690 (27%), waiting up to 576 us; the capture queue found it held 97 times in 300
 (32%). On the input queue it was held for up to 4.7 ms, a `sendto` descheduled under it.
+
+## After: the optimised frame path
+
+The branch's head after the optimisation commits, `3b6a897`, measured by `measurements.yml` on the pull request:
+run [41427026294](https://github.com/TinkerNorth/dish-mac/actions/runs/41427026294), attempt 1 and its re-run,
+attempt 2, both on the pull request's merge commit `819755a`. The runner is the baseline's (`macos-26`, Apple M1
+(Virtual), VirtualMac2,1, 3 cores, 7.0 GB, macOS 26.6.2). Time-constrained waits woke 1040 us late at the 90th
+percentile in the first run and 836 us in the second, so their pacers spun 1000 and 936 us; the baseline's plain
+run had 268 us. The commands are the baseline's, as the workflow runs them. Since then the workflow passes
+`--enforce-lock-gate`.
+
+### Locks, lock-stats build
+
+The Input, HidReader and Receive roles took no lock in either run: no acquisition per report on the input queue
+(12 before), none per Direct report (about 15.7) and none per rumble datagram (7), and no lock is held across
+`sendto` (`satellite.send` was, for up to 4.7 ms). The senders meet only at the session's send gate. What is left
+is the cold side, below from the second run, every scenario's reported rep merged: the microphone's connection
+lookup on the capture queue, the heartbeat's latency window, and the main actor's routing refreshes (S3 to S5
+refresh every 100 ms), feed registry and handler sets.
+
+| lock | role | acquisitions | contended | max wait us | p99 wait us | max hold us | p99 hold us |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| connection.client | AudioCapture | 150 | 0 | 0.2 | 0.3 | 0.7 | 1.0 |
+| satellite.latency | Heartbeat | 2 | 0 | 1.1 | 2.0 | 0.4 | 0.5 |
+| connection.client | Main | 182 | 0 | 0.2 | 0.3 | 0.9 | 1.0 |
+| input.feeds | Main | 63 | 0 | 5.9 | 8.2 | 3.0 | 4.1 |
+| routing.table | Main | 54 | 0 | 0.2 | 0.3 | 0.9 | 1.0 |
+| satellite.handlers | Main | 54 | 0 | 0.0 | 0.1 | 6.2 | 8.2 |
+| satellite.latency | Main | 20 | 0 | 1.5 | 2.0 | 4.5 | 8.2 |
+
+### Latency, plain build
+
+The reported rep of each scenario in both runs, the run's number first. Latencies in microseconds; `longest gap`
+in milliseconds. S2's pad B now has a queue of its own, as each controller has.
+
+| run | scenario | pad | source | rate Hz | frames | p50 us | p99 us | p99.9 us | max us | over 1 ms | longest gap ms | datagrams/report | drops |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1: plain | S1 | A | Input | 1000 | 3000 | 72.5 | 1549.5 | 2425.9 | 3558.8 | 204 | 1775.381 | 1.00 | 0 |
+| 2: plain | S1 | A | Input | 1000 | 3000 | 40.2 | 117.5 | 260.9 | 396.0 | 0 | 1.221 | 1.00 | 0 |
+| 1: plain | S2 | A | Input | 1000 | 3000 | 70.3 | 189.9 | 503.5 | 2357.6 | 1 | 4.065 | 1.00 | 0 |
+| 2: plain | S2 | A | Input | 1000 | 3000 | 44.0 | 995.0 | 1842.0 | 5085.5 | 23 | 8.223 | 1.00 | 0 |
+| 1: plain | S2 | B | Input | 250 | 750 | 69.9 | 208.6 | 545.3 | 545.3 | 0 | 4.305 | 1.00 | 0 |
+| 2: plain | S2 | B | Input | 250 | 750 | 47.1 | 495.4 | 2531.8 | 2531.8 | 3 | 8.812 | 1.00 | 0 |
+| 1: plain | S3 | A | Input | 1000 | 3000 | 126.8 | 1155.0 | 2961.6 | 3733.8 | 35 | 11.466 | 1.00 | 0 |
+| 2: plain | S3 | A | Input | 1000 | 3000 | 40.0 | 227.5 | 1031.6 | 1045.2 | 11 | 2.007 | 1.00 | 0 |
+| 1: plain | S3 | B | Input | 250 | 750 | 122.6 | 1287.9 | 6144.4 | 6144.4 | 12 | 12.902 | 1.00 | 0 |
+| 2: plain | S3 | B | Input | 250 | 750 | 44.2 | 991.0 | 998.8 | 998.8 | 0 | 4.959 | 1.00 | 0 |
+| 1: plain | S4 | A | Input | 1000 | 3000 | 84.8 | 5678.7 | 11634.2 | 28441.7 | 184 | 64.493 | 1.00 | 0 |
+| 2: plain | S4 | A | Input | 1000 | 3000 | 44.1 | 1002.7 | 1327.8 | 3738.5 | 40 | 4.307 | 1.00 | 0 |
+| 1: plain | S4 | B | Input | 250 | 750 | 124.1 | 10879.8 | 23712.9 | 23712.9 | 70 | 60.576 | 1.00 | 0 |
+| 2: plain | S4 | B | Input | 250 | 750 | 55.8 | 3045.9 | 5557.2 | 5557.2 | 30 | 9.502 | 1.00 | 0 |
+| 1: plain | S5 | A | Input | 1000 | 3000 | 128.8 | 1369.6 | 5174.3 | 7780.3 | 51 | 12.316 | 1.05 | 0 |
+| 2: plain | S5 | A | Input | 1000 | 3000 | 60.4 | 15868.2 | 37040.8 | 49999.8 | 528 | 50.944 | 1.05 | 0 |
+| 1: plain | S5 | B | Input | 250 | 750 | 126.6 | 2232.5 | 7825.8 | 7825.8 | 20 | 14.701 | 1.00 | 0 |
+| 2: plain | S5 | B | Input | 250 | 750 | 80.8 | 20105.2 | 46049.7 | 46049.7 | 128 | 64.034 | 1.00 | 0 |
+| 1: plain | S6 | A | HidReader | 1000 | 3000 | 165.3 | 4735.2 | 7794.5 | 9789.7 | 289 | 12.364 | 1.21 | 0 |
+| 2: plain | S6 | A | HidReader | 1000 | 3000 | 49.8 | 2617.6 | 4937.4 | 16781.3 | 168 | 16.787 | 1.21 | 0 |
+| 1: plain-mic1000 | S5 | A | Input | 1000 | 3000 | 65.2 | 1810.0 | 4375.0 | 5784.0 | 134 | 8.544 | 2.00 | 0 |
+| 2: plain-mic1000 | S5 | A | Input | 1000 | 3000 | 51.3 | 978.9 | 1508.2 | 26799.6 | 26 | 27.500 | 2.00 | 0 |
+| 1: plain-mic1000 | S5 | B | Input | 250 | 750 | 89.0 | 2103.0 | 5592.8 | 5592.8 | 44 | 9.886 | 1.00 | 0 |
+| 2: plain-mic1000 | S5 | B | Input | 250 | 750 | 74.9 | 1267.0 | 1399.7 | 1399.7 | 8 | 29.772 | 1.00 | 0 |
+
+In the second run pad A's median is 40 to 60 us in the reported rep of every scenario, against 96 to 123 us
+before, and the Direct pad's 50 us against 108 us; S1's p99 is 118 us against 634 us, and every rep of S1 to S4
+has a median under 47 us. The first run, on a busier host, has reported medians of 65 to 129 us for pad A and
+165 us for the Direct pad: the baseline's range, and above it for the Direct pad. The tails belong to the runner
+more than to the path: both runs have reps with gaps between arrivals of 49 ms to 1.8 s, and so do the runs this
+pull request measured after its first commits, while the input threads still took most of their locks (a 124 ms
+gap in S1 after the first three commits, and 474 ms with a 44 ms p99 in S2 after the first four), where the
+baseline's run had none over 27 ms. Judge a change on the medians and the lock counts, over more than one run.
+
+Per report the send path allocates nothing of its own: the payload, the inner frame, the nonce, the AAD and the
+datagram are built in a stack buffer, and CryptoKit's sealed box is the one heap object (up to eight of Dish's
+own beside it before; `Data` keeps the smallest inline). The receive loop reads into the client's own buffer;
+per datagram it allocates only CryptoKit's copy of the box and the plaintext it returns, and an audio frame's
+Opus bytes (a 1500-byte array and up to ten more copies of Dish's own before).

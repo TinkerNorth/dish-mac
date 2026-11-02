@@ -13,7 +13,7 @@ import XCTest
 /// loopback satellite, the heartbeat, and the main actor refreshing the
 /// routing table every 100 ms. The lists are a ratchet: a lock that appears
 /// fails, and so does a listed one no longer observed until it is deleted.
-/// Every entry today is debt; the hot path's goal is no entries at all.
+/// They are empty: the hot threads take no lock.
 @MainActor
 final class LockLawTests: XCTestCase {
 

@@ -90,6 +90,6 @@ func annotations(_ report: MeasurementsReport) -> [String] {
         ? "\(count) lock and role pairs on the Input, HidReader and Receive roles"
         : "the lock-stats runs recorded no lock at all"
     let level = report.lockGate.enforced ? "error" : "notice"
-    let note = report.lockGate.enforced ? "" : " (reported, not enforced until the optimisation PR)"
+    let note = report.lockGate.enforced ? "" : " (reported, not enforced without --enforce-lock-gate)"
     return trend + ["::\(level) title=Lock gate::\(summary)\(note)"]
 }

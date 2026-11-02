@@ -23,10 +23,10 @@ final class MeasurementsWorkflowTests: XCTestCase {
         XCTAssertTrue(workflow.contains("gh release download --pattern 'measurements-*.json'"), "the trend's baseline")
     }
 
-    func testTheLockGateIsReportedAndNotYetEnforced() throws {
+    func testTheLockGateFailsTheJob() throws {
         let workflow = try RepoFiles.read(Self.workflowPath)
         XCTAssertTrue(workflow.contains("bench/DishBench-plain report"))
-        XCTAssertFalse(workflow.contains("--enforce-lock-gate"), "the optimisation PR enforces it once no gated role takes a lock")
+        XCTAssertTrue(workflow.contains("--enforce-lock-gate"), "no gated role takes a lock, so one that does fails the release")
     }
 
     func testPublishWaitsForTheMeasurementsAndShipsThem() throws {

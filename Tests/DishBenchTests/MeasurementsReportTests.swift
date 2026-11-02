@@ -14,7 +14,7 @@ final class MeasurementsReportTests: XCTestCase {
         let rows = [taken("input.gate", "Input", 3000), taken("routing.table", "Main", 30)]
         let report = try buildReport(runs: [plain(), lockStats(rows)], previous: nil, version: "dev", commit: nil, enforceLockGate: false)
         XCTAssertFalse(report.lockGate.passed)
-        XCTAssertFalse(report.lockGate.failsTheJob, "reported until the optimisation PR enforces it")
+        XCTAssertFalse(report.lockGate.failsTheJob, "without the flag the gate is only reported")
         XCTAssertEqual(
             report.lockGate.violations,
             [LockViolation(run: "lockstats", scenario: "S1", role: "Input", lock: "input.gate", acquisitions: 3000)]

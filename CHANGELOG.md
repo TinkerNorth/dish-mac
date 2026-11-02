@@ -17,6 +17,26 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **The frame path and the receive path take no lock.** Every report from a
+  GameController pad or a Direct pad now reaches `sendto` without a lock, a
+  main-actor hop or a heap allocation of Dish's own: each pad has a feed whose
+  route, dead zones and record cross threads in atomic words and mailboxes,
+  each controller's handlers run on a queue of their own, a report that repeats
+  the last one is not sent again, and the satellite client seals in a stack
+  buffer under a send gate that keeps the session's datagrams in counter order,
+  for the main actor's battery reports too. The receive loop reads into one
+  buffer, opens each datagram where it lies and runs at the input queue's
+  quality, and the satellite's rumble, light bar, trigger effects and player
+  lights reach the pad in one hop to a feedback queue that owns the actuators
+  and reuses a motor's player while the level repeats. `LockLawTests` holds
+  the Input, HidReader and Receive threads to no lock at all, and the release
+  measurements now fail on one. The before and after numbers are in
+  `tools/bench/README.md`.
+
 ## [1.1.0] - 2026-10-27
 
 ### Added

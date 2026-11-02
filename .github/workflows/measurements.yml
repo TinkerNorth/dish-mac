@@ -158,8 +158,8 @@ jobs:
             exit 1
           fi
 
-      # The lock gate is reported, not enforced: the hot path takes locks today,
-      # and the optimisation PR that removes them turns enforcement on here.
+      # The lock gate fails the job: a lock on a hot role, or a lock-stats run that
+      # recorded no lock at all. The trend against the last release only warns.
       - name: Build the report and check the gates
         id: report
         if: ${{ !cancelled() && steps.bench.outcome != 'skipped' }}
@@ -170,6 +170,7 @@ jobs:
             --output-dir measurements \
             --version "${MEASURE_VERSION}" \
             --previous-dir previous-measurements \
+            --enforce-lock-gate \
             --commit "$(git rev-parse HEAD)"
           cat "measurements/measurements-${MEASURE_VERSION}.md" >> "${GITHUB_STEP_SUMMARY}"
 
