@@ -90,15 +90,24 @@ public enum MoonlightControlPacket {
 /// whatever its kind, takes the next sequence number, starting at 0.
 public struct MoonlightControlSealer: Equatable, Sendable {
     public let rikey: Data
+    /// The rikey as CryptoKit's key, made once for the session, not per packet.
+    private let key: SymmetricKey
     public private(set) var nextSeq: UInt32 = 0
 
     public init(rikey: Data) {
         self.rikey = rikey
+        key = SymmetricKey(data: rikey)
+    }
+
+    /// Two sealers are equal on the rikey and the counter; the key follows
+    /// from the rikey.
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.rikey == rhs.rikey && lhs.nextSeq == rhs.nextSeq
     }
 
     public mutating func seal(_ plaintext: Data) -> Data? {
         let seq = nextSeq
         nextSeq &+= 1
-        return MoonlightControlPacket.seal(key: SymmetricKey(data: rikey), seq: seq, plaintext: plaintext)
+        return MoonlightControlPacket.seal(key: key, seq: seq, plaintext: plaintext)
     }
 }

@@ -16,6 +16,7 @@
 // key-recovery bug and not merely a lost input. Events are dispatched
 // outside the lock: a rumble sink is somebody else's code.
 
+import CryptoKit
 import DishCore
 import Foundation
 
@@ -47,6 +48,8 @@ final class MoonlightControlSession: @unchecked Sendable {
     private let enet: EnetClient
     private var sealer: MoonlightControlSealer
     private let rikey: Data
+    /// The rikey as CryptoKit's key, made once for the session.
+    private let key: SymmetricKey
     private var stateValue = State.idle
     private var lastPingMs: Int64 = 0
     private var handshakeContinuation: CheckedContinuation<Bool, Never>?
@@ -61,6 +64,7 @@ final class MoonlightControlSession: @unchecked Sendable {
         onClosed: @escaping () -> Void
     ) {
         self.rikey = rikey
+        key = SymmetricKey(data: rikey)
         self.transport = transport
         self.now = now
         self.onEvent = onEvent
@@ -263,7 +267,7 @@ final class MoonlightControlSession: @unchecked Sendable {
 
     /// Under the lock: a forged or garbled packet is dropped, never acted on.
     private func open(_ payload: Data) -> MoonlightEvent? {
-        guard case let .plaintext(plaintext) = MoonlightControlPacket.open(key: .init(data: rikey), packet: payload) else { return nil }
+        guard case let .plaintext(plaintext) = MoonlightControlPacket.open(key: key, packet: payload) else { return nil }
         return decodeMoonlightEvent(plaintext)
     }
 }
