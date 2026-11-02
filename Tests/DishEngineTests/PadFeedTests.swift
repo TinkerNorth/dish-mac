@@ -83,6 +83,33 @@ final class PadFeedTests: XCTestCase {
     }
 }
 
+/// Two pads publish at once, each on its own thread, as two controllers'
+/// queues do: each record holds its own pad's reports, all of them, and
+/// nothing of the other's.
+final class ConcurrentPadsTests: XCTestCase {
+
+    func testTwoPadsPublishingAtOnceKeepTheirOwnRecords() {
+        let processor = GamepadInputProcessor()
+        let pads = [processor.feed(for: "a"), processor.feed(for: "b")]
+        let reports = 5000
+        let group = DispatchGroup()
+        for (number, feed) in pads.enumerated() {
+            group.enter()
+            Thread {
+                for step in 1 ... reports {
+                    feed.publish(GamepadReport(buttons: UInt16(number + 1), lx: Int16(truncatingIfNeeded: step)))
+                }
+                group.leave()
+            }.start()
+        }
+        XCTAssertEqual(group.wait(timeout: .now() + 20), .success)
+        XCTAssertEqual(processor.tallySnapshot().reports, ["a": UInt64(reports), "b": UInt64(reports)])
+        XCTAssertEqual(processor.latestInput("a")?.raw?.buttons, 1)
+        XCTAssertEqual(processor.latestInput("b")?.raw?.buttons, 2)
+        XCTAssertEqual(processor.latestInput("a")?.raw?.lx, Int16(truncatingIfNeeded: reports))
+    }
+}
+
 /// A satellite pad's route holds its connection's live client, resolved on
 /// the main actor.
 @MainActor

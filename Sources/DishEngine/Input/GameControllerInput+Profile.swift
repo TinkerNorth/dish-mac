@@ -52,7 +52,7 @@ extension GameControllerInput {
         let firstSight = !slots.contains { $0.id == id }
         recordSlot(id: id, controller: controller, capabilities: Self.profileCapabilities(controller), family: Self.family(of: controller))
         if firstSight { Self.logProfile(subject: id, choice: choice, resolved: resolved, adopted: true) }
-        controller.handlerQueue = inputQueue
+        controller.handlerQueue = handlerQueue(for: id)
         installProfileHandler(profile: profile, inputs: Self.profileInputs(resolved, profile: profile), gate: gate, feed: feed)
         installMotionHandler(controller: controller, gate: gate, feed: feed)
         startBatteryTimer(deviceId: id, controller: controller)
@@ -121,8 +121,11 @@ extension GameControllerInput {
 
     /// Every handler call is a change; the gate says whether it is published.
     nonisolated static func pushProfileReport(inputs: ProfileInputs, gate: PadGate, feed: PadFeed) {
-        guard gate.pass(.standard, changed: true) else { return }
-        feed.publish(wireReport(from: profileSample(inputs)))
+        guard gate.pass(.standard, changed: true) else {
+            feed.forgetLatch()
+            return
+        }
+        feed.publishIfChanged(wireReport(from: profileSample(inputs)))
     }
 
     /// The pad through its resolved inputs, in the framework's orientation,

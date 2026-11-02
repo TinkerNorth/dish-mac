@@ -21,8 +21,9 @@ package enum FramePathRigError: Error, Equatable {
 /// bench and the lock-law test drive the production objects through it.
 @MainActor
 package final class FramePathRig {
-    /// GameController's handler queue, made as the bridge makes it.
-    package nonisolated let inputQueue = ThreadRole.input.queue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
+    /// Each pad's GameController handler queue, one per pad as the bridge
+    /// makes one per controller.
+    package nonisolated let inputQueues: [DispatchQueue]
     /// Each pad's index on the satellite, by pad number.
     package nonisolated let controllerIndices: [Int]
     private nonisolated let padIds: [String]
@@ -50,6 +51,7 @@ package final class FramePathRig {
         let processor = GamepadInputProcessor()
         self.processor = processor
         feeds = padIds.map { processor.feed(for: $0) }
+        inputQueues = padIds.map { ThreadRole.input.queue(label: "com.tinkernorth.dish.input.\($0)", qos: .userInteractive) }
         self.connection = connection
         self.padIds = padIds
         self.routing = routing
@@ -115,7 +117,7 @@ package final class FramePathRig {
     /// gate on; GameController's own sampling of the pad is not part of it.
     package nonisolated func publish(pad: Int, report: GamepadReport) {
         guard gates[pad].pass(.standard, changed: true) else { return }
-        feeds[pad].publish(report)
+        feeds[pad].publishIfChanged(report)
     }
 
     /// What the motion handler does with a sample.

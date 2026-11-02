@@ -77,7 +77,7 @@ final class GameControllerProfileTests: XCTestCase {
         XCTAssertEqual(input.slots.first?.family, .other)
         XCTAssertEqual(input.slots.first?.capabilities.hasTouchpad, false)
         XCTAssertEqual(input.slots.first?.capabilities.hasBattery, true)
-        XCTAssertTrue(controller.handlerQueue === input.inputQueue)
+        XCTAssertTrue(controller.handlerQueue === input.handlerQueue(for: input.slotId(for: controller)))
         XCTAssertNotNil(controller.physicalInputProfile.valueDidChangeHandler)
         XCTAssertTrue(input.monitorsBackgroundEvents)
     }
@@ -105,7 +105,7 @@ final class GameControllerProfileTests: XCTestCase {
         micro.buttonA.setValue(1)
         micro.buttonMenu.setValue(1)
         let call = ProfileCall(profile: controller.physicalInputProfile, element: micro.buttonA)
-        input.inputQueue.async { call.fire() }
+        controller.handlerQueue.async { call.fire() }
         wait(for: [published], timeout: 2)
         XCTAssertEqual(seen.get()?.report.buttons, WireButton.dpadUp.bit | WireButton.faceA.bit | WireButton.start.bit)
         XCTAssertEqual(seen.get()?.onMain, false, "the hot path never waits on the main thread")

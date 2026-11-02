@@ -77,7 +77,8 @@ final class GameControllerInputTests: XCTestCase {
         NotificationCenter.default.post(name: .GCControllerDidConnect, object: controller)
         spinUntil({ !input.slots.isEmpty }, message: "the connect attaches the pad")
         XCTAssertTrue(GCController.shouldMonitorBackgroundEvents)
-        XCTAssertTrue(controller.handlerQueue === input.inputQueue)
+        XCTAssertTrue(controller.handlerQueue === input.handlerQueue(for: input.slotId(for: controller)))
+        XCTAssertEqual(controller.handlerQueue.qos, .userInteractive)
         XCTAssertNotNil(pad.valueChangedHandler)
         NotificationCenter.default.post(name: .GCControllerDidDisconnect, object: controller)
         spinUntil({ input.slots.isEmpty }, message: "the disconnect detaches it")
@@ -95,10 +96,36 @@ final class GameControllerInputTests: XCTestCase {
         pad.leftThumbstick.setValueForXAxis(0, yAxis: 1)
         let call = FrameworkCall(pad: pad)
         XCTAssertNotNil(pad.valueChangedHandler)
-        input.inputQueue.async { call.fire() }
+        controller.handlerQueue.async { call.fire() }
         wait(for: [published], timeout: 2)
         XCTAssertEqual(seen.get()?.report.ly, 32767)
         XCTAssertEqual(seen.get()?.onMain, false, "the hot path never waits on the main thread")
+    }
+
+    /// The framework calls a pad's handler for every element that moves:
+    /// replayed, the same mapped report over and over goes out once, and
+    /// each change goes out once.
+    func testAReplayedHandlerSequencePublishesOnlyTheChanges() throws {
+        let (controller, pad) = try snapshotPad()
+        let input = GameControllerInput(connected: [controller])
+        let recorder = InputRecorder()
+        input.processor.route(recorder.route)
+        let call = FrameworkCall(pad: pad)
+        for leftY: Float in [1, 1, 1, 0, 0, 1] {
+            pad.leftThumbstick.setValueForXAxis(0, yAxis: leftY)
+            controller.handlerQueue.sync { call.fire() }
+        }
+        XCTAssertEqual(recorder.reports.map(\.report.ly), [32767, 0, 32767], "three changes, three reports")
+    }
+
+    func testEachControllerGetsAQueueOfItsOwnKeptAcrossAReattach() throws {
+        let (first, _) = try snapshotPad()
+        let (second, _) = try snapshotPad()
+        let input = GameControllerInput(connected: [first, second])
+        XCTAssertFalse(first.handlerQueue === second.handlerQueue, "two pads, two queues, so neither waits for the other")
+        let queue = first.handlerQueue
+        input.attach(first)
+        XCTAssertTrue(first.handlerQueue === queue, "a re-attach keeps the pad's queue, so its feed keeps one thread")
     }
 
     // MARK: - A pad's name read back from its id

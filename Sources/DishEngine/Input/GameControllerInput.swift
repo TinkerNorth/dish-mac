@@ -66,9 +66,10 @@ final class GameControllerInput: ObservableObject {
     /// The framework's category word for a controller; a seam, since every
     /// snapshot controller a test can build reads "MFi".
     let categoryOf: (GCController) -> String
-    /// The one serial queue every controller's handlers run on, so the hot
-    /// path never waits behind the main thread.
-    nonisolated let inputQueue = ThreadRole.input.queue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
+    /// Each controller's handlers run on a serial queue of its own, so the
+    /// hot path never waits behind the main thread or another pad; one per
+    /// slot id, kept across a re-attach, so a pad's feed has one thread.
+    private var handlerQueues: [String: DispatchQueue] = [:]
 
     private var observers: [NSObjectProtocol] = []
     private var controllerIds: [ObjectIdentifier: String] = [:]
@@ -148,7 +149,7 @@ final class GameControllerInput: ObservableObject {
         let feed = processor.feed(for: id)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
-        controller.handlerQueue = inputQueue
+        controller.handlerQueue = handlerQueue(for: id)
         installReportHandler(pad: pad, gate: gate, feed: feed)
         installMotionHandler(controller: controller, gate: gate, feed: feed)
         installTouchpadHandlers(pad: pad, gate: gate, feed: feed)
@@ -281,8 +282,19 @@ final class GameControllerInput: ObservableObject {
 
     /// Every handler call is a change; the gate says whether it is published.
     private nonisolated static func pushReport(pad: GCExtendedGamepad, gate: PadGate, feed: PadFeed) {
-        guard gate.pass(.standard, changed: true) else { return }
-        feed.publish(wireReport(padSample(pad)))
+        guard gate.pass(.standard, changed: true) else {
+            feed.forgetLatch()
+            return
+        }
+        feed.publishIfChanged(wireReport(padSample(pad)))
+    }
+
+    /// The slot's handler queue, made on its first attach.
+    func handlerQueue(for id: String) -> DispatchQueue {
+        if let queue = handlerQueues[id] { return queue }
+        let queue = ThreadRole.input.queue(label: "com.tinkernorth.dish.input.\(id)", qos: .userInteractive)
+        handlerQueues[id] = queue
+        return queue
     }
 
     /// The pad as GameController reads it, which is already the wire's

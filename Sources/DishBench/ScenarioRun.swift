@@ -137,13 +137,13 @@ final class ScenarioRun {
         return streams
     }
 
-    /// A pad on the input queue, its 16-bit sequence in the right stick's X.
+    /// A pad on its own input queue, its 16-bit sequence in the right stick's X.
     private func startInputPad(_ pad: Int, startNs: UInt64, durationNs: UInt64, group: DispatchGroup, into streams: inout RepStreams) {
         let rateHz = pad == 0 ? options.rateHz : BenchRates.padBHz
         let pacer = makePacer(rateHz: rateHz, startNs: startNs, durationNs: durationNs, role: nil)
         let published = StampLog(capacity: pacer.frames)
         let rig = rig
-        let queue = rig.inputQueue
+        let queue = rig.inputQueues[pad]
         group.enter()
         pacer.start(
             emit: { frame in

@@ -19,8 +19,10 @@ final class PadFeed {
     private let lastInputMs: AtomicInt
     private let sent: AtomicCounter
 
-    // Owned by the publishing thread.
+    /// Owned by the publishing thread.
     private var route: Route?
+    /// The last report `publishIfChanged` let through.
+    private var latch: GamepadReport?
     private var lastMotionNs: UInt64?
     private var finger0 = FingerContact()
     private var finger1 = FingerContact()
@@ -57,6 +59,21 @@ final class PadFeed {
         guard let route = currentRoute() else { return }
         sent.increment()
         route.sink.sendReport(filtered)
+    }
+
+    /// GameController calls a pad's handler for each element that moves, so
+    /// one mapped report can come again and again: only a change from the
+    /// last one let through is published, as the Direct lane publishes.
+    func publishIfChanged(_ state: GamepadReport) {
+        guard latch != state else { return }
+        latch = state
+        publish(state)
+    }
+
+    /// The pad's source stopped being published: its next report goes out
+    /// whole, whatever it repeats.
+    func forgetLatch() {
+        latch = nil
     }
 
     /// Forward a wire-scaled sample, thinned to the rate limit, measured

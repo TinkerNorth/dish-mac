@@ -56,7 +56,8 @@ final class GameControllerInputDirectTests: XCTestCase {
     private func press(_ pad: GCExtendedGamepad, on input: GameControllerInput) {
         pad.buttonA.setValue(1)
         let call = HandlerCall(pad: pad)
-        input.inputQueue.sync { call.fire() }
+        guard let queue = pad.controller?.handlerQueue else { return XCTFail("the pad belongs to a controller") }
+        queue.sync { call.fire() }
     }
 
     func testANintendoCategoryControllerGetsNoInputSlotAndPublishesNothing() throws {

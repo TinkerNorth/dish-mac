@@ -78,7 +78,7 @@ final class LockLawTests: XCTestCase {
     }
 
     private func startInputProducer(_ rig: FramePathRig, group: DispatchGroup) {
-        let queue = rig.inputQueue
+        let queue = rig.inputQueues[0]
         group.enter()
         startThread {
             for frame in 0 ..< LockLawRun.frames {
