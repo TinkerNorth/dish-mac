@@ -43,14 +43,14 @@ final class MoonlightConnection: ObservableObject, Identifiable {
 
     /// Rumble, trigger rumble and the lamp for the pad a host event names;
     /// installed from the main actor, called on the transport's queue.
-    private let feedbackHandler = LockedBox<((MoonlightEvent) -> Void)?>(nil)
+    private let feedbackHandler = LockedBox<((MoonlightEvent) -> Void)?>(nil, name: "moonlight.feedbackHandler")
     /// Runs the effects of an event the link raised itself: the host's
     /// goodbye, a dead link.
     private var effectsRunner: (([MoonlightSessionEffect]) -> Void)?
     private var session: MoonlightLiveSession?
     private var pinger: MoonlightMediaPinger?
     private var ticker: DispatchSourceTimer?
-    private let tickQueue = DispatchQueue(label: "dish.moonlight.tick", qos: .userInteractive)
+    private let tickQueue = ThreadRole.heartbeat.queue(label: "dish.moonlight.tick", qos: .userInteractive)
 
     init(id: String, host: MoonlightHost, link: MoonlightPadLink = MoonlightPadLink()) {
         self.id = id

@@ -23,21 +23,21 @@ final class LanePlayout: @unchecked Sendable {
         var concealed = 0
     }
 
-    private let queue = DispatchQueue(label: "dish.audio.decode", qos: .userInteractive)
+    private let queue = ThreadRole.audioDecode.queue(label: "dish.audio.decode", qos: .userInteractive)
     private var windows: [Lane: AudioJitterWindow] = [.speaker: AudioJitterWindow(), .haptic: AudioJitterWindow()]
     private var decoders: [Lane: OpusDecoder] = [:]
     private var rings: [Lane: WindowRing] = [.speaker: WindowRing(channels: 2), .haptic: WindowRing(channels: 2)]
     private var laneCounters: [Lane: Counters] = [.speaker: Counters(), .haptic: Counters()]
     private var enabled: [Lane: Bool] = [.speaker: false, .haptic: false]
-    private let pending = AtomicInt(0)
-    private var lock = os_unfair_lock_s()
+    private let pending = AtomicInt(0, name: "audio.pending")
+    private var lock = TrackedLock(os_unfair_lock_s(), "audio.playout")
     /// Frames queued but not yet decoded; the oldest go first and the
     /// newest are dropped past this depth (160 ms), as dish-android does.
     static let queueDepth = 8
 
     func setLanes(speaker: Bool, haptic: Bool) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         enabled = [.speaker: speaker, .haptic: haptic]
     }
 
@@ -52,9 +52,9 @@ final class LanePlayout: @unchecked Sendable {
     }
 
     private func decode(_ lane: Lane, _ frame: AudioFrame) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         guard enabled[lane] == true, var window = windows[lane], let ring = rings[lane] else {
-            os_unfair_lock_unlock(&lock)
+            lock.unlock()
             return
         }
         let decoder = decoders[lane] ?? OpusDecoder(channels: 2)
@@ -62,7 +62,7 @@ final class LanePlayout: @unchecked Sendable {
         let events = window.push(frame)
         windows[lane] = window
         var counters = laneCounters[lane] ?? Counters()
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         guard let decoder else { return }
         for event in events {
             switch event {
@@ -76,9 +76,9 @@ final class LanePlayout: @unchecked Sendable {
                 break
             }
         }
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         laneCounters[lane] = counters
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// IO thread: the speaker lane on channels 1 and 2, the haptics lanes on
@@ -110,8 +110,8 @@ final class LanePlayout: @unchecked Sendable {
     }
 
     func counters(_ lane: Lane) -> Counters {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return laneCounters[lane] ?? Counters()
     }
 
@@ -133,10 +133,10 @@ final class LanePlayout: @unchecked Sendable {
     /// go with them: a decoder carries the previous stream's filter state and
     /// concealment history. The lanes stay as the plan set them.
     func restart() {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         windows = [.speaker: AudioJitterWindow(), .haptic: AudioJitterWindow()]
         decoders = [:]
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         for ring in rings.values {
             ring.clear()
         }
@@ -144,9 +144,9 @@ final class LanePlayout: @unchecked Sendable {
 
     func clear() {
         restart()
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         enabled = [.speaker: false, .haptic: false]
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 }
 
@@ -154,13 +154,13 @@ final class LanePlayout: @unchecked Sendable {
 /// full window is encoded and sent on its own queue while delivering, and
 /// metered while the inspector listens, which sends nothing.
 final class MicCapture: @unchecked Sendable {
-    private let queue = DispatchQueue(label: "dish.audio.capture", qos: .userInteractive)
+    private let queue = ThreadRole.audioCapture.queue(label: "dish.audio.capture", qos: .userInteractive)
     private var window = [Float](repeating: 0, count: AudioWire.samplesPerChannel)
     private var filled = 0
-    private var lock = os_unfair_lock_s()
-    private let delivering = AtomicBool(false)
-    private let metering = AtomicBool(false)
-    private let levelSink = LockedBox<((MicLevel) -> Void)?>(nil)
+    private var lock = TrackedLock(os_unfair_lock_s(), "audio.mic")
+    private let delivering = AtomicBool(false, name: "audio.micDelivering")
+    private let metering = AtomicBool(false, name: "audio.micMetering")
+    private let levelSink = LockedBox<((MicLevel) -> Void)?>(nil, name: "audio.micLevel")
     private var encoder: OpusEncoder?
     private(set) var sent = 0
     var onWindow: ((Data) -> Void)?
@@ -181,7 +181,7 @@ final class MicCapture: @unchecked Sendable {
     /// IO thread: copy in; a completed window is handed to the queue.
     func push(_ buffer: UnsafePointer<Float>, frames: Int) {
         guard delivering.get() || metering.get() else { return }
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         var consumed = 0
         while consumed < frames {
             let room = AudioWire.samplesPerChannel - filled
@@ -197,7 +197,7 @@ final class MicCapture: @unchecked Sendable {
                 queue.async { [self] in handle(complete) }
             }
         }
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// Capture queue: the meter reads the window, the host gets it encoded;

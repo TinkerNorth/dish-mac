@@ -82,8 +82,8 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     }
 
     /// The reader thread's run loop, once it runs.
-    private let runLoopBox = LockedBox<CFRunLoop?>(nil)
-    private let started = AtomicBool(false)
+    private let runLoopBox = LockedBox<CFRunLoop?>(nil, name: "direct.runLoop")
+    private let started = AtomicBool(false, name: "direct.started")
 
     // Touched only on the reader's thread.
     private var manager: IOHIDManager?
@@ -110,6 +110,7 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     /// The thread's whole life: the manager scheduled on its run loop, then
     /// the run loop until the process ends.
     private func run(wiring: HidPadWiring, events: HidPadEvents) {
+        ThreadRole.hidReader.enterThread()
         self.wiring = wiring
         self.events = events
         guard let runLoop = CFRunLoopGetCurrent() else { return }
@@ -202,6 +203,7 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     private func send(_ step: SwitchStartStep, to entry: Entry) {
         var packet = switchStartPacket(step)
         let reportId = CFIndex(switchStartReportId(step))
+        blockingRegion("direct.setReport")
         let status = IOHIDDeviceSetReport(entry.device, kIOHIDReportTypeOutput, reportId, &packet, packet.count)
         let slotId = entry.lane.slotId
         let stepName = String(describing: step)

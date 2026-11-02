@@ -48,6 +48,7 @@ extension SatelliteClient {
             guard fd >= 0 else { return }
             packet.withUnsafeBytes { raw in
                 var destCopy = sendDest
+                blockingRegion("satellite.sendto")
                 _ = withUnsafePointer(to: &destCopy) { ptr in
                     ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
                         Darwin.sendto(
@@ -124,6 +125,7 @@ extension SatelliteClient {
     func stopReceiveLoop() {
         if !ackRunning.get() { return }
         ackRunning.set(false)
+        blockingRegion("satellite.receiveJoin")
         _ = receiveDrained.wait(timeout: .now() + 1.0)
     }
 
@@ -136,6 +138,7 @@ extension SatelliteClient {
         var buf = [UInt8](repeating: 0, count: ProtocolConstants.udpDatagramMaxBytes)
         var from = sockaddr_in()
         var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
+        blockingRegion("satellite.recvfrom")
         let bytesRead = buf.withUnsafeMutableBufferPointer { bp -> Int in
             withUnsafeMutablePointer(to: &from) { fp in
                 fp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in

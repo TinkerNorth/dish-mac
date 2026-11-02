@@ -43,7 +43,7 @@ final class MoonlightControlSession: @unchecked Sendable {
     private let now: () -> Int64
     private let onEvent: (MoonlightEvent) -> Void
     private let onClosed: () -> Void
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "moonlight.session")
     private let enet: EnetClient
     private var sealer: MoonlightControlSealer
     private let rikey: Data
@@ -71,21 +71,21 @@ final class MoonlightControlSession: @unchecked Sendable {
     }
 
     var state: State {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return stateValue
     }
 
     var roundTripMs: Int64? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return enet.roundTripMs
     }
 
     /// Why the link ended, and what it did, for the session log.
     var linkReport: String {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         let stats = enet.stats
         let counts = "acks \(stats.acksSent), retransmits \(stats.retransmits), unknown \(stats.unknownCommands)"
         return "\(enet.disconnectReason ?? "closed"); \(counts)"
@@ -98,11 +98,11 @@ final class MoonlightControlSession: @unchecked Sendable {
     /// the three clients wait the same five seconds.
     func connect() async -> Bool {
         await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
-            os_unfair_lock_lock(&lock)
+            lock.lock()
             stateValue = .connecting
             handshakeContinuation = continuation
             let first = enet.connect()
-            os_unfair_lock_unlock(&lock)
+            lock.unlock()
             transport.send(first)
             pollHandshake(deadline: now() + Self.handshakeTimeoutMs)
         }
@@ -111,15 +111,15 @@ final class MoonlightControlSession: @unchecked Sendable {
     private func pollHandshake(deadline: Int64) {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + .milliseconds(Int(Self.handshakePollMs))) { [weak self] in
             guard let self else { return }
-            os_unfair_lock_lock(&lock)
+            lock.lock()
             guard handshakeContinuation != nil else {
-                os_unfair_lock_unlock(&lock)
+                lock.unlock()
                 return
             }
             if enet.state == .connected { return settleHandshake(connected: true) }
             if enet.state == .disconnected || now() >= deadline { return settleHandshake(connected: false) }
             let retransmits = enet.tick()
-            os_unfair_lock_unlock(&lock)
+            lock.unlock()
             retransmits.forEach(transport.send)
             pollHandshake(deadline: deadline)
         }
@@ -131,7 +131,7 @@ final class MoonlightControlSession: @unchecked Sendable {
         handshakeContinuation = nil
         stateValue = connected ? .connected : .closed
         if connected { lastPingMs = now() }
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         continuation?.resume(returning: connected)
     }
 
@@ -189,7 +189,7 @@ final class MoonlightControlSession: @unchecked Sendable {
 
     /// Graceful teardown: TERMINATION, then the ENet disconnect, then the socket.
     func stop() {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         var out: [Data] = []
         if stateValue == .connected, let sealed = sealer.seal(MoonlightInput.termination()), let datagram = enet.sendReliable(sealed) {
             out.append(datagram)
@@ -198,7 +198,7 @@ final class MoonlightControlSession: @unchecked Sendable {
         stateValue = .closed
         let continuation = handshakeContinuation
         handshakeContinuation = nil
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         out.forEach(transport.send)
         transport.close()
         continuation?.resume(returning: false)
@@ -212,20 +212,20 @@ final class MoonlightControlSession: @unchecked Sendable {
     /// shares the sequence the host derives each IV from; a dropped send
     /// spends no number.
     private func sendPlaintexts(_ plaintexts: [Data]) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         guard stateValue == .connected else {
-            os_unfair_lock_unlock(&lock)
+            lock.unlock()
             return
         }
         let datagrams = plaintexts.compactMap { plaintext in sealer.seal(plaintext).flatMap(enet.sendReliable) }
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         datagrams.forEach(transport.send)
     }
 
     // MARK: - Receive and tick
 
     private func received(_ datagram: Data) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         let acks = enet.onDatagram(datagram)
         let events = enet.takeReceived().compactMap(open)
         let settled = stateValue == .connecting && (enet.state == .connected || enet.state == .disconnected)
@@ -233,7 +233,7 @@ final class MoonlightControlSession: @unchecked Sendable {
             // Settles the handshake and releases the lock.
             settleHandshake(connected: enet.state == .connected)
         } else {
-            os_unfair_lock_unlock(&lock)
+            lock.unlock()
         }
         acks.forEach(transport.send)
         events.forEach(onEvent)
@@ -243,9 +243,9 @@ final class MoonlightControlSession: @unchecked Sendable {
     /// keepalive (a host that hears nothing at this layer ends the session
     /// even while ENet underneath is healthy), and the link's end.
     func tick() {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         guard stateValue == .connected else {
-            os_unfair_lock_unlock(&lock)
+            lock.unlock()
             return
         }
         var out = enet.tick()
@@ -256,7 +256,7 @@ final class MoonlightControlSession: @unchecked Sendable {
         }
         let gaveUp = enet.state == .disconnected
         if gaveUp { stateValue = .closed }
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         out.forEach(transport.send)
         if gaveUp { onClosed() }
     }

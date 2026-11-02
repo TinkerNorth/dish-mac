@@ -9,29 +9,33 @@ import Foundation
 /// order of nanoseconds, so this stays well under the one-report budget.
 final class AtomicCounter: @unchecked Sendable {
     private var value: UInt64 = 0
-    private var lock = os_unfair_lock_s()
+    private var lock: TrackedLock<os_unfair_lock_s>
+
+    init(name: StaticString = "util.atomicCounter") {
+        lock = TrackedLock(os_unfair_lock_s(), name)
+    }
 
     /// Returns the post-increment value.
     func incrementAndGet() -> UInt64 {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value &+= 1
         let current = value
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         return current
     }
 
     /// Advance by one where nothing reads the new value: a tally.
     func increment() {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value &+= 1
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// Current value without advancing — the rekey poll (`needsRekey`)
     /// compares this against the contract's re-PUT threshold.
     func current() -> UInt64 {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return value
     }
 
@@ -39,15 +43,15 @@ final class AtomicCounter: @unchecked Sendable {
     /// use this to place the counter near the exhaustion threshold without
     /// four billion increments.
     func set(_ newValue: UInt64) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value = newValue
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     func reset() {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value = 0
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 }
 
@@ -57,30 +61,31 @@ final class AtomicCounter: @unchecked Sendable {
 /// two `DispatchQueue`s is undefined behaviour; this serialises every access.
 final class AtomicInt: @unchecked Sendable {
     private var value: Int
-    private var lock = os_unfair_lock_s()
+    private var lock: TrackedLock<os_unfair_lock_s>
 
-    init(_ initial: Int = 0) {
+    init(_ initial: Int = 0, name: StaticString = "util.atomicInt") {
         value = initial
+        lock = TrackedLock(os_unfair_lock_s(), name)
     }
 
     /// Returns the post-increment value.
     func incrementAndGet() -> Int {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value += 1
         let current = value
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         return current
     }
 
     func set(_ newValue: Int) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value = newValue
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     func get() -> Int {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return value
     }
 }
@@ -90,30 +95,31 @@ final class AtomicInt: @unchecked Sendable {
 /// from the `WifiConnection` liveness task — three threads, one flag.
 final class AtomicBool: @unchecked Sendable {
     private var value: Bool
-    private var lock = os_unfair_lock_s()
+    private var lock: TrackedLock<os_unfair_lock_s>
 
-    init(_ initial: Bool) {
+    init(_ initial: Bool, name: StaticString = "util.atomicBool") {
         value = initial
+        lock = TrackedLock(os_unfair_lock_s(), name)
     }
 
     /// Stores `newValue` and returns what was there, as one step.
     func getAndSet(_ newValue: Bool) -> Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         let previous = value
         value = newValue
         return previous
     }
 
     func set(_ newValue: Bool) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value = newValue
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     func get() -> Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return value
     }
 }
@@ -125,30 +131,31 @@ final class AtomicBool: @unchecked Sendable {
 /// family as the atomics above (PLAN D6: no actor rewrite this initiative).
 final class LockedBox<Value>: @unchecked Sendable {
     private var value: Value
-    private var lock = os_unfair_lock_s()
+    private var lock: TrackedLock<os_unfair_lock_s>
 
-    init(_ initial: Value) {
+    init(_ initial: Value, name: StaticString = "util.lockedBox") {
         value = initial
+        lock = TrackedLock(os_unfair_lock_s(), name)
     }
 
     func get() -> Value {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return value
     }
 
     func set(_ newValue: Value) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value = newValue
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// Read-modify-write under one lock hold, returning `body`'s result —
     /// for values whose fields must never be observed across two holds
     /// (the session params' key/token/counter draw).
     func mutate<T>(_ body: (inout Value) -> T) -> T {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return body(&value)
     }
 }

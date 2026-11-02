@@ -86,7 +86,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
     /// connection's lifetime: across a mute, a re-key and a reconnect, so the
     /// satellite's reorder window never reads a restart as a burst of late
     /// frames.
-    let micSeqs = (0 ..< SatelliteSlots.maxPerSatellite).map { _ in AtomicInt(0) }
+    let micSeqs = (0 ..< SatelliteSlots.maxPerSatellite).map { _ in AtomicInt(0, name: "connection.micSeq") }
     /// Each pad's audio handlers by controller index, for the receive queue.
     let padAudio = PadAudioTable()
     /// The version the live session speaks; the floor while no session.
@@ -391,17 +391,17 @@ package final class WifiConnection: ObservableObject, Identifiable {
 /// read on the controller callback threads.
 final class ClientRef: @unchecked Sendable {
     private var value: SatelliteClient?
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "connection.client")
 
     func get() -> SatelliteClient? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return value
     }
 
     func set(_ newValue: SatelliteClient?) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         value = newValue
     }
 }

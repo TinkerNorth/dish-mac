@@ -30,7 +30,7 @@ final class PadGate: @unchecked Sendable {
     private var tellDirect = false
     private var captureOpen = false
     private var captureWished = false
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "input.gate")
 
     init(key: String, notify: @escaping Notify) {
         self.key = key
@@ -40,10 +40,10 @@ final class PadGate: @unchecked Sendable {
     /// One report from `source`: tells the main actor when it asked and the
     /// report changed something, and answers whether to publish it.
     func pass(_ source: InputSource, changed: Bool) -> Bool {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         let forwards = forwarded == source
         let tell = changed && takeTell(source)
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
         if tell { notify(key, source) }
         return forwards
     }
@@ -51,22 +51,22 @@ final class PadGate: @unchecked Sendable {
     /// Whether `source` is the published one, for the streams that prove
     /// nothing (motion, touchpad).
     func forwards(_ source: InputSource) -> Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return forwarded == source
     }
 
     /// The published source; nil publishes nothing.
     var routed: InputSource? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return forwarded
     }
 
     func route(_ source: InputSource?) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         forwarded = source
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// Raise both bits: the next change on each source posts one event.
@@ -80,8 +80,8 @@ final class PadGate: @unchecked Sendable {
 
     /// Whether the next change on `source` will post an event.
     func awaitsEvent(_ source: InputSource) -> Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         switch source {
         case .standard: return tellStandard
         case .direct: return tellDirect
@@ -90,40 +90,40 @@ final class PadGate: @unchecked Sendable {
 
     /// Opens the walk if it is not, and wishes for the next raw change.
     func listenForCapture() {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         captureOpen = true
         captureWished = true
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     func closeCapture() {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         captureOpen = false
         captureWished = false
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// Whether a walk is open, read once per report.
     var capturing: Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return captureOpen
     }
 
     /// Reads and lowers the wish: true once per `listenForCapture`.
     func takeCaptureWish() -> Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         let wished = captureWished
         captureWished = false
         return wished
     }
 
     private func setTells(_ raised: Bool) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         tellStandard = raised
         tellDirect = raised
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// Reads and lowers the source's bit; the caller holds the lock.

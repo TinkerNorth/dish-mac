@@ -41,23 +41,23 @@ struct RoutingSnapshot {
 /// event and on the receive queue once per return-path command.
 final class RoutingTable: @unchecked Sendable {
     private var snapshot = RoutingSnapshot()
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "routing.table")
 
     func get(_ slotId: String) -> Route? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return snapshot.bySlot[slotId]
     }
 
     func boundSlot(of pad: SatellitePadKey) -> BoundSlotRoute? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return snapshot.bySatellitePad[pad]
     }
 
     func set(_ next: RoutingSnapshot) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         snapshot = next
     }
 }
@@ -68,7 +68,7 @@ final class RoutingTable: @unchecked Sendable {
 final class InputRouting: @unchecked Sendable {
     let table = RoutingTable()
     /// Every report handed to a sink, for the telemetry's sends.
-    let sent = AtomicCounter()
+    let sent = AtomicCounter(name: "routing.sent")
 
     /// Point the processor's senders at this router.
     func install(on processor: GamepadInputProcessor) {

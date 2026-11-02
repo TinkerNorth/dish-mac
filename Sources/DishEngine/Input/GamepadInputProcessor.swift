@@ -64,22 +64,22 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// controller callback threads; the boxes make that hand-off race-free.
     /// When the last report left, on the uptime clock; the keep-awake window
     /// reads it.
-    let lastInputMs = AtomicInt(0)
+    let lastInputMs = AtomicInt(0, name: "input.lastInputMs")
     /// Each pad's reports and admitted motion samples, for the telemetry.
     let tally = InputTally()
 
-    private let reportSenderBox = LockedBox<ReportSender?>(nil)
-    private let motionSenderBox = LockedBox<MotionSender?>(nil)
-    private let batterySenderBox = LockedBox<BatterySender?>(nil)
-    private let touchpadSenderBox = LockedBox<TouchpadSender?>(nil)
-    private let reportTapBox = LockedBox<ReportTap?>(nil)
-    private let motionTapBox = LockedBox<MotionTap?>(nil)
-    private let touchpadTapBox = LockedBox<TouchpadTap?>(nil)
+    private let reportSenderBox = LockedBox<ReportSender?>(nil, name: "input.reportSender")
+    private let motionSenderBox = LockedBox<MotionSender?>(nil, name: "input.motionSender")
+    private let batterySenderBox = LockedBox<BatterySender?>(nil, name: "input.batterySender")
+    private let touchpadSenderBox = LockedBox<TouchpadSender?>(nil, name: "input.touchpadSender")
+    private let reportTapBox = LockedBox<ReportTap?>(nil, name: "input.reportTap")
+    private let motionTapBox = LockedBox<MotionTap?>(nil, name: "input.motionTap")
+    private let touchpadTapBox = LockedBox<TouchpadTap?>(nil, name: "input.touchpadTap")
 
     private var states: [DeviceId: GamepadReport] = [:]
     private var deadzones: [DeviceId: Deadzones] = [:]
     private var lastMotionTimestampNs: [DeviceId: UInt64] = [:]
-    private let lock = NSLock()
+    private var lock = TrackedLock(NSLock(), "input.processor")
 
     var reportSender: ReportSender? {
         get { reportSenderBox.get() }

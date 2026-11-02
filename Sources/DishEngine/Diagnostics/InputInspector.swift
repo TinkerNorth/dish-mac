@@ -130,7 +130,7 @@ package final class InputInspector: StateSource<InputInspection> {
     private let processor: GamepadInputProcessor
     private let now: () -> Int64
     private let pollMs: Int
-    private let latest = LockedBox(LatestInput())
+    private let latest = LockedBox(LatestInput(), name: "inspector.latest")
     private var rate = InputRateTracker()
     private var bench = StickBench()
     private var timer: DispatchSourceTimer?

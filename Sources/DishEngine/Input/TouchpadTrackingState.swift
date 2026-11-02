@@ -23,7 +23,7 @@ final class TouchpadTrackingState: @unchecked Sendable {
     }
 
     private var devices: [String: DeviceState] = [:]
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "input.touchpadIds")
 
     /// Advance both fingers' ids for one sample and return the ids to stamp on
     /// the wire. Each id bumps on its finger's `false → true` (fresh-contact)
@@ -33,8 +33,8 @@ final class TouchpadTrackingState: @unchecked Sendable {
         finger0Active: Bool,
         finger1Active: Bool
     ) -> (finger0: UInt8, finger1: UInt8) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         var state = devices[deviceId] ?? DeviceState()
         state.finger0.id = nextTouchpadTrackingId(
             wasActive: state.finger0.wasActive,
@@ -54,8 +54,8 @@ final class TouchpadTrackingState: @unchecked Sendable {
 
     /// Drop a device's state when its controller disconnects.
     func remove(deviceId: String) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         devices.removeValue(forKey: deviceId)
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 }

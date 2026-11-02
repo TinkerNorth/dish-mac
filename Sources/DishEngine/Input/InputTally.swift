@@ -15,31 +15,31 @@ struct PadTally: Equatable {
 /// main actor. One increment per event; nothing else is measured twice.
 final class InputTally: @unchecked Sendable {
     private var tally = PadTally()
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "input.tally")
 
     func countReport(_ deviceId: String) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         tally.reports[deviceId, default: 0] += 1
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     func countMotion(_ deviceId: String) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         tally.motion[deviceId, default: 0] += 1
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// The pad left: its counts start over if it comes back.
     func forget(_ deviceId: String) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         tally.reports.removeValue(forKey: deviceId)
         tally.motion.removeValue(forKey: deviceId)
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     func snapshot() -> PadTally {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return tally
     }
 }

@@ -68,7 +68,7 @@ final class GameControllerInput: ObservableObject {
     let categoryOf: (GCController) -> String
     /// The one serial queue every controller's handlers run on, so the hot
     /// path never waits behind the main thread.
-    nonisolated let inputQueue = DispatchQueue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
+    nonisolated let inputQueue = ThreadRole.input.queue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
     let touchpadIds = TouchpadTrackingState()
 
     private var observers: [NSObjectProtocol] = []

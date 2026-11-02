@@ -36,7 +36,7 @@ final class ReturnPathApplier<Value>: @unchecked Sendable {
     /// Devices with a drain item already queued, so a burst enqueues one item,
     /// not one per packet. Guarded by `lock`.
     private var scheduled: Set<String> = []
-    private let lock = NSLock()
+    private var lock = TrackedLock(NSLock(), "returnPath.applier")
 
     /// `label` is accepted for call-site parity with the previous per-path
     /// dispatch queues; the drain runs on the main actor.

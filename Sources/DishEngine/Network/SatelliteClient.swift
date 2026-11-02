@@ -66,7 +66,7 @@ final class SatelliteClient {
         var protocolVersion = ProtocolConstants.protocolVersionWhenAbsent
     }
 
-    let params = LockedBox(SessionParams())
+    let params = LockedBox(SessionParams(), name: "satellite.params")
 
     /// One packet's (key, token, sequence) drawn in a single lock hold —
     /// the seal must never mix generations with a concurrent re-key swap.
@@ -79,83 +79,83 @@ final class SatelliteClient {
 
     /// Server→client replay guard: highest counter successfully DECRYPTED
     /// (a forged header can't advance it). First packet exempt while 0 (G3).
-    let lastRecvCounter = AtomicCounter()
-    let sendLock = NSLock()
+    let lastRecvCounter = AtomicCounter(name: "satellite.lastRecvCounter")
+    var sendLock = TrackedLock(NSLock(), "satellite.send")
 
-    let heartbeatRunning = AtomicBool(false)
-    let heartbeatQueue = DispatchQueue(label: "dish.satellite.heartbeat", qos: .utility)
+    let heartbeatRunning = AtomicBool(false, name: "satellite.heartbeatRunning")
+    let heartbeatQueue = ThreadRole.heartbeat.queue(label: "dish.satellite.heartbeat", qos: .utility)
     var heartbeatTimer: DispatchSourceTimer?
-    let ackQueue = DispatchQueue(label: "dish.satellite.ack", qos: .utility)
-    let ackRunning = AtomicBool(false)
+    let ackQueue = ThreadRole.receive.queue(label: "dish.satellite.ack", qos: .utility)
+    let ackRunning = AtomicBool(false, name: "satellite.ackRunning")
     /// Balances the receive loop so `closeSocket` can join it (bounded by the
     /// 500 ms recv timeout) before the fd closes — no recv on a reused fd.
     let receiveDrained = DispatchGroup()
 
     /// Consecutive un-ACKed heartbeats. Bumped on the heartbeat timer, zeroed
     /// on the receive queue.
-    let missedAcks = AtomicInt(0)
+    let missedAcks = AtomicInt(0, name: "satellite.missedAcks")
     /// Liveness flag. Written from the heartbeat/receive queues, read from
     /// the `WifiConnection` alive tick.
-    let connectionAlive = AtomicBool(true)
+    let connectionAlive = AtomicBool(true, name: "satellite.connectionAlive")
 
     /// Latest enriched heartbeat ack (epoch/bitmap/backend/count), polled by
     /// the 1 Hz alive tick for the reconcile loop (gap G9 parse side).
-    private let lastHeartbeatAck = LockedBox<HeartbeatAck?>(nil)
+    private let lastHeartbeatAck = LockedBox<HeartbeatAck?>(nil, name: "satellite.heartbeatAck")
     /// Latched SESSION_CLOSE reason byte, −1 while none (dish-linux
     /// `sessionCloseReason_`). Reset by `setConnectionParams`.
-    let sessionCloseReason = AtomicInt(-1)
+    let sessionCloseReason = AtomicInt(-1, name: "satellite.closeReason")
 
     /// One-way latency estimate off the heartbeat round trip (gap G13). The
     /// heartbeat timer arms the ping clock; the receive queue pairs acks.
-    private let latencyLock = NSLock()
+    private var latencyLock = TrackedLock(NSLock(), "satellite.latency")
     private var latencyWindow = LatencyWindow()
 
     // MARK: - Callbacks out of the client (PLAN §4 seam)
 
     /// Fired on the receive queue for every parsed MSG_RUMBLE (0x0009).
-    private let rumbleBox = LockedBox<((RumbleCommand) -> Void)?>(nil)
+    private let rumbleBox = LockedBox<((RumbleCommand) -> Void)?>(nil, name: "satellite.onRumble")
     var onRumble: ((RumbleCommand) -> Void)? {
         get { rumbleBox.get() }
         set { rumbleBox.set(newValue) }
     }
 
     /// Fired on the receive queue for every parsed MSG_LIGHTBAR (0x000D).
-    private let lightbarBox = LockedBox<((LightbarCommand) -> Void)?>(nil)
+    private let lightbarBox = LockedBox<((LightbarCommand) -> Void)?>(nil, name: "satellite.onLightbar")
     var onLightbar: ((LightbarCommand) -> Void)? {
         get { lightbarBox.get() }
         set { lightbarBox.set(newValue) }
     }
 
     /// Fired on the receive queue for every parsed MSG_TRIGGER_EFFECTS (0x0010).
-    private let triggerEffectsBox = LockedBox<((TriggerEffectsCommand) -> Void)?>(nil)
+    private let triggerEffectsBox = LockedBox<((TriggerEffectsCommand) -> Void)?>(nil, name: "satellite.onTriggerEffects")
     var onTriggerEffects: ((TriggerEffectsCommand) -> Void)? {
         get { triggerEffectsBox.get() }
         set { triggerEffectsBox.set(newValue) }
     }
 
     /// Fired on the receive queue for every parsed MSG_PLAYER_LEDS (0x0011).
-    private let playerLedsBox = LockedBox<((PlayerLedsCommand) -> Void)?>(nil)
+    private let playerLedsBox = LockedBox<((PlayerLedsCommand) -> Void)?>(nil, name: "satellite.onPlayerLeds")
     var onPlayerLeds: ((PlayerLedsCommand) -> Void)? {
         get { playerLedsBox.get() }
         set { playerLedsBox.set(newValue) }
     }
 
     /// Fired on the receive queue for every parsed MSG_SPEAKER_AUDIO (0x0013).
-    private let speakerAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil)
+    private let speakerAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil, name: "satellite.onSpeakerAudio")
     var onSpeakerAudio: ((AudioFrame) -> Void)? {
         get { speakerAudioBox.get() }
         set { speakerAudioBox.set(newValue) }
     }
 
     /// Fired on the receive queue for every parsed MSG_HAPTIC_AUDIO (0x0015).
-    private let hapticAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil)
+    private let hapticAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil, name: "satellite.onHapticAudio")
     var onHapticAudio: ((AudioFrame) -> Void)? {
         get { hapticAudioBox.get() }
         set { hapticAudioBox.set(newValue) }
     }
 
     /// Fired on the receive queue for every parsed MSG_MIC_LED (0x0014).
-    private let micLedBox = LockedBox<((MicLedCommand) -> Void)?>(nil)
+    private let micLedBox = LockedBox<((MicLedCommand) -> Void)?>(nil, name: "satellite.onMicLed")
     var onMicLed: ((MicLedCommand) -> Void)? {
         get { micLedBox.get() }
         set { micLedBox.set(newValue) }
@@ -166,7 +166,7 @@ final class SatelliteClient {
     /// transient default arm, like the C++ ports). The client also drops
     /// `connectionAlive` so the alive tick reaps without the death wait
     /// (gap G10 parse side).
-    private let sessionCloseBox = LockedBox<((CloseReason) -> Void)?>(nil)
+    private let sessionCloseBox = LockedBox<((CloseReason) -> Void)?>(nil, name: "satellite.onSessionClose")
     var onSessionClose: ((CloseReason) -> Void)? {
         get { sessionCloseBox.get() }
         set { sessionCloseBox.set(newValue) }

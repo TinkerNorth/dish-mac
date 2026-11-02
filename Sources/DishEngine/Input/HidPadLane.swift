@@ -42,24 +42,24 @@ final class LaneTally: @unchecked Sendable {
     private var reports: UInt64 = 0
     private var firstReportNs: UInt64?
     private var reportsFirstSecond: UInt64 = 0
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "direct.tally")
 
     init(openedNs: UInt64) {
         self.openedNs = openedNs
     }
 
     func count(nowNs: UInt64) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         reports &+= 1
         if firstReportNs == nil { firstReportNs = nowNs }
         let inFirstSecond = nowNs &- openedNs < Self.firstWindowNs
         if inFirstSecond { reportsFirstSecond &+= 1 }
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     func snapshot() -> LaneTallySnapshot {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         let firstMs = firstReportNs.map { Int64(($0 &- openedNs) / Self.nsPerMs) }
         return LaneTallySnapshot(reports: reports, firstReportMs: firstMs, reportsFirstSecond: reportsFirstSecond)
     }
@@ -91,9 +91,9 @@ final class HidPadLane: @unchecked Sendable {
     let capacity: Int
     private let wiring: HidPadWiring
     /// The last battery seen, for the 30 s heartbeat on the main actor.
-    private let batteryBox = LockedBox<PadBattery?>(nil)
+    private let batteryBox = LockedBox<PadBattery?>(nil, name: "direct.battery")
     /// The stored remap as a table; nil reads the model's own order.
-    private let remapBox = LockedBox<HidRemapTable?>(nil)
+    private let remapBox = LockedBox<HidRemapTable?>(nil, name: "direct.remap")
 
     // Touched only on the reader's thread.
     /// When the pad last sent a full Switch report, for the start sequence's

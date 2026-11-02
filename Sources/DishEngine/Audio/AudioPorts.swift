@@ -49,7 +49,7 @@ final class WindowRing: @unchecked Sendable {
     private var available = 0
     private var playing = false
     private(set) var underruns = 0
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "audio.ring")
     private let windowSamples: Int
     let capacityWindows: Int
 
@@ -62,8 +62,8 @@ final class WindowRing: @unchecked Sendable {
     /// One window in; the oldest is dropped when the ring is full.
     func write(_ window: [Float]) {
         guard window.count == windowSamples else { return }
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         if available + windowSamples > samples.count {
             readIndex = (readIndex + windowSamples) % samples.count
             available -= windowSamples
@@ -78,8 +78,8 @@ final class WindowRing: @unchecked Sendable {
 
     /// `count` samples out, silence while cushioning or empty.
     func read(into buffer: UnsafeMutablePointer<Float>, count: Int) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         guard playing, available >= count else {
             if playing {
                 playing = false
@@ -96,14 +96,14 @@ final class WindowRing: @unchecked Sendable {
     }
 
     var queuedWindows: Int {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return available / windowSamples
     }
 
     func clear() {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         readIndex = 0
         writeIndex = 0
         available = 0
