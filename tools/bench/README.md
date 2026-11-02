@@ -314,3 +314,46 @@ datagram are built in a stack buffer, and CryptoKit's sealed box is the one heap
 own beside it before; `Data` keeps the smallest inline). The receive loop reads into the client's own buffer;
 per datagram it allocates only CryptoKit's copy of the box and the plaintext it returns, and an audio frame's
 Opus bytes (a 1500-byte array and up to ten more copies of Dish's own before).
+
+## The Moonlight path (S7)
+
+S7 measures a pad bound to a Moonlight host, before and after the control session's lock was narrowed to
+its ENet bookkeeping. The release gate does not judge it; the Moonlight lock laws pin what it takes.
+
+### Before: the session's lock over the crypto
+
+The branch with S7 and its laws, `54fdbe9`, measured by `measurements.yml` on the pull request: run
+[41463274956](https://github.com/TinkerNorth/dish-mac/actions/runs/41463274956) on the merge commit `8a08c02`.
+The runner is the baseline's (`macos-26`, Apple M1 (Virtual), VirtualMac2,1, 3 cores, 7.0 GB, macOS 26.6.2).
+Time-constrained waits woke 973 us late at the 90th percentile, so the pacers spun 1000 us. The commands are
+the baseline's.
+
+| run | scenario | pad | source | rate Hz | frames | p50 us | p99 us | p99.9 us | max us | over 1 ms | longest gap ms | datagrams/report | drops |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| plain | S7 | A | Input | 1000 | 3000 | 111.5 | 476.6 | 1223.6 | 3046.3 | 7 | 4.361 | 1.00 | 0 |
+
+Pad A's median was 111.5, 69.0 and 86.3 us in the three plain reps. Every rumble (300 a rep) and RGB-LED
+event (30) reached the actuators, and no frame was dropped. The lock-stats build's reported rep:
+
+| lock | role | acquisitions | contended | max wait us | p99 wait us | max hold us | p99 hold us |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| moonlight.padLink | Input | 3000 | 0 | 31.9 | 0.3 | 282.3 | 4.1 |
+| moonlight.session | Input | 3000 | 6 | 282.2 | 0.1 | 904.8 | 131.1 |
+| moonlight.transport | Input | 3000 | 2 | 371.0 | 2.0 | 93.0 | 0.5 |
+| forwarding.gate | MoonlightUdp | 30 | 0 | 0.1 | 0.1 | 0.1 | 0.1 |
+| moonlight.feedbackHandler | MoonlightUdp | 330 | 0 | 0.2 | 0.3 | 7.2 | 1.0 |
+| moonlight.padLink | MoonlightUdp | 330 | 0 | 0.2 | 0.1 | 0.9 | 0.5 |
+| moonlight.rumbleMixes | MoonlightUdp | 300 | 0 | 0.2 | 0.3 | 29.4 | 4.1 |
+| moonlight.session | MoonlightUdp | 3335 | 10 | 392.5 | 0.3 | 324.5 | 32.8 |
+| moonlight.transport | MoonlightUdp | 7001 | 1 | 103.0 | 1.0 | 1445.4 | 0.5 |
+| routing.table | MoonlightUdp | 300 | 0 | 0.2 | 0.1 | 12.5 | 2.0 |
+| moonlight.session | Heartbeat | 37 | 1 | 30.7 | 32.8 | 20.8 | 32.8 |
+| moonlight.transport | Heartbeat | 5 | 0 | 0.4 | 0.5 | 0.1 | 0.1 |
+
+Each frame takes three locks on the input queue: the pad link's, the session's and the transport's. The
+session's is where the threads meet. The input queue held it to seal and frame each frame, for up to 905 us;
+the control socket's queue held it to take each datagram in and open what the host sent, for up to 325 us;
+each found it held, 6 times in 3000 on the input queue (waiting up to 282 us) and 10 in 3335 on the socket's
+queue (up to 392 us). The socket's queue also takes the transport's lock twice for every datagram the
+connection finishes sending, and the feedback path takes four locks for each rumble (its handler, the pad
+link's slot lookup, the rumble mix and the routing table) and three for each RGB-LED event.
