@@ -1,0 +1,21 @@
+name: Measure the branch (temporary)
+
+# Runs measurements.yml once on this branch, which `gh workflow run` cannot
+# dispatch until the workflow is on main. Deleted again in the next commit.
+
+on:
+  push:
+    branches: [perf/hot-path-measured]
+    paths:
+      - ".github/workflows/measure-before.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  measurements:
+    permissions:
+      contents: write
+    uses: ./.github/workflows/measurements.yml
+    with:
+      version: before-2.5.0
