@@ -16,6 +16,8 @@ import XCTest
 /// host's rumble and RGB-LED events. The lists are a ratchet: a lock that
 /// appears fails, and so does a listed one no longer observed until it is
 /// deleted. The satellite path's lists are empty: its hot threads take no lock.
+/// The Moonlight path's hold its session's lock for the ENet bookkeeping, by
+/// design, and the pad link's, the transport's and the feedback path's as debt.
 @MainActor
 final class LockLawTests: XCTestCase {
 
@@ -257,7 +259,8 @@ private enum LockLaws {
 private enum MoonlightLockLaws {
     static let inputMayAcquire: [String: Allowance] = [
         "moonlight.padLink": .debt,
-        "moonlight.session": .debt,
+        // ENet bookkeeping only: the report is sealed before it and only framed and tracked under it.
+        "moonlight.session": .byDesign,
         "moonlight.transport": .debt
     ]
 
@@ -266,7 +269,8 @@ private enum MoonlightLockLaws {
         "moonlight.feedbackHandler": .debt,
         "moonlight.padLink": .debt,
         "moonlight.rumbleMixes": .debt,
-        "moonlight.session": .debt,
+        // ENet bookkeeping only: the acknowledgements and the payloads come out under it, the open is after it.
+        "moonlight.session": .byDesign,
         "moonlight.transport": .debt,
         "routing.table": .debt
     ]

@@ -227,6 +227,13 @@ refuses a handler that reaches for main-actor state; the slot bookkeeping
 that senders read under the session's send gate, so a re-key swaps key and token and restarts the counter in
 one hold.
 
+A pad bound to a Moonlight host leaves its feed for a `MoonlightPadSink`, the
+host's `MoonlightPadLink` builds its frame under the link's lock, and the
+`MoonlightControlSession` seals it under the next control sequence, claimed
+from an atomic counter, before it takes the session's lock, which covers
+only the ENet framing and tracking; the host's packets come out under that
+lock and are opened after it. `LockLawTests` pins the locks this path takes.
+
 The return paths run the other way in one hop: a `RumbleCommand` or
 `LightbarCommand` arrives on the receive queue, which resolves and gates it
 against the `FeedbackRoutes` its handlers captured when the routing last

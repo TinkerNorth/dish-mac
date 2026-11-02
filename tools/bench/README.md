@@ -113,7 +113,10 @@ locks taken with a list: Input, HidReader and Receive, the locks held across a b
 locks taken inside another, plus a check that the nesting has no cycle. Every list is empty: a lock that
 appears on a hot role fails the test. A second run puts a pad on a loopback Moonlight host, whose events
 arrive on the control socket's queue (MoonlightUdp), and holds the Input and MoonlightUdp roles, the
-blocking calls and the nesting to lists of their own, filled with what the Moonlight path takes.
+blocking calls and the nesting to lists of their own: the session's lock on both roles, by design, held
+for the ENet bookkeeping alone, and as debt the pad link's and the transport's locks on both and the
+feedback path's on MoonlightUdp (its handler, the pad link's slot lookup, the rumble mix, the routing
+table and the light-bar switch).
 
 ## Release measurements
 
@@ -357,3 +360,59 @@ each found it held, 6 times in 3000 on the input queue (waiting up to 282 us) an
 queue (up to 392 us). The socket's queue also takes the transport's lock twice for every datagram the
 connection finishes sending, and the feedback path takes four locks for each rumble (its handler, the pad
 link's slot lookup, the rumble mix and the routing table) and three for each RGB-LED event.
+
+### After: the lock holds the ENet bookkeeping alone
+
+The head after the lock change, `12c95d2`, measured by `measurements.yml` on the pull request: run
+[41465878700](https://github.com/TinkerNorth/dish-mac/actions/runs/41465878700), attempt 1 and its re-run,
+attempt 2, both on the merge commit `b036bdf`. The runner is the baseline's. Time-constrained waits woke
+1060 and 495 us late at the 90th percentile, so the pacers spun 1000 and 595 us. The commands are the
+baseline's.
+
+| run | scenario | pad | source | rate Hz | frames | p50 us | p99 us | p99.9 us | max us | over 1 ms | longest gap ms | datagrams/report | drops |
+| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1: plain | S7 | A | Input | 1000 | 3000 | 125.3 | 789.7 | 3428.9 | 4880.5 | 24 | 6.029 | 1.00 | 0 |
+| 2: plain | S7 | A | Input | 1000 | 3000 | 103.0 | 323.9 | 1894.8 | 2926.1 | 12 | 5.095 | 1.00 | 0 |
+
+The latency does not show the change. Pad A's median was 125.3, 106.4 and 156.3 us in the first run's reps
+and 94.1, 111.0 and 103.0 us in the second's, against 111.5, 69.0 and 86.3 us before, and the same runs
+moved the untouched satellite scenarios as far (S6's Direct pad: 52 us before, 105 and 98 us after). To
+take the runner out of it, a scratch workflow built both heads on one runner and ran S7 on each five times,
+alternating (run [41467803003](https://github.com/TinkerNorth/dish-mac/actions/runs/41467803003)): over the
+fifteen reps of each, pad A's median was 116.4 us before and 120.0 us after, and the median p99 613 and 655
+us. Every rumble and RGB-LED event reached the actuators and no frame was dropped in any of them.
+
+The second run's lock-stats build, the reported rep:
+
+| lock | role | acquisitions | contended | max wait us | p99 wait us | max hold us | p99 hold us |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| moonlight.padLink | Input | 3000 | 0 | 12.4 | 0.5 | 158.1 | 2.0 |
+| moonlight.session | Input | 3000 | 7 | 129.1 | 0.1 | 87.7 | 8.2 |
+| moonlight.transport | Input | 3000 | 0 | 24.8 | 2.0 | 7.1 | 0.5 |
+| forwarding.gate | MoonlightUdp | 30 | 0 | 0.1 | 0.1 | 0.1 | 0.1 |
+| moonlight.feedbackHandler | MoonlightUdp | 330 | 0 | 0.2 | 0.1 | 5.7 | 1.0 |
+| moonlight.padLink | MoonlightUdp | 330 | 0 | 0.2 | 0.1 | 0.7 | 0.5 |
+| moonlight.rumbleMixes | MoonlightUdp | 300 | 0 | 0.3 | 0.3 | 14.8 | 16.4 |
+| moonlight.session | MoonlightUdp | 3336 | 5 | 30.8 | 0.3 | 39.5 | 16.4 |
+| moonlight.transport | MoonlightUdp | 7002 | 0 | 14.0 | 1.0 | 15.2 | 0.5 |
+| routing.table | MoonlightUdp | 300 | 0 | 0.2 | 0.1 | 18.0 | 2.0 |
+| moonlight.session | Heartbeat | 38 | 0 | 0.5 | 0.5 | 5.5 | 8.2 |
+| moonlight.transport | Heartbeat | 6 | 0 | 0.9 | 1.0 | 0.1 | 0.1 |
+
+The same locks are taken as often; what changed is what is held. In the second run the session's lock was
+held on the input queue for up to 87.7 us, 8.2 us at the 99th percentile (905 and 131 us in the baseline's
+run), and on the socket's queue for up to 39.5 us, 16.4 us at the 99th percentile (325 and 33 us). Those
+runs had different hosts under them, so the scratch workflow ran the same comparison on one runner, both
+heads' lock-stats builds alternating five times each, fifteen reps a side (run
+[41469232780](https://github.com/TinkerNorth/dish-mac/actions/runs/41469232780)). The session's lock was held
+for 131 us at the 99th percentile on the input queue before the change and 16 us after, 66 and 33 us on the
+socket's queue and 131 and 16 us on the tick (each the top of its power-of-two bucket, the median over the
+reps). The socket's queue found it held 233 times in 52970 acquisitions before and 51 times in 50082 after,
+and the tick 58 times in 543 and 5 in 652.
+
+On the input queue the lock was found held about as rarely as before (82 and then 65 times in 45000), so at
+this load almost no report waited on it, and the latency holds where it was. What the change removes is the
+wait behind somebody else's crypto: a report no longer waits for the host's packet to be opened, nor for
+another sender's seal, and `MoonlightControlSessionLockTests` holds the session to that. The pad link's and
+the transport's locks on the input queue and the feedback path's on the socket's queue are the Moonlight
+path's remaining debt.

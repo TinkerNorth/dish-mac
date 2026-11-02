@@ -36,6 +36,16 @@ the repos share a version number.
   the Input, HidReader and Receive threads to no lock at all, and the release
   measurements now fail on one. The before and after numbers are in
   `tools/bench/README.md`.
+- **A Moonlight session's crypto runs outside its lock.** The control
+  session sealed every packet it sent and opened every packet the host sent
+  under the one lock its ENet client needs, so a pad's report could wait
+  for the host's rumble to be decrypted, the keepalive to be sealed or
+  another pad's seal. Each packet now claims its control sequence from an
+  atomic counter and is sealed before the lock, the host's packets are
+  opened after it, and the lock holds only the ENet bookkeeping. The bench
+  measures the Moonlight path as scenario S7 against a loopback host and
+  `LockLawTests` pins the locks it takes; the before and after numbers are
+  in `tools/bench/README.md`.
 
 ## [1.1.0] - 2026-10-27
 
