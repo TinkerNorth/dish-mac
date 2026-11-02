@@ -266,31 +266,33 @@ final class MotionConversionTests: XCTestCase {
         XCTAssertEqual(nextTouchpadTrackingId(wasActive: false, isActive: true, current: 255), 0)
     }
 
-    // MARK: - TouchpadTrackingState (the lock-guarded per-device holder)
+    // MARK: - Touch ids, per finger and per pad, on each pad's feed
 
-    func testTrackingStateIsPerFingerAndPerDevice() {
-        let state = TouchpadTrackingState()
+    func testTrackingIdsArePerFingerAndPerPad() {
+        let processor = GamepadInputProcessor()
+        let padA = processor.feed(for: "padA")
         // padA: finger0 touches, finger1 idle.
-        var ids = state.advance(deviceId: "padA", finger0Active: true, finger1Active: false)
+        var ids = padA.advanceTouchIds(finger0Active: true, finger1Active: false)
         XCTAssertEqual(ids.finger0, 1)
         XCTAssertEqual(ids.finger1, 0)
         // padA: finger0 still held (no bump), finger1 now touches (bump).
-        ids = state.advance(deviceId: "padA", finger0Active: true, finger1Active: true)
+        ids = padA.advanceTouchIds(finger0Active: true, finger1Active: true)
         XCTAssertEqual(ids.finger0, 1)
         XCTAssertEqual(ids.finger1, 1)
-        // padB is independent — its first contact starts at id 1.
-        let other = state.advance(deviceId: "padB", finger0Active: true, finger1Active: false)
+        // padB is independent: its first contact starts at id 1.
+        let other = processor.feed(for: "padB").advanceTouchIds(finger0Active: true, finger1Active: false)
         XCTAssertEqual(other.finger0, 1)
     }
 
-    func testTrackingStateRemoveResetsDevice() {
-        let state = TouchpadTrackingState()
-        _ = state.advance(deviceId: "pad", finger0Active: true, finger1Active: false)
-        _ = state.advance(deviceId: "pad", finger0Active: false, finger1Active: false)
-        _ = state.advance(deviceId: "pad", finger0Active: true, finger1Active: false) // id now 2
-        state.remove(deviceId: "pad")
-        // Re-added device starts fresh — first contact is id 1, not a stale 3.
-        let ids = state.advance(deviceId: "pad", finger0Active: true, finger1Active: false)
+    func testARemovedPadsIdsStartOver() {
+        let processor = GamepadInputProcessor()
+        let pad = processor.feed(for: "pad")
+        _ = pad.advanceTouchIds(finger0Active: true, finger1Active: false)
+        _ = pad.advanceTouchIds(finger0Active: false, finger1Active: false)
+        _ = pad.advanceTouchIds(finger0Active: true, finger1Active: false) // id now 2
+        processor.remove(deviceId: "pad")
+        // The pad back starts fresh: its first contact is id 1, not a stale 3.
+        let ids = processor.feed(for: "pad").advanceTouchIds(finger0Active: true, finger1Active: false)
         XCTAssertEqual(ids.finger0, 1)
     }
 }

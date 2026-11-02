@@ -27,8 +27,9 @@ package final class FramePathRig {
     package nonisolated let controllerIndices: [Int]
     private nonisolated let padIds: [String]
     private nonisolated let gates: [PadGate]
-    private nonisolated let processor = GamepadInputProcessor()
-    private nonisolated let touchpadIds = TouchpadTrackingState()
+    private nonisolated let processor: GamepadInputProcessor
+    /// Each pad's feed, as GameController's handlers hold theirs.
+    private nonisolated let feeds: [PadFeed]
     private nonisolated let connection: WifiConnection
     private let client = SatelliteClient()
     private let routing: InputRouting
@@ -46,6 +47,9 @@ package final class FramePathRig {
         let indices = padIds.compactMap { connection.attachSlot($0, controllerType: 0, capabilities: rigCapabilities) }
         guard indices.count == pads else { throw FramePathRigError.slotsFull }
         let routing = InputRouting()
+        let processor = GamepadInputProcessor()
+        self.processor = processor
+        feeds = padIds.map { processor.feed(for: $0) }
         self.connection = connection
         self.padIds = padIds
         self.routing = routing
@@ -67,7 +71,7 @@ package final class FramePathRig {
 
     /// The reports the tally counted, as the telemetry tick reads it.
     package func reportsCounted() -> UInt64 {
-        processor.tally.snapshot().reports.values.reduce(0, +)
+        processor.tallySnapshot().reports.values.reduce(0, +)
     }
 
     /// What the composition root does on every binding, pool or switch change.
@@ -76,7 +80,7 @@ package final class FramePathRig {
         let pool = [connection.id: connection]
         let flags = slotFlags(bindings: bindings, global: global, preferences: [:])
         let snapshot = routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global)
-        routing.table.set(snapshot)
+        routing.publish(snapshot, to: processor)
         router.route(snapshot, global: global)
         connection.setForwardingFlags(global)
         connection.setSlotFlags(flags)
@@ -111,25 +115,25 @@ package final class FramePathRig {
     /// gate on; GameController's own sampling of the pad is not part of it.
     package nonisolated func publish(pad: Int, report: GamepadReport) {
         guard gates[pad].pass(.standard, changed: true) else { return }
-        processor.publish(deviceId: padIds[pad], state: report)
+        feeds[pad].publish(report)
     }
 
     /// What the motion handler does with a sample.
     package nonisolated func publishMotion(pad: Int, sample: MotionSample) {
         guard gates[pad].forwards(.standard) else { return }
-        processor.publishMotion(deviceId: padIds[pad], sample: sample)
+        feeds[pad].publishMotion(sample)
     }
 
     /// What the touchpad handlers do with one finger at `x`, `y`.
     package nonisolated func publishTouchpad(pad: Int, x: Int16, y: Int16) {
         guard gates[pad].forwards(.standard) else { return }
-        let ids = touchpadIds.advance(deviceId: padIds[pad], finger0Active: true, finger1Active: false)
+        let ids = feeds[pad].advanceTouchIds(finger0Active: true, finger1Active: false)
         let sample = TouchpadSample(
             finger0: TouchpadFinger(active: true, id: ids.finger0, x: x, y: y),
             finger1: TouchpadFinger(active: false, id: ids.finger1, x: 0, y: 0),
             buttonPressed: false
         )
-        processor.publishTouchpad(deviceId: padIds[pad], sample: sample)
+        feeds[pad].publishTouchpad(sample)
     }
 
     /// One encoded microphone packet, as the capture queue hands it over.
@@ -141,7 +145,6 @@ package final class FramePathRig {
         for gate in gates {
             gate.route(.standard)
         }
-        routing.install(on: processor)
         let aimed = client.setConnectionParams(
             host: "127.0.0.1",
             udpPort: port,

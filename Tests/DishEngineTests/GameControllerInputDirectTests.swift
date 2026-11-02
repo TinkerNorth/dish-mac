@@ -37,7 +37,7 @@ final class GameControllerInputDirectTests: XCTestCase {
         let paths = InputPaths(choices: UsbPathChoiceStore(defaults: defaults), reader: reader, scheduler: ManualPathScheduler())
         let input = GameControllerInput(connected: connected, paths: paths) { _ in category }
         let published = published
-        input.processor.reportSender = { deviceId, _ in published.set(published.get() + [deviceId]) }
+        input.processor.send(reports: { deviceId, _ in published.set(published.get() + [deviceId]) })
         return input
     }
 

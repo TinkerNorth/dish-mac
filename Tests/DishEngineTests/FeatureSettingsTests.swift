@@ -182,7 +182,7 @@ final class ForwardingGateTests: XCTestCase {
 }
 
 /// Touchpad path on the processor — `publishTouchpad` is a pure pass-through
-/// to `touchpadSender` (a touchpad is an absolute surface, no deadzone) plus
+/// to the pad's route (a touchpad is an absolute surface, no deadzone) plus
 /// the protocol-1 `eventTimeMs` stamp (uptime ms off the injectable `nowNs`
 /// clock — contract §0x000C).
 final class TouchpadProcessorTests: XCTestCase {
@@ -210,9 +210,9 @@ final class TouchpadProcessorTests: XCTestCase {
     }
 
     private func install(_ proc: GamepadInputProcessor, into captured: @escaping (Captured) -> Void) {
-        proc.touchpadSender = { id, sample, eventMs in
+        proc.send(touchpad: { id, sample, eventMs in
             captured(Captured(id: id, sample: sample, eventMs: eventMs))
-        }
+        })
     }
 
     func testPublishTouchpadForwardsAllFields() {

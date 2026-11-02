@@ -17,7 +17,7 @@ final class InputTelemetryTests: XCTestCase {
         processor.publish(deviceId: "a", state: GamepadReport())
         processor.publish(deviceId: "a", state: GamepadReport())
         processor.publish(deviceId: "b", state: GamepadReport())
-        XCTAssertEqual(processor.tally.snapshot().reports, ["a": 2, "b": 1])
+        XCTAssertEqual(processor.tallySnapshot().reports, ["a": 2, "b": 1])
     }
 
     func testEveryAdmittedMotionSampleCountsAndAThinnedOneDoesNot() {
@@ -26,18 +26,20 @@ final class InputTelemetryTests: XCTestCase {
         processor.publishMotion(deviceId: "a", sample: sample, nowNs: 1_000_000_000)
         processor.publishMotion(deviceId: "a", sample: sample, nowNs: 1_000_000_001)
         processor.publishMotion(deviceId: "a", sample: sample, nowNs: 1_010_000_000)
-        XCTAssertEqual(processor.tally.snapshot().motion, ["a": 2])
+        XCTAssertEqual(processor.tallySnapshot().motion, ["a": 2])
     }
 
     func testOnlyARoutedReportIsASend() {
+        let processor = GamepadInputProcessor()
         let routing = InputRouting()
-        routing.sendReport("unbound", GamepadReport())
-        XCTAssertEqual(routing.sent.current(), 0, "a pad with no route sends nothing")
+        processor.publish(deviceId: "unbound", state: GamepadReport())
+        XCTAssertEqual(processor.sent.current(), 0, "a pad with no route sends nothing")
         var snapshot = RoutingSnapshot()
         snapshot.bySlot["pad"] = Route(sink: DiscardingSink(), flags: ForwardingFlags())
-        routing.table.set(snapshot)
-        routing.sendReport("pad", GamepadReport())
-        XCTAssertEqual(routing.sent.current(), 1)
+        routing.publish(snapshot, to: processor)
+        processor.publish(deviceId: "pad", state: GamepadReport())
+        XCTAssertEqual(processor.sent.current(), 1)
+        XCTAssertNotNil(routing.table.get("pad"), "the cold table holds the same snapshot")
     }
 
     func testTheRatesAreTheCountsOverTheInterval() {

@@ -59,3 +59,15 @@ struct AtomicWord {
         dish_atomic_compare_exchange(address, expected, desired)
     }
 }
+
+/// Orders the loads before it ahead of every load and store after it: a
+/// seqlock reader's fence between its field loads and its second sequence load.
+func atomicFenceAcquire() {
+    dish_atomic_fence_acquire()
+}
+
+/// Orders the loads and stores before it ahead of every store after it: a
+/// seqlock writer's fence between its odd sequence and its field stores.
+func atomicFenceRelease() {
+    dish_atomic_fence_release()
+}

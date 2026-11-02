@@ -5,8 +5,8 @@ import DishCore
 import Foundation
 
 /// Where a bound slot's input goes: a satellite session, or one pad on a
-/// Moonlight host. Called on the controller callback threads, once per
-/// event, after the routing table's one locked read.
+/// Moonlight host. Called on the thread that publishes the pad, once per
+/// event, through the route its feed holds.
 protocol InputSink: AnyObject {
     func sendReport(_ report: GamepadReport)
     func sendMotion(_ sample: MotionSample, timestampDeltaUs: UInt32)
@@ -39,6 +39,34 @@ final class SatellitePadSink: InputSink {
 
     func sendBattery(level: UInt8, status: BatteryStatus) {
         connection.sendBattery(level: level, status: status, controllerIndex: controllerIndex)
+    }
+}
+
+/// One pad on a satellite's live client, as a feed's route holds it: the
+/// report goes straight to the client under the pad's index.
+final class SatelliteClientSink: InputSink {
+    let client: SatelliteClient
+    let controllerIndex: Int
+
+    init(client: SatelliteClient, controllerIndex: Int) {
+        self.client = client
+        self.controllerIndex = controllerIndex
+    }
+
+    func sendReport(_ report: GamepadReport) {
+        client.sendReport(controllerIndex: controllerIndex, report: report)
+    }
+
+    func sendMotion(_ sample: MotionSample, timestampDeltaUs: UInt32) {
+        client.sendMotion(controllerIndex: controllerIndex, sample: sample, timestampDeltaUs: timestampDeltaUs)
+    }
+
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
+        client.sendTouchpad(controllerIndex: controllerIndex, sample: sample, eventTimeMs: eventTimeMs)
+    }
+
+    func sendBattery(level: UInt8, status: BatteryStatus) {
+        client.sendBattery(controllerIndex: controllerIndex, level: level, status: status)
     }
 }
 

@@ -104,7 +104,7 @@ final class MotionBatteryProcessorTests: XCTestCase {
         _ sink: @escaping (CapturedMotion) -> Void
     ) -> GamepadInputProcessor {
         let proc = GamepadInputProcessor()
-        proc.motionSender = { id, sample, dt in
+        proc.send(motion: { id, sample, dt in
             sink(CapturedMotion(
                 id: id,
                 gx: sample.gyroX,
@@ -115,7 +115,7 @@ final class MotionBatteryProcessorTests: XCTestCase {
                 az: sample.accelZ,
                 dtUs: dt
             ))
-        }
+        })
         return proc
     }
 
@@ -251,9 +251,9 @@ final class MotionBatteryProcessorTests: XCTestCase {
     func testPublishBatteryForwardsToSender() {
         var captured: CapturedBattery?
         let proc = GamepadInputProcessor()
-        proc.batterySender = { id, lv, st in
+        proc.send(batteries: { id, lv, st in
             captured = CapturedBattery(id: id, level: lv, statusRaw: st)
-        }
+        })
         proc.publishBattery(deviceId: "pad", level: 73, statusRaw: 1)
         XCTAssertEqual(captured, CapturedBattery(id: "pad", level: 73, statusRaw: 1))
     }
@@ -261,9 +261,9 @@ final class MotionBatteryProcessorTests: XCTestCase {
     func testPublishBatteryUnknownLevelPassesThrough() {
         var captured: CapturedBattery?
         let proc = GamepadInputProcessor()
-        proc.batterySender = { id, lv, st in
+        proc.send(batteries: { id, lv, st in
             captured = CapturedBattery(id: id, level: lv, statusRaw: st)
-        }
+        })
         proc.publishBattery(deviceId: "pad", level: 0xFF, statusRaw: 2)
         XCTAssertEqual(captured?.level, 0xFF)
         XCTAssertEqual(captured?.statusRaw, 2)

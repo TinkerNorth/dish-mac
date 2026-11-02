@@ -48,12 +48,13 @@ extension GameControllerInput {
         }
         let id = slotId(for: controller)
         let gate = admit(controller, id: id)
+        let feed = processor.feed(for: id)
         let firstSight = !slots.contains { $0.id == id }
         recordSlot(id: id, controller: controller, capabilities: Self.profileCapabilities(controller), family: Self.family(of: controller))
         if firstSight { Self.logProfile(subject: id, choice: choice, resolved: resolved, adopted: true) }
         controller.handlerQueue = inputQueue
-        installProfileHandler(id: id, profile: profile, inputs: Self.profileInputs(resolved, profile: profile), gate: gate)
-        installMotionHandler(id: id, controller: controller, gate: gate)
+        installProfileHandler(profile: profile, inputs: Self.profileInputs(resolved, profile: profile), gate: gate, feed: feed)
+        installMotionHandler(controller: controller, gate: gate, feed: feed)
         startBatteryTimer(deviceId: id, controller: controller)
     }
 
@@ -112,17 +113,16 @@ extension GameControllerInput {
     /// Any change re-reads the whole pad, as the extended path does.
     /// Nonisolated, so the compiler refuses a handler that reaches for
     /// main-actor state: it runs on the input queue.
-    private nonisolated func installProfileHandler(id: String, profile: GCPhysicalInputProfile, inputs: ProfileInputs, gate: PadGate) {
-        profile.valueDidChangeHandler = { [weak self] _, _ in
-            self?.pushProfileReport(id: id, inputs: inputs, gate: gate)
+    private nonisolated func installProfileHandler(profile: GCPhysicalInputProfile, inputs: ProfileInputs, gate: PadGate, feed: PadFeed) {
+        profile.valueDidChangeHandler = { _, _ in
+            Self.pushProfileReport(inputs: inputs, gate: gate, feed: feed)
         }
     }
 
     /// Every handler call is a change; the gate says whether it is published.
-    nonisolated func pushProfileReport(id: String, inputs: ProfileInputs, gate: PadGate) {
+    nonisolated static func pushProfileReport(inputs: ProfileInputs, gate: PadGate, feed: PadFeed) {
         guard gate.pass(.standard, changed: true) else { return }
-        let sample = Self.profileSample(inputs)
-        processor.publish(deviceId: id, state: wireReport(from: sample))
+        feed.publish(wireReport(from: profileSample(inputs)))
     }
 
     /// The pad through its resolved inputs, in the framework's orientation,

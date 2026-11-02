@@ -202,7 +202,7 @@ shape.
   is *stored* rather than called immediately prefers a method reference:
 
   ```swift
-  processor.reportSender = sendReport
+  returnPaths.rumble = routes.rumble
   ```
 
   This is Parchment's "no anonymous methods" narrowed to what Swift can
@@ -223,7 +223,7 @@ shape.
 
 - **Member naming.** Swift properties carry no prefix. Read-only state is
   `private(set)`; a lock-guarded backing store carries the `Box` suffix
-  (`reportSenderBox`), which is the same "state, not scratch" signal
+  (`runLoopBox`), which is the same "state, not scratch" signal
   Parchment's `m` prefix gives at the point of use.
 
 - **Prefer a test to a comment.** Behaviour that needs explaining gets a test

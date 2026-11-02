@@ -97,10 +97,10 @@ final class GameControllerProfileTests: XCTestCase {
         let input = GameControllerInput(connected: [controller])
         let published = expectation(description: "a report left the processor")
         let seen = LockedBox<(report: GamepadReport, onMain: Bool)?>(nil)
-        input.processor.reportSender = { _, report in
+        input.processor.send(reports: { _, report in
             seen.set((report, Thread.isMainThread))
             published.fulfill()
-        }
+        })
         micro.dpad.setValueForXAxis(0, yAxis: 1)
         micro.buttonA.setValue(1)
         micro.buttonMenu.setValue(1)

@@ -4,10 +4,12 @@
 import DishCore
 import Foundation
 
-/// Turns raw controller values into the wire's report, applies the per-device
-/// dead zones and hands each report to the installed sender on the calling
-/// thread. No framework imports and no sockets: the controller bridge builds
-/// the full state on every change and the router owns the socket.
+/// Turns raw controller values into the wire's report and hands each pad's
+/// input to its `PadFeed`, which applies the dead zones, records it and sends
+/// it on the publishing thread. The processor itself is the cold side: it
+/// makes a pad's feed when the pad attaches, keeps the dead zones and the
+/// routes the main actor resolved, and reads the records for the inspector
+/// and the telemetry. No framework imports and no sockets.
 final class GamepadInputProcessor: @unchecked Sendable {
 
     /// The XUSB button bits, identical across every Dish client.
@@ -31,23 +33,8 @@ final class GamepadInputProcessor: @unchecked Sendable {
 
     typealias DeviceId = String
     typealias DeviceState = GamepadReport
-
-    /// Called on the caller's thread for every emitted report.
-    typealias ReportSender = (_ deviceId: DeviceId, _ report: GamepadReport) -> Void
-    /// Called on the caller's thread for every motion sample that passed the
-    /// rate limit, with the delta since this device's previous emitted sample.
-    typealias MotionSender = (_ deviceId: DeviceId, _ sample: MotionSample, _ timestampDeltaUs: UInt32) -> Void
-    /// Called on the main actor for every battery snapshot.
-    typealias BatterySender = (_ deviceId: DeviceId, _ level: UInt8, _ statusRaw: UInt8) -> Void
-    /// Called on the caller's thread for every touchpad sample, with the
-    /// sender-side uptime stamp the frame carries.
-    typealias TouchpadSender = (_ deviceId: DeviceId, _ sample: TouchpadSample, _ eventTimeMs: UInt32) -> Void
-    /// The inspector's taps, on the caller's thread: every report as the pad
-    /// sent it and as it left for the host, every admitted motion sample,
-    /// every touchpad sample.
-    typealias ReportTap = (_ deviceId: DeviceId, _ raw: GamepadReport, _ filtered: GamepadReport) -> Void
-    typealias MotionTap = (_ deviceId: DeviceId, _ sample: MotionSample) -> Void
-    typealias TouchpadTap = (_ deviceId: DeviceId, _ sample: TouchpadSample) -> Void
+    /// Each device's route, as the main actor resolved it.
+    typealias RouteResolver = (_ deviceId: DeviceId) -> Route?
 
     /// Per-axis dead zones: a stick at or below `stickFlat` and a trigger at
     /// or below `triggerFlat` read as zero.
@@ -58,150 +45,124 @@ final class GamepadInputProcessor: @unchecked Sendable {
 
     /// The wire holds motion at or under this rate; a faster sensor is thinned.
     static let motionRateLimitHz: UInt64 = 250
-    private static let motionMinIntervalNs: UInt64 = 1_000_000_000 / motionRateLimitHz
+    static let motionMinIntervalNs: UInt64 = 1_000_000_000 / motionRateLimitHz
 
-    /// The senders are installed by the composition root and read on the
-    /// controller callback threads; the boxes make that hand-off race-free.
     /// When the last report left, on the uptime clock; the keep-awake window
     /// reads it.
     let lastInputMs = AtomicInt(0)
-    /// Each pad's reports and admitted motion samples, for the telemetry.
-    let tally = InputTally()
+    /// Every report handed to a sink, for the telemetry's sends.
+    let sent = AtomicCounter()
 
-    private let reportSenderBox = LockedBox<ReportSender?>(nil, name: "input.reportSender")
-    private let motionSenderBox = LockedBox<MotionSender?>(nil, name: "input.motionSender")
-    private let batterySenderBox = LockedBox<BatterySender?>(nil, name: "input.batterySender")
-    private let touchpadSenderBox = LockedBox<TouchpadSender?>(nil, name: "input.touchpadSender")
-    private let reportTapBox = LockedBox<ReportTap?>(nil, name: "input.reportTap")
-    private let motionTapBox = LockedBox<MotionTap?>(nil, name: "input.motionTap")
-    private let touchpadTapBox = LockedBox<TouchpadTap?>(nil, name: "input.touchpadTap")
+    /// The feeds by device, each device's stored dead zones and the routes:
+    /// written where a pad attaches or the routing changes, read by the main
+    /// actor's ticks; never on a report.
+    private let registry = LockedBox(FeedRegistry(), name: "input.feeds")
 
-    private var states: [DeviceId: GamepadReport] = [:]
-    private var deadzones: [DeviceId: Deadzones] = [:]
-    private var lastMotionTimestampNs: [DeviceId: UInt64] = [:]
-    private var lock = TrackedLock(NSLock(), "input.processor")
-
-    var reportSender: ReportSender? {
-        get { reportSenderBox.get() }
-        set { reportSenderBox.set(newValue) }
+    private struct FeedRegistry {
+        var feeds: [DeviceId: PadFeed] = [:]
+        var deadzones: [DeviceId: Deadzones] = [:]
+        var resolve: RouteResolver = { _ in nil }
     }
 
-    var motionSender: MotionSender? {
-        get { motionSenderBox.get() }
-        set { motionSenderBox.set(newValue) }
+    // MARK: - Feeds
+
+    /// The device's feed, made with its dead zones and its route on first use.
+    func feed(for deviceId: DeviceId) -> PadFeed {
+        registry.mutate { registry in
+            if let feed = registry.feeds[deviceId] { return feed }
+            let feed = PadFeed(deviceId: deviceId, lastInputMs: lastInputMs, sent: sent)
+            feed.useDeadzones(registry.deadzones[deviceId] ?? Deadzones())
+            feed.post(route: registry.resolve(deviceId))
+            registry.feeds[deviceId] = feed
+            return feed
+        }
     }
 
-    var batterySender: BatterySender? {
-        get { batterySenderBox.get() }
-        set { batterySenderBox.set(newValue) }
+    /// Every feed's route from now on, and the route of every feed made later.
+    func route(_ resolve: @escaping RouteResolver) {
+        registry.mutate { registry in
+            registry.resolve = resolve
+            for (deviceId, feed) in registry.feeds {
+                feed.post(route: resolve(deviceId))
+            }
+        }
     }
-
-    var touchpadSender: TouchpadSender? {
-        get { touchpadSenderBox.get() }
-        set { touchpadSenderBox.set(newValue) }
-    }
-
-    var reportTap: ReportTap? {
-        get { reportTapBox.get() }
-        set { reportTapBox.set(newValue) }
-    }
-
-    var motionTap: MotionTap? {
-        get { motionTapBox.get() }
-        set { motionTapBox.set(newValue) }
-    }
-
-    var touchpadTap: TouchpadTap? {
-        get { touchpadTapBox.get() }
-        set { touchpadTapBox.set(newValue) }
-    }
-
-    // MARK: - Reports
 
     func setDeadzones(deviceId: DeviceId, _ zones: Deadzones) {
-        lock.lock()
-        deadzones[deviceId] = zones
-        lock.unlock()
-    }
-
-    /// Filter a full-state report through the device's dead zones, remember
-    /// it, stamp the moment, and send it.
-    func publish(deviceId: DeviceId, state: GamepadReport) {
-        lock.lock()
-        let zones = deadzones[deviceId] ?? Deadzones()
-        let filtered = applyDeadzones(state, zones)
-        states[deviceId] = filtered
-        lock.unlock()
-        tally.countReport(deviceId)
-        lastInputMs.set(Int(uptimeMs()))
-        reportTap?(deviceId, state, filtered)
-        reportSender?(deviceId, filtered)
-    }
-
-    /// Send a released report for every known device, so nothing stays held
-    /// on the host when this process stops receiving events.
-    func zeroAndSendAll() {
-        lock.lock()
-        let ids = Array(states.keys)
-        for id in ids {
-            states[id] = .released
-        }
-        lock.unlock()
-        for id in ids {
-            reportSender?(id, .released)
+        registry.mutate { registry in
+            registry.deadzones[deviceId] = zones
+            registry.feeds[deviceId]?.useDeadzones(zones)
         }
     }
 
+    /// The pad left: its feed routes nowhere, and a pad that comes back gets
+    /// a fresh one whose counts start over.
     func remove(deviceId: DeviceId) {
-        lock.lock()
-        defer { lock.unlock() }
-        states.removeValue(forKey: deviceId)
-        deadzones.removeValue(forKey: deviceId)
-        lastMotionTimestampNs.removeValue(forKey: deviceId)
-        tally.forget(deviceId)
-    }
-
-    // MARK: - Motion
-
-    /// Forward a wire-scaled sample, thinned to the rate limit. The limit is
-    /// measured from the last emitted sample, so a stream of drops never
-    /// pushes the deadline forward.
-    func publishMotion(deviceId: DeviceId, sample: MotionSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
-        guard let deltaUs = admitMotion(deviceId: deviceId, nowNs: nowNs) else { return }
-        tally.countMotion(deviceId)
-        motionTap?(deviceId, sample)
-        motionSender?(deviceId, sample, deltaUs)
-    }
-
-    /// The delta to stamp on this sample, or nil when it falls inside the
-    /// rate-limit window or the clock did not advance.
-    private func admitMotion(deviceId: DeviceId, nowNs: UInt64) -> UInt32? {
-        lock.lock()
-        defer { lock.unlock() }
-        guard let previous = lastMotionTimestampNs[deviceId] else {
-            lastMotionTimestampNs[deviceId] = nowNs
-            return 0
+        registry.mutate { registry in
+            registry.deadzones.removeValue(forKey: deviceId)
+            registry.feeds.removeValue(forKey: deviceId)?.post(route: nil)
         }
-        guard nowNs > previous else { return nil }
-        let elapsedNs = nowNs - previous
-        let insideTheWindow = elapsedNs < Self.motionMinIntervalNs
-        if insideTheWindow { return nil }
-        lastMotionTimestampNs[deviceId] = nowNs
-        return UInt32(clamping: elapsedNs / 1000)
     }
 
-    // MARK: - Battery and touchpad
+    // MARK: - By device id, off the hot path
 
-    func publishBattery(deviceId: DeviceId, level: UInt8, statusRaw: UInt8) {
-        batterySender?(deviceId, level, statusRaw)
+    /// The pads' own threads publish through their feeds; these look the feed
+    /// up first, for the callers that hold only an id.
+    func publish(deviceId: DeviceId, state: GamepadReport) {
+        feed(for: deviceId).publish(state)
     }
 
-    /// Forward a touchpad sample stamped with the publish instant: the
-    /// framework surfaces no per-event timestamp.
+    func publishMotion(deviceId: DeviceId, sample: MotionSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
+        feed(for: deviceId).publishMotion(sample, nowNs: nowNs)
+    }
+
     func publishTouchpad(deviceId: DeviceId, sample: TouchpadSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
-        touchpadTap?(deviceId, sample)
-        touchpadSender?(deviceId, sample, UInt32(truncatingIfNeeded: nowNs / 1_000_000))
+        feed(for: deviceId).publishTouchpad(sample, nowNs: nowNs)
     }
+
+    /// The main actor's battery timers: through the route it resolved, on
+    /// the caller's thread.
+    func publishBattery(deviceId: DeviceId, level: UInt8, statusRaw: UInt8) {
+        guard let route = registry.get().resolve(deviceId) else { return }
+        route.sink.sendBattery(level: level, status: BatteryStatus(rawValue: statusRaw) ?? .unknown)
+    }
+
+    /// Send a released report for every pad, so nothing stays held on the
+    /// host when this process stops receiving events.
+    func zeroAndSendAll() {
+        let current = registry.get()
+        for deviceId in current.feeds.keys {
+            guard let route = current.resolve(deviceId) else { continue }
+            sent.increment()
+            route.sink.sendReport(.released)
+        }
+    }
+
+    // MARK: - The main actor's reads
+
+    /// What the pad last sent, read off its record; nil for a pad with no feed.
+    func latestInput(_ deviceId: DeviceId) -> LatestInput? {
+        registry.get().feeds[deviceId]?.record.read()
+    }
+
+    /// Each pad's published reports and admitted motion samples so far.
+    func tallySnapshot() -> PadTally {
+        var tally = PadTally()
+        for (deviceId, feed) in registry.get().feeds {
+            let reports = feed.record.reportCount
+            let motion = feed.record.motionCount
+            if reports > 0 { tally.reports[deviceId] = reports }
+            if motion > 0 { tally.motion[deviceId] = motion }
+        }
+        return tally
+    }
+}
+
+/// What each pad has produced so far: its published reports and its
+/// admitted motion samples.
+struct PadTally: Equatable {
+    var reports: [String: UInt64] = [:]
+    var motion: [String: UInt64] = [:]
 }
 
 // MARK: - Pure conversions

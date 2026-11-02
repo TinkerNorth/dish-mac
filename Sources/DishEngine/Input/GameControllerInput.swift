@@ -69,7 +69,6 @@ final class GameControllerInput: ObservableObject {
     /// The one serial queue every controller's handlers run on, so the hot
     /// path never waits behind the main thread.
     nonisolated let inputQueue = ThreadRole.input.queue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
-    let touchpadIds = TouchpadTrackingState()
 
     private var observers: [NSObjectProtocol] = []
     private var controllerIds: [ObjectIdentifier: String] = [:]
@@ -146,12 +145,13 @@ final class GameControllerInput: ObservableObject {
     private func attachExtended(_ controller: GCController, pad: GCExtendedGamepad) {
         let id = slotId(for: controller)
         let gate = admit(controller, id: id)
+        let feed = processor.feed(for: id)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
         controller.handlerQueue = inputQueue
-        installReportHandler(id: id, pad: pad, gate: gate)
-        installMotionHandler(id: id, controller: controller, gate: gate)
-        installTouchpadHandlers(id: id, pad: pad, gate: gate)
+        installReportHandler(pad: pad, gate: gate, feed: feed)
+        installMotionHandler(controller: controller, gate: gate, feed: feed)
+        installTouchpadHandlers(pad: pad, gate: gate, feed: feed)
         startBatteryTimer(deviceId: id, controller: controller)
     }
 
@@ -227,9 +227,9 @@ final class GameControllerInput: ObservableObject {
     /// handler rebuilds the whole report from the snapshot every time.
     /// Nonisolated, so the compiler refuses a handler that reaches for
     /// main-actor state: it runs on the input queue.
-    private nonisolated func installReportHandler(id: String, pad: GCExtendedGamepad, gate: PadGate) {
-        pad.valueChangedHandler = { [weak self] pad, _ in
-            self?.pushReport(id: id, pad: pad, gate: gate)
+    private nonisolated func installReportHandler(pad: GCExtendedGamepad, gate: PadGate, feed: PadFeed) {
+        pad.valueChangedHandler = { pad, _ in
+            Self.pushReport(pad: pad, gate: gate, feed: feed)
         }
     }
 
@@ -250,7 +250,6 @@ final class GameControllerInput: ObservableObject {
         batteryTimers.removeValue(forKey: id)?.cancel()
         batteryStateTimers.removeValue(forKey: id)?.cancel()
         lastBatteryStatusRaw.removeValue(forKey: id)
-        touchpadIds.remove(deviceId: id)
     }
 
     /// Only the DualSense and DualShock 4 profiles expose a touchpad.
@@ -281,10 +280,9 @@ final class GameControllerInput: ObservableObject {
     // MARK: - Hot path
 
     /// Every handler call is a change; the gate says whether it is published.
-    private nonisolated func pushReport(id: String, pad: GCExtendedGamepad, gate: PadGate) {
+    private nonisolated static func pushReport(pad: GCExtendedGamepad, gate: PadGate, feed: PadFeed) {
         guard gate.pass(.standard, changed: true) else { return }
-        let sample = Self.padSample(pad)
-        processor.publish(deviceId: id, state: wireReport(sample))
+        feed.publish(wireReport(padSample(pad)))
     }
 
     /// The pad as GameController reads it, which is already the wire's

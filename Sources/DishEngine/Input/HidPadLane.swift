@@ -104,9 +104,15 @@ final class HidPadLane: @unchecked Sendable {
     /// The stored remap as a table, from the main actor to the reader.
     private let remapMail = Mailbox<RemapBox>()
 
-    /// Touched only on the reader's thread.
+    /// A fresh feed from the main actor, when the slot comes back.
+    private let feedMail = Mailbox<PadFeed>()
+
+    // Touched only on the reader's thread.
+
     /// The stored remap the reader took last; nil reads the model's own order.
     private var remap: HidRemapTable?
+    /// Where the lane publishes: made with the lane, replaced through `feedMail`.
+    private var feed: PadFeed
     /// When the pad last sent a full Switch report, for the start sequence's
     /// watch; never set on a lane that does not read Switch reports.
     private(set) var lastFullReportNs: UInt64?
@@ -125,6 +131,7 @@ final class HidPadLane: @unchecked Sendable {
         gate = PadGate(key: slotId, notify: wiring.notify)
         tally = LaneTally(openedNs: openedNs)
         capacity = candidate.reportCapacity
+        feed = wiring.processor.feed(for: slotId)
         buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: capacity)
         buffer.initialize(repeating: 0, count: capacity)
     }
@@ -137,6 +144,12 @@ final class HidPadLane: @unchecked Sendable {
     /// The battery the pad last reported while Direct.
     var latestBattery: PadBattery? {
         PadBattery(packed: batteryWord.load())
+    }
+
+    /// The slot's feed again, from the main actor, after the slot was hidden
+    /// and shown: the next report publishes through it.
+    func use(feed fresh: PadFeed) {
+        feedMail.post(fresh)
     }
 
     /// The stored remap as the main actor last set it, read only there; the
@@ -219,21 +232,26 @@ final class HidPadLane: @unchecked Sendable {
             return
         }
         publishIfChanged(reading.report)
-        if let motion = reading.motion { wiring.processor.publishMotion(deviceId: slotId, sample: motion) }
+        if let motion = reading.motion { currentFeed().publishMotion(motion) }
         if let battery = reading.battery { publishBatteryIfChanged(battery) }
     }
 
     private func publishIfChanged(_ report: GamepadReport) {
         guard lastPublished != report else { return }
         lastPublished = report
-        wiring.processor.publish(deviceId: slotId, state: report)
+        currentFeed().publish(report)
+    }
+
+    private func currentFeed() -> PadFeed {
+        if let fresh = feedMail.take() { feed = fresh }
+        return feed
     }
 
     private func publishBatteryIfChanged(_ battery: PadBattery) {
         guard lastBattery != battery else { return }
         lastBattery = battery
         batteryWord.store(battery.packed)
-        wiring.processor.publishBattery(deviceId: slotId, level: battery.level, statusRaw: battery.status.rawValue)
+        currentFeed().publishBattery(level: battery.level, statusRaw: battery.status.rawValue)
         wiring.battery(slotId, battery)
     }
 }

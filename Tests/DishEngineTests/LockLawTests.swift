@@ -147,31 +147,9 @@ private enum Allowance: String {
 /// outer lock and one taken inside it, or a blocking call and a lock held
 /// across it.
 private enum LockLaws {
-    static let inputMayAcquire: [String: Allowance] = [
-        "connection.client": .debt,
-        "input.motionSender": .debt,
-        "input.motionTap": .debt,
-        "input.processor": .debt,
-        "input.reportSender": .debt,
-        "input.reportTap": .debt,
-        "input.tally": .debt,
-        "input.touchpadIds": .debt,
-        "input.touchpadSender": .debt,
-        "input.touchpadTap": .debt,
-        "routing.table": .debt
-    ]
+    static let inputMayAcquire: [String: Allowance] = [:]
 
-    static let hidReaderMayAcquire: [String: Allowance] = [
-        "connection.client": .debt,
-        "input.batterySender": .debt,
-        "input.motionSender": .debt,
-        "input.motionTap": .debt,
-        "input.processor": .debt,
-        "input.reportSender": .debt,
-        "input.reportTap": .debt,
-        "input.tally": .debt,
-        "routing.table": .debt
-    ]
+    static let hidReaderMayAcquire: [String: Allowance] = [:]
 
     static let receiveMayAcquire: [String: Allowance] = [:]
 

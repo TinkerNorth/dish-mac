@@ -193,7 +193,6 @@ package final class AppModel: ObservableObject {
     /// lifecycle, and the remembered satellites last.
     private func wireObservers(pipeline: WakePipeline, lifecycle: LifecycleSignals) {
         gate.update(settings.flags)
-        routing.install(on: input.processor)
         observeSlots()
         observeDeadzones()
         observeRoutingTable()
@@ -313,7 +312,7 @@ package final class AppModel: ObservableObject {
         let global = settings.flags
         let flags = slotFlags(bindings: bindings, global: global, preferences: preferences)
         let snapshot = routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global, moonlight: hosts)
-        routing.table.set(snapshot)
+        routing.publish(snapshot, to: input.processor)
         returnPaths.route(snapshot, global: global)
         for conn in pool.values {
             conn.setForwardingFlags(global)
@@ -325,8 +324,22 @@ package final class AppModel: ObservableObject {
     /// before the write lands.
     private func observeReturnPathWiring() {
         wifi.$connections
-            .sink { [weak self] pool in self?.returnPaths.wire(pool) }
+            .sink { [weak self] pool in
+                self?.returnPaths.wire(pool)
+                self?.followClients(pool)
+            }
             .store(in: &cancellables)
+    }
+
+    /// A feed's route holds its connection's live client, so a connect or a
+    /// teardown hands every pad its route again.
+    private func followClients(_ pool: [String: WifiConnection]) {
+        for conn in pool.values {
+            conn.onClientChanged = { [weak self] in
+                guard let self else { return }
+                routing.republish(to: input.processor)
+            }
+        }
     }
 
     private func observeSettings() {

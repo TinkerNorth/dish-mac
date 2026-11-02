@@ -65,6 +65,8 @@ package final class WifiConnection: ObservableObject, Identifiable {
     var onRekeyNeeded: (() -> Void)?
     /// Observational relay of a parsed close reason; policy rides the hooks.
     var onSessionClose: ((CloseReason) -> Void)?
+    /// The live client came or went: the pads' routes hold it.
+    var onClientChanged: (() -> Void)?
 
     private(set) var lastHeartbeatAck: HeartbeatAck?
     /// The epoch of the topology we last applied; -1 while no session.
@@ -188,6 +190,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
     func markConnected(client: SatelliteClient, connectionId: String, epoch: Int, hooks: SessionHooks) {
         guard state == .linking else { return }
         clientRef.set(client)
+        onClientChanged?()
         self.connectionId = connectionId
         self.hooks = hooks
         state = .live
@@ -319,6 +322,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
         isRegisteringController = false
         existing?.closeSocket()
         clientRef.set(nil)
+        onClientChanged?()
         connectionId = nil
         lastHeartbeatAck = nil
         lastAppliedEpoch = -1
