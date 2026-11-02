@@ -54,12 +54,15 @@ final class LockLawTests: XCTestCase {
         startDirectReader(direct, group: group)
         startFeedbackSender(satellite, controllerIndex: UInt8(rig.controllerIndices[0]), group: group)
         var tallied: UInt64 = 0
-        for tick in 0 ..< LockLawRun.mainTicks {
+        var tick = 0
+        let giveUp = Date().addingTimeInterval(LockLawRun.limitSeconds)
+        while tick < LockLawRun.mainTicks || group.wait(timeout: .now()) == .timedOut, Date() < giveUp {
             rig.refreshRouting()
             if tick % LockLawRun.tallyEvery == 0 { tallied = rig.reportsCounted() }
             RunLoop.main.run(until: Date().addingTimeInterval(LockLawRun.mainTickSeconds))
+            tick += 1
         }
-        XCTAssertEqual(group.wait(timeout: .now() + 10), .success)
+        XCTAssertEqual(group.wait(timeout: .now()), .success, "the producers finished")
         RunLoop.main.run(until: Date().addingTimeInterval(LockLawRun.settleSeconds))
         let snapshot = lockStatsSnapshot()
         let feedback = rig.feedback
@@ -77,30 +80,30 @@ final class LockLawTests: XCTestCase {
     private func startInputProducer(_ rig: FramePathRig, group: DispatchGroup) {
         let queue = rig.inputQueue
         group.enter()
-        Thread {
+        startThread {
             for frame in 0 ..< LockLawRun.frames {
                 queue.async { publishFrame(frame, on: rig) }
                 Thread.sleep(forTimeInterval: LockLawRun.frameSeconds)
             }
             queue.async { group.leave() }
-        }.start()
+        }
     }
 
     private func startDirectReader(_ direct: DirectFeed, group: DispatchGroup) {
         group.enter()
-        Thread {
+        startThread {
             ThreadRole.hidReader.enterThread()
             for frame in 0 ..< LockLawRun.frames {
                 direct.feed(rightStickX: LockLawRun.stickBase + UInt16(frame % 256), rightStickY: LockLawRun.stickBase)
                 Thread.sleep(forTimeInterval: LockLawRun.frameSeconds)
             }
             group.leave()
-        }.start()
+        }
     }
 
     private func startFeedbackSender(_ satellite: LoopbackSatellite, controllerIndex: UInt8, group: DispatchGroup) {
         group.enter()
-        Thread {
+        startThread {
             for tick in 0 ..< LockLawRun.rumbleTicks {
                 satellite.sendRumble(controllerIndex: controllerIndex, strong: 30000, weak: 10000, durationMs: 100)
                 if tick % LockLawRun.lightbarEvery == 0 {
@@ -109,7 +112,7 @@ final class LockLawTests: XCTestCase {
                 Thread.sleep(forTimeInterval: LockLawRun.rumbleSeconds)
             }
             group.leave()
-        }.start()
+        }
     }
 
     private func expectExactly(_ law: String, observed: Set<String>, listed: [String: Allowance]) {
@@ -204,9 +207,11 @@ private enum LockLaws {
     static let orderMayNest: [String: Allowance] = [:]
 }
 
-/// The run's shape: about two and a half seconds, so the heartbeat's second
-/// beat and its ack land inside it.
+/// The run's shape: at least two and a half seconds, so the heartbeat's
+/// second beat and its ack land inside it, and as long as the producers'
+/// sleeps take on a coarse runner timer.
 private enum LockLawRun {
+    static let limitSeconds: TimeInterval = 60
     static let frames = 2000
     static let frameSeconds = 0.001
     static let mainTicks = 25
@@ -218,6 +223,13 @@ private enum LockLawRun {
     static let settleSeconds = 0.3
     /// A raw Switch stick value just past the dead zone.
     static let stickBase: UInt16 = 2369
+}
+
+/// A producer at the input queue's quality of service, as a pad's are.
+private func startThread(_ body: @escaping @Sendable () -> Void) {
+    let thread = Thread(block: body)
+    thread.qualityOfService = .userInteractive
+    thread.start()
 }
 
 /// One input-queue event as GameController delivers them: a report, and on
