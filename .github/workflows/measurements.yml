@@ -1,0 +1,218 @@
+name: Measurements
+
+# Pin map (verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`):
+#   actions/checkout          @ v7.0.1 → 3d3c42e5aac5ba805825da76410c181273ba90b1
+#   actions/cache             @ v6.1.0 → 55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+#   actions/upload-artifact   @ v7.0.2 → cf430e030ddbb5b0abf93d22962f4752f3646cd9
+#   actions/download-artifact @ v8.0.2 → 9000827ccba6bdab643e8b6fd33ac0654aef8333
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: "Version label for measurements-<version>.json and the job summary"
+        type: string
+        required: true
+      upload_to_release:
+        description: "Attach the two files to the existing release named by tag"
+        type: boolean
+        required: false
+        default: false
+      tag:
+        description: "Release tag to measure and to attach the files to"
+        type: string
+        required: false
+        default: ""
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version label (default: dev-<short commit>)"
+        type: string
+        required: false
+        default: ""
+      upload_to_release:
+        description: "Attach the two files to the existing release named by tag"
+        type: boolean
+        required: false
+        default: false
+      tag:
+        description: "Release tag to measure and to attach the files to (default: the ref the workflow runs on)"
+        type: string
+        required: false
+        default: ""
+  pull_request:
+    branches: [main]
+    paths:
+      - "Sources/**"
+      - "Tests/DishEngineTests/LockLawTests.swift"
+      - "Package.swift"
+      - "Package.resolved"
+      - ".github/workflows/measurements.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  measure:
+    name: Measure (macOS, release builds)
+    runs-on: macos-26
+    timeout-minutes: 60
+    concurrency:
+      group: measurements-${{ github.event_name }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - name: Check the inputs
+        env:
+          UPLOAD: ${{ inputs.upload_to_release }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          if [ "${UPLOAD}" = "true" ] && [ -z "${TAG}" ]; then
+            echo "::error::upload_to_release needs a tag"
+            exit 1
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Resolve the version label
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          version="${INPUT_VERSION#v}"
+          if [ -z "${version}" ]; then version="dev-${GITHUB_SHA:0:7}"; fi
+          if ! printf '%s' "${version}" | grep -Eq '^[0-9A-Za-z][0-9A-Za-z._+-]*$'; then
+            echo "::error::version label '${version}' may only hold letters, digits, '.', '_', '+' and '-'"
+            exit 1
+          fi
+          echo "MEASURE_VERSION=${version}" >> "${GITHUB_ENV}"
+
+      # The same exclusions as macos-ci.yml: no stale resource bundles, none
+      # of the crash reporter's unused binary slices. A key of its own, since
+      # this job leaves release objects behind.
+      - name: Cache SwiftPM
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .build
+            !.build/**/*.bundle
+            !.build/artifacts/sentry-cocoa/Sentry-*
+            !.build/artifacts/sentry-cocoa/SentryObjC-*
+          key: ${{ runner.os }}-measurements-spm-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/Resources/**') }}
+          restore-keys: |
+            ${{ runner.os }}-measurements-spm-
+            ${{ runner.os }}-spm-
+
+      # The plain build gives the latency; the LOCK_STATS build only the lock
+      # counts, since its bookkeeping costs a few clock reads per lock.
+      - name: Build the benches
+        run: |
+          set -euo pipefail
+          mkdir -p bench
+          swift build --configuration release --product DishBench
+          cp .build/release/DishBench bench/DishBench-plain
+          swift build --configuration release --product DishBench -Xswiftc -DLOCK_STATS
+          cp .build/release/DishBench bench/DishBench-lockstats
+
+      - name: Lock laws
+        run: |
+          set -euo pipefail
+          swift build --build-tests -Xswiftc -DLOCK_STATS
+          swift test --skip-build --filter LockLawTests
+
+      - name: Fetch the previous release's measurements
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          mkdir -p previous-measurements
+          if ! gh release download --pattern 'measurements-*.json' --dir previous-measurements; then
+            echo "::notice::No earlier release carries measurements; the trend comparison is skipped."
+          fi
+
+      # Each run writes its JSON before it judges its own accounting, so every
+      # run goes ahead and the step fails at the end if any of them failed.
+      - name: Run the benches
+        id: bench
+        run: |
+          set -uo pipefail
+          mkdir -p measurements-raw
+          failed=""
+          for build in plain lockstats; do
+            echo "::group::DishBench-${build}"
+            "bench/DishBench-${build}" --json "measurements-raw/${build}.json" --csv "measurements-raw/${build}.csv" \
+              || failed="${failed} ${build}"
+            echo "::endgroup::"
+            echo "::group::DishBench-${build} --only S5 --mic-hz 1000"
+            "bench/DishBench-${build}" --only S5 --mic-hz 1000 --json "measurements-raw/${build}-mic1000.json" \
+              || failed="${failed} ${build}-mic1000"
+            echo "::endgroup::"
+          done
+          if [ -n "${failed}" ]; then
+            echo "::error title=Bench accounting::these runs failed the harness's own accounting:${failed}"
+            exit 1
+          fi
+
+      # The lock gate is reported, not enforced: the hot path takes locks today,
+      # and the optimisation PR that removes them turns enforcement on here.
+      - name: Build the report and check the gates
+        id: report
+        if: ${{ !cancelled() && steps.bench.outcome != 'skipped' }}
+        run: |
+          set -euo pipefail
+          bench/DishBench-plain report \
+            --input-dir measurements-raw \
+            --output-dir measurements \
+            --version "${MEASURE_VERSION}" \
+            --previous-dir previous-measurements \
+            --commit "$(git rev-parse HEAD)"
+          cat "measurements/measurements-${MEASURE_VERSION}.md" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload the measurements
+        if: ${{ !cancelled() && steps.report.outcome != 'skipped' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: measurements
+          path: |
+            measurements/measurements-*.json
+            measurements/measurements-*.md
+          retention-days: 90
+          if-no-files-found: warn
+
+      - name: Upload every rep
+        if: ${{ !cancelled() && steps.bench.outcome != 'skipped' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: measurements-raw
+          path: measurements-raw/
+          retention-days: 90
+          if-no-files-found: warn
+
+  attach:
+    name: Attach to the release
+    needs: [measure]
+    if: ${{ inputs.upload_to_release }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Download the measurements
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: measurements
+          path: measurements
+
+      - name: Upload to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release upload "${TAG}" measurements/measurements-*.json measurements/measurements-*.md --clobber

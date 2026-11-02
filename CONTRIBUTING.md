@@ -308,9 +308,15 @@ shape.
 Build + style:
 
 - `macos-ci.yml`, on `macos-26`: `swiftformat --lint`, `swiftlint --strict`,
-  the debug build, `swift test --parallel`, the release build and
-  `./bundle.sh release` (uploads `Dish.app` as an artifact). Every target
-  builds with warnings as errors.
+  the debug build, `swift test --parallel`, the release build, a
+  `DishBench --smoke` run and `./bundle.sh release` (uploads `Dish.app` as an
+  artifact). Every target builds with warnings as errors. A second job builds
+  with `-Xswiftc -DLOCK_STATS` and runs the lock statistics tests, the lock
+  laws and the bench's smoke run on that build.
+- `measurements.yml`, on `macos-26`: on pull requests that touch `Sources/`,
+  by hand, and from `release.yml` before publish. It runs the bench on both
+  builds and attaches `measurements-<version>.md` and `.json` to the release;
+  see [`tools/bench/README.md`](tools/bench/README.md).
 - `version-consistency.yml`: `VERSION` is the source; `CHANGELOG.md`'s top
   heading and `bundle.sh`'s plist values must agree with it.
 - `e2e.yml`, on `macos-26`: checks out the satellite at the release tag the
@@ -436,7 +442,11 @@ rate and must never block. If you're modifying `GameControllerInput`,
 - No `Task`, no `await`, no main-actor hop on the send path.
 - No Combine on the per-event chain; direct calls only.
 - One locked read of the routing table and the client's own send lock are the
-  only locks allowed; hold each briefly.
+  only locks allowed; hold each briefly. `LockLawTests` lists, per thread
+  role, every lock the hot threads take today; a lock you add fails it, and a
+  lock you remove must be deleted from its list.
+- A new lock is a `TrackedLock` with an `area.thing` name, and a new queue or
+  thread on the hot path takes its `ThreadRole` where it is made.
 - Preserve `IP_TOS = 0xB8` (DSCP EF) and `SO_NOSIGPIPE` on every send.
 - Where a shape rule and the hot path disagree, the hot path wins and the
   reason goes in a test name, not a comment.

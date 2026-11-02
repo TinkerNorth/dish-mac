@@ -7,6 +7,7 @@ import Foundation
 enum BenchCommand: Equatable {
     case help
     case bench(BenchOptions)
+    case report(ReportOptions)
 }
 
 /// The bench's settings; `--smoke` replaces the length and the reps.
@@ -52,6 +53,8 @@ struct UsageError: Error, Equatable {
 
 let benchUsage = """
 Usage: DishBench [--rate HZ] [--secs S] [--reps N] [--mic-hz HZ] [--only S1,S2] [--json PATH] [--csv PATH] [--smoke]
+       DishBench report --input-dir DIR --output-dir DIR --version LABEL [--previous-dir DIR] [--commit SHA]
+                        [--enforce-lock-gate]
 
 Times each pad's reports from the input processor (or the Direct lane's IOKit
 callback) to a loopback satellite's decrypt, with the production objects in
@@ -67,9 +70,18 @@ whose pad A p99.9 is the median.
   --csv PATH    write every rep's rows as CSV
   --smoke       0.2 s, one rep, no warm-up; fail on the harness's own accounting
   --help        this text
+
+report merges the bench JSON files in --input-dir into measurements-LABEL.md and
+measurements-LABEL.json in --output-dir. It needs a plain and a lock-stats run;
+the lock gate (no lock on the Input, HidReader and Receive roles) fails the
+report only with --enforce-lock-gate, and the trend against the report in
+--previous-dir only ever warns.
 """
 
 func parseCommand(_ arguments: [String]) throws -> BenchCommand {
+    if arguments.first == "report" {
+        return try .report(parseReport(Array(arguments.dropFirst())))
+    }
     var options = BenchOptions()
     var cursor = ArgumentCursor(arguments)
     while let flag = cursor.next() {
@@ -87,6 +99,26 @@ func parseCommand(_ arguments: [String]) throws -> BenchCommand {
         }
     }
     return .bench(options)
+}
+
+private func parseReport(_ arguments: [String]) throws -> ReportOptions {
+    var options = ReportOptions()
+    var cursor = ArgumentCursor(arguments)
+    while let flag = cursor.next() {
+        switch flag {
+        case "--input-dir": options.inputDir = try cursor.value(after: flag)
+        case "--output-dir": options.outputDir = try cursor.value(after: flag)
+        case "--version": options.version = try cursor.value(after: flag)
+        case "--previous-dir": options.previousDir = try cursor.value(after: flag)
+        case "--commit": options.commit = try cursor.value(after: flag)
+        case "--enforce-lock-gate": options.enforceLockGate = true
+        default: throw UsageError(message: "unknown report option \(flag)")
+        }
+    }
+    guard !options.inputDir.isEmpty, !options.outputDir.isEmpty, !options.version.isEmpty else {
+        throw UsageError(message: "report needs --input-dir, --output-dir and --version")
+    }
+    return options
 }
 
 private func scenarioNames(_ list: String) throws -> [String] {

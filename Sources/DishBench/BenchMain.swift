@@ -3,7 +3,7 @@
 
 import Foundation
 
-/// `DishBench`: the frame-path bench.
+/// `DishBench`: the frame-path bench, and with `report` its measurements report.
 @main
 enum BenchMain {
     static func main() async {
@@ -27,6 +27,8 @@ enum BenchMain {
             return BenchExit.ok
         case let .bench(options):
             return await runBench(options)
+        case let .report(options):
+            return runReport(options)
         }
     }
 }
