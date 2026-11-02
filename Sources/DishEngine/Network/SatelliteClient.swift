@@ -79,31 +79,31 @@ final class SatelliteClient {
 
     /// Server→client replay guard: highest counter successfully DECRYPTED
     /// (a forged header can't advance it). First packet exempt while 0 (G3).
-    let lastRecvCounter = AtomicCounter(name: "satellite.lastRecvCounter")
+    let lastRecvCounter = AtomicCounter()
     var sendLock = TrackedLock(NSLock(), "satellite.send")
 
-    let heartbeatRunning = AtomicBool(false, name: "satellite.heartbeatRunning")
+    let heartbeatRunning = AtomicBool(false)
     let heartbeatQueue = ThreadRole.heartbeat.queue(label: "dish.satellite.heartbeat", qos: .userInteractive)
     var heartbeatTimer: DispatchSourceTimer?
     let ackQueue = ThreadRole.receive.queue(label: "dish.satellite.ack", qos: .userInteractive)
-    let ackRunning = AtomicBool(false, name: "satellite.ackRunning")
+    let ackRunning = AtomicBool(false)
     /// Balances the receive loop so `closeSocket` can join it (bounded by the
     /// 500 ms recv timeout) before the fd closes — no recv on a reused fd.
     let receiveDrained = DispatchGroup()
 
     /// Consecutive un-ACKed heartbeats. Bumped on the heartbeat timer, zeroed
     /// on the receive queue.
-    let missedAcks = AtomicInt(0, name: "satellite.missedAcks")
+    let missedAcks = AtomicInt(0)
     /// Liveness flag. Written from the heartbeat/receive queues, read from
     /// the `WifiConnection` alive tick.
-    let connectionAlive = AtomicBool(true, name: "satellite.connectionAlive")
+    let connectionAlive = AtomicBool(true)
 
     /// Latest enriched heartbeat ack (epoch/bitmap/backend/count), polled by
     /// the 1 Hz alive tick for the reconcile loop (gap G9 parse side).
     private let lastHeartbeatAck = LockedBox<HeartbeatAck?>(nil, name: "satellite.heartbeatAck")
     /// Latched SESSION_CLOSE reason byte, −1 while none (dish-linux
     /// `sessionCloseReason_`). Reset by `setConnectionParams`.
-    let sessionCloseReason = AtomicInt(-1, name: "satellite.closeReason")
+    let sessionCloseReason = AtomicInt(-1)
 
     /// One-way latency estimate off the heartbeat round trip (gap G13). The
     /// heartbeat timer arms the ping clock; the receive queue pairs acks.

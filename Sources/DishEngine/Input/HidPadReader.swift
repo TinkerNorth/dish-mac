@@ -83,7 +83,7 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
 
     /// The reader thread's run loop, once it runs.
     private let runLoopBox = LockedBox<CFRunLoop?>(nil, name: "direct.runLoop")
-    private let started = AtomicBool(false, name: "direct.started")
+    private let started = AtomicBool(false)
 
     // Touched only on the reader's thread.
     private var manager: IOHIDManager?

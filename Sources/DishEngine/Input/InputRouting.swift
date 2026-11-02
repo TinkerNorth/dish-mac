@@ -68,7 +68,7 @@ final class RoutingTable: @unchecked Sendable {
 final class InputRouting: @unchecked Sendable {
     let table = RoutingTable()
     /// Every report handed to a sink, for the telemetry's sends.
-    let sent = AtomicCounter(name: "routing.sent")
+    let sent = AtomicCounter()
 
     /// Point the processor's senders at this router.
     func install(on processor: GamepadInputProcessor) {

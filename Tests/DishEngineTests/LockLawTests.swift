@@ -150,7 +150,6 @@ private enum LockLaws {
     static let inputMayAcquire: [String: Allowance] = [
         "connection.client": .debt,
         "input.gate": .debt,
-        "input.lastInputMs": .debt,
         "input.motionSender": .debt,
         "input.motionTap": .debt,
         "input.processor": .debt,
@@ -160,7 +159,6 @@ private enum LockLaws {
         "input.touchpadIds": .debt,
         "input.touchpadSender": .debt,
         "input.touchpadTap": .debt,
-        "routing.sent": .debt,
         "routing.table": .debt,
         "satellite.params": .debt,
         "satellite.send": .debt
@@ -172,14 +170,12 @@ private enum LockLaws {
         "direct.tally": .debt,
         "input.batterySender": .debt,
         "input.gate": .debt,
-        "input.lastInputMs": .debt,
         "input.motionSender": .debt,
         "input.motionTap": .debt,
         "input.processor": .debt,
         "input.reportSender": .debt,
         "input.reportTap": .debt,
         "input.tally": .debt,
-        "routing.sent": .debt,
         "routing.table": .debt,
         "satellite.params": .debt,
         "satellite.send": .debt
@@ -188,12 +184,8 @@ private enum LockLaws {
     static let receiveMayAcquire: [String: Allowance] = [
         "forwarding.gate": .debt,
         "routing.table": .debt,
-        "satellite.ackRunning": .debt,
-        "satellite.connectionAlive": .debt,
         "satellite.heartbeatAck": .debt,
-        "satellite.lastRecvCounter": .debt,
         "satellite.latency": .debt,
-        "satellite.missedAcks": .debt,
         "satellite.onLightbar": .debt,
         "satellite.onRumble": .debt,
         "satellite.params": .debt,

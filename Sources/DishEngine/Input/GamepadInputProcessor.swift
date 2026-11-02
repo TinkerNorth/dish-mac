@@ -64,7 +64,7 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// controller callback threads; the boxes make that hand-off race-free.
     /// When the last report left, on the uptime clock; the keep-awake window
     /// reads it.
-    let lastInputMs = AtomicInt(0, name: "input.lastInputMs")
+    let lastInputMs = AtomicInt(0)
     /// Each pad's reports and admitted motion samples, for the telemetry.
     let tally = InputTally()
 

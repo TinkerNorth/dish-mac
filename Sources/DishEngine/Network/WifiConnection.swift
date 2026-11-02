@@ -86,7 +86,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
     /// connection's lifetime: across a mute, a re-key and a reconnect, so the
     /// satellite's reorder window never reads a restart as a burst of late
     /// frames.
-    let micSeqs = (0 ..< SatelliteSlots.maxPerSatellite).map { _ in AtomicInt(0, name: "connection.micSeq") }
+    let micSeqs = (0 ..< SatelliteSlots.maxPerSatellite).map { _ in AtomicInt(0) }
     /// Each pad's audio handlers by controller index, for the receive queue.
     let padAudio = PadAudioTable()
     /// The version the live session speaks; the floor while no session.

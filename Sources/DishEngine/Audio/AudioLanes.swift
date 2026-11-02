@@ -29,7 +29,7 @@ final class LanePlayout: @unchecked Sendable {
     private var rings: [Lane: WindowRing] = [.speaker: WindowRing(channels: 2), .haptic: WindowRing(channels: 2)]
     private var laneCounters: [Lane: Counters] = [.speaker: Counters(), .haptic: Counters()]
     private var enabled: [Lane: Bool] = [.speaker: false, .haptic: false]
-    private let pending = AtomicInt(0, name: "audio.pending")
+    private let pending = AtomicInt(0)
     private var lock = TrackedLock(os_unfair_lock_s(), "audio.playout")
     /// Frames queued but not yet decoded; the oldest go first and the
     /// newest are dropped past this depth (160 ms), as dish-android does.
@@ -158,8 +158,8 @@ final class MicCapture: @unchecked Sendable {
     private var window = [Float](repeating: 0, count: AudioWire.samplesPerChannel)
     private var filled = 0
     private var lock = TrackedLock(os_unfair_lock_s(), "audio.mic")
-    private let delivering = AtomicBool(false, name: "audio.micDelivering")
-    private let metering = AtomicBool(false, name: "audio.micMetering")
+    private let delivering = AtomicBool(false)
+    private let metering = AtomicBool(false)
     private let levelSink = LockedBox<((MicLevel) -> Void)?>(nil, name: "audio.micLevel")
     private var encoder: OpusEncoder?
     private(set) var sent = 0
