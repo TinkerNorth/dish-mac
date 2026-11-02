@@ -51,14 +51,14 @@ final class ScenarioRun {
 
     private let scenario: BenchScenario
     private let options: BenchOptions
-    private let spinNs: UInt64
+    private let timer: TimerCalibration
     private let satellite: LoopbackSatellite
     private let rig: FramePathRig
     private let direct: DirectFeed?
     private let switchSequence = SwitchSequence()
     private let captureQueue = ThreadRole.audioCapture.queue(label: "dish.audio.capture", qos: .userInteractive)
 
-    init(scenario: BenchScenario, options: BenchOptions, spinNs: UInt64) throws {
+    init(scenario: BenchScenario, options: BenchOptions, timer: TimerCalibration) throws {
         let satellite = try LoopbackSatellite(capacity: options.arrivalCapacity)
         let rig = try FramePathRig(satellitePort: satellite.port, token: satellite.token, key: satellite.key, pads: scenario.inputPads)
         if scenario.direct {
@@ -69,7 +69,7 @@ final class ScenarioRun {
         if !scenario.heartbeatAndMic { rig.stopHeartbeat() }
         self.scenario = scenario
         self.options = options
-        self.spinNs = spinNs
+        self.timer = timer
         self.satellite = satellite
         self.rig = rig
     }
@@ -229,10 +229,20 @@ final class ScenarioRun {
         streams.add(PacedStream(name: "mic", schedule: pacer.schedule, issued: pacer.issued))
     }
 
+    /// A pacer that only hands frames on waits under a time constraint; the
+    /// Direct pad's is the reader's own thread and waits as the reader does.
     private func makePacer(rateHz: Int, startNs: UInt64, durationNs: UInt64, role: ThreadRole?) -> Pacer {
         let schedule = PaceSchedule(startNs: startNs, rateHz: UInt64(rateHz))
         let frames = Int(schedule.frames(within: durationNs))
-        return Pacer(schedule: schedule, frames: frames, spinNs: spinNs, role: role, issued: StampLog(capacity: frames))
+        let readerThread = role == .hidReader
+        return Pacer(
+            schedule: schedule,
+            frames: frames,
+            spinNs: readerThread ? SpinCalibration.directSpinNs : timer.spinNs,
+            role: role,
+            timeConstrained: !readerThread,
+            issued: StampLog(capacity: frames)
+        )
     }
 
     /// The main actor's share: the routing refresh every 100 ms and the tally
@@ -274,7 +284,13 @@ final class ScenarioRun {
 func pacingResult(_ stream: PacedStream) -> PacingResult {
     let stamps = stream.issued.values
     let check = PacingCheck(stampsNs: stamps, schedule: stream.schedule)
-    return PacingResult(check, stream: stream.name, rateHz: Int(stream.schedule.rateHz), frames: stamps.count)
+    return PacingResult(
+        check,
+        stream: stream.name,
+        rateHz: Int(stream.schedule.rateHz),
+        frames: stamps.count,
+        timeConstrained: stream.issued.timeConstrained
+    )
 }
 
 /// Resumes when every stream the group counts has finished.

@@ -30,6 +30,7 @@ struct PacingResult: Codable, Equatable {
     let early: Int
     let medianLateUs: Double
     let kept: Bool
+    let timeConstrained: Bool
 }
 
 /// The commands the satellite sent and what the return paths asked of the pads.
@@ -91,8 +92,11 @@ struct BenchSettings: Codable, Equatable {
     let micHz: Int
     let smoke: Bool
     let lockStats: Bool
-    /// How long before each deadline a pacer stops sleeping and spins.
+    /// How long before each deadline a pacer stops waiting and spins, from
+    /// how late a time-constrained 2 ms wait woke at the 90th percentile.
     let spinUs: Double
+    let timerLateP90Us: Double
+    let timeConstrained: Bool
     let scenarios: [String]
 }
 
@@ -127,14 +131,15 @@ extension StreamResult {
 }
 
 extension PacingResult {
-    init(_ check: PacingCheck, stream: String, rateHz: Int, frames: Int) {
+    init(_ check: PacingCheck, stream: String, rateHz: Int, frames: Int, timeConstrained: Bool) {
         self.init(
             stream: stream,
             rateHz: rateHz,
             frames: frames,
             early: check.early,
             medianLateUs: microseconds(check.medianLateNs),
-            kept: check.kept
+            kept: check.kept,
+            timeConstrained: timeConstrained
         )
     }
 }

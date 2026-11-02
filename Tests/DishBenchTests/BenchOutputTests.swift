@@ -47,7 +47,9 @@ final class BenchOutputTests: XCTestCase {
                 micHz: 50,
                 smoke: false,
                 lockStats: true,
-                spinUs: 1000,
+                spinUs: 150,
+                timerLateP90Us: 40,
+                timeConstrained: true,
                 scenarios: ["S1"]
             ),
             machine: MachineInfo(model: "Mac", cpu: "Apple M1", cores: 3, memoryGB: 7, os: "macOS"),
@@ -90,7 +92,7 @@ final class BenchOutputTests: XCTestCase {
         let reps = p999.map { figure in
             RepResult(
                 streams: [stream(p999: figure, received: received)],
-                pacing: [PacingResult(stream: "A", rateHz: 1000, frames: 3000, early: 0, medianLateUs: kept ? 2 : 1500, kept: kept)],
+                pacing: [pacing(kept: kept)],
                 feedback: FeedbackResult(rumbleSent: 300, lightbarSent: 30, rumbleApplied: rumbleApplied, lightbarApplied: 30),
                 refreshes: 30,
                 talliedReports: 3000,
@@ -100,6 +102,18 @@ final class BenchOutputTests: XCTestCase {
             )
         }
         return ScenarioResult(name: "S1", summary: "pad A", reportedRep: reported, reps: reps)
+    }
+
+    private func pacing(kept: Bool) -> PacingResult {
+        PacingResult(
+            stream: "A",
+            rateHz: 1000,
+            frames: 3000,
+            early: 0,
+            medianLateUs: kept ? 2 : 1500,
+            kept: kept,
+            timeConstrained: true
+        )
     }
 
     private func stream(p999: Double, received: Int) -> StreamResult {

@@ -13,13 +13,13 @@ enum BenchExit {
 /// the harness's own accounting, never a latency.
 @MainActor
 func runBench(_ options: BenchOptions) async -> Int32 {
-    let spinNs = SpinCalibration.measure()
+    let timer = SpinCalibration.measure()
     let machine = MachineInfo.current()
-    print(banner(options, spinNs: spinNs, machine: machine))
+    print(banner(options, timer: timer, machine: machine))
     var results: [ScenarioResult] = []
     for scenario in options.scenarios {
         do {
-            let run = try ScenarioRun(scenario: scenario, options: options, spinNs: spinNs)
+            let run = try ScenarioRun(scenario: scenario, options: options, timer: timer)
             await results.append(run.run())
         } catch {
             printError("\(scenario.name) could not start: \(error)")
@@ -30,7 +30,7 @@ func runBench(_ options: BenchOptions) async -> Int32 {
     if lockStatsBuild { print("\n" + lockTable(results)) }
     let record = BenchRecord(
         schema: BenchRecord.currentSchema,
-        settings: benchSettings(options, spinNs: spinNs),
+        settings: benchSettings(options, timer: timer),
         machine: machine,
         scenarios: results
     )
@@ -46,7 +46,7 @@ func runBench(_ options: BenchOptions) async -> Int32 {
     return problems.isEmpty ? BenchExit.ok : BenchExit.failed
 }
 
-func benchSettings(_ options: BenchOptions, spinNs: UInt64) -> BenchSettings {
+func benchSettings(_ options: BenchOptions, timer: TimerCalibration) -> BenchSettings {
     BenchSettings(
         rateHz: options.rateHz,
         secs: options.effectiveSecs,
@@ -54,19 +54,23 @@ func benchSettings(_ options: BenchOptions, spinNs: UInt64) -> BenchSettings {
         micHz: options.micHz,
         smoke: options.smoke,
         lockStats: lockStatsBuild,
-        spinUs: microseconds(spinNs),
+        spinUs: microseconds(timer.spinNs),
+        timerLateP90Us: microseconds(timer.lateP90Ns),
+        timeConstrained: timer.timeConstrained,
         scenarios: options.scenarios.map(\.name)
     )
 }
 
-func banner(_ options: BenchOptions, spinNs: UInt64, machine: MachineInfo) -> String {
+func banner(_ options: BenchOptions, timer: TimerCalibration, machine: MachineInfo) -> String {
     let build = lockStatsBuild ? "LOCK_STATS build" : "plain build"
     let length = options.smoke
         ? "smoke: \(fixed(options.effectiveSecs)) s, one rep"
         : "\(fixed(options.secs)) s x \(options.reps) reps after a warm-up"
+    let waits = timer.timeConstrained ? "time-constrained waits wake" : "waits (no time constraint granted) wake"
     let first = [
         "DishBench: \(build)", "pad A at \(options.rateHz) Hz", length, "mic \(options.micHz) Hz",
-        "spin window \(fixed(microseconds(spinNs), digits: 0)) us"
+        "\(waits) \(fixed(microseconds(timer.lateP90Ns), digits: 0)) us late at p90",
+        "spin window \(fixed(microseconds(timer.spinNs), digits: 0)) us"
     ]
     let second = [
         "Machine: \(machine.cpu)", machine.model, "\(machine.cores) cores", "\(fixed(machine.memoryGB)) GB", machine.os

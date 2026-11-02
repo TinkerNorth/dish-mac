@@ -65,6 +65,12 @@ final class BenchCommandTests: XCTestCase {
         XCTAssertThrowsError(try parseCommand(["--only", ""]))
     }
 
+    func testTheSpinWindowFollowsTheTimerWithinAFloorAndAMillisecond() {
+        XCTAssertEqual(SpinCalibration.window(lateP90Ns: 0), 100_000, "the floor")
+        XCTAssertEqual(SpinCalibration.window(lateP90Ns: 40000), 140_000, "the 90th percentile and its margin")
+        XCTAssertEqual(SpinCalibration.window(lateP90Ns: 8_000_000), 1_000_000, "never past a millisecond")
+    }
+
     func testTheSatelliteHasRoomForTheBusiestPass() {
         var options = BenchOptions()
         options.rateHz = 8000
