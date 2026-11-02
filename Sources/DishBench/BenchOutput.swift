@@ -103,7 +103,9 @@ func printError(_ text: String) {
 
 /// What the harness's own accounting found wrong, never a latency: a pad
 /// nothing of arrived from, a feedback scenario whose commands never reached
-/// the actuators, and in a smoke run a pacer off its pace.
+/// the actuators, and in a smoke run a pacer that sent a frame before its
+/// deadline, which means it was not applied. How late a pacer ran is the
+/// runner's timer and load: `pacingNotes` prints it and nothing fails on it.
 func accountingProblems(_ results: [ScenarioResult], smoke: Bool) -> [String] {
     var problems: [String] = []
     for scenario in results {
@@ -118,10 +120,20 @@ func accountingProblems(_ results: [ScenarioResult], smoke: Bool) -> [String] {
             problems.append("\(scenario.name): no rumble reached the actuators")
         }
         guard smoke else { continue }
-        for pacing in rep.pacing where pacing.frames >= minimumJudgedFrames && !pacing.kept {
-            let stream = "\(scenario.name): \(pacing.stream) at \(pacing.rateHz) Hz"
-            problems.append("\(stream) is off its pace: \(pacing.early) early, median \(fixed(pacing.medianLateUs)) us late")
+        for pacing in rep.pacing where pacing.early > 0 {
+            problems.append("\(scenario.name): \(pacing.stream) at \(pacing.rateHz) Hz sent \(pacing.early) frames before their deadlines")
         }
     }
     return problems
+}
+
+/// The pacers whose median frame left more than a millisecond after its
+/// deadline, judged on eight frames or more.
+func pacingNotes(_ results: [ScenarioResult]) -> [String] {
+    results.flatMap { scenario in
+        (scenario.reported?.pacing ?? []).filter { $0.frames >= minimumJudgedFrames && !$0.kept }.map { pacing in
+            let stream = "\(scenario.name) \(pacing.stream) at \(pacing.rateHz) Hz"
+            return "note: \(stream) ran a median \(fixed(pacing.medianLateUs)) us behind its deadlines"
+        }
+    }
 }

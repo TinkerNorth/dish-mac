@@ -67,10 +67,17 @@ final class BenchOutputTests: XCTestCase {
         ])
     }
 
-    func testOnlyASmokeRunJudgesThePace() {
+    func testASmokeRunFailsOnlyAFrameSentBeforeItsDeadline() {
+        let early = scenario(reported: 0, p999: [10], early: 3)
+        XCTAssertEqual(accountingProblems([early], smoke: false), [], "only a smoke run judges the pacers")
+        XCTAssertEqual(accountingProblems([early], smoke: true), ["S1: A at 1000 Hz sent 3 frames before their deadlines"])
+    }
+
+    func testAPacerRunningLateIsNotedAndNeverFailsTheRun() {
         let late = scenario(reported: 0, p999: [10], kept: false)
-        XCTAssertEqual(accountingProblems([late], smoke: false), [], "a slow figure is never a failure")
-        XCTAssertEqual(accountingProblems([late], smoke: true), ["S1: A at 1000 Hz is off its pace: 0 early, median 1500.0 us late"])
+        XCTAssertEqual(accountingProblems([late], smoke: true), [], "a runner's coarse timer is not the harness's fault")
+        XCTAssertEqual(pacingNotes([late]), ["note: S1 A at 1000 Hz ran a median 1500.0 us behind its deadlines"])
+        XCTAssertEqual(pacingNotes([scenario(reported: 0, p999: [10])]), [])
     }
 
     func testTheLatencyFiguresThemselvesNeverFailTheRun() {
@@ -87,12 +94,13 @@ final class BenchOutputTests: XCTestCase {
         p999: [Double],
         received: Int = 3000,
         rumbleApplied: Int = 100,
-        kept: Bool = true
+        kept: Bool = true,
+        early: Int = 0
     ) -> ScenarioResult {
         let reps = p999.map { figure in
             RepResult(
                 streams: [stream(p999: figure, received: received)],
-                pacing: [pacing(kept: kept)],
+                pacing: [pacing(kept: kept, early: early)],
                 feedback: FeedbackResult(rumbleSent: 300, lightbarSent: 30, rumbleApplied: rumbleApplied, lightbarApplied: 30),
                 refreshes: 30,
                 talliedReports: 3000,
@@ -104,12 +112,12 @@ final class BenchOutputTests: XCTestCase {
         return ScenarioResult(name: "S1", summary: "pad A", reportedRep: reported, reps: reps)
     }
 
-    private func pacing(kept: Bool) -> PacingResult {
+    private func pacing(kept: Bool, early: Int) -> PacingResult {
         PacingResult(
             stream: "A",
             rateHz: 1000,
             frames: 3000,
-            early: 0,
+            early: early,
             medianLateUs: kept ? 2 : 1500,
             kept: kept,
             timeConstrained: true

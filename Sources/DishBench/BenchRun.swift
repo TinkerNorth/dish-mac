@@ -28,6 +28,7 @@ func runBench(_ options: BenchOptions) async -> Int32 {
     }
     print(latencyTable(results))
     if lockStatsBuild { print("\n" + lockTable(results)) }
+    pacingNotes(results).forEach { print($0) }
     let record = BenchRecord(
         schema: BenchRecord.currentSchema,
         settings: benchSettings(options, timer: timer),
