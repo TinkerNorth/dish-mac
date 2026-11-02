@@ -7,7 +7,6 @@
 
 import DishCore
 import Foundation
-import os
 
 /// Which source of a pad's input is published, and the "tell me" bits the
 /// main actor raises while the pad's input-source machine needs an input
@@ -16,8 +15,9 @@ import os
 /// so a check hears at most one event per source however fast the pad sends.
 /// "Check the buttons" listens through the same gate: while its walk is
 /// open a generic pad's lane keeps the pad's rest, and a raised wish posts
-/// the next raw change once. The word is guarded by an unfair lock rather
-/// than an atomic: Swift's `Atomic` needs macOS 15 and Dish runs on 13.
+/// the next raw change once. Every switch is a bit of one atomic word: the
+/// main actor sets them, the pad's thread reads them and takes the bits it
+/// spends with a compare-exchange.
 final class PadGate: @unchecked Sendable {
     /// Posts one input event for the pad `key` to the main actor; called on
     /// the hot path's thread, at most once per raised bit.
@@ -25,118 +25,120 @@ final class PadGate: @unchecked Sendable {
 
     let key: String
     private let notify: Notify
-    private var forwarded: InputSource?
-    private var tellStandard = false
-    private var tellDirect = false
-    private var captureOpen = false
-    private var captureWished = false
-    private var lock = TrackedLock(os_unfair_lock_s(), "input.gate")
+    private let word = AtomicWord.allocate()
 
     init(key: String, notify: @escaping Notify) {
         self.key = key
         self.notify = notify
     }
 
+    deinit {
+        word.deallocate()
+    }
+
     /// One report from `source`: tells the main actor when it asked and the
     /// report changed something, and answers whether to publish it.
     func pass(_ source: InputSource, changed: Bool) -> Bool {
-        lock.lock()
-        let forwards = forwarded == source
-        let tell = changed && takeTell(source)
-        lock.unlock()
-        if tell { notify(key, source) }
+        let forwards = GateWord.forwarded(word.load()) == source
+        if changed, take(GateWord.tell(source)) { notify(key, source) }
         return forwards
     }
 
     /// Whether `source` is the published one, for the streams that prove
     /// nothing (motion, touchpad).
     func forwards(_ source: InputSource) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return forwarded == source
+        GateWord.forwarded(word.load()) == source
     }
 
     /// The published source; nil publishes nothing.
     var routed: InputSource? {
-        lock.lock()
-        defer { lock.unlock() }
-        return forwarded
+        GateWord.forwarded(word.load())
     }
 
     func route(_ source: InputSource?) {
-        lock.lock()
-        forwarded = source
-        lock.unlock()
+        update { GateWord.withForwarded(source, in: $0) }
     }
 
     /// Raise both bits: the next change on each source posts one event.
     func requestEvents() {
-        setTells(true)
+        update { $0 | GateWord.tells }
     }
 
     func cancelEvents() {
-        setTells(false)
+        update { $0 & ~GateWord.tells }
     }
 
     /// Whether the next change on `source` will post an event.
     func awaitsEvent(_ source: InputSource) -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        switch source {
-        case .standard: return tellStandard
-        case .direct: return tellDirect
-        }
+        word.load() & GateWord.tell(source) != 0
     }
 
     /// Opens the walk if it is not, and wishes for the next raw change.
     func listenForCapture() {
-        lock.lock()
-        captureOpen = true
-        captureWished = true
-        lock.unlock()
+        update { $0 | GateWord.captureOpen | GateWord.captureWished }
     }
 
     func closeCapture() {
-        lock.lock()
-        captureOpen = false
-        captureWished = false
-        lock.unlock()
+        update { $0 & ~(GateWord.captureOpen | GateWord.captureWished) }
     }
 
     /// Whether a walk is open, read once per report.
     var capturing: Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        return captureOpen
+        word.load() & GateWord.captureOpen != 0
     }
 
     /// Reads and lowers the wish: true once per `listenForCapture`.
     func takeCaptureWish() -> Bool {
-        lock.lock()
-        defer { lock.unlock() }
-        let wished = captureWished
-        captureWished = false
-        return wished
+        take(GateWord.captureWished)
     }
 
-    private func setTells(_ raised: Bool) {
-        lock.lock()
-        tellStandard = raised
-        tellDirect = raised
-        lock.unlock()
-    }
-
-    /// Reads and lowers the source's bit; the caller holds the lock.
-    private func takeTell(_ source: InputSource) -> Bool {
-        switch source {
-        case .standard:
-            let raised = tellStandard
-            tellStandard = false
-            return raised
-        case .direct:
-            let raised = tellDirect
-            tellDirect = false
-            return raised
+    /// Lowers `bit` if it is raised; true for the one caller that lowered it.
+    private func take(_ bit: Int64) -> Bool {
+        var seen = word.load()
+        while seen & bit != 0 {
+            if word.compareExchange(expected: seen, desired: seen & ~bit) { return true }
+            seen = word.load()
         }
+        return false
+    }
+
+    private func update(_ change: (Int64) -> Int64) {
+        var seen = word.load()
+        while !word.compareExchange(expected: seen, desired: change(seen)) {
+            seen = word.load()
+        }
+    }
+}
+
+/// The gate's word: the forwarded source in the low two bits, then the two
+/// tell bits and the walk's two.
+enum GateWord {
+    static let sourceMask: Int64 = 0b11
+    static let tells: Int64 = tell(.standard) | tell(.direct)
+    static let captureOpen: Int64 = 1 << 4
+    static let captureWished: Int64 = 1 << 5
+
+    static func tell(_ source: InputSource) -> Int64 {
+        switch source {
+        case .standard: 1 << 2
+        case .direct: 1 << 3
+        }
+    }
+
+    static func forwarded(_ word: Int64) -> InputSource? {
+        switch word & sourceMask {
+        case 1: .standard
+        case 2: .direct
+        default: nil
+        }
+    }
+
+    static func withForwarded(_ source: InputSource?, in word: Int64) -> Int64 {
+        let code: Int64 = switch source {
+        case .standard?: 1
+        case .direct?: 2
+        case nil: 0
+        }
+        return word & ~sourceMask | code
     }
 }

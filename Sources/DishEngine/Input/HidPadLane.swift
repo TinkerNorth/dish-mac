@@ -33,35 +33,43 @@ struct LaneTallySnapshot: Equatable {
     let reportsFirstSecond: UInt64
 }
 
-/// The lane's counters, written on the reader's thread and read on main.
+/// The lane's counters: atomic words written only on the reader's thread
+/// and read on the main actor's ticks.
 final class LaneTally: @unchecked Sendable {
     static let firstWindowNs: UInt64 = 1_000_000_000
     private static let nsPerMs: UInt64 = 1_000_000
 
     private let openedNs: UInt64
-    private var reports: UInt64 = 0
-    private var firstReportNs: UInt64?
-    private var reportsFirstSecond: UInt64 = 0
-    private var lock = TrackedLock(os_unfair_lock_s(), "direct.tally")
+    private let reports = AtomicWord.allocate()
+    /// The first report's time past the opening, plus one: zero while none.
+    private let firstReportSinceOpen = AtomicWord.allocate()
+    private let reportsFirstSecond = AtomicWord.allocate()
 
     init(openedNs: UInt64) {
         self.openedNs = openedNs
     }
 
+    deinit {
+        reports.deallocate()
+        firstReportSinceOpen.deallocate()
+        reportsFirstSecond.deallocate()
+    }
+
     func count(nowNs: UInt64) {
-        lock.lock()
-        reports &+= 1
-        if firstReportNs == nil { firstReportNs = nowNs }
-        let inFirstSecond = nowNs &- openedNs < Self.firstWindowNs
-        if inFirstSecond { reportsFirstSecond &+= 1 }
-        lock.unlock()
+        reports.storeRelaxed(reports.loadRelaxed() &+ 1)
+        let sinceOpen = nowNs &- openedNs
+        if firstReportSinceOpen.loadRelaxed() == 0 { firstReportSinceOpen.store(Int64(bitPattern: sinceOpen) &+ 1) }
+        if sinceOpen < Self.firstWindowNs { reportsFirstSecond.storeRelaxed(reportsFirstSecond.loadRelaxed() &+ 1) }
     }
 
     func snapshot() -> LaneTallySnapshot {
-        lock.lock()
-        defer { lock.unlock() }
-        let firstMs = firstReportNs.map { Int64(($0 &- openedNs) / Self.nsPerMs) }
-        return LaneTallySnapshot(reports: reports, firstReportMs: firstMs, reportsFirstSecond: reportsFirstSecond)
+        let first = firstReportSinceOpen.load()
+        let firstMs = first == 0 ? nil : Int64(UInt64(bitPattern: first &- 1) / Self.nsPerMs)
+        return LaneTallySnapshot(
+            reports: UInt64(bitPattern: reports.loadRelaxed()),
+            firstReportMs: firstMs,
+            reportsFirstSecond: UInt64(bitPattern: reportsFirstSecond.loadRelaxed())
+        )
     }
 }
 
@@ -90,12 +98,15 @@ final class HidPadLane: @unchecked Sendable {
     let buffer: UnsafeMutablePointer<UInt8>
     let capacity: Int
     private let wiring: HidPadWiring
-    /// The last battery seen, for the 30 s heartbeat on the main actor.
-    private let batteryBox = LockedBox<PadBattery?>(nil, name: "direct.battery")
-    /// The stored remap as a table; nil reads the model's own order.
-    private let remapBox = LockedBox<HidRemapTable?>(nil, name: "direct.remap")
+    /// The last battery seen, packed, for the 30 s heartbeat on the main
+    /// actor: written on the reader's thread, zero while none.
+    private let batteryWord = AtomicWord.allocate()
+    /// The stored remap as a table, from the main actor to the reader.
+    private let remapMail = Mailbox<RemapBox>()
 
-    // Touched only on the reader's thread.
+    /// Touched only on the reader's thread.
+    /// The stored remap the reader took last; nil reads the model's own order.
+    private var remap: HidRemapTable?
     /// When the pad last sent a full Switch report, for the start sequence's
     /// watch; never set on a lane that does not read Switch reports.
     private(set) var lastFullReportNs: UInt64?
@@ -120,20 +131,22 @@ final class HidPadLane: @unchecked Sendable {
 
     deinit {
         buffer.deallocate()
+        batteryWord.deallocate()
     }
 
     /// The battery the pad last reported while Direct.
     var latestBattery: PadBattery? {
-        batteryBox.get()
+        PadBattery(packed: batteryWord.load())
     }
+
+    /// The stored remap as the main actor last set it, read only there; the
+    /// reader takes its own copy through `remapMail`.
+    private(set) var remapTable: HidRemapTable?
 
     /// Swapped by the main actor; the next report reads it.
     func useRemap(_ table: HidRemapTable?) {
-        remapBox.set(table)
-    }
-
-    var remapTable: HidRemapTable? {
-        remapBox.get()
+        remapTable = table
+        remapMail.post(RemapBox(table))
     }
 
     /// Whether the pad streams only after the start sequence: the Switch
@@ -166,7 +179,8 @@ final class HidPadLane: @unchecked Sendable {
     /// the declared sources once, for the table and the walk alike.
     private func decodeGamepad(_ layout: HidGamepadLayout, _ report: UnsafeBufferPointer<UInt8>) -> LaneReading? {
         let capturing = gate.capturing
-        let table = remapBox.get()
+        if let fresh = remapMail.take() { remap = fresh.table }
+        let table = remap
         if !capturing { captureRest = nil }
         guard capturing || table != nil else { return gamepadReading(layout.decode(report)) }
         guard let raw = layout.decodeRaw(report) else { return nil }
@@ -218,9 +232,35 @@ final class HidPadLane: @unchecked Sendable {
     private func publishBatteryIfChanged(_ battery: PadBattery) {
         guard lastBattery != battery else { return }
         lastBattery = battery
-        batteryBox.set(battery)
+        batteryWord.store(battery.packed)
         wiring.processor.publishBattery(deviceId: slotId, level: battery.level, statusRaw: battery.status.rawValue)
         wiring.battery(slotId, battery)
+    }
+}
+
+/// One remap as the mailbox carries it to the reader.
+final class RemapBox {
+    let table: HidRemapTable?
+
+    init(_ table: HidRemapTable?) {
+        self.table = table
+    }
+}
+
+/// A battery reading in one word, with a presence bit so zero reads none.
+extension PadBattery {
+    private static let present: Int64 = 1 << 16
+
+    init?(packed word: Int64) {
+        guard word & Self.present != 0 else { return nil }
+        self.init(
+            level: UInt8(truncatingIfNeeded: word >> 8),
+            status: BatteryStatus(rawValue: UInt8(truncatingIfNeeded: word)) ?? .unknown
+        )
+    }
+
+    var packed: Int64 {
+        Self.present | Int64(level) << 8 | Int64(status.rawValue)
     }
 }
 

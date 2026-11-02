@@ -149,7 +149,6 @@ private enum Allowance: String {
 private enum LockLaws {
     static let inputMayAcquire: [String: Allowance] = [
         "connection.client": .debt,
-        "input.gate": .debt,
         "input.motionSender": .debt,
         "input.motionTap": .debt,
         "input.processor": .debt,
@@ -164,10 +163,7 @@ private enum LockLaws {
 
     static let hidReaderMayAcquire: [String: Allowance] = [
         "connection.client": .debt,
-        "direct.battery": .debt,
-        "direct.tally": .debt,
         "input.batterySender": .debt,
-        "input.gate": .debt,
         "input.motionSender": .debt,
         "input.motionTap": .debt,
         "input.processor": .debt,
