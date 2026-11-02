@@ -75,17 +75,9 @@ final class ScenarioRun {
     }
 
     func run() async -> ScenarioResult {
-        if !options.smoke {
-            // The warm-up pass is thrown away: it pays for first-use costs.
-            _ = await runRep(secs: BenchOptions.warmUpSecs)
-        }
-        var reps: [RepResult] = []
-        for _ in 0 ..< options.effectiveReps {
-            await reps.append(runRep(secs: options.effectiveSecs))
-        }
+        let result = await runReps(scenario, options: options) { await runRep(secs: $0) }
         rig.close()
-        let figures = reps.map { $0.streams.first?.p999Us ?? 0 }
-        return ScenarioResult(name: scenario.name, summary: scenario.summary, reportedRep: medianIndex(figures) ?? 0, reps: reps)
+        return result
     }
 
     private func runRep(secs: Double) async -> RepResult {
@@ -140,7 +132,7 @@ final class ScenarioRun {
     /// A pad on its own input queue, its 16-bit sequence in the right stick's X.
     private func startInputPad(_ pad: Int, startNs: UInt64, durationNs: UInt64, group: DispatchGroup, into streams: inout RepStreams) {
         let rateHz = pad == 0 ? options.rateHz : BenchRates.padBHz
-        let pacer = makePacer(rateHz: rateHz, startNs: startNs, durationNs: durationNs, role: nil)
+        let pacer = makePacer(rateHz: rateHz, startNs: startNs, durationNs: durationNs, role: nil, timer: timer)
         let published = StampLog(capacity: pacer.frames)
         let rig = rig
         let queue = rig.inputQueues[pad]
@@ -174,7 +166,7 @@ final class ScenarioRun {
         group: DispatchGroup,
         into streams: inout RepStreams
     ) {
-        let pacer = makePacer(rateHz: BenchRates.directHz, startNs: startNs, durationNs: durationNs, role: .hidReader)
+        let pacer = makePacer(rateHz: BenchRates.directHz, startNs: startNs, durationNs: durationNs, role: .hidReader, timer: timer)
         let published = StampLog(capacity: pacer.frames)
         group.enter()
         pacer.start(
@@ -198,7 +190,7 @@ final class ScenarioRun {
 
     /// The satellite's rumble at 100 a second, a light-bar command with every tenth.
     private func startFeedback(startNs: UInt64, durationNs: UInt64, group: DispatchGroup, into streams: inout RepStreams) {
-        let pacer = makePacer(rateHz: BenchRates.rumbleHz, startNs: startNs, durationNs: durationNs, role: nil)
+        let pacer = makePacer(rateHz: BenchRates.rumbleHz, startNs: startNs, durationNs: durationNs, role: nil, timer: timer)
         let satellite = satellite
         let index = UInt8(truncatingIfNeeded: rig.controllerIndices.first ?? 0)
         group.enter()
@@ -217,7 +209,7 @@ final class ScenarioRun {
 
     /// Microphone packets handed to the connection from the capture queue.
     private func startMic(startNs: UInt64, durationNs: UInt64, group: DispatchGroup, into streams: inout RepStreams) {
-        let pacer = makePacer(rateHz: options.micHz, startNs: startNs, durationNs: durationNs, role: nil)
+        let pacer = makePacer(rateHz: options.micHz, startNs: startNs, durationNs: durationNs, role: nil, timer: timer)
         let rig = rig
         let queue = captureQueue
         let packet = Data(repeating: 0x5A, count: Self.micPacketBytes)
@@ -227,22 +219,6 @@ final class ScenarioRun {
             finish: { queue.async { group.leave() } }
         )
         streams.add(PacedStream(name: "mic", schedule: pacer.schedule, issued: pacer.issued))
-    }
-
-    /// A pacer that only hands frames on waits under a time constraint; the
-    /// Direct pad's is the reader's own thread and waits as the reader does.
-    private func makePacer(rateHz: Int, startNs: UInt64, durationNs: UInt64, role: ThreadRole?) -> Pacer {
-        let schedule = PaceSchedule(startNs: startNs, rateHz: UInt64(rateHz))
-        let frames = Int(schedule.frames(within: durationNs))
-        let readerThread = role == .hidReader
-        return Pacer(
-            schedule: schedule,
-            frames: frames,
-            spinNs: readerThread ? SpinCalibration.directSpinNs : timer.spinNs,
-            role: role,
-            timeConstrained: !readerThread,
-            issued: StampLog(capacity: frames)
-        )
     }
 
     /// The main actor's share: the routing refresh every 100 ms and the tally
@@ -279,6 +255,38 @@ final class ScenarioRun {
             : UInt16(bitPattern: arrival.rx)
         return sequence.map { StreamArrival(sequence: $0, ns: arrival.ns) }
     }
+}
+
+/// A warm-up pass that is thrown away, then the reps; the reported rep is the
+/// one whose pad A p99.9 is the median.
+@MainActor
+func runReps(_ scenario: BenchScenario, options: BenchOptions, rep: (Double) async -> RepResult) async -> ScenarioResult {
+    if !options.smoke {
+        // The warm-up pass is thrown away: it pays for first-use costs.
+        _ = await rep(BenchOptions.warmUpSecs)
+    }
+    var reps: [RepResult] = []
+    for _ in 0 ..< options.effectiveReps {
+        await reps.append(rep(options.effectiveSecs))
+    }
+    let figures = reps.map { $0.streams.first?.p999Us ?? 0 }
+    return ScenarioResult(name: scenario.name, summary: scenario.summary, reportedRep: medianIndex(figures) ?? 0, reps: reps)
+}
+
+/// A pacer that only hands frames on waits under a time constraint; the
+/// Direct pad's is the reader's own thread and waits as the reader does.
+func makePacer(rateHz: Int, startNs: UInt64, durationNs: UInt64, role: ThreadRole?, timer: TimerCalibration) -> Pacer {
+    let schedule = PaceSchedule(startNs: startNs, rateHz: UInt64(rateHz))
+    let frames = Int(schedule.frames(within: durationNs))
+    let readerThread = role == .hidReader
+    return Pacer(
+        schedule: schedule,
+        frames: frames,
+        spinNs: readerThread ? SpinCalibration.directSpinNs : timer.spinNs,
+        role: role,
+        timeConstrained: !readerThread,
+        issued: StampLog(capacity: frames)
+    )
 }
 
 func pacingResult(_ stream: PacedStream) -> PacingResult {

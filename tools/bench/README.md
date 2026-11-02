@@ -27,6 +27,17 @@ stick's X on the input queue and on the Direct pad's right stick (low byte on X,
 past the dead zone that the Switch decoder's own scaling keeps apart), and the satellite's arrivals are
 matched to their send stamps through it, across the sequence's wrap.
 
+A pad bound to a Moonlight host (S7) leaves its feed for a `MoonlightPadSink`: the host's `MoonlightPadLink`
+turns the report into a CONTROLLER_MULTI frame, `MoonlightControlSession` seals it under the session's next
+control sequence and frames it as an ENet reliable command, and `UdpControlTransport` hands the datagram to
+its `NWConnection`. `MoonlightPathRig` wires that path as the manager and `AppModel` do: a
+`MoonlightConnection` with its link, a control session over the real UDP transport with the connection's
+50 ms clock ticking it, and the host's events through `MoonlightFeedbackRouter` to counters. The host is
+`LoopbackMoonlightHost`, one socket and one thread: it answers the ENet handshake, acknowledges every
+command, opens every sealed packet with the session's rikey and stamps it after the decrypt, and sends its
+rumble and RGB-LED events back as sealed reliable commands. The frame's sequence rides the right stick's X,
+as on the input queue.
+
 ## Scenarios
 
 | scenario | runs |
@@ -37,6 +48,7 @@ matched to their send stamps through it, across the sequence's wrap.
 | S4 | S3 and the satellite sending 100 rumble and 10 light-bar commands a second into the real receive path |
 | S5 | S4 and the 2 s heartbeat and microphone packets from the capture queue at `--mic-hz` (50; also run at 1000) |
 | S6 | a Direct Switch Pro pad at 1000 Hz on a HidReader-role thread, input and motion in every report |
+| S7 | pad A bound to a Moonlight host on the loopback at `--rate`, the host sending 100 rumble and 10 RGB-LED events a second into the control session's receive path |
 
 S6 is a Switch Pro pad because the Mac reads only Nintendo pads and pads macOS does not support directly:
 there is no DualSense Direct decoder. Its 0x30 reports carry input, three IMU frames and the battery, so
@@ -68,8 +80,8 @@ Each scenario runs a 0.5 s warm-up that is thrown away and then `--reps` reps (3
 The reported rep is the one whose pad A p99.9 is the median. Per pad: `frames` fed, `p50`, `p99`, `p99.9`
 and `max` in microseconds, `over 1 ms`, `longest gap` between two arrivals in milliseconds,
 `datagrams/report` (every uplink datagram naming the pad, input, motion, battery and microphone, over the
-reports fed; 1.00 for a pad on the input queue, about 1.2 for the Direct pad) and `drops` (fed but never
-arrived).
+reports fed; 1.00 for a pad on the input queue, about 1.2 for the Direct pad; in S7 every input packet
+naming the pad) and `drops` (fed but never arrived).
 
 The LOCK_STATS build (`-Xswiftc -DLOCK_STATS`) also prints, for the reported rep of every scenario, every
 lock and role that took it: acquisitions, contended acquisitions, the longest and the 99th-percentile wait
@@ -99,7 +111,9 @@ Receive, Heartbeat, Main, AudioDecode, AudioCapture, MoonlightUdp, Other) where 
 runs the production objects in their roles for about two and a half seconds and compares, per role, the
 locks taken with a list: Input, HidReader and Receive, the locks held across a blocking call, and the
 locks taken inside another, plus a check that the nesting has no cycle. Every list is empty: a lock that
-appears on a hot role fails the test.
+appears on a hot role fails the test. A second run puts a pad on a loopback Moonlight host, whose events
+arrive on the control socket's queue (MoonlightUdp), and holds the Input and MoonlightUdp roles, the
+blocking calls and the nesting to lists of their own, filled with what the Moonlight path takes.
 
 ## Release measurements
 
@@ -112,7 +126,9 @@ summary) and `measurements-<version>.json`; both are the `measurements` artifact
 `measurements-raw`.
 
 - **Lock gate (fails the job).** The Input, HidReader and Receive roles take no lock in any lock-stats
-  run (`--enforce-lock-gate`). A lock-stats run that recorded no lock at all cannot pass either.
+  run (`--enforce-lock-gate`) of S1 to S6. A lock-stats run that recorded no lock at all cannot pass either.
+  S7 is measured and not gated: the Moonlight send takes its session's lock for the ENet bookkeeping, and
+  the Moonlight lock laws pin what that path takes instead.
 - **Trend (warnings only).** A pad's p99.9 or max more than twice the previous release's and over 100 us
   above it is a `::warning::`; no earlier release carrying measurements skips it.
 

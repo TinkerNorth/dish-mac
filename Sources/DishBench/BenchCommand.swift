@@ -57,9 +57,9 @@ Usage: DishBench [--rate HZ] [--secs S] [--reps N] [--mic-hz HZ] [--only S1,S2] 
                         [--enforce-lock-gate]
 
 Times each pad's reports from the input processor (or the Direct lane's IOKit
-callback) to a loopback satellite's decrypt, with the production objects in
-their thread roles. Scenarios S1 to S6; the reported rep of each is the one
-whose pad A p99.9 is the median.
+callback) to a loopback satellite's decrypt, or a loopback Moonlight host's,
+with the production objects in their thread roles. Scenarios S1 to S7; the
+reported rep of each is the one whose pad A p99.9 is the median.
 
   --rate HZ     pad A's report rate (default 1000)
   --secs S      length of each rep (default 3)
@@ -73,7 +73,7 @@ whose pad A p99.9 is the median.
 
 report merges the bench JSON files in --input-dir into measurements-LABEL.md and
 measurements-LABEL.json in --output-dir. It needs a plain and a lock-stats run;
-the lock gate (no lock on the Input, HidReader and Receive roles) fails the
+the lock gate (no lock on the Input, HidReader and Receive roles outside S7) fails the
 report only with --enforce-lock-gate, and the trend against the report in
 --previous-dir only ever warns.
 """

@@ -19,8 +19,13 @@ func runBench(_ options: BenchOptions) async -> Int32 {
     var results: [ScenarioResult] = []
     for scenario in options.scenarios {
         do {
-            let run = try ScenarioRun(scenario: scenario, options: options, timer: timer)
-            await results.append(run.run())
+            if scenario.moonlight {
+                let run = try await MoonlightScenarioRun.connect(scenario: scenario, options: options, timer: timer)
+                await results.append(run.run())
+            } else {
+                let run = try ScenarioRun(scenario: scenario, options: options, timer: timer)
+                await results.append(run.run())
+            }
         } catch {
             printError("\(scenario.name) could not start: \(error)")
             return BenchExit.failed

@@ -42,8 +42,9 @@ struct LockViolation: Codable, Equatable {
     let acquisitions: UInt64
 }
 
-/// The Input, HidReader and Receive roles take no lock in any lock-stats run.
-/// A run that recorded no lock at all cannot pass, since it saw nothing.
+/// The Input, HidReader and Receive roles take no lock in any lock-stats run
+/// of a gated scenario. A run that recorded no lock at all cannot pass, since
+/// it saw nothing.
 struct LockGate: Codable, Equatable {
     let enforced: Bool
     let sawLocks: Bool
@@ -146,10 +147,18 @@ func lockEntries(_ runs: [NamedRun]) -> [LockEntry] {
 func lockGate(_ lockStatsRuns: [NamedRun], enforced: Bool) -> LockGate {
     let entries = lockEntries(lockStatsRuns)
     let violations = entries
-        .filter { lockGateRoles.contains($0.row.role) && $0.row.acquisitions > 0 }
+        .filter { lockGateRoles.contains($0.row.role) && $0.row.acquisitions > 0 && isLockGated($0.scenario) }
         .map { LockViolation(run: $0.run, scenario: $0.scenario, role: $0.row.role, lock: $0.row.lock, acquisitions: $0.row.acquisitions) }
     return LockGate(enforced: enforced, sawLocks: !entries.isEmpty, violations: violations)
 }
+
+/// A scenario this bench does not know, as an older record may name, is gated.
+func isLockGated(_ scenario: String) -> Bool {
+    benchScenarios.first { $0.name == scenario }?.lockGated ?? true
+}
+
+/// The scenarios the gate leaves to their lock laws, by name.
+let ungatedScenarios = benchScenarios.filter { !$0.lockGated }.map(\.name)
 
 func trendWarnings(_ current: [LatencyEntry], previous: [LatencyEntry]) -> [TrendWarning] {
     current.flatMap { entry -> [TrendWarning] in

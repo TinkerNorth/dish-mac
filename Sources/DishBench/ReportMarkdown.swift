@@ -50,7 +50,10 @@ private func gateSection(_ report: MeasurementsReport) -> [String] {
 }
 
 private func lockGateLine(_ gate: LockGate) -> String {
-    let rule = "the Input, HidReader and Receive roles take no lock in the lock-stats runs"
+    let excepted = ungatedScenarios.isEmpty
+        ? ""
+        : " (not in \(ungatedScenarios.joined(separator: ", ")), the Moonlight path, whose locks its own lock laws pin)"
+    let rule = "the Input, HidReader and Receive roles take no lock in the lock-stats runs\(excepted)"
     let enforcement = gate.enforced
         ? "Enforced: a failure fails the job."
         : "Reported, not enforced: the release workflow passes `--enforce-lock-gate`, which fails the job on it."
@@ -87,6 +90,8 @@ private func latencySection(_ report: MeasurementsReport) -> [String] {
     return lines
 }
 
+/// The gated scenarios' locks in one table, and the Moonlight path's in one
+/// of its own, so neither reads as the other's.
 private func lockSection(_ report: MeasurementsReport) -> [String] {
     let entries = report.locks.filter { $0.run == lockStatsRunName }
     var lines = [
@@ -96,17 +101,26 @@ private func lockSection(_ report: MeasurementsReport) -> [String] {
             + " the worst wait and hold kept.",
         ""
     ]
-    lines += markdownHeader(
+    lines += lockTableRows(mergedLockRows(entries.filter { isLockGated($0.scenario) }))
+    let ungated = entries.filter { !isLockGated($0.scenario) }
+    if !ungated.isEmpty {
+        lines += ["", "### \(ungatedScenarios.joined(separator: ", ")): the Moonlight path, held to its lock laws", ""]
+        lines += lockTableRows(mergedLockRows(ungated))
+    }
+    lines.append("")
+    return lines
+}
+
+private func lockTableRows(_ rows: [LockRow]) -> [String] {
+    let header = markdownHeader(
         ["lock", "role", "acquisitions", "contended", "max wait us", "p99 wait us", "max hold us", "p99 hold us"],
         textColumns: 2
     )
-    lines += mergedLockRows(entries).map { row in
+    return header + rows.map { row in
         let cells = [
             row.lock, row.role, "\(row.acquisitions)", "\(row.contended)",
             fixed(row.waitMaxUs), fixed(row.waitP99Us), fixed(row.holdMaxUs), fixed(row.holdP99Us)
         ]
         return "| " + cells.joined(separator: " | ") + " |"
     }
-    lines.append("")
-    return lines
 }

@@ -17,6 +17,15 @@ struct BenchScenario: Equatable {
     let heartbeatAndMic: Bool
     /// A Direct Switch Pro pad on the reader's thread instead of the input queue.
     let direct: Bool
+    /// Pad A bound to a Moonlight host instead of a satellite.
+    let moonlight: Bool
+
+    /// Whether the lock gate holds the scenario's hot roles to no lock. The
+    /// Moonlight path's send still takes its session's lock for the ENet
+    /// bookkeeping, so its locks are pinned by its own lock laws instead.
+    var lockGated: Bool {
+        !moonlight
+    }
 
     /// The pads it publishes through the input queue.
     var inputPads: Int {
@@ -36,7 +45,7 @@ enum BenchRates {
     static let tallyNs: UInt64 = 1_000_000_000
 }
 
-/// S1 to S5 build on each other; S6 is the Direct path on its own.
+/// S1 to S5 build on each other; S6 is the Direct path on its own, S7 the Moonlight path.
 let benchScenarios = [
     BenchScenario(
         name: "S1",
@@ -45,7 +54,8 @@ let benchScenarios = [
         mainRole: false,
         feedback: false,
         heartbeatAndMic: false,
-        direct: false
+        direct: false,
+        moonlight: false
     ),
     BenchScenario(
         name: "S2",
@@ -54,7 +64,8 @@ let benchScenarios = [
         mainRole: false,
         feedback: false,
         heartbeatAndMic: false,
-        direct: false
+        direct: false,
+        moonlight: false
     ),
     BenchScenario(
         name: "S3",
@@ -63,7 +74,8 @@ let benchScenarios = [
         mainRole: true,
         feedback: false,
         heartbeatAndMic: false,
-        direct: false
+        direct: false,
+        moonlight: false
     ),
     BenchScenario(
         name: "S4",
@@ -72,7 +84,8 @@ let benchScenarios = [
         mainRole: true,
         feedback: true,
         heartbeatAndMic: false,
-        direct: false
+        direct: false,
+        moonlight: false
     ),
     BenchScenario(
         name: "S5",
@@ -81,7 +94,8 @@ let benchScenarios = [
         mainRole: true,
         feedback: true,
         heartbeatAndMic: true,
-        direct: false
+        direct: false,
+        moonlight: false
     ),
     BenchScenario(
         name: "S6",
@@ -90,6 +104,17 @@ let benchScenarios = [
         mainRole: false,
         feedback: false,
         heartbeatAndMic: false,
-        direct: true
+        direct: true,
+        moonlight: false
+    ),
+    BenchScenario(
+        name: "S7",
+        summary: "pad A bound to a Moonlight host on the loopback at --rate, the host sending 100 rumble and 10 RGB-LED events a second",
+        padB: false,
+        mainRole: false,
+        feedback: true,
+        heartbeatAndMic: false,
+        direct: false,
+        moonlight: true
     )
 ]

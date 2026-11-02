@@ -16,7 +16,7 @@ final class BenchCommandTests: XCTestCase {
         XCTAssertEqual(options.reps, 3)
         XCTAssertEqual(options.micHz, 50)
         XCTAssertFalse(options.smoke)
-        XCTAssertEqual(options.scenarios.map(\.name), ["S1", "S2", "S3", "S4", "S5", "S6"])
+        XCTAssertEqual(options.scenarios.map(\.name), ["S1", "S2", "S3", "S4", "S5", "S6", "S7"])
     }
 
     func testEveryFlagSetsItsOption() throws {
@@ -61,7 +61,7 @@ final class BenchCommandTests: XCTestCase {
         XCTAssertThrowsError(try parseCommand(["--rate", "fast"]))
         XCTAssertThrowsError(try parseCommand(["--secs", "-1"]))
         XCTAssertThrowsError(try parseCommand(["--secs", "inf"]))
-        XCTAssertThrowsError(try parseCommand(["--only", "S7"]))
+        XCTAssertThrowsError(try parseCommand(["--only", "S8"]))
         XCTAssertThrowsError(try parseCommand(["--only", ""]))
     }
 

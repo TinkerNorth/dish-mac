@@ -39,6 +39,19 @@ final class MeasurementsReportTests: XCTestCase {
         XCTAssertFalse(report.lockGate.failsTheJob)
     }
 
+    /// The Moonlight path's send takes its session's lock for the ENet
+    /// bookkeeping; its lock laws pin that, the gate does not judge it.
+    func testTheMoonlightScenarioIsMeasuredButNotGated() throws {
+        let runs = [plain(), lockStats([taken("moonlight.session", "Input", 3000)], scenario: "S7")]
+        let report = try buildReport(runs: runs, previous: nil, version: "dev", commit: nil, enforceLockGate: true)
+        XCTAssertTrue(report.lockGate.passed)
+        XCTAssertEqual(report.locks.map(\.scenario), ["S7"], "its locks are still in the record")
+        let markdown = renderReport(report)
+        XCTAssertTrue(markdown.contains("(not in S7, the Moonlight path, whose locks its own lock laws pin)"))
+        let table = try XCTUnwrap(markdown.range(of: "### S7: the Moonlight path, held to its lock laws"))
+        XCTAssertTrue(markdown[table.upperBound...].contains("| moonlight.session | Input | 3000 | 0 |"), "in a table of its own")
+    }
+
     func testARunThatRecordedNoLockCannotPass() throws {
         let report = try buildReport(runs: [plain(), lockStats([])], previous: nil, version: "dev", commit: nil, enforceLockGate: false)
         XCTAssertFalse(report.lockGate.sawLocks)
@@ -144,11 +157,17 @@ final class MeasurementsReportTests: XCTestCase {
         NamedRun(record(lockStats: false, rows: rows, p999: p999))
     }
 
-    private func lockStats(_ rows: [LockRow], micHz: Int = BenchOptions.defaultMicHz) -> NamedRun {
-        NamedRun(record(lockStats: true, micHz: micHz, rows: rows))
+    private func lockStats(_ rows: [LockRow], micHz: Int = BenchOptions.defaultMicHz, scenario: String = "S1") -> NamedRun {
+        NamedRun(record(lockStats: true, micHz: micHz, rows: rows, scenario: scenario))
     }
 
-    private func record(lockStats: Bool, micHz: Int = BenchOptions.defaultMicHz, rows: [LockRow] = [], p999: Double = 80) -> BenchRecord {
+    private func record(
+        lockStats: Bool,
+        micHz: Int = BenchOptions.defaultMicHz,
+        rows: [LockRow] = [],
+        p999: Double = 80,
+        scenario: String = "S1"
+    ) -> BenchRecord {
         let settings = BenchSettings(
             rateHz: 1000,
             secs: 3,
@@ -159,7 +178,7 @@ final class MeasurementsReportTests: XCTestCase {
             spinUs: 150,
             timerLateP90Us: 40,
             timeConstrained: true,
-            scenarios: ["S1"]
+            scenarios: [scenario]
         )
         let rep = RepResult(
             streams: [stream(p999: p999)],
@@ -175,7 +194,7 @@ final class MeasurementsReportTests: XCTestCase {
             schema: BenchRecord.currentSchema,
             settings: settings,
             machine: MachineInfo(model: "VirtualMac2,1", cpu: "Apple M1 (Virtual)", cores: 3, memoryGB: 7, os: "macOS 26"),
-            scenarios: [ScenarioResult(name: "S1", summary: "pad A", reportedRep: 0, reps: [rep])]
+            scenarios: [ScenarioResult(name: scenario, summary: "pad A", reportedRep: 0, reps: [rep])]
         )
     }
 
