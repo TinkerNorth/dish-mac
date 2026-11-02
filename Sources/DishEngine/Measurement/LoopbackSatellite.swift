@@ -6,12 +6,6 @@ import Darwin
 import DishCore
 import Foundation
 
-/// A socket call the loopback satellite could not make.
-package struct LoopbackSocketError: Error, Equatable {
-    package let call: String
-    package let code: Int32
-}
-
 /// A satellite's data plane on the loopback, as fast as one socket and one
 /// thread allow: each uplink datagram is opened with the session key and kept
 /// as its type, pad, right stick and arrival time; a heartbeat is answered
@@ -27,8 +21,6 @@ package final class LoopbackSatellite: @unchecked Sendable {
         package let ns: UInt64
     }
 
-    private static let receiveTimeout = timeval(tv_sec: 0, tv_usec: 50000)
-    private static let receiveBufferBytes: Int32 = 4 << 20
     private static let ackPayload = Data([1, 1, 0, 0, 0, 1])
     private static let rxOffset = 9
     private static let ryOffset = 11
@@ -46,14 +38,9 @@ package final class LoopbackSatellite: @unchecked Sendable {
 
     /// `capacity` arrivals are kept per run; later ones are dropped uncounted.
     package init(capacity: Int) throws {
-        let fd = try Self.boundSocket()
-        do {
-            port = try Self.boundPort(fd)
-        } catch {
-            close(fd)
-            throw error
-        }
-        self.fd = fd
+        let socket = try LoopbackSocket()
+        port = socket.port
+        fd = socket.fd
         self.capacity = capacity
         token = UInt32.random(in: 1 ... UInt32.max)
         key = SymmetricKey(size: .bits256)
@@ -143,41 +130,6 @@ package final class LoopbackSatellite: @unchecked Sendable {
         )
         (arrivals + recorded).initialize(to: arrival)
         recorded += 1
-    }
-
-    private static func boundSocket() throws -> Int32 {
-        let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        guard fd >= 0 else { throw LoopbackSocketError(call: "socket", code: errno) }
-        var timeout = receiveTimeout
-        guard setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size)) == 0 else {
-            close(fd)
-            throw LoopbackSocketError(call: "setsockopt", code: errno)
-        }
-        // Best effort: a bigger buffer only keeps a burst from dropping here.
-        var bufferBytes = receiveBufferBytes
-        _ = setsockopt(fd, SOL_SOCKET, SO_RCVBUF, &bufferBytes, socklen_t(MemoryLayout<Int32>.size))
-        var address = sockaddr_in()
-        address.sin_family = sa_family_t(AF_INET)
-        address.sin_port = 0
-        let parsed = inet_pton(AF_INET, "127.0.0.1", &address.sin_addr)
-        let bound = withUnsafePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size)) }
-        }
-        guard parsed == 1, bound == 0 else {
-            close(fd)
-            throw LoopbackSocketError(call: "bind", code: errno)
-        }
-        return fd
-    }
-
-    private static func boundPort(_ fd: Int32) throws -> UInt16 {
-        var address = sockaddr_in()
-        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
-        let named = withUnsafeMutablePointer(to: &address) { pointer in
-            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { getsockname(fd, $0, &length) }
-        }
-        guard named == 0 else { throw LoopbackSocketError(call: "getsockname", code: errno) }
-        return UInt16(bigEndian: address.sin_port)
     }
 }
 

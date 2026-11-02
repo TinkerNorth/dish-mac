@@ -224,8 +224,9 @@ private func switchProProperties() -> [String: Any] {
     ]
 }
 
+/// A rig's gates tell nobody about a pad's source moving.
 @Sendable
-private func ignoreGateEvent(_: String, _: InputSource) {}
+func ignoreGateEvent(_: String, _: InputSource) {}
 
 @Sendable
 private func ignoreBattery(_: String, _: PadBattery) {}
