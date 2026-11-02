@@ -66,6 +66,15 @@ let package = Package(
             ],
             swiftSettings: warningsAreErrors
         ),
+        // The frame-path bench: the production objects in their thread roles
+        // against a loopback satellite, timed and counted; run by hand and by
+        // the measurements workflow.
+        .executableTarget(
+            name: "DishBench",
+            dependencies: ["DishEngine", "DishCore"],
+            path: "Sources/DishBench",
+            swiftSettings: warningsAreErrors
+        ),
         // Test support only. Holds the one call to the deprecated SecKeychain
         // API (the only prompt-free way to mint a TLS identity for the in-process
         // satellite), compiled with warnings suppressed so that call cannot
@@ -99,6 +108,12 @@ let package = Package(
         .testTarget(
             name: "ArchitectureTests",
             path: "Tests/ArchitectureTests",
+            swiftSettings: warningsAreErrors
+        ),
+        .testTarget(
+            name: "DishBenchTests",
+            dependencies: ["DishBench", "DishCore"],
+            path: "Tests/DishBenchTests",
             swiftSettings: warningsAreErrors
         ),
         .testTarget(

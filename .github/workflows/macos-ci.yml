@@ -100,6 +100,11 @@ jobs:
       - name: Build release binary
         run: swift build --configuration release
 
+      # Every scenario for 0.2 s against the release build; the exit status is
+      # the harness's own accounting (pacing, arrivals), never a latency.
+      - name: Bench smoke run
+        run: .build/release/DishBench --smoke
+
       - name: Bundle .app
         run: ./bundle.sh release
 
@@ -143,3 +148,6 @@ jobs:
 
       - name: Run the lock statistics tests
         run: swift test --skip-build --filter 'TrackedLockStatsTests|LockLawTests'
+
+      - name: Bench smoke run with lock statistics
+        run: .build/debug/DishBench --smoke

@@ -27,6 +27,7 @@ final class ImportBoundariesTests: XCTestCase {
             ]
         ),
         Layer(directory: "Sources/DishCrashUpload", allowed: ["Foundation", "Sentry", "DishCore", "DishEngine"]),
+        Layer(directory: "Sources/DishBench", allowed: ["Foundation", "Darwin", "DishCore", "DishEngine"]),
         Layer(
             directory: "Sources/Dish",
             allowed: [

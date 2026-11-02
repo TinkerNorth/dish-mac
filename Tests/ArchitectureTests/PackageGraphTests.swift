@@ -104,6 +104,11 @@ final class PackageGraphTests: XCTestCase {
         XCTAssertEqual(block("Dish")?.dependencies, ["DishEngine", "DishCore", "DishKernel", "DishCrashUpload"])
     }
 
+    /// The bench drives the engine's own objects and nothing the app adds.
+    func testTheBenchDependsOnTheEngineAndCoreOnly() {
+        XCTAssertEqual(block("DishBench")?.dependencies, ["DishEngine", "DishCore"])
+    }
+
     /// The one third-party package reaches the tree through one module, so
     /// the engine's list above stays Apple-only.
     func testOnlyTheCrashUploaderDependsOnTheSdk() {
