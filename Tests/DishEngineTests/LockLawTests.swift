@@ -177,10 +177,7 @@ private enum LockLaws {
         "routing.table": .debt
     ]
 
-    static let receiveMayAcquire: [String: Allowance] = [
-        "forwarding.gate": .debt,
-        "routing.table": .debt
-    ]
+    static let receiveMayAcquire: [String: Allowance] = [:]
 
     static let blockingMayHold: [String: Allowance] = [:]
 

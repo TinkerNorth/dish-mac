@@ -72,9 +72,13 @@ final class SatellitePadsLiveTests: XCTestCase {
     /// The hot path's table as the app builds it, over the pads `conn` carries.
     private func routes(for conn: WifiConnection) -> RoutingTable {
         let table = RoutingTable()
-        let bindings = Dictionary(uniqueKeysWithValues: conn.boundSlotIds.map { ($0, server.id) })
-        table.set(routeSnapshot(bindings: bindings, pool: [server.id: conn], flags: [:], global: ForwardingFlags()))
+        table.set(snapshot(for: conn))
         return table
+    }
+
+    private func snapshot(for conn: WifiConnection) -> RoutingSnapshot {
+        let bindings = Dictionary(uniqueKeysWithValues: conn.boundSlotIds.map { ($0, server.id) })
+        return routeSnapshot(bindings: bindings, pool: [server.id: conn], flags: [:], global: ForwardingFlags())
     }
 
     private func inputFrames() -> [(ctrlIdx: UInt8, report: Data)] {
@@ -115,8 +119,9 @@ final class SatellitePadsLiveTests: XCTestCase {
         conn.attachSlot("slot-a", controllerType: 0, capabilities: ControllerCapabilities(hasRumble: true))
         conn.attachSlot("slot-b", controllerType: 0, capabilities: ControllerCapabilities(hasRumble: true))
         let recorder = FeedbackRecorder()
-        let router = ReturnPathRouter(actuators: recorder.actuators, gate: ForwardingGate(), table: routes(for: conn))
+        let router = ReturnPathRouter(feedback: PadFeedback(actuators: recorder.actuators))
         router.wire([server.id: conn])
+        router.route(snapshot(for: conn), global: ForwardingFlags())
         let live = await connectAndAwaitLive()
         XCTAssertTrue(live)
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "the reply path is learned from the first uplink frame")
@@ -151,15 +156,19 @@ final class SatellitePadsLiveTests: XCTestCase {
     }
 }
 
-/// The satellite's feedback as the pads would feel it, recorded by slot.
-@MainActor
+/// The satellite's feedback as the pads would feel it, recorded by slot on
+/// the feedback queue and read by the test.
 private final class FeedbackRecorder {
-    private(set) var rumbled: [String] = []
+    private let slots = LockedBox<[String]>([])
 
-    var actuators: SatelliteFeedbackActuators {
-        SatelliteFeedbackActuators(
-            rumble: { [weak self] deviceId, _ in self?.rumbled.append(deviceId) },
-            lightbar: { _, _ in },
+    var rumbled: [String] {
+        slots.get()
+    }
+
+    var actuators: FeedbackActuators {
+        FeedbackActuators(
+            rumble: { [slots] slotId, _, _, _ in slots.mutate { $0.append(slotId) } },
+            lightbar: { _, _, _, _ in },
             triggerEffects: { _, _ in },
             playerLeds: { _, _ in }
         )

@@ -172,7 +172,7 @@ package final class AppModel: ObservableObject {
         diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight, census: hidCensus ?? IOKitHidCensus())
         recorder = DiagnosticsRecorder(store: diagnosticsLog)
         self.crashLog = crashLog
-        returnPaths = ReturnPathRouter(actuators: .live(input), gate: gate, table: routing.table)
+        returnPaths = ReturnPathRouter(feedback: input.feedback)
         moonlightFeedback = MoonlightFeedbackRouter(actuators: .live(input), gate: gate, table: routing.table)
         audio = AudioPipeline(
             hub: hub,
@@ -312,7 +312,9 @@ package final class AppModel: ObservableObject {
     ) {
         let global = settings.flags
         let flags = slotFlags(bindings: bindings, global: global, preferences: preferences)
-        routing.table.set(routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global, moonlight: hosts))
+        let snapshot = routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global, moonlight: hosts)
+        routing.table.set(snapshot)
+        returnPaths.route(snapshot, global: global)
         for conn in pool.values {
             conn.setForwardingFlags(global)
             conn.setSlotFlags(flags)

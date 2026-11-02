@@ -33,7 +33,9 @@ package final class FramePathRig {
     private let client = SatelliteClient()
     private let routing: InputRouting
     private let router: ReturnPathRouter
-    private let counts: FeedbackCounts
+    /// Each command the feedback queue applied, counted on that queue.
+    private nonisolated let rumbles: AtomicCounter
+    private nonisolated let lightbars: AtomicCounter
     private var bindings: [String: String]
     private var lanes: [HidPadLane] = []
 
@@ -44,21 +46,23 @@ package final class FramePathRig {
         let indices = padIds.compactMap { connection.attachSlot($0, controllerType: 0, capabilities: rigCapabilities) }
         guard indices.count == pads else { throw FramePathRigError.slotsFull }
         let routing = InputRouting()
-        let counts = FeedbackCounts()
         self.connection = connection
         self.padIds = padIds
         self.routing = routing
-        self.counts = counts
         controllerIndices = indices
         gates = padIds.map { PadGate(key: $0, notify: ignoreGateEvent) }
         bindings = Dictionary(uniqueKeysWithValues: padIds.map { ($0, connection.id) })
-        router = ReturnPathRouter(actuators: counts.actuators, gate: ForwardingGate(), table: routing.table)
+        let rumbles = AtomicCounter()
+        let lightbars = AtomicCounter()
+        self.rumbles = rumbles
+        self.lightbars = lightbars
+        router = ReturnPathRouter(feedback: PadFeedback(actuators: countingActuators(rumbles: rumbles, lightbars: lightbars)))
         try connect(port: satellitePort, token: token, key: key)
     }
 
     /// What the return paths asked of the controllers so far.
     package var feedback: FramePathFeedback {
-        counts.value
+        FramePathFeedback(rumble: Int(rumbles.current()), lightbar: Int(lightbars.current()))
     }
 
     /// The reports the tally counted, as the telemetry tick reads it.
@@ -71,7 +75,9 @@ package final class FramePathRig {
         let global = ForwardingFlags()
         let pool = [connection.id: connection]
         let flags = slotFlags(bindings: bindings, global: global, preferences: [:])
-        routing.table.set(routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global))
+        let snapshot = routeSnapshot(bindings: bindings, pool: pool, flags: flags, global: global)
+        routing.table.set(snapshot)
+        router.route(snapshot, global: global)
         connection.setForwardingFlags(global)
         connection.setSlotFlags(flags)
     }
@@ -219,17 +225,12 @@ private func ignoreGateEvent(_: String, _: InputSource) {}
 @Sendable
 private func ignoreBattery(_: String, _: PadBattery) {}
 
-/// The rig's actuators: each command the return paths would apply, counted.
-@MainActor
-private final class FeedbackCounts {
-    var value = FramePathFeedback()
-
-    var actuators: SatelliteFeedbackActuators {
-        SatelliteFeedbackActuators(
-            rumble: { [weak self] _, _ in self?.value.rumble += 1 },
-            lightbar: { [weak self] _, _ in self?.value.lightbar += 1 },
-            triggerEffects: { _, _ in },
-            playerLeds: { _, _ in }
-        )
-    }
+/// The rig's actuators: each command the feedback queue would apply, counted.
+private func countingActuators(rumbles: AtomicCounter, lightbars: AtomicCounter) -> FeedbackActuators {
+    FeedbackActuators(
+        rumble: { _, _, _, _ in rumbles.increment() },
+        lightbar: { _, _, _, _ in lightbars.increment() },
+        triggerEffects: { _, _ in },
+        playerLeds: { _, _ in }
+    )
 }

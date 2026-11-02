@@ -5,58 +5,39 @@ import CoreHaptics
 import Foundation
 import GameController
 
-/// Per-controller haptic actuator. Wraps `GCController.haptics` + two
-/// `CHHapticEngine` instances (one per locator) so the satellite-driven
-/// rumble update can fan out to both motors with a single call.
+/// Per-controller haptic actuator: `GCController.haptics` and two
+/// `CHHapticEngine`s, the strong (low-frequency) motor at `.leftHandle` and
+/// the weak one at `.rightHandle`, so one satellite rumble drives both.
+/// Vibration only: the light bar has its own return path. It runs on the
+/// feedback queue, which owns it.
 ///
-/// Vibration only — the light bar is a separate concern with its own return
-/// path (`MSG_LIGHTBAR` → `applyLightbar` in `GameControllerInput`); this
-/// actuator never touches `controller.light`.
+/// Engines are kept started: starting one per command adds ~5–10 ms. Each
+/// motor keeps the player for the level it is playing and restarts that same
+/// player when a command repeats the level (SDL's rule: a repeated rumble is
+/// not a new one); only a new level builds a new pattern and player, and a
+/// zero level stops the motor at once.
 ///
-/// Design notes:
-///
-/// * GameController.framework's haptics surface is locator-based: the strong
-///   (low-frequency) motor lives at `.leftHandle`, the weak (high-frequency)
-///   motor at `.rightHandle`. Trigger haptics are exposed at `.leftTrigger`
-///   / `.rightTrigger` but the satellite wire format doesn't currently carry
-///   trigger magnitudes — Xbox 360 doesn't have them — so we only wire up
-///   the two handle locators.
-///
-/// * Engines are kept *started*. Each `apply` call rebuilds a tiny
-///   `CHHapticPattern` and feeds it to a fresh per-call player. This is what
-///   Apple's own GCController docs recommend: starting/stopping the engine
-///   per call adds ~5–10 ms of latency that defeats the wire-side coalescing.
-///
-/// * Engines stop themselves on idle; we install a reset handler that
-///   transparently restarts them so the next `apply` doesn't drop on the
-///   floor.
-///
-/// * If the controller doesn't expose haptics (legacy MFi pads, some PS3
-///   adapters), `init?` fails and the caller skips actuation.
+/// A controller that exposes no haptics (legacy MFi pads, some PS3
+/// adapters) makes `init?` fail, and the caller skips actuation.
 final class RumbleActuator {
     private let controller: GCController
-    private var leftEngine: CHHapticEngine?
-    private var rightEngine: CHHapticEngine?
+    private var strongMotor: HapticMotor?
+    private var weakMotor: HapticMotor?
 
+    /// Nil when the controller vends no engine at either handle.
     init?(controller: GCController) {
-        // GCController.haptics is `nil` on pads that don't expose dual-motor
-        // rumble through GameController.framework. Bail early so the caller
-        // doesn't keep retrying.
-        guard controller.haptics != nil else { return nil }
+        guard let haptics = controller.haptics else { return nil }
         self.controller = controller
-
-        leftEngine = makeEngine(locality: .leftHandle)
-        rightEngine = makeEngine(locality: .rightHandle)
-        // If both locators failed to vend an engine the controller doesn't
-        // really support rumble — treat as "no haptics".
-        if leftEngine == nil, rightEngine == nil { return nil }
+        strongMotor = haptics.createEngine(withLocality: .leftHandle).flatMap(HapticMotor.init(engine:))
+        weakMotor = haptics.createEngine(withLocality: .rightHandle).flatMap(HapticMotor.init(engine:))
+        if strongMotor == nil, weakMotor == nil { return nil }
     }
 
     func shutdown() {
-        leftEngine?.stop(completionHandler: nil)
-        rightEngine?.stop(completionHandler: nil)
-        leftEngine = nil
-        rightEngine = nil
+        strongMotor?.shutdown()
+        weakMotor?.shutdown()
+        strongMotor = nil
+        weakMotor = nil
     }
 
     /// The longest one packet may run the motors. The satellite owns a held
@@ -72,73 +53,107 @@ final class RumbleActuator {
         return TimeInterval(capped) / 1000.0
     }
 
-    /// Fire-and-forget vibration. `strong` drives the low-frequency motor
-    /// (`.leftHandle`); `weak` drives the high-frequency motor
-    /// (`.rightHandle`). Both magnitudes are normalised from the wire's
-    /// 0...65535 to CoreHaptics' 0...1 intensity; a stop is a packet with
-    /// zero magnitudes.
+    /// `strong` drives the low-frequency motor and `weak` the high-frequency
+    /// one, each normalised from the wire's 0...65535 to CoreHaptics' 0...1.
     func apply(strong: UInt16, weak: UInt16, durationMs: UInt16) {
         let duration = Self.holdSeconds(durationMs: durationMs)
-        play(engine: leftEngine, magnitude: strong, duration: duration)
-        play(engine: rightEngine, magnitude: weak, duration: duration)
+        strongMotor?.drive(magnitude: strong, duration: duration)
+        weakMotor?.drive(magnitude: weak, duration: duration)
     }
+}
 
-    // MARK: - Internals
+/// One motor's level: what its player plays, and for how long.
+struct MotorLevel: Equatable {
+    let magnitude: UInt16
+    let duration: TimeInterval
+}
 
-    private func makeEngine(locality: GCHapticsLocality) -> CHHapticEngine? {
-        guard let engine = controller.haptics?.createEngine(withLocality: locality) else {
-            return nil
-        }
-        // Auto-restart after the engine times out (10 s of inactivity by
-        // default) or the system reclaims its resources for a higher-priority
-        // app. Without this the second wave of rumble after a long idle silently
-        // fails.
+/// What a motor does with one command.
+enum MotorStep: Equatable {
+    /// The level repeats: the player it has starts again.
+    case restart
+    /// A new level: a new pattern and player.
+    case replace(MotorLevel)
+    /// Zero: the motor stops.
+    case stop
+}
+
+/// The step for a command of `magnitude` held for `duration` while the
+/// motor plays `playing` (nil while it has no player).
+func motorStep(playing: MotorLevel?, magnitude: UInt16, duration: TimeInterval) -> MotorStep {
+    guard magnitude > 0 else { return .stop }
+    let level = MotorLevel(magnitude: magnitude, duration: duration)
+    return level == playing ? .restart : .replace(level)
+}
+
+/// One motor's engine and the player for the level it plays.
+private final class HapticMotor {
+    private let engine: CHHapticEngine
+    private var player: CHHapticPatternPlayer?
+    private var playing: MotorLevel?
+
+    init?(engine: CHHapticEngine) {
+        // Auto-restart after the system reclaims the engine's resources;
+        // without it the next wave of rumble after a long idle fails.
         engine.resetHandler = { [weak engine] in
             try? engine?.start()
         }
-        engine.stoppedHandler = { _ in
-            // No-op: resetHandler picks up restart duty.
-        }
         do {
             try engine.start()
-            return engine
         } catch {
             return nil
         }
+        self.engine = engine
     }
 
-    private func play(engine: CHHapticEngine?, magnitude: UInt16, duration: TimeInterval) {
-        guard let engine else { return }
-        // 0..65535 → 0..1; CoreHaptics intensity is a normalized float.
-        let intensity = Float(magnitude) / 65535.0
-        if intensity == 0.0 {
-            // Player with intensity 0 is a no-op but also a "stop" hint —
-            // pre-existing players in the engine will still elapse.
-            return
+    func shutdown() {
+        silence()
+        engine.stop(completionHandler: nil)
+    }
+
+    func drive(magnitude: UInt16, duration: TimeInterval) {
+        switch motorStep(playing: player == nil ? nil : playing, magnitude: magnitude, duration: duration) {
+        case .stop:
+            silence()
+        case .restart:
+            try? player?.stop(atTime: CHHapticTimeImmediate)
+            start()
+        case let .replace(level):
+            silence()
+            player = makePlayer(level)
+            playing = level
+            start()
         }
-        // `hapticContinuous` is the right pattern for sustained motor drive.
-        // `hapticSharpness` 0.5 is a neutral default; CoreHaptics uses it to
-        // bias the spectrum on supported devices and ignores it otherwise.
-        let intensityParam = CHHapticEventParameter(
-            parameterID: .hapticIntensity, value: intensity
-        )
-        let sharpnessParam = CHHapticEventParameter(
-            parameterID: .hapticSharpness, value: 0.5
-        )
+    }
+
+    /// A reset engine invalidates its players: one that fails to start is
+    /// dropped, and the next command builds a fresh one.
+    private func start() {
+        do {
+            try player?.start(atTime: CHHapticTimeImmediate)
+        } catch {
+            player = nil
+        }
+    }
+
+    private func silence() {
+        try? player?.stop(atTime: CHHapticTimeImmediate)
+        player = nil
+        playing = nil
+    }
+
+    /// `hapticContinuous` drives a motor for the whole duration; sharpness 0.5
+    /// is neutral, and devices that cannot shape the spectrum ignore it.
+    private func makePlayer(_ level: MotorLevel) -> CHHapticPatternPlayer? {
+        let intensity = CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(level.magnitude) / 65535.0)
+        let sharpness = CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.5)
         let event = CHHapticEvent(
             eventType: .hapticContinuous,
-            parameters: [intensityParam, sharpnessParam],
+            parameters: [intensity, sharpness],
             relativeTime: 0,
-            duration: duration
+            duration: level.duration
         )
-        do {
-            let pattern = try CHHapticPattern(events: [event], parameters: [])
-            let player = try engine.makePlayer(with: pattern)
-            try player.start(atTime: 0)
-        } catch {
-            // CoreHaptics throws on malformed patterns / dead engines. We've
-            // got nothing useful to do at this level — the next packet will
-            // overwrite our state anyway.
-        }
+        guard let pattern = try? CHHapticPattern(events: [event], parameters: []) else { return nil }
+        return try? engine.makePlayer(with: pattern)
     }
 }

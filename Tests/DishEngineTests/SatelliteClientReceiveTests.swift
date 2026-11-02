@@ -18,7 +18,7 @@ final class SatelliteClientReceiveTests: XCTestCase {
         defer { client.closeSocket() }
         client.startReceiveLoop()
         client.sendReport(controllerIndex: 0, report: GamepadReport())
-        let clientAddress = try XCTUnwrap(receiveSender(fd: fd), "the client's first send names its port")
+        let clientAddress = try XCTUnwrap(DataPlaneTestHelpers.receiveSender(fd: fd), "the client's first send names its port")
 
         let arrived = expectation(description: "the handler set after the loop started")
         let heard = LockedBox<[RumbleCommand]>([])
@@ -31,7 +31,7 @@ final class SatelliteClientReceiveTests: XCTestCase {
             payload: Data([0, 0x75, 0x30, 0x27, 0x10, 0x01, 0xF4]),
             counter: 1
         )
-        XCTAssertTrue(send(rumble, from: fd, to: clientAddress))
+        XCTAssertTrue(DataPlaneTestHelpers.send(rumble, from: fd, to: clientAddress))
         wait(for: [arrived], timeout: 5)
         XCTAssertEqual(heard.get(), [RumbleCommand(controllerIndex: 0, strongMagnitude: 30000, weakMagnitude: 10000, durationMs: 500)])
     }
@@ -90,30 +90,5 @@ final class SatelliteClientReceiveTests: XCTestCase {
             sessionKey: DataPlaneTestHelpers.testKey
         ))
         XCTAssertEqual(client.latencySnapshot().samples, 0)
-    }
-
-    /// The client's address as its datagram names it.
-    private func receiveSender(fd: Int32) -> sockaddr_in? {
-        var buffer = [UInt8](repeating: 0, count: ProtocolConstants.udpDatagramMaxBytes)
-        var from = sockaddr_in()
-        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
-        let count = buffer.withUnsafeMutableBytes { raw in
-            withUnsafeMutablePointer(to: &from) { pointer in
-                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { recvfrom(fd, raw.baseAddress, raw.count, 0, $0, &length) }
-            }
-        }
-        return count > 0 ? from : nil
-    }
-
-    private func send(_ datagram: Data, from fd: Int32, to address: sockaddr_in) -> Bool {
-        var destination = address
-        let written = datagram.withUnsafeBytes { raw in
-            withUnsafePointer(to: &destination) { pointer in
-                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                    sendto(fd, raw.baseAddress, raw.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
-                }
-            }
-        }
-        return written == datagram.count
     }
 }

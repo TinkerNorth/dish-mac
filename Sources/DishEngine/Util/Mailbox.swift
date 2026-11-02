@@ -14,9 +14,14 @@ final class Mailbox<Value: AnyObject> {
         slot.deallocate()
     }
 
-    func post(_ value: Value) {
+    /// True when the box was empty, so nothing the reader had not taken was
+    /// replaced.
+    @discardableResult
+    func post(_ value: Value) -> Bool {
         let bits = Int64(Int(bitPattern: Unmanaged.passRetained(value).toOpaque()))
-        release(slot.exchange(bits))
+        let replaced = slot.exchange(bits)
+        release(replaced)
+        return replaced == 0
     }
 
     var hasMail: Bool {

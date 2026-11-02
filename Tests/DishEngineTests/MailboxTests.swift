@@ -21,6 +21,14 @@ final class MailboxTests: XCTestCase {
         XCTAssertNil(mailbox.take(), "a take empties the box")
     }
 
+    func testAPostSaysWhetherTheBoxWasEmpty() {
+        let mailbox = Mailbox<Parcel>()
+        XCTAssertTrue(mailbox.post(Parcel(1)), "the first post finds the box empty")
+        XCTAssertFalse(mailbox.post(Parcel(2)), "the second replaces one not yet taken")
+        _ = mailbox.take()
+        XCTAssertTrue(mailbox.post(Parcel(3)), "a take empties the box again")
+    }
+
     func testANewerPostReplacesAndReleasesOneNotYetTaken() {
         let mailbox = Mailbox<Parcel>()
         weak var superseded: Parcel?

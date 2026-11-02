@@ -43,4 +43,16 @@ final class FeedbackActuationTests: XCTestCase {
         XCTAssertEqual(amplitudes.values.0, 0.5)
         XCTAssertEqual(amplitudes.values.1, 0)
     }
+
+    /// SDL's rule: a repeated rumble restarts the player a motor has; only a
+    /// new level, its magnitude or its hold, builds a new one, and zero stops.
+    func testAMotorReusesItsPlayerWhileTheLevelRepeats() {
+        let playing = MotorLevel(magnitude: 30000, duration: 0.5)
+        XCTAssertEqual(motorStep(playing: playing, magnitude: 30000, duration: 0.5), .restart)
+        XCTAssertEqual(motorStep(playing: playing, magnitude: 30001, duration: 0.5), .replace(MotorLevel(magnitude: 30001, duration: 0.5)))
+        XCTAssertEqual(motorStep(playing: playing, magnitude: 30000, duration: 1.5), .replace(MotorLevel(magnitude: 30000, duration: 1.5)))
+        XCTAssertEqual(motorStep(playing: nil, magnitude: 30000, duration: 0.5), .replace(playing))
+        XCTAssertEqual(motorStep(playing: playing, magnitude: 0, duration: 0.5), .stop)
+        XCTAssertEqual(motorStep(playing: nil, magnitude: 0, duration: 0.5), .stop)
+    }
 }

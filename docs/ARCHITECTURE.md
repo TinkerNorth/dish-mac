@@ -217,15 +217,20 @@ own lock. The sinks are built on the main actor whenever the table is, never
 per report. No `Task`, no `await`, no main-actor hop, no
 Combine on that path. The handler installs are `nonisolated`, so the compiler
 refuses a handler that reaches for main-actor state; the slot bookkeeping
-(attach, detach, the published slot list) stays on the main actor. Session material lives in one `LockedBox`, so a re-key
-swaps key, token and counter as one generation.
+(attach, detach, the published slot list) stays on the main actor. Session material is one `SessionGeneration`
+that senders read under the session's send gate, so a re-key swaps key and token and restarts the counter in
+one hold.
 
-The return paths hop the other way: a `RumbleCommand` or `LightbarCommand`
-arrives on the receive queue, the gate decision is pure and runs there (the
-rumble switch read off the same routing table by the connection and the
-controller index the command names, `SatellitePadKey`, the light bar's off
-the global gate), and `ReturnPathRouter` hops to the main actor for the
-actuation, coalesced per controller by `ReturnPathApplier`. The audio
+The return paths run the other way in one hop: a `RumbleCommand` or
+`LightbarCommand` arrives on the receive queue, which resolves and gates it
+against the `FeedbackRoutes` its handlers captured when the routing last
+changed (the slot bound to the connection's controller index,
+`SatellitePadKey`, behind that controller's rumble switch, and the global
+light-bar switch) and posts it to the pad's `FeedbackPad`, where the newest
+command of each kind waits. One serial queue, `dish.feedback`, at the input
+queue's quality, takes it and drives the actuators it owns (`PadActuators`:
+each slot's controller, its haptic engines and their players, its light, its
+triggers and its player index); the main actor is not on the way. The audio
 messages find their pad the same way, through the connection's
 `PadAudioTable`, one locked lookup per frame by the frame's index.
 

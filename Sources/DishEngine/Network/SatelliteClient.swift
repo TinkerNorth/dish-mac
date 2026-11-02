@@ -141,43 +141,43 @@ final class SatelliteClient {
     /// Fired on the receive queue for every parsed MSG_RUMBLE (0x0009).
     var onRumble: ((RumbleCommand) -> Void)? {
         get { handlerSet.get().rumble }
-        set { setHandlers { $0.rumble = newValue } }
+        set { updateHandlers { $0.rumble = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_LIGHTBAR (0x000D).
     var onLightbar: ((LightbarCommand) -> Void)? {
         get { handlerSet.get().lightbar }
-        set { setHandlers { $0.lightbar = newValue } }
+        set { updateHandlers { $0.lightbar = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_TRIGGER_EFFECTS (0x0010).
     var onTriggerEffects: ((TriggerEffectsCommand) -> Void)? {
         get { handlerSet.get().triggerEffects }
-        set { setHandlers { $0.triggerEffects = newValue } }
+        set { updateHandlers { $0.triggerEffects = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_PLAYER_LEDS (0x0011).
     var onPlayerLeds: ((PlayerLedsCommand) -> Void)? {
         get { handlerSet.get().playerLeds }
-        set { setHandlers { $0.playerLeds = newValue } }
+        set { updateHandlers { $0.playerLeds = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_SPEAKER_AUDIO (0x0013).
     var onSpeakerAudio: ((AudioFrame) -> Void)? {
         get { handlerSet.get().speakerAudio }
-        set { setHandlers { $0.speakerAudio = newValue } }
+        set { updateHandlers { $0.speakerAudio = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_HAPTIC_AUDIO (0x0015).
     var onHapticAudio: ((AudioFrame) -> Void)? {
         get { handlerSet.get().hapticAudio }
-        set { setHandlers { $0.hapticAudio = newValue } }
+        set { updateHandlers { $0.hapticAudio = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_MIC_LED (0x0014).
     var onMicLed: ((MicLedCommand) -> Void)? {
         get { handlerSet.get().micLed }
-        set { setHandlers { $0.micLed = newValue } }
+        set { updateHandlers { $0.micLed = newValue } }
     }
 
     /// Fired on the receive queue for an authenticated MSG_SESSION_CLOSE
@@ -187,10 +187,11 @@ final class SatelliteClient {
     /// (gap G10 parse side).
     var onSessionClose: ((CloseReason) -> Void)? {
         get { handlerSet.get().sessionClose }
-        set { setHandlers { $0.sessionClose = newValue } }
+        set { updateHandlers { $0.sessionClose = newValue } }
     }
 
-    private func setHandlers(_ change: (inout ReceiveHandlers) -> Void) {
+    /// Changes the set and posts it whole: one post for any number of handlers.
+    func updateHandlers(_ change: (inout ReceiveHandlers) -> Void) {
         handlerSet.mutate { handlers in
             change(&handlers)
             handlerMail.post(ReceiveHandlersBox(handlers))

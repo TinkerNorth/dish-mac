@@ -74,46 +74,15 @@ final class GameControllerInput: ObservableObject {
     private var observers: [NSObjectProtocol] = []
     private var controllerIds: [ObjectIdentifier: String] = [:]
     var controllersById: [String: GCController] = [:]
-    var actuators: [String: RumbleActuator] = [:]
+    /// What the feedback queue drives; touched only on that queue.
+    let padActuators: PadActuators
+    /// The pads' feedback: posted from any thread, actuated on its own queue.
+    let feedback: PadFeedback
     var batteryTimers: [String: DispatchSourceTimer] = [:]
-    var batteryStateTimers: [String: DispatchSourceTimer] = [:]
-    var lastBatteryStatusRaw: [String: UInt8] = [:]
-
-    /// The light-bar return path, serialised and coalesced per controller.
-    lazy var lightbarApplier = ReturnPathApplier<LightbarColor>(label: "dish.returnpath.lightbar") { [weak self] deviceId, color in
-        self?.writeLightbar(deviceId: deviceId, color: color)
-    }
-
-    /// The rumble return path, serialised and coalesced per controller.
-    lazy var rumbleApplier = ReturnPathApplier<RumbleCommand>(label: "dish.returnpath.rumble") { [weak self] deviceId, command in
-        self?.actuateRumble(deviceId: deviceId, command: command)
-    }
-
-    /// The adaptive-trigger return path, serialised and coalesced per controller.
-    lazy var triggerEffectsApplier =
-        ReturnPathApplier<TriggerEffectsCommand>(label: "dish.returnpath.triggers") { [weak self] deviceId, command in
-            self?.writeTriggerEffects(deviceId: deviceId, command: command)
-        }
-
-    /// The player-LED return path, serialised and coalesced per controller.
-    lazy var playerLedsApplier = ReturnPathApplier<Int>(label: "dish.returnpath.playerleds") { [weak self] deviceId, player in
-        self?.writePlayerIndex(deviceId: deviceId, player: player)
-    }
-
     /// IOKit's battery snapshot is a blocking call, kept off the main thread.
     let batteryWorkQueue = DispatchQueue(label: "dish.battery.iokit", qos: .utility)
-
-    struct LightbarColor {
-        let r: UInt8
-        let g: UInt8
-        let b: UInt8
-    }
-
-    struct RumbleCommand {
-        let strong: UInt16
-        let weak: UInt16
-        let durationMs: UInt16
-    }
+    var batteryStateTimers: [String: DispatchSourceTimer] = [:]
+    var lastBatteryStatusRaw: [String: UInt8] = [:]
 
     /// A battery reading as the wire and the slot card each want it.
     struct BatteryResolution {
@@ -131,6 +100,9 @@ final class GameControllerInput: ObservableObject {
     ) {
         self.paths = paths ?? InputPaths(choices: UsbPathChoiceStore())
         self.categoryOf = categoryOf
+        let actuators = PadActuators(queue: DispatchQueue(label: "dish.feedback", qos: .userInteractive))
+        padActuators = actuators
+        feedback = PadFeedback(actuators: actuators.actuators, queue: actuators.queue)
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: .GCControllerDidConnect, object: nil, queue: .main) { [weak self] note in
             guard let self, let controller = note.object as? GCController else { return }
@@ -201,7 +173,7 @@ final class GameControllerInput: ObservableObject {
     func slotId(for controller: GCController) -> String {
         let id = controllerIds[ObjectIdentifier(controller)] ?? stableId(for: controller)
         controllerIds[ObjectIdentifier(controller)] = id
-        controllersById[id] = controller
+        fileController(controller, for: id)
         return id
     }
 
@@ -274,8 +246,7 @@ final class GameControllerInput: ObservableObject {
         slots.removeAll { $0.id == id }
         processor.remove(deviceId: id)
         paths.gameControllerDetached(id: id, name: controller.vendorName ?? controller.productCategory)
-        controllersById.removeValue(forKey: id)
-        actuators.removeValue(forKey: id)?.shutdown()
+        fileController(nil, for: id)
         batteryTimers.removeValue(forKey: id)?.cancel()
         batteryStateTimers.removeValue(forKey: id)?.cancel()
         lastBatteryStatusRaw.removeValue(forKey: id)

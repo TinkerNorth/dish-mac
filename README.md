@@ -245,10 +245,11 @@ Rumble and the light bar flow the opposite way to input. The satellite
 forwards what the host game writes to the virtual pad as `MSG_RUMBLE`
 (`0x0009`, 7 bytes: `ctrlIdx(1) + strong(2 BE) + weak(2 BE) + durationMs(2
 BE)`) and `MSG_LIGHTBAR` (`0x000D`, 4 bytes: `ctrlIdx(1) + R + G + B`) over
-the encrypted UDP socket. `DishCore` parses them as pure decoders;
-`ReturnPathRouter` resolves the connection and the command's controller
-index to the slot bound there, and so to the device; the GameController
-bridge actuates `GCController.haptics` (one `CHHapticEngine` per handle) and
+the encrypted UDP socket. `DishCore` parses them as pure decoders; the
+receive loop resolves the connection and the command's controller index to
+the slot bound there, through the routes `ReturnPathRouter` hands each
+connection, and the feedback queue actuates `GCController.haptics` (one
+`CHHapticEngine` per handle, its player kept while the level repeats) and
 sets `GCController.light`. The two are gated and routed independently, so
 Rumble off in Settings leaves the light bar alone, and a pad without the
 hardware ignores the packet.
