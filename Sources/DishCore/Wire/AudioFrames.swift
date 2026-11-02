@@ -52,6 +52,19 @@ public struct AudioFrame: Equatable, Sendable {
         return AudioFrame(controllerIndex: payload.byte(0), seq: payload.u16BE(1), opus: opus)
     }
 
+    /// The payload's length: the header and the Opus bytes.
+    public var payloadCount: Int {
+        AudioWire.headerBytes + opus.count
+    }
+
+    /// `payload` written into the first `payloadCount` bytes of `out`.
+    public func writePayload(into out: UnsafeMutableRawBufferPointer) {
+        out[0] = controllerIndex
+        out[1] = UInt8(seq >> 8)
+        out[2] = UInt8(seq & 0xFF)
+        _ = opus.copyBytes(to: UnsafeMutableRawBufferPointer(rebasing: out[AudioWire.headerBytes...]))
+    }
+
     /// The payload behind the inner header.
     public var payload: Data {
         Data([controllerIndex, UInt8(seq >> 8), UInt8(seq & 0xFF)]) + opus

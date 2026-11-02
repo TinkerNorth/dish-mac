@@ -159,9 +159,7 @@ private enum LockLaws {
         "input.touchpadIds": .debt,
         "input.touchpadSender": .debt,
         "input.touchpadTap": .debt,
-        "routing.table": .debt,
-        "satellite.params": .debt,
-        "satellite.send": .debt
+        "routing.table": .debt
     ]
 
     static let hidReaderMayAcquire: [String: Allowance] = [
@@ -176,21 +174,15 @@ private enum LockLaws {
         "input.reportSender": .debt,
         "input.reportTap": .debt,
         "input.tally": .debt,
-        "routing.table": .debt,
-        "satellite.params": .debt,
-        "satellite.send": .debt
+        "routing.table": .debt
     ]
 
     static let receiveMayAcquire: [String: Allowance] = [
         "forwarding.gate": .debt,
-        "routing.table": .debt,
-        "satellite.params": .debt,
-        "satellite.send": .debt
+        "routing.table": .debt
     ]
 
-    static let blockingMayHold: [String: Allowance] = [
-        "satellite.sendto > satellite.send": .debt
-    ]
+    static let blockingMayHold: [String: Allowance] = [:]
 
     static let orderMayNest: [String: Allowance] = [:]
 }

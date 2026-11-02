@@ -112,6 +112,31 @@ public enum SessionCrypto {
         return box
     }
 
+    /// `seal` written into a caller's buffer, ciphertext then tag, returning
+    /// how many bytes it wrote (`plaintext.count + authTagSize`): the nonce
+    /// and the AAD are built on the stack, so CryptoKit's sealed box is the
+    /// only allocation. `box` may hold the plaintext itself: CryptoKit has
+    /// read it before the first byte is written back.
+    public static func seal(
+        _ plaintext: UnsafeRawBufferPointer,
+        into box: UnsafeMutableRawBufferPointer,
+        key: SymmetricKey,
+        direction: WireDirection,
+        counter: UInt32,
+        token: UInt32
+    ) throws -> Int {
+        precondition(box.count >= plaintext.count + ProtocolConstants.authTagSize, "the box needs room for the tag")
+        var nonce = nonceWords(direction: direction, counter: counter)
+        var aad = token.bigEndian
+        let sealed = try withUnsafeBytes(of: &nonce) { nonceBytes in
+            try withUnsafeBytes(of: &aad) { aadBytes in
+                try ChaChaPoly.seal(plaintext, using: key, nonce: ChaChaPoly.Nonce(data: nonceBytes), authenticating: aadBytes)
+            }
+        }
+        let written = sealed.ciphertext.copyBytes(to: box)
+        return written + sealed.tag.copyBytes(to: UnsafeMutableRawBufferPointer(rebasing: box[written...]))
+    }
+
     /// Open one `ciphertext+tag` box sealed by the peer. Throws on any
     /// direction / counter / token mismatch (they are bound into nonce + AAD)
     /// and on tampering — the caller drops the datagram.

@@ -20,47 +20,64 @@ extension SatelliteClient {
     ///
     /// nonce = `up(0x00) | 0×7 | counter(4 BE)`, AAD = token — via
     /// `SessionCrypto.seal` with the per-direction counter starting at 1
-    /// (contract §Crypto; gaps G1/G2). Non-blocking send: a full socket
-    /// buffer under Wi-Fi power-save drops the datagram rather than stalling
-    /// the GameController callback thread — every stream is loss-safe.
-    func sendEncrypted(msgType: UInt16, payload: Data) {
-        guard isOpen else { return }
-        // One lock hold draws key, token and sequence together — a re-key
-        // swapping mid-send can never pair an old key with a fresh counter.
-        let (key, token, sequence) = nextSendMaterial()
+    /// (contract §Crypto; gaps G1/G2). `encode` writes the payload into a
+    /// stack buffer that already holds the inner header, so CryptoKit's
+    /// sealed box is the send's only allocation. Non-blocking send: a full
+    /// socket buffer under Wi-Fi power-save drops the datagram rather than
+    /// stalling the GameController callback thread — every stream is
+    /// loss-safe.
+    func sendEncrypted(msgType: UInt16, payloadCount: Int, encode: (UnsafeMutableRawBufferPointer) -> Void) {
+        let innerCount = ProtocolConstants.innerHeaderSize + payloadCount
+        let datagramCount = ProtocolConstants.headerSize + innerCount + ProtocolConstants.authTagSize
+        guard isOpen, datagramCount <= ProtocolConstants.udpDatagramMaxBytes else { return }
+        withUnsafeTemporaryAllocation(byteCount: ProtocolConstants.udpDatagramMaxBytes, alignment: 16) { scratch in
+            let datagram = UnsafeMutableRawBufferPointer(rebasing: scratch[..<datagramCount])
+            let inner = UnsafeMutableRawBufferPointer(
+                rebasing: datagram[ProtocolConstants.headerSize ..< ProtocolConstants.headerSize + innerCount]
+            )
+            PacketCodec.writeInnerHeader(msgType: msgType, payloadCount: payloadCount, into: inner)
+            let payload = UnsafeMutableRawBufferPointer(rebasing: inner[ProtocolConstants.innerHeaderSize...])
+            _ = payload.initializeMemory(as: UInt8.self, repeating: 0)
+            encode(payload)
+            gate.hold { sealAndSend(datagram, innerCount: innerCount) }
+        }
+    }
+
+    /// The caller holds the gate, from the counter's claim to the `sendto`,
+    /// so the session's datagrams leave in counter order. The box is sealed
+    /// over the inner frame where it lies.
+    private func sealAndSend(_ datagram: UnsafeMutableRawBufferPointer, innerCount: Int) {
+        let (fd, destination) = sendTarget()
+        guard fd >= 0 else { return }
+        let (generation, sequence) = claimSend()
         // A counter can never wrap (contract §Crypto): sealing two plaintexts
         // under one (key, nonce) would be catastrophic, so past 2^32 − 1 the
         // session goes SILENT instead and self-heals via re-PUT — in practice
         // the G4 proactive re-key fires at 0xF0000000, 268M packets earlier.
         guard sequence <= UInt64(UInt32.max) else { return }
-        let ctr = UInt32(sequence)
-        let inner = PacketCodec.innerFrame(msgType: msgType, payload: payload)
-        guard let box = try? SessionCrypto.seal(
-            inner,
-            key: key,
+        let counter = UInt32(sequence)
+        let box = UnsafeMutableRawBufferPointer(rebasing: datagram[ProtocolConstants.headerSize...])
+        guard let sealed = try? SessionCrypto.seal(
+            UnsafeRawBufferPointer(rebasing: box[..<innerCount]),
+            into: box,
+            key: generation.key,
             direction: .up,
-            counter: ctr,
-            token: token
+            counter: counter,
+            token: generation.token
         ) else { return }
-        let packet = PacketCodec.frame(token: token, counter: ctr, box: box)
-
-        withSocketLocked { fd, sendDest in
-            guard fd >= 0 else { return }
-            packet.withUnsafeBytes { raw in
-                var destCopy = sendDest
-                blockingRegion("satellite.sendto")
-                _ = withUnsafePointer(to: &destCopy) { ptr in
-                    ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                        Darwin.sendto(
-                            fd,
-                            raw.baseAddress,
-                            raw.count,
-                            MSG_DONTWAIT,
-                            sa,
-                            socklen_t(MemoryLayout<sockaddr_in>.size)
-                        )
-                    }
-                }
+        PacketCodec.writeHeader(token: generation.token, counter: counter, into: datagram)
+        var address = destination
+        blockingRegion("satellite.sendto")
+        _ = withUnsafePointer(to: &address) { pointer in
+            pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { target in
+                sendDatagram(
+                    fd,
+                    UnsafeRawPointer(datagram.baseAddress),
+                    ProtocolConstants.headerSize + sealed,
+                    MSG_DONTWAIT,
+                    target,
+                    socklen_t(MemoryLayout<sockaddr_in>.size)
+                )
             }
         }
     }
@@ -94,7 +111,7 @@ extension SatelliteClient {
 
     private func heartbeatTick() {
         guard heartbeatRunning.get() else { return }
-        sendEncrypted(msgType: ProtocolConstants.msgHeartbeat, payload: Data())
+        sendEncrypted(msgType: ProtocolConstants.msgHeartbeat, payloadCount: 0) { _ in }
         // The RTT clock starts on this session's own stamp. armPing keeps an
         // in-flight ping's clock (overwriting would pair a late ack with the
         // newer stamp and read artificially low) and reclaims past the 5 s
@@ -134,7 +151,7 @@ extension SatelliteClient {
     /// fails the AEAD, so a shorter buffer drops every full-size speaker
     /// frame in silence.
     private func receiveOne() {
-        let (fd, _) = socketSnapshot()
+        let fd = receiveFd
         if fd < 0 { return }
         let buffer = receiveBuffer
         var from = sockaddr_in()
@@ -162,7 +179,11 @@ extension SatelliteClient {
     /// plaintext. Every failure is a silent drop, like the sibling clients.
     func processIncoming(_ datagram: UnsafeRawBufferPointer) {
         guard let header = PacketCodec.parseHeader(datagram) else { return }
-        let session = params.get()
+        if let fresh = generationMail.take() {
+            receiveGeneration = fresh
+            lastRecvCounter.set(0)
+        }
+        let session = receiveGeneration
         guard header.token == session.token else { return }
 
         // Replay guard (server→client): drop counter <= last DECRYPTED

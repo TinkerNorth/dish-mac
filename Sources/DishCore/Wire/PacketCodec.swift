@@ -56,6 +56,13 @@ public enum PacketCodec {
         return out
     }
 
+    /// `frame`'s header written into the first 8 bytes of `datagram`; the
+    /// box follows it there.
+    public static func writeHeader(token: UInt32, counter: UInt32, into datagram: UnsafeMutableRawBufferPointer) {
+        storeU32BE(token, into: datagram, at: 0)
+        storeU32BE(counter, into: datagram, at: 4)
+    }
+
     /// Split one datagram into its cleartext header + box. Returns nil when
     /// the datagram cannot possibly carry a sealed message (shorter than
     /// header + tag) — the receive loop drops it without touching the AEAD.
@@ -90,6 +97,16 @@ public enum PacketCodec {
         out.append(UInt8(truncatingIfNeeded: length))
         out.append(payload)
         return out
+    }
+
+    /// `innerFrame`'s header written into the first 4 bytes of `inner`; the
+    /// payload follows it there.
+    public static func writeInnerHeader(msgType: UInt16, payloadCount: Int, into inner: UnsafeMutableRawBufferPointer) {
+        precondition(payloadCount <= Int(UInt16.max), "inner payload exceeds the u16 length field")
+        inner[0] = UInt8(truncatingIfNeeded: msgType >> 8)
+        inner[1] = UInt8(truncatingIfNeeded: msgType)
+        inner[2] = UInt8(truncatingIfNeeded: payloadCount >> 8)
+        inner[3] = UInt8(truncatingIfNeeded: payloadCount)
     }
 
     /// Split one decrypted plaintext into an `InnerMessage`. Returns nil when
@@ -130,6 +147,13 @@ func readU32BE(_ bytes: [UInt8], at offset: Int) -> UInt32 {
         | UInt32(bytes[offset + 1]) << 16
         | UInt32(bytes[offset + 2]) << 8
         | UInt32(bytes[offset + 3])
+}
+
+func storeU32BE(_ value: UInt32, into bytes: UnsafeMutableRawBufferPointer, at offset: Int) {
+    bytes[offset] = UInt8(truncatingIfNeeded: value >> 24)
+    bytes[offset + 1] = UInt8(truncatingIfNeeded: value >> 16)
+    bytes[offset + 2] = UInt8(truncatingIfNeeded: value >> 8)
+    bytes[offset + 3] = UInt8(truncatingIfNeeded: value)
 }
 
 func loadU32BE(_ bytes: UnsafeRawBufferPointer, at offset: Int) -> UInt32 {

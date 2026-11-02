@@ -171,7 +171,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         client.sendBattery(controllerIndex: 0, level: 50, status: .charging)
         XCTAssertEqual(client.sendCounter, 2)
         XCTAssertFalse(counterNeedsRepush(client.sendCounter))
-        client.params.mutate { $0.counter = UInt64(ProtocolConstants.counterRepushThreshold) }
+        client.placeSendCounter(UInt64(ProtocolConstants.counterRepushThreshold))
         XCTAssertTrue(counterNeedsRepush(client.sendCounter), "the G4 poll sees the exposed counter")
     }
 
@@ -184,7 +184,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
         defer { client.closeSocket() }
 
-        client.params.mutate { $0.counter = UInt64(UInt32.max) - 1 }
+        client.placeSendCounter(UInt64(UInt32.max) - 1)
         client.sendBattery(controllerIndex: 0, level: 1, status: .unknown)
         let last = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
         XCTAssertEqual(
