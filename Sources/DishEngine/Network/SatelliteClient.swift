@@ -83,9 +83,9 @@ final class SatelliteClient {
     var sendLock = TrackedLock(NSLock(), "satellite.send")
 
     let heartbeatRunning = AtomicBool(false, name: "satellite.heartbeatRunning")
-    let heartbeatQueue = ThreadRole.heartbeat.queue(label: "dish.satellite.heartbeat", qos: .utility)
+    let heartbeatQueue = ThreadRole.heartbeat.queue(label: "dish.satellite.heartbeat", qos: .userInteractive)
     var heartbeatTimer: DispatchSourceTimer?
-    let ackQueue = ThreadRole.receive.queue(label: "dish.satellite.ack", qos: .utility)
+    let ackQueue = ThreadRole.receive.queue(label: "dish.satellite.ack", qos: .userInteractive)
     let ackRunning = AtomicBool(false, name: "satellite.ackRunning")
     /// Balances the receive loop so `closeSocket` can join it (bounded by the
     /// 500 ms recv timeout) before the fd closes — no recv on a reused fd.

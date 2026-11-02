@@ -315,4 +315,13 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         client.sendReport(controllerIndex: 0, report: GamepadReport(buttons: 0, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0))
         XCTAssertEqual(client.sendCounter, 0, "sends on a closed client are dropped before sealing")
     }
+
+    /// The receive loop opens the rumble, light bar and audio the pads wait
+    /// on, and the heartbeat keeps their session up: neither may queue behind
+    /// work of a lower class than the input queue's.
+    func testTheReceiveLoopAndTheHeartbeatRunAtTheInputQueuesQuality() {
+        let client = SatelliteClient()
+        XCTAssertEqual(client.ackQueue.qos, .userInteractive)
+        XCTAssertEqual(client.heartbeatQueue.qos, .userInteractive)
+    }
 }
