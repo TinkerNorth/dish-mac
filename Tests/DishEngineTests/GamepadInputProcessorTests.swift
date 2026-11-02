@@ -44,34 +44,30 @@ final class GamepadInputProcessorTests: XCTestCase {
         XCTAssertEqual(scaleTrigger(2), 255)
     }
 
-    // MARK: - The inspector's taps
+    // MARK: - The record the inspector reads
 
-    func testTheTapsSeeTheRawAndTheFilteredReportAndEveryAdmittedSample() {
+    func testTheRecordHoldsTheRawAndFilteredReportAndEveryAdmittedSample() throws {
         let processor = GamepadInputProcessor()
         processor.setDeadzones(deviceId: "pad", .init(stickFlat: 3000, triggerFlat: 10))
-        var tapped: [(raw: GamepadReport, filtered: GamepadReport)] = []
-        var motions = 0
-        var touches = 0
-        processor.reportTap = { _, raw, filtered in tapped.append((raw, filtered)) }
-        processor.motionTap = { _, _ in motions += 1 }
-        processor.touchpadTap = { _, _ in touches += 1 }
         let raw = GamepadReport(buttons: 1, lt: 5, rt: 200, lx: 2000, ly: -2000, rx: 9000, ry: 0)
         processor.publish(deviceId: "pad", state: raw)
-        XCTAssertEqual(tapped.count, 1)
-        XCTAssertEqual(tapped.first?.raw, raw)
-        XCTAssertEqual(tapped.first?.filtered.lx, 0, "the dead zone applied for the host")
-        XCTAssertEqual(tapped.first?.filtered.rx, 9000)
-        XCTAssertEqual(tapped.first?.filtered.lt, 0)
+        let reported = try XCTUnwrap(processor.latestInput("pad"))
+        XCTAssertEqual(reported.raw, raw)
+        XCTAssertEqual(reported.filtered?.lx, 0, "the dead zone applied for the host")
+        XCTAssertEqual(reported.filtered?.rx, 9000)
+        XCTAssertEqual(reported.filtered?.lt, 0)
+        XCTAssertEqual(reported.reports, 1)
+        XCTAssertNil(reported.motion)
         let sample = MotionSample(gyroX: 1, gyroY: 2, gyroZ: 3, accelX: 4, accelY: 5, accelZ: 6)
+        let refused = MotionSample(gyroX: 9, gyroY: 9, gyroZ: 9, accelX: 9, accelY: 9, accelZ: 9)
         processor.publishMotion(deviceId: "pad", sample: sample, nowNs: 1_000_000)
-        processor.publishMotion(deviceId: "pad", sample: sample, nowNs: 1_000_001)
-        XCTAssertEqual(motions, 1, "a sample the rate limit refused is not tapped either")
-        let finger = TouchpadFinger(active: true, id: 0, x: 0, y: 0)
-        processor.publishTouchpad(deviceId: "pad", sample: TouchpadSample(finger0: finger, finger1: finger, buttonPressed: false))
-        XCTAssertEqual(touches, 1)
-        processor.reportTap = nil
-        processor.publish(deviceId: "pad", state: raw)
-        XCTAssertEqual(tapped.count, 1, "a removed tap sees nothing")
+        processor.publishMotion(deviceId: "pad", sample: refused, nowNs: 1_000_001)
+        XCTAssertEqual(processor.latestInput("pad")?.motion, sample, "a sample the rate limit refused is not recorded")
+        XCTAssertEqual(processor.tallySnapshot().motion, ["pad": 1])
+        let touch = TouchpadSample(finger0: TouchpadFinger(active: true, id: 3, x: -7, y: 8), finger1: .none, buttonPressed: true)
+        processor.publishTouchpad(deviceId: "pad", sample: touch)
+        XCTAssertEqual(processor.latestInput("pad")?.touch, touch)
+        XCTAssertNil(processor.latestInput("other"), "a pad with no feed has no record")
     }
 
     // MARK: - Button bitfield (wire contract parity with Android)
@@ -95,117 +91,72 @@ final class GamepadInputProcessorTests: XCTestCase {
         XCTAssertEqual(Btn.faceY, 0x8000)
     }
 
-    // MARK: - Publish routes to ReportSender
+    // MARK: - Publish sends through the pad's route
 
-    private struct CapturedReport {
-        let id: String
-        let buttons: UInt16
-        let lt: UInt8
-        let rt: UInt8
-        let lx: Int16
-        let ly: Int16
-        let rx: Int16
-        let ry: Int16
+    func testPublishSendsTheStateThroughThePadsRoute() {
+        let proc = GamepadInputProcessor()
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
+        let state = GamepadInputProcessor.DeviceState(buttons: 0x1234, lt: 10, rt: 20, lx: 100, ly: -200, rx: 300, ry: -400)
+        proc.publish(deviceId: "pad-1", state: state)
+        XCTAssertEqual(recorder.reports.map(\.id), ["pad-1"])
+        XCTAssertEqual(recorder.reports.map(\.report), [state])
+        XCTAssertEqual(proc.sent.current(), 1)
     }
 
-    func testPublishForwardsStateToReportSender() {
+    func testAPadWithNoRouteSendsNothing() {
         let proc = GamepadInputProcessor()
-        var captured: CapturedReport?
-        proc.reportSender = { id, report in
-            captured = CapturedReport(
-                id: id,
-                buttons: report.buttons,
-                lt: report.lt,
-                rt: report.rt,
-                lx: report.lx,
-                ly: report.ly,
-                rx: report.rx,
-                ry: report.ry
-            )
-        }
-        let state = GamepadInputProcessor.DeviceState(
-            buttons: 0x1234,
-            lt: 10,
-            rt: 20,
-            lx: 100,
-            ly: -200,
-            rx: 300,
-            ry: -400
-        )
-        proc.publish(deviceId: "pad-1", state: state)
+        let recorder = InputRecorder()
+        proc.route { deviceId in deviceId == "bound" ? recorder.route(deviceId) : nil }
+        proc.publish(deviceId: "unbound", state: GamepadReport(buttons: 1))
+        XCTAssertTrue(recorder.reports.isEmpty)
+        XCTAssertEqual(proc.sent.current(), 0)
+        proc.publish(deviceId: "bound", state: GamepadReport(buttons: 1))
+        XCTAssertEqual(recorder.reports.map(\.id), ["bound"])
+    }
 
-        XCTAssertEqual(captured?.id, "pad-1")
-        XCTAssertEqual(captured?.buttons, 0x1234)
-        XCTAssertEqual(captured?.lt, 10)
-        XCTAssertEqual(captured?.rt, 20)
-        XCTAssertEqual(captured?.lx, 100)
-        XCTAssertEqual(captured?.ly, -200)
-        XCTAssertEqual(captured?.rx, 300)
-        XCTAssertEqual(captured?.ry, -400)
+    func testARouteChangeReachesAFeedMadeBeforeIt() {
+        let proc = GamepadInputProcessor()
+        let feed = proc.feed(for: "pad")
+        feed.publish(GamepadReport(buttons: 1))
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
+        feed.publish(GamepadReport(buttons: 2))
+        XCTAssertEqual(recorder.reports.map(\.report.buttons), [2], "the route arrives with the next report")
+        XCTAssertTrue(proc.feed(for: "pad") === feed, "a pad keeps its feed")
     }
 
     // MARK: - zeroAndSendAll fans a release-all report to every known device
 
     func testZeroAndSendAllEmitsReleasedReportPerDevice() {
         let proc = GamepadInputProcessor()
-        var emitted: [CapturedReport] = []
-        proc.reportSender = { id, report in
-            emitted.append(CapturedReport(
-                id: id,
-                buttons: report.buttons,
-                lt: report.lt,
-                rt: report.rt,
-                lx: report.lx,
-                ly: report.ly,
-                rx: report.rx,
-                ry: report.ry
-            ))
-        }
-        proc.publish(deviceId: "a", state: .init(
-            buttons: 1,
-            lt: 5,
-            rt: 6,
-            lx: 7,
-            ly: 8,
-            rx: 9,
-            ry: 10
-        ))
-        proc.publish(deviceId: "b", state: .init(
-            buttons: 2,
-            lt: 11,
-            rt: 12,
-            lx: 13,
-            ly: 14,
-            rx: 15,
-            ry: 16
-        ))
-        emitted.removeAll()
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
+        proc.publish(deviceId: "a", state: .init(buttons: 1, lt: 5, rt: 6, lx: 7, ly: 8, rx: 9, ry: 10))
+        proc.publish(deviceId: "b", state: .init(buttons: 2, lt: 11, rt: 12, lx: 13, ly: 14, rx: 15, ry: 16))
+        let published = recorder.reports.count
 
         proc.zeroAndSendAll()
-        XCTAssertEqual(emitted.count, 2)
-        for entry in emitted {
-            XCTAssertEqual(entry.buttons, 0)
-            XCTAssertEqual(entry.lt, 0)
-            XCTAssertEqual(entry.rt, 0)
-            XCTAssertEqual(entry.lx, 0)
-            XCTAssertEqual(entry.ly, 0)
-            XCTAssertEqual(entry.rx, 0)
-            XCTAssertEqual(entry.ry, 0)
-        }
-        XCTAssertEqual(Set(emitted.map(\.id)), ["a", "b"])
+        let releases = recorder.reports.dropFirst(published)
+        XCTAssertEqual(releases.count, 2)
+        XCTAssertTrue(releases.allSatisfy { $0.report == .released })
+        XCTAssertEqual(Set(releases.map(\.id)), ["a", "b"])
     }
 
     func testRemoveDropsDevice() {
         let proc = GamepadInputProcessor()
-        var emitted: [String] = []
-        proc.reportSender = { id, _ in emitted.append(id) }
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
         proc.publish(deviceId: "a", state: .init())
+        let removed = proc.feed(for: "a")
         proc.publish(deviceId: "b", state: .init())
-        emitted.removeAll()
+        let published = recorder.reports.count
 
         proc.remove(deviceId: "a")
         proc.zeroAndSendAll()
-        XCTAssertEqual(emitted, ["b"])
+        XCTAssertEqual(recorder.reports.dropFirst(published).map(\.id), ["b"])
+        removed.publish(GamepadReport(buttons: 7))
+        XCTAssertFalse(recorder.reports.contains { $0.report.buttons == 7 }, "a removed pad's feed routes nowhere")
     }
 
     // MARK: - Per-device deadzones
@@ -295,45 +246,48 @@ final class GamepadInputProcessorTests: XCTestCase {
 
     func testPublishUsesPerDeviceDeadzones() {
         let proc = GamepadInputProcessor()
-        var captured: (Int16, Int16, UInt8, UInt8)?
-        proc.reportSender = { _, report in
-            captured = (report.lx, report.ly, report.lt, report.rt)
-        }
-        proc.setDeadzones(
-            deviceId: "pad-1",
-            .init(stickFlat: 5000, triggerFlat: 20)
-        )
-        proc.publish(
-            deviceId: "pad-1",
-            state: .init(buttons: 0, lt: 18, rt: 21, lx: 4999, ly: 5001, rx: 0, ry: 0)
-        )
-        XCTAssertEqual(captured?.0, 0) // lx below flat → zeroed
-        XCTAssertEqual(captured?.1, 5001) // ly above flat → passed
-        XCTAssertEqual(captured?.2, 0) // lt at/below flat → zeroed
-        XCTAssertEqual(captured?.3, 21) // rt above flat → passed
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
+        proc.setDeadzones(deviceId: "pad-1", .init(stickFlat: 5000, triggerFlat: 20))
+        proc.publish(deviceId: "pad-1", state: .init(buttons: 0, lt: 18, rt: 21, lx: 4999, ly: 5001, rx: 0, ry: 0))
+        let sent = recorder.reports.last?.report
+        XCTAssertEqual(sent?.lx, 0, "below the flat")
+        XCTAssertEqual(sent?.ly, 5001, "above the flat")
+        XCTAssertEqual(sent?.lt, 0, "at or below the trigger's flat")
+        XCTAssertEqual(sent?.rt, 21, "above the trigger's flat")
     }
 
     func testPublishAppliesDifferentDeadzonesPerDevice() {
         let proc = GamepadInputProcessor()
-        var byId: [String: Int16] = [:]
-        proc.reportSender = { id, report in byId[id] = report.lx }
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
         proc.setDeadzones(deviceId: "lax", .init(stickFlat: 0, triggerFlat: 0))
         proc.setDeadzones(deviceId: "strict", .init(stickFlat: 10000, triggerFlat: 0))
         proc.publish(deviceId: "lax", state: .init(lx: 500))
         proc.publish(deviceId: "strict", state: .init(lx: 500))
+        let byId = Dictionary(recorder.reports.map { ($0.id, $0.report.lx) }) { _, last in last }
         XCTAssertEqual(byId["lax"], 500)
         XCTAssertEqual(byId["strict"], 0)
     }
 
+    func testDeadzonesSetBeforeAPadsFeedAreItsFromTheFirstReport() {
+        let proc = GamepadInputProcessor()
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
+        proc.setDeadzones(deviceId: "late", .init(stickFlat: 5000, triggerFlat: 0))
+        proc.feed(for: "late").publish(.init(lx: 100))
+        XCTAssertEqual(recorder.reports.last?.report.lx, 0)
+    }
+
     func testRemoveClearsDeadzonesToo() {
         let proc = GamepadInputProcessor()
-        var lastLx: Int16 = -1
-        proc.reportSender = { _, report in lastLx = report.lx }
+        let recorder = InputRecorder()
+        proc.route(recorder.route)
         proc.setDeadzones(deviceId: "pad", .init(stickFlat: 5000, triggerFlat: 0))
         proc.remove(deviceId: "pad")
-        // Fresh publish without re-setting deadzones should now pass through
-        // the small value rather than zeroing it.
+        // A fresh publish without re-setting the dead zones passes the small
+        // value through rather than zeroing it.
         proc.publish(deviceId: "pad", state: .init(lx: 100))
-        XCTAssertEqual(lastLx, 100)
+        XCTAssertEqual(recorder.reports.last?.report.lx, 100)
     }
 }

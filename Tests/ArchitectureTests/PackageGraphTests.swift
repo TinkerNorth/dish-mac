@@ -36,8 +36,10 @@ final class PackageGraphTests: XCTestCase {
             } ?? []
         }
 
+        /// Swift targets through the Swift setting, the one C target through
+        /// clang's flags.
         var treatsWarningsAsErrors: Bool {
-            body.contains("swiftSettings: warningsAreErrors")
+            body.contains("swiftSettings: warningsAreErrors") || body.contains("cSettings: cWarningsAreErrors")
         }
 
         var suppressesWarnings: Bool {
@@ -91,17 +93,23 @@ final class PackageGraphTests: XCTestCase {
         return found
     }
 
-    func testCoreAndKernelDependOnNothing() {
+    func testCoreKernelAndAtomicsDependOnNothing() {
         XCTAssertNil(block("DishCore")?.dependencies)
         XCTAssertNil(block("DishKernel")?.dependencies)
+        XCTAssertNil(block("DishAtomics")?.dependencies)
     }
 
-    func testTheEngineDependsOnCoreAndKernelOnly() {
-        XCTAssertEqual(block("DishEngine")?.dependencies, ["DishCore", "DishKernel"])
+    func testTheEngineDependsOnCoreKernelAndAtomicsOnly() {
+        XCTAssertEqual(block("DishEngine")?.dependencies, ["DishCore", "DishKernel", "DishAtomics"])
     }
 
     func testTheAppDependsOnTheEngineCoreKernelAndTheCrashUploader() {
         XCTAssertEqual(block("Dish")?.dependencies, ["DishEngine", "DishCore", "DishKernel", "DishCrashUpload"])
+    }
+
+    /// The bench drives the engine's own objects and nothing the app adds.
+    func testTheBenchDependsOnTheEngineAndCoreOnly() {
+        XCTAssertEqual(block("DishBench")?.dependencies, ["DishEngine", "DishCore"])
     }
 
     /// The one third-party package reaches the tree through one module, so

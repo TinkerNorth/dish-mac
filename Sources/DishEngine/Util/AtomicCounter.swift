@@ -3,118 +3,96 @@
 
 import Foundation
 
-/// Tiny lock-protected counter. Used as the ChaCha20 nonce sequence for every
-/// session — every `sendReport` on the hot path takes this lock once. The
-/// spinlock-free lock acquisition on uncontended `os_unfair_lock` is on the
-/// order of nanoseconds, so this stays well under the one-report budget.
+/// A counter several threads advance and read without a lock: the replay
+/// guard the receive loop moves, the sends the telemetry counts. Every
+/// operation is one atomic instruction on the word.
 final class AtomicCounter: @unchecked Sendable {
-    private var value: UInt64 = 0
-    private var lock = os_unfair_lock_s()
+    private let word = AtomicWord.allocate()
+
+    deinit {
+        word.deallocate()
+    }
 
     /// Returns the post-increment value.
     func incrementAndGet() -> UInt64 {
-        os_unfair_lock_lock(&lock)
-        value &+= 1
-        let current = value
-        os_unfair_lock_unlock(&lock)
-        return current
+        UInt64(bitPattern: word.fetchAdd(1)) &+ 1
     }
 
     /// Advance by one where nothing reads the new value: a tally.
     func increment() {
-        os_unfair_lock_lock(&lock)
-        value &+= 1
-        os_unfair_lock_unlock(&lock)
+        word.fetchAddRelaxed(1)
     }
 
-    /// Current value without advancing — the rekey poll (`needsRekey`)
-    /// compares this against the contract's re-PUT threshold.
+    /// Current value without advancing.
     func current() -> UInt64 {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
-        return value
+        UInt64(bitPattern: word.load())
     }
 
     /// Force a specific value. Production code only ever `reset()`s; tests
     /// use this to place the counter near the exhaustion threshold without
     /// four billion increments.
     func set(_ newValue: UInt64) {
-        os_unfair_lock_lock(&lock)
-        value = newValue
-        os_unfair_lock_unlock(&lock)
+        word.store(Int64(bitPattern: newValue))
     }
 
     func reset() {
-        os_unfair_lock_lock(&lock)
-        value = 0
-        os_unfair_lock_unlock(&lock)
+        word.store(0)
     }
 }
 
-/// Lock-guarded `Int`, for counters that are incremented on one queue and
-/// reset on another — e.g. the heartbeat's `missedAcks`, which the heartbeat
-/// loop bumps and the ACK receive loop zeroes. A plain `var` racing across
-/// two `DispatchQueue`s is undefined behaviour; this serialises every access.
+/// An `Int` written on one thread and read or reset on another without a
+/// lock: the heartbeat's `missedAcks`, which the heartbeat bumps and the
+/// receive loop zeroes; the close latch; the keep-awake clock.
 final class AtomicInt: @unchecked Sendable {
-    private var value: Int
-    private var lock = os_unfair_lock_s()
+    private let word: AtomicWord
 
     init(_ initial: Int = 0) {
-        value = initial
+        word = AtomicWord.allocate(Int64(initial))
+    }
+
+    deinit {
+        word.deallocate()
     }
 
     /// Returns the post-increment value.
     func incrementAndGet() -> Int {
-        os_unfair_lock_lock(&lock)
-        value += 1
-        let current = value
-        os_unfair_lock_unlock(&lock)
-        return current
+        Int(word.fetchAdd(1)) + 1
     }
 
     func set(_ newValue: Int) {
-        os_unfair_lock_lock(&lock)
-        value = newValue
-        os_unfair_lock_unlock(&lock)
+        word.store(Int64(newValue))
     }
 
     func get() -> Int {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
-        return value
+        Int(word.load())
     }
 }
 
-/// Lock-guarded `Bool`. Same rationale as `AtomicInt`: the heartbeat's
-/// `connectionAlive` flag is written from the heartbeat + ACK queues and read
-/// from the `WifiConnection` liveness task — three threads, one flag.
+/// A `Bool` several threads read and write without a lock: the loops' run
+/// flags and the session's liveness, which the heartbeat and the receive
+/// loop write and the alive tick reads.
 final class AtomicBool: @unchecked Sendable {
-    private var value: Bool
-    private var lock = os_unfair_lock_s()
+    private let word: AtomicWord
 
     init(_ initial: Bool) {
-        value = initial
+        word = AtomicWord.allocate(initial ? 1 : 0)
+    }
+
+    deinit {
+        word.deallocate()
     }
 
     /// Stores `newValue` and returns what was there, as one step.
     func getAndSet(_ newValue: Bool) -> Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
-        let previous = value
-        value = newValue
-        return previous
+        word.exchange(newValue ? 1 : 0) != 0
     }
 
     func set(_ newValue: Bool) {
-        os_unfair_lock_lock(&lock)
-        value = newValue
-        os_unfair_lock_unlock(&lock)
+        word.store(newValue ? 1 : 0)
     }
 
     func get() -> Bool {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
-        return value
+        word.load() != 0
     }
 }
 
@@ -125,30 +103,31 @@ final class AtomicBool: @unchecked Sendable {
 /// family as the atomics above (PLAN D6: no actor rewrite this initiative).
 final class LockedBox<Value>: @unchecked Sendable {
     private var value: Value
-    private var lock = os_unfair_lock_s()
+    private var lock: TrackedLock<os_unfair_lock_s>
 
-    init(_ initial: Value) {
+    init(_ initial: Value, name: StaticString = "util.lockedBox") {
         value = initial
+        lock = TrackedLock(os_unfair_lock_s(), name)
     }
 
     func get() -> Value {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return value
     }
 
     func set(_ newValue: Value) {
-        os_unfair_lock_lock(&lock)
+        lock.lock()
         value = newValue
-        os_unfair_lock_unlock(&lock)
+        lock.unlock()
     }
 
     /// Read-modify-write under one lock hold, returning `body`'s result —
     /// for values whose fields must never be observed across two holds
     /// (the session params' key/token/counter draw).
     func mutate<T>(_ body: (inout Value) -> T) -> T {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return body(&value)
     }
 }

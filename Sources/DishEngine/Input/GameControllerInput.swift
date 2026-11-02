@@ -66,54 +66,23 @@ final class GameControllerInput: ObservableObject {
     /// The framework's category word for a controller; a seam, since every
     /// snapshot controller a test can build reads "MFi".
     let categoryOf: (GCController) -> String
-    /// The one serial queue every controller's handlers run on, so the hot
-    /// path never waits behind the main thread.
-    nonisolated let inputQueue = DispatchQueue(label: "com.tinkernorth.dish.input", qos: .userInteractive)
-    let touchpadIds = TouchpadTrackingState()
+    /// Each controller's handlers run on a serial queue of its own, so the
+    /// hot path never waits behind the main thread or another pad; one per
+    /// slot id, kept across a re-attach, so a pad's feed has one thread.
+    private var handlerQueues: [String: DispatchQueue] = [:]
 
     private var observers: [NSObjectProtocol] = []
     private var controllerIds: [ObjectIdentifier: String] = [:]
     var controllersById: [String: GCController] = [:]
-    var actuators: [String: RumbleActuator] = [:]
+    /// What the feedback queue drives; touched only on that queue.
+    let padActuators: PadActuators
+    /// The pads' feedback: posted from any thread, actuated on its own queue.
+    let feedback: PadFeedback
     var batteryTimers: [String: DispatchSourceTimer] = [:]
-    var batteryStateTimers: [String: DispatchSourceTimer] = [:]
-    var lastBatteryStatusRaw: [String: UInt8] = [:]
-
-    /// The light-bar return path, serialised and coalesced per controller.
-    lazy var lightbarApplier = ReturnPathApplier<LightbarColor>(label: "dish.returnpath.lightbar") { [weak self] deviceId, color in
-        self?.writeLightbar(deviceId: deviceId, color: color)
-    }
-
-    /// The rumble return path, serialised and coalesced per controller.
-    lazy var rumbleApplier = ReturnPathApplier<RumbleCommand>(label: "dish.returnpath.rumble") { [weak self] deviceId, command in
-        self?.actuateRumble(deviceId: deviceId, command: command)
-    }
-
-    /// The adaptive-trigger return path, serialised and coalesced per controller.
-    lazy var triggerEffectsApplier =
-        ReturnPathApplier<TriggerEffectsCommand>(label: "dish.returnpath.triggers") { [weak self] deviceId, command in
-            self?.writeTriggerEffects(deviceId: deviceId, command: command)
-        }
-
-    /// The player-LED return path, serialised and coalesced per controller.
-    lazy var playerLedsApplier = ReturnPathApplier<Int>(label: "dish.returnpath.playerleds") { [weak self] deviceId, player in
-        self?.writePlayerIndex(deviceId: deviceId, player: player)
-    }
-
     /// IOKit's battery snapshot is a blocking call, kept off the main thread.
     let batteryWorkQueue = DispatchQueue(label: "dish.battery.iokit", qos: .utility)
-
-    struct LightbarColor {
-        let r: UInt8
-        let g: UInt8
-        let b: UInt8
-    }
-
-    struct RumbleCommand {
-        let strong: UInt16
-        let weak: UInt16
-        let durationMs: UInt16
-    }
+    var batteryStateTimers: [String: DispatchSourceTimer] = [:]
+    var lastBatteryStatusRaw: [String: UInt8] = [:]
 
     /// A battery reading as the wire and the slot card each want it.
     struct BatteryResolution {
@@ -131,6 +100,9 @@ final class GameControllerInput: ObservableObject {
     ) {
         self.paths = paths ?? InputPaths(choices: UsbPathChoiceStore())
         self.categoryOf = categoryOf
+        let actuators = PadActuators(queue: DispatchQueue(label: "dish.feedback", qos: .userInteractive))
+        padActuators = actuators
+        feedback = PadFeedback(actuators: actuators.actuators, queue: actuators.queue)
         let center = NotificationCenter.default
         observers.append(center.addObserver(forName: .GCControllerDidConnect, object: nil, queue: .main) { [weak self] note in
             guard let self, let controller = note.object as? GCController else { return }
@@ -174,12 +146,13 @@ final class GameControllerInput: ObservableObject {
     private func attachExtended(_ controller: GCController, pad: GCExtendedGamepad) {
         let id = slotId(for: controller)
         let gate = admit(controller, id: id)
+        let feed = processor.feed(for: id)
         let capabilities = Self.detectCapabilities(controller, pad: pad)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
-        controller.handlerQueue = inputQueue
-        installReportHandler(id: id, pad: pad, gate: gate)
-        installMotionHandler(id: id, controller: controller, gate: gate)
-        installTouchpadHandlers(id: id, pad: pad, gate: gate)
+        controller.handlerQueue = handlerQueue(for: id)
+        installReportHandler(pad: pad, gate: gate, feed: feed)
+        installMotionHandler(controller: controller, gate: gate, feed: feed)
+        installTouchpadHandlers(pad: pad, gate: gate, feed: feed)
         startBatteryTimer(deviceId: id, controller: controller)
     }
 
@@ -201,7 +174,7 @@ final class GameControllerInput: ObservableObject {
     func slotId(for controller: GCController) -> String {
         let id = controllerIds[ObjectIdentifier(controller)] ?? stableId(for: controller)
         controllerIds[ObjectIdentifier(controller)] = id
-        controllersById[id] = controller
+        fileController(controller, for: id)
         return id
     }
 
@@ -255,9 +228,9 @@ final class GameControllerInput: ObservableObject {
     /// handler rebuilds the whole report from the snapshot every time.
     /// Nonisolated, so the compiler refuses a handler that reaches for
     /// main-actor state: it runs on the input queue.
-    private nonisolated func installReportHandler(id: String, pad: GCExtendedGamepad, gate: PadGate) {
-        pad.valueChangedHandler = { [weak self] pad, _ in
-            self?.pushReport(id: id, pad: pad, gate: gate)
+    private nonisolated func installReportHandler(pad: GCExtendedGamepad, gate: PadGate, feed: PadFeed) {
+        pad.valueChangedHandler = { pad, _ in
+            Self.pushReport(pad: pad, gate: gate, feed: feed)
         }
     }
 
@@ -274,12 +247,10 @@ final class GameControllerInput: ObservableObject {
         slots.removeAll { $0.id == id }
         processor.remove(deviceId: id)
         paths.gameControllerDetached(id: id, name: controller.vendorName ?? controller.productCategory)
-        controllersById.removeValue(forKey: id)
-        actuators.removeValue(forKey: id)?.shutdown()
+        fileController(nil, for: id)
         batteryTimers.removeValue(forKey: id)?.cancel()
         batteryStateTimers.removeValue(forKey: id)?.cancel()
         lastBatteryStatusRaw.removeValue(forKey: id)
-        touchpadIds.remove(deviceId: id)
     }
 
     /// Only the DualSense and DualShock 4 profiles expose a touchpad.
@@ -310,10 +281,20 @@ final class GameControllerInput: ObservableObject {
     // MARK: - Hot path
 
     /// Every handler call is a change; the gate says whether it is published.
-    private nonisolated func pushReport(id: String, pad: GCExtendedGamepad, gate: PadGate) {
-        guard gate.pass(.standard, changed: true) else { return }
-        let sample = Self.padSample(pad)
-        processor.publish(deviceId: id, state: wireReport(sample))
+    private nonisolated static func pushReport(pad: GCExtendedGamepad, gate: PadGate, feed: PadFeed) {
+        guard gate.pass(.standard, changed: true) else {
+            feed.forgetLatch()
+            return
+        }
+        feed.publishIfChanged(wireReport(padSample(pad)))
+    }
+
+    /// The slot's handler queue, made on its first attach.
+    func handlerQueue(for id: String) -> DispatchQueue {
+        if let queue = handlerQueues[id] { return queue }
+        let queue = ThreadRole.input.queue(label: "com.tinkernorth.dish.input.\(id)", qos: .userInteractive)
+        handlerQueues[id] = queue
+        return queue
     }
 
     /// The pad as GameController reads it, which is already the wire's

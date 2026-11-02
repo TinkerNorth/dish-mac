@@ -36,68 +36,69 @@ struct RoutingSnapshot {
     var bySatellitePad: [SatellitePadKey: BoundSlotRoute] = [:]
 }
 
-/// Thread-safe routing table. Written on the main actor when bindings, the
-/// pool or a switch change; read on the controller callback threads once per
-/// event and on the receive queue once per return-path command.
+/// The routing table for the cold readers: written on the main actor when
+/// bindings, the pool or a switch change; read by the main actor's battery
+/// and release sends, by the Moonlight feedback and by the tests. No report
+/// reads it: each pad's feed holds its own route.
 final class RoutingTable: @unchecked Sendable {
     private var snapshot = RoutingSnapshot()
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "routing.table")
 
     func get(_ slotId: String) -> Route? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return snapshot.bySlot[slotId]
     }
 
     func boundSlot(of pad: SatellitePadKey) -> BoundSlotRoute? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return snapshot.bySatellitePad[pad]
     }
 
+    func current() -> RoutingSnapshot {
+        lock.lock()
+        defer { lock.unlock() }
+        return snapshot
+    }
+
     func set(_ next: RoutingSnapshot) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         snapshot = next
     }
 }
 
-/// The hot path from the input processor to the wire: one locked table read
-/// per event, no main-actor hop. The motion and touchpad streams also pass
-/// the switches in force for the controller, already folded into its route.
+/// From the main actor's routing to the hot path: one snapshot fills the
+/// table and gives every pad's feed its resolved route, so a report reads
+/// no table and takes no lock on its way to the wire.
 final class InputRouting: @unchecked Sendable {
     let table = RoutingTable()
-    /// Every report handed to a sink, for the telemetry's sends.
-    let sent = AtomicCounter()
 
-    /// Point the processor's senders at this router.
-    func install(on processor: GamepadInputProcessor) {
-        processor.reportSender = sendReport
-        processor.motionSender = sendMotion
-        processor.touchpadSender = sendTouchpad
-        processor.batterySender = sendBattery
+    /// Publishes `snapshot` to the table and to every feed, a satellite pad
+    /// resolved to its connection's live client. Call it again when a
+    /// connection's client changes.
+    @MainActor
+    func publish(_ snapshot: RoutingSnapshot, to processor: GamepadInputProcessor) {
+        table.set(snapshot)
+        let routes = resolvedRoutes(snapshot)
+        processor.route { routes[$0] }
     }
 
-    func sendReport(_ deviceId: String, _ report: GamepadReport) {
-        guard let route = table.get(deviceId) else { return }
-        sent.increment()
-        route.sink.sendReport(report)
+    @MainActor
+    func republish(to processor: GamepadInputProcessor) {
+        publish(table.current(), to: processor)
     }
+}
 
-    func sendMotion(_ deviceId: String, _ sample: MotionSample, _ timestampDeltaUs: UInt32) {
-        guard let route = table.get(deviceId), route.flags.motion else { return }
-        route.sink.sendMotion(sample, timestampDeltaUs: timestampDeltaUs)
-    }
-
-    func sendTouchpad(_ deviceId: String, _ sample: TouchpadSample, _ eventTimeMs: UInt32) {
-        guard let route = table.get(deviceId), route.flags.touchpad else { return }
-        route.sink.sendTouchpad(sample: sample, eventTimeMs: eventTimeMs)
-    }
-
-    /// An unknown status byte from a future firmware reads as unknown.
-    func sendBattery(_ deviceId: String, _ level: UInt8, _ statusRaw: UInt8) {
-        guard let route = table.get(deviceId) else { return }
-        let status = BatteryStatus(rawValue: statusRaw) ?? .unknown
-        route.sink.sendBattery(level: level, status: status)
+/// Each slot's route with a satellite pad resolved to the live client of
+/// its connection, so a report never looks the client up; a pad whose
+/// connection has no client has no route until the connection gets one.
+@MainActor
+func resolvedRoutes(_ snapshot: RoutingSnapshot) -> [String: Route] {
+    snapshot.bySlot.compactMapValues { route in
+        guard let pad = route.sink as? SatellitePadSink else { return route }
+        guard let client = pad.connection.client else { return nil }
+        return Route(sink: SatelliteClientSink(client: client, controllerIndex: pad.controllerIndex), flags: route.flags)
     }
 }

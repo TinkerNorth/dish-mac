@@ -111,9 +111,9 @@ final class AppModelLifecycleTests: XCTestCase {
 
     func testSystemWillSleepZeroesAndSendsAllKnownDevices() {
         var reports: [(id: String, buttons: UInt16)] = []
-        model.input.processor.reportSender = { id, report in
+        model.input.processor.send(reports: { id, report in
             reports.append((id, report.buttons))
-        }
+        })
         var held = GamepadInputProcessor.DeviceState()
         held.buttons = 0x1000
         model.input.processor.publish(deviceId: "pad-a", state: held)

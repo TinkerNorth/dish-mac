@@ -7,6 +7,8 @@ import PackageDescription
 /// Every first-party target treats warnings as errors (CONTRIBUTING.md, "Zero
 /// warnings"). The one exception, `LegacyFileKeychain`, is explained below.
 let warningsAreErrors: [SwiftSetting] = [.treatAllWarnings(as: .error)]
+/// The same rule for the one C target, in clang's words.
+let cWarningsAreErrors: [CSetting] = [.unsafeFlags(["-Wall", "-Wextra", "-Werror"])]
 
 let package = Package(
     name: "Dish",
@@ -34,12 +36,20 @@ let package = Package(
             path: "Sources/DishKernel",
             swiftSettings: warningsAreErrors
         ),
+        // Lock-free loads, stores and read-modify-writes for the hot paths,
+        // since macOS 13 has no Swift Synchronization module. C, depending
+        // on nothing.
+        .target(
+            name: "DishAtomics",
+            path: "Sources/DishAtomics",
+            cSettings: cWarningsAreErrors
+        ),
         // The headless engine: sockets, REST, stores, the controller bridge,
         // the composition root. No SwiftUI or AppKit; the app hands it
         // `LifecycleSignals` and binds to what it publishes.
         .target(
             name: "DishEngine",
-            dependencies: ["DishCore", "DishKernel"],
+            dependencies: ["DishCore", "DishKernel", "DishAtomics"],
             path: "Sources/DishEngine",
             swiftSettings: warningsAreErrors
         ),
@@ -64,6 +74,15 @@ let package = Package(
                 // read by the Licenses page.
                 .process("Resources")
             ],
+            swiftSettings: warningsAreErrors
+        ),
+        // The frame-path bench: the production objects in their thread roles
+        // against a loopback satellite, timed and counted; run by hand and by
+        // the measurements workflow.
+        .executableTarget(
+            name: "DishBench",
+            dependencies: ["DishEngine", "DishCore"],
+            path: "Sources/DishBench",
             swiftSettings: warningsAreErrors
         ),
         // Test support only. Holds the one call to the deprecated SecKeychain
@@ -99,6 +118,12 @@ let package = Package(
         .testTarget(
             name: "ArchitectureTests",
             path: "Tests/ArchitectureTests",
+            swiftSettings: warningsAreErrors
+        ),
+        .testTarget(
+            name: "DishBenchTests",
+            dependencies: ["DishBench", "DishCore"],
+            path: "Tests/DishBenchTests",
             swiftSettings: warningsAreErrors
         ),
         .testTarget(

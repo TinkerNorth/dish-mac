@@ -23,16 +23,15 @@ import Foundation
 /// key = the HKDF-derived SESSION key — the pairing key never reaches this
 /// class (contract §Crypto, gaps G1/G2).
 ///
-/// Thread-safety (PLAN D6 lock-bridges; gap G19):
-///   * `sendReport` is called directly from the GameController callback
-///     thread and stays lock-free outside one params snapshot + the `sendto`
-///     under `sendLock`.
-///   * Session params (`key`/`token`/send counter) live in ONE `LockedBox`
-///     so a proactive re-key (G4) swaps the whole generation while the hot
-///     paths draw (key, token, sequence) in a single hold (`nextSendMaterial`).
-///   * Loop flags / liveness / the replay guard are `Atomic*` bridges; the fd
-///     is mutated only under `sendLock` and the receive loop is joined
-///     (bounded) before the fd closes.
+/// Thread-safety (gap G19), with no lock on the send or receive path:
+///   * Every sender holds the send gate from claiming its counter to its
+///     `sendto`, so the session's datagrams leave in counter order, and a
+///     re-key (G4) or a socket change holds it too: no send seals under a
+///     retiring key with a fresh counter, or writes to a closing fd.
+///   * The receive loop takes each key generation and handler set through a
+///     mailbox and reads into its own buffer; loop flags, liveness, the
+///     replay guard, the fd and the send counter are atomic words, and the
+///     receive loop is joined (bounded) before the fd closes.
 final class SatelliteClient {
 
     // MARK: - Cadence (contract §Liveness)
@@ -42,50 +41,60 @@ final class SatelliteClient {
 
     // MARK: - Session state
 
-    /// Socket fd (−1 when closed). Written only under `sendLock`; readers
-    /// snapshot it via `socketSnapshot()`.
-    private var sock: Int32 = -1
+    /// Held by one sender from claiming a counter to its `sendto`, and by a
+    /// re-key or a socket change.
+    let gate = SendGate()
+    /// The socket fd, −1 when closed: written under the gate, read by the
+    /// senders under it and by the receive loop, which is joined first.
+    private let fdWord = AtomicWord.allocate(-1)
+    /// Under the gate.
     private var dest = sockaddr_in()
     /// Endpoint the socket is aimed at — a same-endpoint `setConnectionParams`
-    /// (the G4 re-key) keeps the socket so the hot path never blips.
+    /// (the G4 re-key) keeps the socket so the hot path never blips. Under the gate.
     private var boundHost = ""
     private var boundPort: UInt16 = 0
+    /// The datagram's way out: `sendto`, or a test's stand-in.
+    let sendDatagram: SocketSend
 
-    /// Per-session AEAD material + the client→server send counter, swapped
-    /// whole on every (re-)PUT. The counter lives INSIDE the box so one
-    /// `params.set` swaps key, token and counter as a single generation — a
-    /// send racing a re-key can never seal under the old key with a fresh
-    /// counter (nonce reuse) or under the new key with a stale one.
-    struct SessionParams {
-        var key = SymmetricKey(data: Data(count: ProtocolConstants.cryptoKeySize))
-        var token: UInt32 = 0
-        /// Post-increment, so the first packet of a generation rides
-        /// counter 1 (contract §Crypto).
-        var counter: UInt64 = 0
-        /// The version the session settled on; it picks the 0x000C shape.
-        var protocolVersion = ProtocolConstants.protocolVersionWhenAbsent
+    /// The key and token the last session PUT installed: read and replaced
+    /// only under the gate, where a re-key also restarts the counter, so no
+    /// send pairs one generation's key with the other's counter.
+    private var generation = SessionGeneration.unkeyed
+    /// The last counter claimed, post-increment from 0 so a generation's
+    /// first packet rides counter 1 (contract §Crypto): claimed under the
+    /// gate, read anywhere by the re-key poll.
+    private let sendCounterWord = AtomicWord.allocate()
+    /// The version the session settled on, which picks the 0x000C shape:
+    /// written by `setConnectionParams`, read by the touchpad sender.
+    private let protocolVersionWord = AtomicWord.allocate(Int64(ProtocolConstants.protocolVersionWhenAbsent))
+    /// Each new generation, for the receive loop.
+    let generationMail = Mailbox<SessionGeneration>()
+    /// Owned by the receive loop: the generation it opens datagrams under.
+    var receiveGeneration = SessionGeneration.unkeyed
+
+    init(sendDatagram: @escaping SocketSend = SatelliteClient.systemSend) {
+        self.sendDatagram = sendDatagram
     }
 
-    let params = LockedBox(SessionParams())
-
-    /// One packet's (key, token, sequence) drawn in a single lock hold —
-    /// the seal must never mix generations with a concurrent re-key swap.
+    /// One packet's (key, token, sequence) drawn in one gate hold — the
+    /// seal must never mix generations with a concurrent re-key swap.
     func nextSendMaterial() -> (key: SymmetricKey, token: UInt32, sequence: UInt64) {
-        params.mutate { session in
-            session.counter &+= 1
-            return (session.key, session.token, session.counter)
-        }
+        gate.hold { (generation.key, generation.token, claimCounter()) }
+    }
+
+    /// The caller holds the gate.
+    private func claimCounter() -> UInt64 {
+        UInt64(bitPattern: sendCounterWord.fetchAddRelaxed(1)) &+ 1
     }
 
     /// Server→client replay guard: highest counter successfully DECRYPTED
     /// (a forged header can't advance it). First packet exempt while 0 (G3).
     let lastRecvCounter = AtomicCounter()
-    let sendLock = NSLock()
 
     let heartbeatRunning = AtomicBool(false)
-    let heartbeatQueue = DispatchQueue(label: "dish.satellite.heartbeat", qos: .utility)
+    let heartbeatQueue = ThreadRole.heartbeat.queue(label: "dish.satellite.heartbeat", qos: .userInteractive)
     var heartbeatTimer: DispatchSourceTimer?
-    let ackQueue = DispatchQueue(label: "dish.satellite.ack", qos: .utility)
+    let ackQueue = ThreadRole.receive.queue(label: "dish.satellite.ack", qos: .userInteractive)
     let ackRunning = AtomicBool(false)
     /// Balances the receive loop so `closeSocket` can join it (bounded by the
     /// 500 ms recv timeout) before the fd closes — no recv on a reused fd.
@@ -98,67 +107,77 @@ final class SatelliteClient {
     /// the `WifiConnection` alive tick.
     let connectionAlive = AtomicBool(true)
 
-    /// Latest enriched heartbeat ack (epoch/bitmap/backend/count), polled by
-    /// the 1 Hz alive tick for the reconcile loop (gap G9 parse side).
-    private let lastHeartbeatAck = LockedBox<HeartbeatAck?>(nil)
+    /// Latest enriched heartbeat ack (epoch/bitmap/backend/count) packed in
+    /// one word, zero while none: stored by the receive loop, polled by the
+    /// 1 Hz alive tick for the reconcile loop (gap G9 parse side).
+    private let heartbeatAckWord = AtomicWord.allocate()
     /// Latched SESSION_CLOSE reason byte, −1 while none (dish-linux
     /// `sessionCloseReason_`). Reset by `setConnectionParams`.
     let sessionCloseReason = AtomicInt(-1)
 
     /// One-way latency estimate off the heartbeat round trip (gap G13). The
-    /// heartbeat timer arms the ping clock; the receive queue pairs acks.
-    private let latencyLock = NSLock()
+    /// heartbeat timer arms the ping clock and the main actor reads it, under
+    /// the lock; the receive loop only leaves each ack's arrival time.
+    private var latencyLock = TrackedLock(NSLock(), "satellite.latency")
     private var latencyWindow = LatencyWindow()
+    /// An ack's arrival time the window has not paired yet, zero while none:
+    /// left by the receive loop, taken by whoever next holds `latencyLock`.
+    private let pendingAckMs = AtomicWord.allocate()
+    /// The receive loop's one datagram buffer, owned by the loop.
+    let receiveBuffer = UnsafeMutableRawBufferPointer.allocate(
+        byteCount: ProtocolConstants.udpDatagramMaxBytes,
+        alignment: MemoryLayout<UInt64>.alignment
+    )
 
     // MARK: - Callbacks out of the client (PLAN §4 seam)
 
+    /// The handlers as their setters left them, set on the main actor and
+    /// posted whole to the receive loop, which calls its own copy.
+    private let handlerSet = LockedBox(ReceiveHandlers(), name: "satellite.handlers")
+    private let handlerMail = Mailbox<ReceiveHandlersBox>()
+    /// Owned by the receive loop: the set it calls, refreshed from the mail.
+    var receiveHandlers = ReceiveHandlers()
+
     /// Fired on the receive queue for every parsed MSG_RUMBLE (0x0009).
-    private let rumbleBox = LockedBox<((RumbleCommand) -> Void)?>(nil)
     var onRumble: ((RumbleCommand) -> Void)? {
-        get { rumbleBox.get() }
-        set { rumbleBox.set(newValue) }
+        get { handlerSet.get().rumble }
+        set { updateHandlers { $0.rumble = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_LIGHTBAR (0x000D).
-    private let lightbarBox = LockedBox<((LightbarCommand) -> Void)?>(nil)
     var onLightbar: ((LightbarCommand) -> Void)? {
-        get { lightbarBox.get() }
-        set { lightbarBox.set(newValue) }
+        get { handlerSet.get().lightbar }
+        set { updateHandlers { $0.lightbar = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_TRIGGER_EFFECTS (0x0010).
-    private let triggerEffectsBox = LockedBox<((TriggerEffectsCommand) -> Void)?>(nil)
     var onTriggerEffects: ((TriggerEffectsCommand) -> Void)? {
-        get { triggerEffectsBox.get() }
-        set { triggerEffectsBox.set(newValue) }
+        get { handlerSet.get().triggerEffects }
+        set { updateHandlers { $0.triggerEffects = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_PLAYER_LEDS (0x0011).
-    private let playerLedsBox = LockedBox<((PlayerLedsCommand) -> Void)?>(nil)
     var onPlayerLeds: ((PlayerLedsCommand) -> Void)? {
-        get { playerLedsBox.get() }
-        set { playerLedsBox.set(newValue) }
+        get { handlerSet.get().playerLeds }
+        set { updateHandlers { $0.playerLeds = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_SPEAKER_AUDIO (0x0013).
-    private let speakerAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil)
     var onSpeakerAudio: ((AudioFrame) -> Void)? {
-        get { speakerAudioBox.get() }
-        set { speakerAudioBox.set(newValue) }
+        get { handlerSet.get().speakerAudio }
+        set { updateHandlers { $0.speakerAudio = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_HAPTIC_AUDIO (0x0015).
-    private let hapticAudioBox = LockedBox<((AudioFrame) -> Void)?>(nil)
     var onHapticAudio: ((AudioFrame) -> Void)? {
-        get { hapticAudioBox.get() }
-        set { hapticAudioBox.set(newValue) }
+        get { handlerSet.get().hapticAudio }
+        set { updateHandlers { $0.hapticAudio = newValue } }
     }
 
     /// Fired on the receive queue for every parsed MSG_MIC_LED (0x0014).
-    private let micLedBox = LockedBox<((MicLedCommand) -> Void)?>(nil)
     var onMicLed: ((MicLedCommand) -> Void)? {
-        get { micLedBox.get() }
-        set { micLedBox.set(newValue) }
+        get { handlerSet.get().micLed }
+        set { updateHandlers { $0.micLed = newValue } }
     }
 
     /// Fired on the receive queue for an authenticated MSG_SESSION_CLOSE
@@ -166,10 +185,23 @@ final class SatelliteClient {
     /// transient default arm, like the C++ ports). The client also drops
     /// `connectionAlive` so the alive tick reaps without the death wait
     /// (gap G10 parse side).
-    private let sessionCloseBox = LockedBox<((CloseReason) -> Void)?>(nil)
     var onSessionClose: ((CloseReason) -> Void)? {
-        get { sessionCloseBox.get() }
-        set { sessionCloseBox.set(newValue) }
+        get { handlerSet.get().sessionClose }
+        set { updateHandlers { $0.sessionClose = newValue } }
+    }
+
+    /// Changes the set and posts it whole: one post for any number of handlers.
+    func updateHandlers(_ change: (inout ReceiveHandlers) -> Void) {
+        handlerSet.mutate { handlers in
+            change(&handlers)
+            handlerMail.post(ReceiveHandlersBox(handlers))
+        }
+    }
+
+    /// The receive loop's step before a dispatch: one relaxed load while no
+    /// handler changed.
+    func refreshReceiveHandlers() {
+        if let fresh = handlerMail.take() { receiveHandlers = fresh.handlers }
     }
 
     // MARK: - Lifecycle
@@ -194,13 +226,20 @@ final class SatelliteClient {
         protocolVersion: Int = ProtocolConstants.protocolVersionWhenAbsent
     ) -> Bool {
         guard ensureSocket(host: host, udpPort: udpPort) else { return false }
-        params.set(SessionParams(key: sessionKey, token: token, protocolVersion: protocolVersion))
+        let fresh = SessionGeneration(key: sessionKey, token: token)
+        gate.hold {
+            generation = fresh
+            sendCounterWord.store(0)
+        }
+        protocolVersionWord.store(Int64(protocolVersion))
+        generationMail.post(fresh)
         lastRecvCounter.set(0)
         missedAcks.set(0)
         connectionAlive.set(true)
-        lastHeartbeatAck.set(nil)
+        heartbeatAckWord.store(0)
         sessionCloseReason.set(-1)
         latencyLock.lock()
+        pendingAckMs.store(0)
         latencyWindow.reset()
         latencyLock.unlock()
         return true
@@ -209,14 +248,12 @@ final class SatelliteClient {
     func closeSocket() {
         stopHeartbeat()
         stopReceiveLoop()
-        sendLock.lock()
-        defer { sendLock.unlock() }
-        if sock >= 0 {
-            close(sock)
-            sock = -1
+        let retired = gate.hold { () -> Int32 in
+            boundHost = ""
+            boundPort = 0
+            return Int32(truncatingIfNeeded: fdWord.exchange(-1))
         }
-        boundHost = ""
-        boundPort = 0
+        if retired >= 0 { close(retired) }
     }
 
     deinit {
@@ -225,15 +262,22 @@ final class SatelliteClient {
         // stops are no-ops when never started, and the fd must not outlive
         // the client.
         closeSocket()
+        fdWord.deallocate()
+        sendCounterWord.deallocate()
+        protocolVersionWord.deallocate()
+        heartbeatAckWord.deallocate()
+        pendingAckMs.deallocate()
+        receiveBuffer.deallocate()
     }
 
     /// Open (or keep) the UDP socket aimed at `host:udpPort`. DSCP EF +
     /// no-SIGPIPE + 500 ms recv timeout, matching the sibling clients.
     private func ensureSocket(host: String, udpPort: UInt16) -> Bool {
-        sendLock.lock()
-        let alreadyBound = sock >= 0 && host == boundHost && udpPort == boundPort
-        let replacing = sock >= 0 && !alreadyBound
-        sendLock.unlock()
+        let (alreadyBound, replacing) = gate.hold { () -> (Bool, Bool) in
+            let open = fdWord.load() >= 0
+            let same = open && host == boundHost && udpPort == boundPort
+            return (same, open && !same)
+        }
         if alreadyBound { return true }
 
         var addr = sockaddr_in()
@@ -260,33 +304,36 @@ final class SatelliteClient {
         // ordering `closeSocket` upholds (no recv on a reused fd).
         if replacing { closeSocket() }
 
-        sendLock.lock()
-        defer { sendLock.unlock() }
-        if sock >= 0 { close(sock) }
-        sock = fd
-        dest = addr
-        boundHost = host
-        boundPort = udpPort
+        let stale = gate.hold { () -> Int32 in
+            dest = addr
+            boundHost = host
+            boundPort = udpPort
+            return Int32(truncatingIfNeeded: fdWord.exchange(Int64(fd)))
+        }
+        if stale >= 0 { close(stale) }
         return true
     }
 
-    /// Run `body` with the fd + destination under `sendLock` — the send
-    /// path's mutual exclusion with `closeSocket`, so a datagram can never
-    /// race onto a closed (and possibly reused) fd.
-    func withSocketLocked<T>(_ body: (Int32, sockaddr_in) -> T) -> T {
-        sendLock.lock()
-        defer { sendLock.unlock() }
-        return body(sock, dest)
-    }
-
-    /// fd + destination snapshot for the receive path (fd mutation stays
-    /// behind `sendLock`; the receive loop is joined before the fd closes).
-    func socketSnapshot() -> (fd: Int32, dest: sockaddr_in) {
-        withSocketLocked { fd, dest in (fd, dest) }
-    }
-
+    /// Whether the socket is open; a sender checks again under the gate.
     var isOpen: Bool {
-        socketSnapshot().fd >= 0
+        fdWord.load() >= 0
+    }
+
+    /// The fd the receive loop reads, which `closeSocket` joins before the
+    /// fd closes.
+    var receiveFd: Int32 {
+        Int32(truncatingIfNeeded: fdWord.load())
+    }
+
+    /// The caller holds the gate: the fd, or −1, and where it sends.
+    func sendTarget() -> (fd: Int32, dest: sockaddr_in) {
+        (Int32(truncatingIfNeeded: fdWord.load()), dest)
+    }
+
+    /// The caller holds the gate: the next counter, with the generation it
+    /// seals under.
+    func claimSend() -> (generation: SessionGeneration, sequence: UInt64) {
+        (generation, claimCounter())
     }
 
     // MARK: - Reconcile / re-key / latency snapshots (PLAN §4 seam)
@@ -294,11 +341,11 @@ final class SatelliteClient {
     /// Latest enriched heartbeat ack, or nil before the first one this
     /// session. Thread-safe; polled by the 1 Hz alive tick.
     func heartbeatAckSnapshot() -> HeartbeatAck? {
-        lastHeartbeatAck.get()
+        HeartbeatAck(packed: heartbeatAckWord.load())
     }
 
     func storeHeartbeatAck(_ ack: HeartbeatAck) {
-        lastHeartbeatAck.set(ack)
+        heartbeatAckWord.store(ack.packed)
     }
 
     /// Current send counter (the last value used), for the proactive re-PUT
@@ -306,7 +353,18 @@ final class SatelliteClient {
     /// truncating: past exhaustion the poll must keep reading "re-PUT
     /// needed", never wrap back under the threshold.
     var sendCounter: UInt32 {
-        UInt32(clamping: params.get().counter)
+        UInt32(clamping: UInt64(bitPattern: sendCounterWord.load()))
+    }
+
+    /// Places the send counter, under the gate: production only ever
+    /// restarts it; tests place it near a threshold without billions of sends.
+    func placeSendCounter(_ value: UInt64) {
+        gate.hold { sendCounterWord.store(Int64(bitPattern: value)) }
+    }
+
+    /// The settled version, for the touchpad frame's shape.
+    var settledProtocolVersion: Int {
+        Int(protocolVersionWord.loadRelaxed())
     }
 
     /// Median heartbeat RTT halved (symmetric-path one-way estimate) + the
@@ -315,6 +373,7 @@ final class SatelliteClient {
     func latencySnapshot() -> (p50OneWayMs: Double?, samples: Int) {
         latencyLock.lock()
         defer { latencyLock.unlock() }
+        pairPendingAck()
         return (latencyWindow.p50OneWayMs(), latencyWindow.sampleCount)
     }
 
@@ -322,6 +381,7 @@ final class SatelliteClient {
     func latencySummary() -> LatencySummary {
         latencyLock.lock()
         defer { latencyLock.unlock() }
+        pairPendingAck()
         return latencyWindow.summary()
     }
 
@@ -330,79 +390,27 @@ final class SatelliteClient {
     func armLatencyPing(nowMs: Int64) {
         latencyLock.lock()
         defer { latencyLock.unlock() }
+        pairPendingAck()
         latencyWindow.armPing(nowMs: nowMs)
     }
 
-    /// Pair an arriving heartbeat ack with the in-flight ping (receive queue).
+    /// An arriving heartbeat ack (receive queue): its time waits for the next
+    /// holder of the window to pair it with the in-flight ping. A second ack
+    /// before then could only find the ping consumed, as the window decides.
     func recordLatencyAck(nowMs: Int64) {
-        latencyLock.lock()
-        defer { latencyLock.unlock() }
-        latencyWindow.ackReceived(nowMs: nowMs)
+        // An ack already waiting keeps its time; this one finds its ping consumed.
+        _ = pendingAckMs.compareExchange(expected: 0, desired: max(nowMs, 1))
+    }
+
+    /// Pairs the ack the receive loop left, if any; the caller holds `latencyLock`.
+    private func pairPendingAck() {
+        let ackMs = pendingAckMs.exchange(0)
+        if ackMs != 0 { latencyWindow.ackReceived(nowMs: ackMs) }
     }
 
     /// Monotonic milliseconds for the latency clock (never 0 in practice, so
     /// `LatencyWindow`'s 0-sentinel stays free).
     static func monotonicNowMs() -> Int64 {
         Int64(DispatchTime.now().uptimeNanoseconds / 1_000_000)
-    }
-
-    // MARK: - Encrypted send: input (hot path)
-
-    /// One `sendto` per report, on the caller's thread, no buffering.
-    func sendReport(controllerIndex: Int, report: GamepadReport) {
-        sendEncrypted(
-            msgType: ProtocolConstants.msgInput,
-            payload: Encoders.inputPayload(controllerIndex: UInt8(truncatingIfNeeded: controllerIndex), report: report)
-        )
-    }
-
-    // MARK: - Motion (IMU)
-
-    func sendMotion(controllerIndex: Int, sample: MotionSample, timestampDeltaUs: UInt32) {
-        sendEncrypted(
-            msgType: ProtocolConstants.msgMotion,
-            payload: Encoders.motionPayload(
-                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-                sample: sample,
-                timestampDeltaUs: timestampDeltaUs
-            )
-        )
-    }
-
-    // MARK: - Battery
-
-    /// Forward a battery snapshot (MSG_BATTERY 0x000B). `level` is 0...100,
-    /// or `ProtocolConstants.batteryLevelUnknown` (0xFF) for status-only
-    /// readers; senders with no battery information at all MUST NOT call.
-    func sendBattery(controllerIndex: Int, level: UInt8, status: BatteryStatus) {
-        sendEncrypted(
-            msgType: ProtocolConstants.msgBattery,
-            payload: Encoders.batteryPayload(
-                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
-                level: level,
-                status: status
-            )
-        )
-    }
-
-    // MARK: - Touchpad
-
-    /// Forward a touchpad sample (MSG_TOUCHPAD 0x000C) in the shape the
-    /// SETTLED version decodes: the 19-byte POINTER frame on version 2 and
-    /// later, the 16-byte frame on version 1, which drops anything longer.
-    /// Coordinates are normalised int16; the caller scales. Hot path:
-    /// GameController touchpad callback thread.
-    func sendTouchpad(controllerIndex: Int, sample: TouchpadSample, eventTimeMs: UInt32) {
-        let index = UInt8(truncatingIfNeeded: controllerIndex)
-        let payload = ProtocolConstants.settledSpeaksV2(params.get().protocolVersion)
-            ? Encoders.pointerPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs)
-            : Encoders.touchpadPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs)
-        sendEncrypted(msgType: ProtocolConstants.msgTouchpad, payload: payload)
-    }
-
-    /// One 20 ms Opus packet from the pad's microphone (MSG_MIC_AUDIO 0x0012).
-    /// The caller enforces mute: a muted client calls this not at all.
-    func sendMicAudio(_ frame: AudioFrame) {
-        sendEncrypted(msgType: ProtocolConstants.msgMicAudio, payload: frame.payload)
     }
 }

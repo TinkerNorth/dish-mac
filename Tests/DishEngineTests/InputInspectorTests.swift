@@ -5,9 +5,9 @@ import DishCore
 import XCTest
 @testable import DishEngine
 
-/// The inspector over the real processor: it taps one slot's reports as the
-/// host sees them and as the pad sent them, reads motion and touch in human
-/// units, measures the rate, and runs a stick test on its own clock.
+/// The inspector over the real processor: it reads one slot's record, the
+/// report as the host sees it and as the pad sent it, motion and touch in
+/// human units, measures the rate, and runs a stick test on its own clock.
 @MainActor
 final class InputInspectorTests: XCTestCase {
 
@@ -100,16 +100,13 @@ final class InputInspectorTests: XCTestCase {
         XCTAssertEqual(result?.suggestedDeadzone ?? 0, 0.15, accuracy: 0.0001)
     }
 
-    func testDisarmingClearsTheStateAndTheTapsAndArmingAnotherSlotDropsTheTest() {
+    func testDisarmingClearsTheStateAndArmingAnotherSlotDropsTheTest() {
         inspector.arm("pad")
         inspector.startStickTest(.range)
         inspector.arm("second")
         XCTAssertEqual(inspector.state, InputInspection(slotId: "second"), "a new slot starts clean")
         inspector.disarm()
         XCTAssertEqual(inspector.state, .disarmed)
-        XCTAssertNil(processor.reportTap)
-        XCTAssertNil(processor.motionTap)
-        XCTAssertNil(processor.touchpadTap)
         inspector.startStickTest(.drift)
         inspector.tick()
         XCTAssertEqual(inspector.state, .disarmed, "nothing is armed, nothing runs")

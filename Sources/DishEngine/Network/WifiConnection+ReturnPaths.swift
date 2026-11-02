@@ -24,14 +24,17 @@ struct ReturnPathHandlers {
         micLed = audio.micLed
     }
 
+    /// One post of the whole set to the client's receive loop.
     func install(on client: SatelliteClient) {
-        client.onRumble = rumble
-        client.onLightbar = lightbar
-        client.onTriggerEffects = triggerEffects
-        client.onPlayerLeds = playerLeds
-        client.onSpeakerAudio = speakerAudio
-        client.onHapticAudio = hapticAudio
-        client.onMicLed = micLed
+        client.updateHandlers { handlers in
+            handlers.rumble = rumble
+            handlers.lightbar = lightbar
+            handlers.triggerEffects = triggerEffects
+            handlers.playerLeds = playerLeds
+            handlers.speakerAudio = speakerAudio
+            handlers.hapticAudio = hapticAudio
+            handlers.micLed = micLed
+        }
     }
 }
 
@@ -47,17 +50,17 @@ struct PadAudioHandlers {
 /// frame, so the speaker of the pad on index 1 never plays index 0's lane.
 final class PadAudioTable: @unchecked Sendable {
     private var handlers: [Int: PadAudioHandlers] = [:]
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "connection.padAudio")
 
     func set(_ pad: PadAudioHandlers?, for controllerIndex: Int) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         handlers[controllerIndex] = pad
     }
 
     func handlers(for controllerIndex: UInt8) -> PadAudioHandlers? {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return handlers[Int(controllerIndex)]
     }
 
@@ -77,6 +80,16 @@ final class PadAudioTable: @unchecked Sendable {
 extension WifiConnection {
 
     // MARK: - Return paths
+
+    /// The router's routes for this connection's indices, captured by the
+    /// four feedback handlers and kept for a reconnect's fresh client.
+    func setFeedbackRoutes(_ routes: FeedbackRoutes) {
+        returnPaths.rumble = routes.rumble
+        returnPaths.lightbar = routes.lightbar
+        returnPaths.triggerEffects = routes.triggerEffects
+        returnPaths.playerLeds = routes.playerLeds
+        if let client { returnPaths.install(on: client) }
+    }
 
     func setRumbleHandler(_ handler: @escaping (RumbleCommand) -> Void) {
         returnPaths.rumble = handler

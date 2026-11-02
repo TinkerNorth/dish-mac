@@ -28,7 +28,7 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
     var onDatagram: ((Data) -> Void)?
     private let connection: NWConnection
     private let queue: DispatchQueue
-    private let lock = NSLock()
+    private var lock = TrackedLock(NSLock(), "moonlight.transport")
     private var readyContinuation: CheckedContinuation<Bool, Never>?
     /// Datagrams handed to the socket and not yet processed, whether a close
     /// is waiting on them, and whether its grace has run.
@@ -36,7 +36,11 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
     private var closing = false
     private var graceElapsed = false
 
-    init(address: String, port: UInt16, queue: DispatchQueue = DispatchQueue(label: "dish.moonlight.control-udp", qos: .userInteractive)) {
+    init(
+        address: String,
+        port: UInt16,
+        queue: DispatchQueue = ThreadRole.moonlightUdp.queue(label: "dish.moonlight.control-udp", qos: .userInteractive)
+    ) {
         self.queue = queue
         connection = NWConnection(host: NWEndpoint.Host(address), port: NWEndpoint.Port(rawValue: port) ?? .any, using: .udp)
     }
@@ -139,7 +143,7 @@ final class MoonlightMediaPinger: @unchecked Sendable {
     private let queue = DispatchQueue(label: "dish.moonlight.media-ping")
     private var timer: DispatchSourceTimer?
     private var sequence: UInt32 = 0
-    private let sent = LockedBox(0)
+    private let sent = LockedBox(0, name: "moonlight.mediaPings")
 
     /// The lanes the SETUPs named; a port the host did not name gets none.
     init(address: String, videoPort: UInt16?, audioPort: UInt16?, payload: String) {

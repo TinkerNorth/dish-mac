@@ -141,3 +141,32 @@ extension DataPlaneTestHelpers {
         return sealDownlink(msgType: ProtocolConstants.msgHeartbeatAck, payload: payload, counter: counter)
     }
 }
+
+extension DataPlaneTestHelpers {
+    /// The sender's address as its datagram names it, after the socket's
+    /// receive timeout at most.
+    static func receiveSender(fd: Int32) -> sockaddr_in? {
+        var buffer = [UInt8](repeating: 0, count: ProtocolConstants.udpDatagramMaxBytes)
+        var from = sockaddr_in()
+        var length = socklen_t(MemoryLayout<sockaddr_in>.size)
+        let count = buffer.withUnsafeMutableBytes { raw in
+            withUnsafeMutablePointer(to: &from) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { recvfrom(fd, raw.baseAddress, raw.count, 0, $0, &length) }
+            }
+        }
+        return count > 0 ? from : nil
+    }
+
+    /// One datagram from `fd` to `address`; true when the whole of it left.
+    static func send(_ datagram: Data, from fd: Int32, to address: sockaddr_in) -> Bool {
+        var destination = address
+        let written = datagram.withUnsafeBytes { raw in
+            withUnsafePointer(to: &destination) { pointer in
+                pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) {
+                    sendto(fd, raw.baseAddress, raw.count, 0, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                }
+            }
+        }
+        return written == datagram.count
+    }
+}

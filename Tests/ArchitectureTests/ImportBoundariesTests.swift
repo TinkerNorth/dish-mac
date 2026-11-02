@@ -23,10 +23,12 @@ final class ImportBoundariesTests: XCTestCase {
             directory: "Sources/DishEngine",
             allowed: [
                 "Foundation", "Combine", "CryptoKit", "Darwin", "Network", "dnssd", "SystemConfiguration", "GameController",
-                "CoreHaptics", "IOKit", "Security", "os", "AudioToolbox", "CoreAudio", "AVFoundation", "DishCore", "DishKernel"
+                "CoreHaptics", "IOKit", "Security", "os", "AudioToolbox", "CoreAudio", "AVFoundation", "DishCore", "DishKernel",
+                "DishAtomics"
             ]
         ),
         Layer(directory: "Sources/DishCrashUpload", allowed: ["Foundation", "Sentry", "DishCore", "DishEngine"]),
+        Layer(directory: "Sources/DishBench", allowed: ["Foundation", "Darwin", "DishCore", "DishEngine"]),
         Layer(
             directory: "Sources/Dish",
             allowed: [

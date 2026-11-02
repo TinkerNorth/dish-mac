@@ -34,6 +34,7 @@ extension GameControllerInput: InputPathHost {
 
     func showDirectSlot(_ slot: Slot, lane: HidPadLane) {
         let fresh = !slots.contains { $0.id == slot.id }
+        lane.use(feed: processor.feed(for: slot.id))
         upsertSlot(slot)
         guard fresh, slot.capabilities.hasBattery else { return }
         startDirectBatteryHeartbeat(slot.id, lane: lane)
@@ -70,8 +71,7 @@ extension GameControllerInput: InputPathHost {
     func carryOutput(directSlotId: String, via gameControllerId: String?) {
         let carrier = gameControllerId.flatMap { controllersById[$0] }
         guard controllersById[directSlotId] !== carrier else { return }
-        actuators.removeValue(forKey: directSlotId)?.shutdown()
-        controllersById[directSlotId] = carrier
+        fileController(carrier, for: directSlotId)
     }
 
     func directBatteryChanged(_ slotId: String, _ battery: PadBattery) {

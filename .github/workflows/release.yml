@@ -462,9 +462,23 @@ jobs:
       # wants a vX.Y.Z tag and refuses the ref, as 1.0.1's release did.
       compile-generator: true
 
+  # The frame path measured on the tagged commit: measurements-<tag>.md and
+  # .json ride the release beside the app. Its lock gate is reported, not
+  # enforced, until the hot path takes no lock.
+  measurements:
+    name: Release measurements
+    needs: [harden]
+    permissions:
+      contents: write
+    uses: ./.github/workflows/measurements.yml
+    with:
+      version: ${{ inputs.tag || github.ref_name }}
+      upload_to_release: false
+      tag: ${{ inputs.tag || github.ref_name }}
+
   publish:
     name: Publish to GitHub Releases
-    needs: [required-secrets, harden, provenance]
+    needs: [required-secrets, harden, provenance, measurements]
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -479,6 +493,12 @@ jobs:
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: ${{ needs.provenance.outputs.provenance-name }}
+          path: release
+
+      - name: Download the measurements
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: measurements
           path: release
 
       - name: Show what we're about to publish

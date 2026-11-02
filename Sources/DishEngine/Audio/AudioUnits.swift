@@ -122,6 +122,7 @@ final class PadAudioOutput {
     }
 
     fileprivate func fill(_ list: UnsafeMutablePointer<AudioBufferList>, frames: UInt32) {
+        ThreadRole.audioDecode.enterThread()
         guard let data = list.pointee.mBuffers.mData else { return }
         render(data.assumingMemoryBound(to: Float.self), Int(frames))
     }
@@ -201,6 +202,7 @@ final class PadAudioInput {
         _ time: UnsafePointer<AudioTimeStamp>,
         frames: UInt32
     ) {
+        ThreadRole.audioCapture.enterThread()
         let needed = Int(frames) * channels
         guard needed <= scratch.count else { return }
         let status = scratch.withUnsafeMutableBytes { raw -> OSStatus in

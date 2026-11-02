@@ -33,7 +33,7 @@ final class AppModelDeadzonesTests: XCTestCase {
 
     private func makeModel() {
         model = AppModel(store: ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore()), defaults: defaults)
-        model.input.processor.reportSender = { [weak self] _, report in self?.sent.append(report) }
+        model.input.processor.send(reports: { [weak self] _, report in self?.sent.append(report) })
     }
 
     /// A stick pushed `lx` across, as the pad would report it.

@@ -109,32 +109,32 @@ public enum EnetProtocol {
 }
 
 /// One command's header: the command byte, the channel, the reliable sequence.
-struct EnetCommandHeader: Equatable {
-    let command: UInt8
-    let channel: UInt8
-    let reliableSequence: UInt16
+package struct EnetCommandHeader: Equatable {
+    package let command: UInt8
+    package let channel: UInt8
+    package let reliableSequence: UInt16
 
-    var number: UInt8 {
+    package var number: UInt8 {
         command & EnetProtocol.commandMask
     }
 
-    var wantsAcknowledge: Bool {
+    package var wantsAcknowledge: Bool {
         command & EnetProtocol.flagAcknowledge != 0
     }
 }
 
 /// What the datagram header says about the whole datagram.
-struct EnetDatagramHeader: Equatable {
-    let peerId: UInt16
-    let sessionId: UInt8
-    let sentTime: UInt16?
-    let compressed: Bool
+package struct EnetDatagramHeader: Equatable {
+    package let peerId: UInt16
+    package let sessionId: UInt8
+    package let sentTime: UInt16?
+    package let compressed: Bool
 }
 
-enum EnetWire {
+package enum EnetWire {
     /// The outer header: before VERIFY_CONNECT the peer field is 0xFFF with no
     /// session bits; after it, the host's id for us and its session id.
-    static func header(outgoingPeerId: UInt16, outgoingSessionId: UInt8, sentTime: UInt16) -> ByteWriter {
+    package static func header(outgoingPeerId: UInt16, outgoingSessionId: UInt8, sentTime: UInt16) -> ByteWriter {
         var writer = ByteWriter(capacity: 64)
         let assigned = outgoingPeerId < EnetProtocol.maximumPeerId
         var word = outgoingPeerId & EnetProtocol.maximumPeerId
@@ -145,13 +145,13 @@ enum EnetWire {
         return writer
     }
 
-    static func commandHeader(_ writer: inout ByteWriter, command: UInt8, channel: UInt8, reliableSequence: UInt16) {
+    package static func commandHeader(_ writer: inout ByteWriter, command: UInt8, channel: UInt8, reliableSequence: UInt16) {
         writer.u8(command)
         writer.u8(channel)
         writer.u16BE(reliableSequence)
     }
 
-    static func readDatagramHeader(_ reader: inout ByteReader) -> EnetDatagramHeader? {
+    package static func readDatagramHeader(_ reader: inout ByteReader) -> EnetDatagramHeader? {
         guard let word = reader.u16BE() else { return nil }
         let compressed = word & EnetProtocol.headerFlagCompressed != 0
         let hasSentTime = word & EnetProtocol.headerFlagSentTime != 0
@@ -169,7 +169,7 @@ enum EnetWire {
         )
     }
 
-    static func readCommandHeader(_ reader: inout ByteReader) -> EnetCommandHeader? {
+    package static func readCommandHeader(_ reader: inout ByteReader) -> EnetCommandHeader? {
         guard let command = reader.u8(), let channel = reader.u8(), let sequence = reader.u16BE() else { return nil }
         return EnetCommandHeader(command: command, channel: channel, reliableSequence: sequence)
     }

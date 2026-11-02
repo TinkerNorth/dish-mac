@@ -141,18 +141,18 @@ package struct ForwardingFlags: Equatable {
 /// pattern as `RoutingTable` / `ClientRef`.
 final class ForwardingGate: @unchecked Sendable {
 
-    private var lock = os_unfair_lock_s()
+    private var lock = TrackedLock(os_unfair_lock_s(), "forwarding.gate")
     private var flags = ForwardingFlags()
 
     func snapshot() -> ForwardingFlags {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         return flags
     }
 
     func update(_ newFlags: ForwardingFlags) {
-        os_unfair_lock_lock(&lock)
-        defer { os_unfair_lock_unlock(&lock) }
+        lock.lock()
+        defer { lock.unlock() }
         flags = newFlags
     }
 }

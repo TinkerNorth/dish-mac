@@ -3,9 +3,10 @@
 //
 // The input inspector: one controller's input as the host sees it and as the
 // pad sent it, motion and touch in human units, the report rate, and the
-// stick tests (core StickHealth), all read off the processor's taps on the
-// controller threads and folded into one state by a poll on the main actor.
-// Nothing here measures twice: the taps see the very reports the host gets.
+// stick tests (core StickHealth), all read off the pad's record, which its
+// feed writes on the controller's thread, and folded into one state by a poll
+// on the main actor. Nothing here measures twice: the record holds the very
+// report the host gets.
 
 import Combine
 import DishCore
@@ -114,23 +115,12 @@ package struct InputInspection: Hashable {
     package static let disarmed = InputInspection()
 }
 
-/// The latest of each stream for the armed slot: written on the controller
-/// callback threads, read by the poll.
-struct LatestInput: Equatable {
-    var raw: GamepadReport?
-    var filtered: GamepadReport?
-    var motion: MotionSample?
-    var touch: TouchpadSample?
-    var reports: UInt64 = 0
-}
-
 @MainActor
 package final class InputInspector: StateSource<InputInspection> {
 
     private let processor: GamepadInputProcessor
     private let now: () -> Int64
     private let pollMs: Int
-    private let latest = LockedBox(LatestInput())
     private var rate = InputRateTracker()
     private var bench = StickBench()
     private var timer: DispatchSourceTimer?
@@ -148,19 +138,14 @@ package final class InputInspector: StateSource<InputInspection> {
     /// re-points it and drops the last one's stick test.
     package func arm(_ slotId: String) {
         armedSlotId = slotId
-        latest.set(LatestInput())
         rate = InputRateTracker()
         bench = StickBench()
-        installTaps(for: slotId)
         startPolling()
         setState(InputInspection(slotId: slotId))
     }
 
     package func disarm() {
         armedSlotId = nil
-        processor.reportTap = nil
-        processor.motionTap = nil
-        processor.touchpadTap = nil
         timer?.cancel()
         timer = nil
         setState(.disarmed)
@@ -173,12 +158,12 @@ package final class InputInspector: StateSource<InputInspection> {
         tick()
     }
 
-    /// One poll: the latest samples folded into the state, the rate measured
+    /// One poll: the pad's record folded into the state, the rate measured
     /// from the report count, the running test fed the raw sticks and
     /// advanced on the clock.
     package func tick() {
         guard let slotId = armedSlotId else { return }
-        let input = latest.get()
+        let input = processor.latestInput(slotId) ?? LatestInput()
         let nowMs = now()
         let hz = rate.sample(count: input.reports, nowUs: UInt64(max(nowMs, 0)) * 1000)
         if let raw = input.raw {
@@ -193,26 +178,6 @@ package final class InputInspector: StateSource<InputInspection> {
             secondsLeft: bench.secondsLeft(at: nowMs)
         )
         setState(inspection)
-    }
-
-    private func installTaps(for slotId: String) {
-        let latest = latest
-        processor.reportTap = { deviceId, raw, filtered in
-            guard deviceId == slotId else { return }
-            latest.mutate { input in
-                input.raw = raw
-                input.filtered = filtered
-                input.reports += 1
-            }
-        }
-        processor.motionTap = { deviceId, sample in
-            guard deviceId == slotId else { return }
-            latest.mutate { $0.motion = sample }
-        }
-        processor.touchpadTap = { deviceId, sample in
-            guard deviceId == slotId else { return }
-            latest.mutate { $0.touch = sample }
-        }
     }
 
     private func startPolling() {

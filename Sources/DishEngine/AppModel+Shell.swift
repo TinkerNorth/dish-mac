@@ -97,8 +97,8 @@ extension AppModel {
     }
 
     private func inputCounts() -> InputCounts {
-        let pads = input.processor.tally.snapshot()
-        return InputCounts(reports: pads.reports, motion: pads.motion, sends: routing.sent.current())
+        let pads = input.processor.tallySnapshot()
+        return InputCounts(reports: pads.reports, motion: pads.motion, sends: input.processor.sent.current())
     }
 
     /// The crash log is read again, for a page that shows whether it waits

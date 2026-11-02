@@ -171,7 +171,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         client.sendBattery(controllerIndex: 0, level: 50, status: .charging)
         XCTAssertEqual(client.sendCounter, 2)
         XCTAssertFalse(counterNeedsRepush(client.sendCounter))
-        client.params.mutate { $0.counter = UInt64(ProtocolConstants.counterRepushThreshold) }
+        client.placeSendCounter(UInt64(ProtocolConstants.counterRepushThreshold))
         XCTAssertTrue(counterNeedsRepush(client.sendCounter), "the G4 poll sees the exposed counter")
     }
 
@@ -184,7 +184,7 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         let client = try XCTUnwrap(DataPlaneTestHelpers.makeClient(port: port))
         defer { client.closeSocket() }
 
-        client.params.mutate { $0.counter = UInt64(UInt32.max) - 1 }
+        client.placeSendCounter(UInt64(UInt32.max) - 1)
         client.sendBattery(controllerIndex: 0, level: 1, status: .unknown)
         let last = try XCTUnwrap(DataPlaneTestHelpers.receiveDatagram(fd: fd))
         XCTAssertEqual(
@@ -314,5 +314,14 @@ final class SatelliteClientDataPlaneTests: XCTestCase {
         client.closeSocket()
         client.sendReport(controllerIndex: 0, report: GamepadReport(buttons: 0, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0))
         XCTAssertEqual(client.sendCounter, 0, "sends on a closed client are dropped before sealing")
+    }
+
+    /// The receive loop opens the rumble, light bar and audio the pads wait
+    /// on, and the heartbeat keeps their session up: neither may queue behind
+    /// work of a lower class than the input queue's.
+    func testTheReceiveLoopAndTheHeartbeatRunAtTheInputQueuesQuality() {
+        let client = SatelliteClient()
+        XCTAssertEqual(client.ackQueue.qos, .userInteractive)
+        XCTAssertEqual(client.heartbeatQueue.qos, .userInteractive)
     }
 }

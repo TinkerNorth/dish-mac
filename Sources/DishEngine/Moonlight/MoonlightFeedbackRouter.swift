@@ -37,7 +37,7 @@ final class MoonlightFeedbackRouter {
     private let actuators: MoonlightFeedbackActuators
     private let gate: ForwardingGate
     private let table: RoutingTable
-    private let mixes = LockedBox<[String: MoonlightRumbleMix]>([:])
+    private let mixes = LockedBox<[String: MoonlightRumbleMix]>([:], name: "moonlight.rumbleMixes")
     /// Hosts already wired, pruned to the pool on every pool change so a
     /// forgotten host that comes back under the same id is wired again.
     private var wired: Set<String> = []

@@ -10,62 +10,43 @@ import GameController
 /// `GameControllerInput`.
 extension GameControllerInput {
 
-    // MARK: - Light bar
+    // MARK: - Return paths
 
-    /// Queue a host-driven colour for the controller's light. The gate on
-    /// the Light bar setting sits upstream; a pad without a light ignores it.
+    /// The return paths find a slot's controller by its id: filed here for
+    /// the main actor's own reads, and on the feedback queue for its actuators.
+    func fileController(_ controller: GCController?, for id: String) {
+        controllersById[id] = controller
+        padActuators.file(controller, for: id)
+    }
+
+    /// Each command lands on the pad's record, and the feedback queue applies
+    /// the newest of each kind. The switches' gates sit upstream; a pad
+    /// without the hardware ignores the command there.
     func applyLightbar(deviceId: String, r: UInt8, g: UInt8, b: UInt8) {
-        lightbarApplier.submit(deviceId: deviceId, value: LightbarColor(r: r, g: g, b: b))
+        feedback.pad(for: deviceId).post(lightbar: LightbarCommand(controllerIndex: 0, r: r, g: g, b: b))
     }
 
-    func writeLightbar(deviceId: String, color: LightbarColor) {
-        guard let light = controllersById[deviceId]?.light else { return }
-        light.color = GCColor(red: Float(color.r) / 255.0, green: Float(color.g) / 255.0, blue: Float(color.b) / 255.0)
-    }
-
-    // MARK: - Rumble
-
-    /// Queue a rumble command; a 60 Hz stream collapses to the newest command
-    /// per controller, in order.
     func applyRumble(deviceId: String, strongMagnitude: UInt16, weakMagnitude: UInt16, durationMs: UInt16) {
-        rumbleApplier.submit(
-            deviceId: deviceId,
-            value: RumbleCommand(strong: strongMagnitude, weak: weakMagnitude, durationMs: durationMs)
+        let command = RumbleCommand(
+            controllerIndex: 0,
+            strongMagnitude: strongMagnitude,
+            weakMagnitude: weakMagnitude,
+            durationMs: durationMs
         )
+        feedback.pad(for: deviceId).post(rumble: command)
     }
 
-    /// A pad without haptics takes no actuator and the command is dropped.
-    func actuateRumble(deviceId: String, command: RumbleCommand) {
-        guard let actuator = rumbleActuator(for: deviceId) else { return }
-        actuator.apply(strong: command.strong, weak: command.weak, durationMs: command.durationMs)
-    }
-
-    private func rumbleActuator(for deviceId: String) -> RumbleActuator? {
-        if let existing = actuators[deviceId] { return existing }
-        guard let controller = controllersById[deviceId], let fresh = RumbleActuator(controller: controller) else { return nil }
-        actuators[deviceId] = fresh
-        return fresh
-    }
-
-    // MARK: - Adaptive triggers (DualSense)
-
-    /// Queue the game's trigger-effect blocks; a burst collapses to the newest
-    /// pair per controller.
     func applyTriggerEffects(deviceId: String, command: TriggerEffectsCommand) {
-        triggerEffectsApplier.submit(deviceId: deviceId, value: command)
+        feedback.pad(for: deviceId).post(triggerEffects: command)
     }
 
-    /// A pad that is not a DualSense has no adaptive triggers and the command
-    /// is dropped.
-    func writeTriggerEffects(deviceId: String, command: TriggerEffectsCommand) {
-        guard let dualSense = controllersById[deviceId]?.extendedGamepad as? GCDualSenseGamepad else { return }
-        Self.play(DualSenseTriggerEffect.decode(command.left), on: dualSense.leftTrigger)
-        Self.play(DualSenseTriggerEffect.decode(command.right), on: dualSense.rightTrigger)
+    func applyPlayerLeds(deviceId: String, player: Int) {
+        feedback.pad(for: deviceId).post(player: player)
     }
 
     /// One decoded effect onto one trigger, each shape through the framework
     /// call that renders it.
-    static func play(_ effect: DualSenseTriggerEffect, on trigger: GCDualSenseAdaptiveTrigger) {
+    nonisolated static func play(_ effect: DualSenseTriggerEffect, on trigger: GCDualSenseAdaptiveTrigger) {
         switch effect {
         case .off:
             trigger.setModeOff()
@@ -84,7 +65,7 @@ extension GameControllerInput {
 
     /// The framework's ten-zone struct from an array; a short array leaves
     /// the remaining zones at zero.
-    static func positionalStrengths(_ values: [Float]) -> GCDualSenseAdaptiveTrigger.PositionalResistiveStrengths {
+    nonisolated static func positionalStrengths(_ values: [Float]) -> GCDualSenseAdaptiveTrigger.PositionalResistiveStrengths {
         var out = GCDualSenseAdaptiveTrigger.PositionalResistiveStrengths()
         withUnsafeMutableBytes(of: &out.values) { raw in
             let zones = raw.bindMemory(to: Float.self)
@@ -95,7 +76,7 @@ extension GameControllerInput {
         return out
     }
 
-    static func positionalAmplitudes(_ values: [Float]) -> GCDualSenseAdaptiveTrigger.PositionalAmplitudes {
+    nonisolated static func positionalAmplitudes(_ values: [Float]) -> GCDualSenseAdaptiveTrigger.PositionalAmplitudes {
         var out = GCDualSenseAdaptiveTrigger.PositionalAmplitudes()
         withUnsafeMutableBytes(of: &out.values) { raw in
             let zones = raw.bindMemory(to: Float.self)
@@ -106,21 +87,9 @@ extension GameControllerInput {
         return out
     }
 
-    // MARK: - Player LEDs
-
-    /// Queue the player the game assigned; the framework lights the pad's
-    /// own pattern for it.
-    func applyPlayerLeds(deviceId: String, player: Int) {
-        playerLedsApplier.submit(deviceId: deviceId, value: player)
-    }
-
-    func writePlayerIndex(deviceId: String, player: Int) {
-        controllersById[deviceId]?.playerIndex = Self.playerIndex(for: player)
-    }
-
     /// Players one to four light the framework's four patterns; anything
     /// else clears them.
-    static func playerIndex(for player: Int) -> GCControllerPlayerIndex {
+    nonisolated static func playerIndex(for player: Int) -> GCControllerPlayerIndex {
         switch player {
         case 1: .index1
         case 2: .index2

@@ -20,7 +20,7 @@ final class HidPadLaneTests: XCTestCase {
         let reports = reports
         let batteries = batteries
         let posts = posts
-        processor.reportSender = { _, report in reports.set(reports.get() + [report]) }
+        processor.send(reports: { _, report in reports.set(reports.get() + [report]) })
         let wiring = HidPadWiring(
             processor: processor,
             notify: { _, source in posts.set(posts.get() + [source]) },
@@ -127,7 +127,7 @@ final class HidPadLaneTests: XCTestCase {
 
     private func gamepadLane(captures: LockedBox<[RawCapture]>) throws -> HidPadLane {
         let reports = reports
-        processor.reportSender = { _, report in reports.set(reports.get() + [report]) }
+        processor.send(reports: { _, report in reports.set(reports.get() + [report]) })
         let wiring = HidPadWiring(
             processor: processor,
             notify: { _, _ in },

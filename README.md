@@ -187,11 +187,12 @@ fails the build when a file imports outside its module's allowlist, a
 dependency points the wrong way, a view holds a raw colour or an English
 literal, or a mutable static appears.
 
-The hot path never leaves the controller's input queue: it builds a
-`GamepadReport`, applies the dead zones under a lock, reads the slot's route
-(its satellite and the controller index it holds there, or its pad on a
-Moonlight host) under one `os_unfair_lock`, seals the frame and calls
-`sendto()`. No queue, no Combine, no async hop, no main-actor hop; the
+The hot path never leaves the controller's queue and takes no lock: it
+builds a `GamepadReport`, applies the dead zones, sends through the route its
+pad's feed holds (its satellite's live client and the controller index it
+holds there, or its pad on a Moonlight host), seals the frame in a stack
+buffer and calls `sendto()`. No queue hop, no Combine, no async hop, no
+main-actor hop; the
 raw POSIX socket carries `IP_TOS = 0xB8` (DSCP EF) and `SO_NOSIGPIPE`.
 CryptoKit's `ChaChaPoly` produces the exact bytes libsodium produces on the
 server, pinned byte-for-byte by the cross-repo vectors in
@@ -245,10 +246,11 @@ Rumble and the light bar flow the opposite way to input. The satellite
 forwards what the host game writes to the virtual pad as `MSG_RUMBLE`
 (`0x0009`, 7 bytes: `ctrlIdx(1) + strong(2 BE) + weak(2 BE) + durationMs(2
 BE)`) and `MSG_LIGHTBAR` (`0x000D`, 4 bytes: `ctrlIdx(1) + R + G + B`) over
-the encrypted UDP socket. `DishCore` parses them as pure decoders;
-`ReturnPathRouter` resolves the connection and the command's controller
-index to the slot bound there, and so to the device; the GameController
-bridge actuates `GCController.haptics` (one `CHHapticEngine` per handle) and
+the encrypted UDP socket. `DishCore` parses them as pure decoders; the
+receive loop resolves the connection and the command's controller index to
+the slot bound there, through the routes `ReturnPathRouter` hands each
+connection, and the feedback queue actuates `GCController.haptics` (one
+`CHHapticEngine` per handle, its player kept while the level repeats) and
 sets `GCController.light`. The two are gated and routed independently, so
 Rumble off in Settings leaves the light bar alone, and a pad without the
 hardware ignores the packet.

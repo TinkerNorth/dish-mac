@@ -10,6 +10,7 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -99,6 +100,11 @@ jobs:
       - name: Build release binary
         run: swift build --configuration release
 
+      # Every scenario for 0.2 s against the release build; the exit status is
+      # the harness's own accounting (pacing, arrivals), never a latency.
+      - name: Bench smoke run
+        run: .build/release/DishBench --smoke
+
       - name: Bundle .app
         run: ./bundle.sh release
 
@@ -108,3 +114,40 @@ jobs:
           name: Dish.app
           path: Dish.app
           retention-days: 14
+
+  # The LOCK_STATS build counts every tracked lock by thread role; its own
+  # tests and the lock-law test run only there. A cache of its own, so
+  # neither job restores the other's objects.
+  lock-stats:
+    name: Lock statistics build and tests
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+
+      - name: Cache SwiftPM
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .build
+            !.build/**/*.bundle
+            !.build/artifacts/sentry-cocoa/Sentry-*
+            !.build/artifacts/sentry-cocoa/SentryObjC-*
+          key: ${{ runner.os }}-lockstats-spm-${{ hashFiles('Package.swift', 'Package.resolved', 'Sources/**/Resources/**') }}
+          restore-keys: |
+            ${{ runner.os }}-lockstats-spm-
+            ${{ runner.os }}-spm-
+
+      - name: Build the tests with lock statistics
+        run: swift build --build-tests -Xswiftc -DLOCK_STATS
+
+      - name: Run the lock statistics tests
+        run: swift test --skip-build --filter 'TrackedLockStatsTests|LockLawTests'
+
+      - name: Bench smoke run with lock statistics
+        run: .build/debug/DishBench --smoke
