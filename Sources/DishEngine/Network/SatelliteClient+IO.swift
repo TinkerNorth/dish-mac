@@ -20,7 +20,8 @@ extension SatelliteClient {
     ///
     /// nonce = `up(0x00) | 0×7 | counter(4 BE)`, AAD = token — via
     /// `SessionCrypto.seal` with the per-direction counter starting at 1
-    /// (contract §Crypto; gaps G1/G2). `encode` writes the payload into a
+    /// (contract §Crypto; gaps G1/G2). `encode` writes every one of the
+    /// `payloadCount` bytes (the writers' tests hold each to that) into a
     /// stack buffer that already holds the inner header, so CryptoKit's
     /// sealed box is the send's only allocation. Non-blocking send: a full
     /// socket buffer under Wi-Fi power-save drops the datagram rather than
@@ -36,9 +37,7 @@ extension SatelliteClient {
                 rebasing: datagram[ProtocolConstants.headerSize ..< ProtocolConstants.headerSize + innerCount]
             )
             PacketCodec.writeInnerHeader(msgType: msgType, payloadCount: payloadCount, into: inner)
-            let payload = UnsafeMutableRawBufferPointer(rebasing: inner[ProtocolConstants.innerHeaderSize...])
-            _ = payload.initializeMemory(as: UInt8.self, repeating: 0)
-            encode(payload)
+            encode(UnsafeMutableRawBufferPointer(rebasing: inner[ProtocolConstants.innerHeaderSize...]))
             gate.hold { sealAndSend(datagram, innerCount: innerCount) }
         }
     }
@@ -68,6 +67,7 @@ extension SatelliteClient {
         PacketCodec.writeHeader(token: generation.token, counter: counter, into: datagram)
         var address = destination
         blockingRegion("satellite.sendto")
+        // A refused send is a dropped datagram: every stream is loss-safe.
         _ = withUnsafePointer(to: &address) { pointer in
             pointer.withMemoryRebound(to: sockaddr.self, capacity: 1) { target in
                 sendDatagram(

@@ -398,6 +398,7 @@ final class SatelliteClient {
     /// holder of the window to pair it with the in-flight ping. A second ack
     /// before then could only find the ping consumed, as the window decides.
     func recordLatencyAck(nowMs: Int64) {
+        // An ack already waiting keeps its time; this one finds its ping consumed.
         _ = pendingAckMs.compareExchange(expected: 0, desired: max(nowMs, 1))
     }
 

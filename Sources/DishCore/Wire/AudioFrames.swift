@@ -62,7 +62,7 @@ public struct AudioFrame: Equatable, Sendable {
         out[0] = controllerIndex
         out[1] = UInt8(seq >> 8)
         out[2] = UInt8(seq & 0xFF)
-        _ = opus.copyBytes(to: UnsafeMutableRawBufferPointer(rebasing: out[AudioWire.headerBytes...]))
+        UnsafeMutableRawBufferPointer(rebasing: out[AudioWire.headerBytes...]).copyBytes(from: opus)
     }
 
     /// The payload behind the inner header.
