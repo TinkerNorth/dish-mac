@@ -69,6 +69,14 @@ public enum PacketCodec {
         return (header, Data(packet.dropFirst(ProtocolConstants.headerSize)))
     }
 
+    /// The cleartext header of one datagram, read where it lies: the receive
+    /// loop's buffer. Nil when the datagram cannot carry a sealed message,
+    /// as `parse` decides.
+    public static func parseHeader(_ packet: UnsafeRawBufferPointer) -> Header? {
+        guard packet.count >= ProtocolConstants.headerSize + ProtocolConstants.authTagSize else { return nil }
+        return Header(token: loadU32BE(packet, at: 0), counter: loadU32BE(packet, at: 4))
+    }
+
     /// Assemble one inner plaintext frame: `msgType(2 BE) | msgLen(2 BE) |
     /// payload`. `msgLen` is always the true payload length — the satellite
     /// receiver validates it.
@@ -97,6 +105,20 @@ public enum PacketCodec {
     }
 }
 
+public extension PacketCodec {
+    /// `parseInner` without the copy: the payload is a slice of `plaintext`,
+    /// so it is read from its `startIndex`, as every payload parser here
+    /// reads. Nil when shorter than the inner header.
+    static func parseInnerInPlace(_ plaintext: Data) -> InnerMessage? {
+        guard plaintext.count >= ProtocolConstants.innerHeaderSize else { return nil }
+        return InnerMessage(
+            msgType: plaintext.u16BE(0),
+            declaredLength: plaintext.u16BE(2),
+            payload: plaintext[(plaintext.startIndex + ProtocolConstants.innerHeaderSize)...]
+        )
+    }
+}
+
 // MARK: - Module-internal big-endian readers (zero-based [UInt8] offsets)
 
 func readU16BE(_ bytes: [UInt8], at offset: Int) -> UInt16 {
@@ -108,4 +130,23 @@ func readU32BE(_ bytes: [UInt8], at offset: Int) -> UInt32 {
         | UInt32(bytes[offset + 1]) << 16
         | UInt32(bytes[offset + 2]) << 8
         | UInt32(bytes[offset + 3])
+}
+
+func loadU32BE(_ bytes: UnsafeRawBufferPointer, at offset: Int) -> UInt32 {
+    UInt32(bytes[offset]) << 24
+        | UInt32(bytes[offset + 1]) << 16
+        | UInt32(bytes[offset + 2]) << 8
+        | UInt32(bytes[offset + 3])
+}
+
+/// Reads that count from a payload's own start, so a slice of a plaintext
+/// parses as the whole would, with nothing copied.
+extension Data {
+    func byte(_ offset: Int) -> UInt8 {
+        self[startIndex + offset]
+    }
+
+    func u16BE(_ offset: Int) -> UInt16 {
+        UInt16(byte(offset)) << 8 | UInt16(byte(offset + 1))
+    }
 }

@@ -122,15 +122,37 @@ public enum SessionCrypto {
         counter: UInt32,
         token: UInt32
     ) throws -> Data {
-        guard box.count >= ProtocolConstants.authTagSize else { throw SessionCryptoError.malformedBox }
-        let sealed = try ChaChaPoly.SealedBox(
-            nonce: ChaChaPoly.Nonce(data: nonceBytes(direction: direction, counter: counter)),
-            ciphertext: box.dropLast(ProtocolConstants.authTagSize),
-            tag: box.suffix(ProtocolConstants.authTagSize)
-        )
-        let plain = try ChaChaPoly.open(sealed, using: key, authenticating: aadBytes(token: token))
         // Re-base to startIndex 0 for the same slice-index hygiene as seal().
-        return Data(plain)
+        try Data(box.withUnsafeBytes { raw in
+            try open(boxBytes: raw, key: key, direction: direction, counter: counter, token: token)
+        })
+    }
+
+    /// `open` on a box read where it lies, as the receive loop holds it in
+    /// its buffer: the nonce and the AAD are built on the stack, so the
+    /// copy CryptoKit makes and the plaintext it returns are the only
+    /// allocations.
+    public static func open(
+        boxBytes box: UnsafeRawBufferPointer,
+        key: SymmetricKey,
+        direction: WireDirection,
+        counter: UInt32,
+        token: UInt32
+    ) throws -> Data {
+        guard box.count >= ProtocolConstants.authTagSize else { throw SessionCryptoError.malformedBox }
+        let split = box.count - ProtocolConstants.authTagSize
+        var nonce = nonceWords(direction: direction, counter: counter)
+        var aad = token.bigEndian
+        return try withUnsafeBytes(of: &nonce) { nonceBytes in
+            try withUnsafeBytes(of: &aad) { aadBytes in
+                let sealed = try ChaChaPoly.SealedBox(
+                    nonce: ChaChaPoly.Nonce(data: nonceBytes),
+                    ciphertext: UnsafeRawBufferPointer(rebasing: box[..<split]),
+                    tag: UnsafeRawBufferPointer(rebasing: box[split...])
+                )
+                return try ChaChaPoly.open(sealed, using: key, authenticating: aadBytes)
+            }
+        }
     }
 
     /// Constant-time byte comparison (libsodium `sodium_memcmp` analogue) for
@@ -162,6 +184,12 @@ public enum SessionCrypto {
         nonce[10] = UInt8(truncatingIfNeeded: counter >> 8)
         nonce[11] = UInt8(truncatingIfNeeded: counter)
         return Data(nonce)
+    }
+
+    /// The same nonce as three words whose bytes lie in wire order: the
+    /// direction byte first, seven zeros, then the counter big-endian.
+    static func nonceWords(direction: WireDirection, counter: UInt32) -> (UInt32, UInt32, UInt32) {
+        (UInt32(direction.rawValue).littleEndian, 0, counter.bigEndian)
     }
 
     static func aadBytes(token: UInt32) -> Data {

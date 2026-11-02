@@ -148,13 +148,12 @@ public struct HeartbeatAck: Equatable, Sendable {
     /// when shorter than 6 bytes — a bare ack from a pre-protocol-1 server
     /// still counts for liveness, just not for reconcile.
     public static func parse(_ payload: Data) -> HeartbeatAck? {
-        let bytes = [UInt8](payload)
-        guard bytes.count >= ProtocolConstants.heartbeatAckPayloadBytes else { return nil }
+        guard payload.count >= ProtocolConstants.heartbeatAckPayloadBytes else { return nil }
         return HeartbeatAck(
-            backendAvailable: bytes[0] != 0,
-            activeCount: bytes[1],
-            epoch: readU16BE(bytes, at: 2),
-            bitmap: readU16BE(bytes, at: 4)
+            backendAvailable: payload.byte(0) != 0,
+            activeCount: payload.byte(1),
+            epoch: payload.u16BE(2),
+            bitmap: payload.u16BE(4)
         )
     }
 }
@@ -178,13 +177,12 @@ public struct RumbleCommand: Equatable, Sendable {
     /// Parse the fixed 7-byte payload `ctrlIdx(1) + strong(2 BE) +
     /// weak(2 BE) + durMs(2 BE)`; nil on truncation.
     public static func parse(_ payload: Data) -> RumbleCommand? {
-        let bytes = [UInt8](payload)
-        guard bytes.count >= ProtocolConstants.rumblePayloadBytes else { return nil }
+        guard payload.count >= ProtocolConstants.rumblePayloadBytes else { return nil }
         return RumbleCommand(
-            controllerIndex: bytes[0],
-            strongMagnitude: readU16BE(bytes, at: 1),
-            weakMagnitude: readU16BE(bytes, at: 3),
-            durationMs: readU16BE(bytes, at: 5)
+            controllerIndex: payload.byte(0),
+            strongMagnitude: payload.u16BE(1),
+            weakMagnitude: payload.u16BE(3),
+            durationMs: payload.u16BE(5)
         )
     }
 }
@@ -207,8 +205,7 @@ public struct LightbarCommand: Equatable, Sendable {
     /// Parse the 4-byte payload `ctrlIdx(1) + r(1) + g(1) + b(1)`; nil on
     /// truncation.
     public static func parse(_ payload: Data) -> LightbarCommand? {
-        let bytes = [UInt8](payload)
-        guard bytes.count >= ProtocolConstants.lightbarPayloadBytes else { return nil }
-        return LightbarCommand(controllerIndex: bytes[0], r: bytes[1], g: bytes[2], b: bytes[3])
+        guard payload.count >= ProtocolConstants.lightbarPayloadBytes else { return nil }
+        return LightbarCommand(controllerIndex: payload.byte(0), r: payload.byte(1), g: payload.byte(2), b: payload.byte(3))
     }
 }

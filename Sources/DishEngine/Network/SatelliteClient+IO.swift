@@ -129,34 +129,39 @@ extension SatelliteClient {
         _ = receiveDrained.wait(timeout: .now() + 1.0)
     }
 
-    /// A whole datagram at the contract's ceiling: `recvfrom` truncates to
-    /// the buffer, and a truncated audio ciphertext fails the AEAD, so a
-    /// shorter buffer drops every full-size speaker frame in silence.
+    /// One datagram into the loop's own buffer, at the contract's ceiling:
+    /// `recvfrom` truncates to the buffer, and a truncated audio ciphertext
+    /// fails the AEAD, so a shorter buffer drops every full-size speaker
+    /// frame in silence.
     private func receiveOne() {
         let (fd, _) = socketSnapshot()
         if fd < 0 { return }
-        var buf = [UInt8](repeating: 0, count: ProtocolConstants.udpDatagramMaxBytes)
+        let buffer = receiveBuffer
         var from = sockaddr_in()
         var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
         blockingRegion("satellite.recvfrom")
-        let bytesRead = buf.withUnsafeMutableBufferPointer { bp -> Int in
-            withUnsafeMutablePointer(to: &from) { fp in
-                fp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                    Darwin.recvfrom(fd, bp.baseAddress, bp.count, 0, sa, &fl)
-                }
+        let bytesRead = withUnsafeMutablePointer(to: &from) { fp in
+            fp.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                Darwin.recvfrom(fd, buffer.baseAddress, buffer.count, 0, sa, &fl)
             }
         }
         // <= 0 is the SO_RCVTIMEO tick (or a transient error): loop around and
         // re-check `ackRunning`.
         guard bytesRead > 0 else { return }
-        processIncoming(Data(buf[0 ..< bytesRead]))
+        processIncoming(UnsafeRawBufferPointer(rebasing: buffer[..<bytesRead]))
     }
 
-    /// One datagram: header split (PacketCodec) → token filter → replay guard
-    /// (G3) → AEAD open bound to direction/counter/token (G1/G2) → inner
-    /// dispatch. Every failure is a silent drop, like the sibling clients.
+    /// One whole datagram handed in as `Data`, as the tests hand them.
     func processIncoming(_ datagram: Data) {
-        guard let (header, box) = PacketCodec.parse(datagram) else { return }
+        datagram.withUnsafeBytes { (raw: UnsafeRawBufferPointer) in processIncoming(raw) }
+    }
+
+    /// One datagram where it lies: header read in place → token filter →
+    /// replay guard (G3) → AEAD open of the box in place, bound to
+    /// direction/counter/token (G1/G2) → inner dispatch on a slice of the
+    /// plaintext. Every failure is a silent drop, like the sibling clients.
+    func processIncoming(_ datagram: UnsafeRawBufferPointer) {
+        guard let header = PacketCodec.parseHeader(datagram) else { return }
         let session = params.get()
         guard header.token == session.token else { return }
 
@@ -168,7 +173,7 @@ extension SatelliteClient {
         if lastRecv != 0, header.counter <= lastRecv { return }
 
         guard let plain = try? SessionCrypto.open(
-            box,
+            boxBytes: UnsafeRawBufferPointer(rebasing: datagram[ProtocolConstants.headerSize...]),
             key: session.key,
             direction: .down,
             counter: header.counter,
@@ -176,13 +181,14 @@ extension SatelliteClient {
         ) else { return }
         lastRecvCounter.set(UInt64(header.counter))
 
-        guard let inner = PacketCodec.parseInner(plain) else { return }
+        guard let inner = PacketCodec.parseInnerInPlace(plain) else { return }
         dispatch(inner)
     }
 
     /// Route one decrypted inner message. Runs on the receive queue; handlers
     /// hop threads themselves if they need to.
     private func dispatch(_ inner: PacketCodec.InnerMessage) {
+        refreshReceiveHandlers()
         switch inner.msgType {
         case ProtocolConstants.msgHeartbeatAck:
             // Pair the ack with the in-flight ping BEFORE the liveness flags
@@ -198,25 +204,25 @@ extension SatelliteClient {
             }
         case ProtocolConstants.msgRumble:
             guard let rumble = RumbleCommand.parse(inner.payload) else { return }
-            onRumble?(rumble)
+            receiveHandlers.rumble?(rumble)
         case ProtocolConstants.msgLightbar:
             guard let lightbar = LightbarCommand.parse(inner.payload) else { return }
-            onLightbar?(lightbar)
+            receiveHandlers.lightbar?(lightbar)
         case ProtocolConstants.msgTriggerEffects:
             guard let effects = TriggerEffectsCommand.parse(inner.payload) else { return }
-            onTriggerEffects?(effects)
+            receiveHandlers.triggerEffects?(effects)
         case ProtocolConstants.msgPlayerLeds:
             guard let leds = PlayerLedsCommand.parse(inner.payload) else { return }
-            onPlayerLeds?(leds)
+            receiveHandlers.playerLeds?(leds)
         case ProtocolConstants.msgSpeakerAudio:
             guard let frame = AudioFrame.parse(inner.payload) else { return }
-            onSpeakerAudio?(frame)
+            receiveHandlers.speakerAudio?(frame)
         case ProtocolConstants.msgHapticAudio:
             guard let frame = AudioFrame.parse(inner.payload) else { return }
-            onHapticAudio?(frame)
+            receiveHandlers.hapticAudio?(frame)
         case ProtocolConstants.msgMicLed:
             guard let led = MicLedCommand.parse(inner.payload) else { return }
-            onMicLed?(led)
+            receiveHandlers.micLed?(led)
         case ProtocolConstants.msgSessionClose:
             guard let byte = inner.payload.first else { return }
             // Latch the reason and mark dead NOW: the session is already gone
@@ -225,7 +231,7 @@ extension SatelliteClient {
             // reason bytes degrade to the transient default arm.
             sessionCloseReason.set(Int(byte))
             connectionAlive.set(false)
-            onSessionClose?(CloseReason(rawValue: byte) ?? .shutdown)
+            receiveHandlers.sessionClose?(CloseReason(rawValue: byte) ?? .shutdown)
         default:
             break
         }

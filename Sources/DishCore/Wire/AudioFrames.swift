@@ -47,10 +47,9 @@ public struct AudioFrame: Equatable, Sendable {
     /// short or no Opus byte follows it (a silence frame is a one-byte DTX
     /// packet, never an empty one).
     public static func parse(_ payload: Data) -> AudioFrame? {
-        let bytes = [UInt8](payload)
-        guard bytes.count > AudioWire.headerBytes else { return nil }
-        let seq = UInt16(bytes[1]) << 8 | UInt16(bytes[2])
-        return AudioFrame(controllerIndex: bytes[0], seq: seq, opus: Data(bytes[AudioWire.headerBytes...]))
+        guard payload.count > AudioWire.headerBytes else { return nil }
+        let opus = Data(payload[(payload.startIndex + AudioWire.headerBytes)...])
+        return AudioFrame(controllerIndex: payload.byte(0), seq: payload.u16BE(1), opus: opus)
     }
 
     /// The payload behind the inner header.

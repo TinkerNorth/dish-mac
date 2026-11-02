@@ -184,10 +184,6 @@ private enum LockLaws {
     static let receiveMayAcquire: [String: Allowance] = [
         "forwarding.gate": .debt,
         "routing.table": .debt,
-        "satellite.heartbeatAck": .debt,
-        "satellite.latency": .debt,
-        "satellite.onLightbar": .debt,
-        "satellite.onRumble": .debt,
         "satellite.params": .debt,
         "satellite.send": .debt
     ]
