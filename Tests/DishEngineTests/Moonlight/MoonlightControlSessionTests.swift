@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
-import CryptoKit
 import XCTest
 @testable import DishCore
 @testable import DishEngine
@@ -10,46 +9,18 @@ import XCTest
 /// the handshake, every send sealed and framed, the replug's order, the
 /// keepalive, the host's events opened and dispatched, forged packets
 /// dropped, and the two ways the link ends.
-final class MoonlightControlSessionTests: XCTestCase {
+final class MoonlightControlSessionTests: XCTestCase, PlaysMoonlightHost {
 
-    /// Records what the session sends; the test hands it the host's datagrams.
-    private final class FakeTransport: MoonlightControlTransport, @unchecked Sendable {
-        var onDatagram: ((Data) -> Void)?
-        private let lock = NSLock()
-        private(set) var sent: [Data] = []
-        private(set) var closed = false
-
-        func send(_ datagram: Data) {
-            lock.lock()
-            sent.append(datagram)
-            lock.unlock()
-        }
-
-        func close() {
-            lock.lock()
-            closed = true
-            lock.unlock()
-        }
-
-        func takeSent() -> [Data] {
-            lock.lock()
-            defer { lock.unlock() }
-            let out = sent
-            sent = []
-            return out
-        }
-    }
-
-    private let rikey = hex("edf04a215c4fbea20934120c8480d855")
+    let rikey = hex("edf04a215c4fbea20934120c8480d855")
     private var clock: Int64 = 100_000
-    private var transport: FakeTransport!
+    private var transport: FakeControlTransport!
     private let events = LockedBox<[MoonlightEvent]>([])
     private let closedCount = LockedBox(0)
     private var session: MoonlightControlSession!
 
     override func setUp() {
         super.setUp()
-        transport = FakeTransport()
+        transport = FakeControlTransport()
         session = MoonlightControlSession(
             rikey: rikey,
             connectData: 0xFE88_1C39,
@@ -59,62 +30,6 @@ final class MoonlightControlSessionTests: XCTestCase {
             onEvent: { event in self.events.mutate { $0.append(event) } },
             onClosed: { self.closedCount.mutate { $0 += 1 } }
         )
-    }
-
-    // MARK: - The host's side
-
-    /// What the host answers a CONNECT with: peer 0x42 under session 2.
-    private func verifyConnect(connectId: UInt32 = 7) -> Data {
-        var writer = ByteWriter(capacity: 48)
-        writer.u16BE(0x8FFF)
-        writer.u16BE(0x1111)
-        EnetWire.commandHeader(
-            &writer,
-            command: EnetProtocol.commandVerifyConnect | EnetProtocol.flagAcknowledge,
-            channel: 0xFF,
-            reliableSequence: 1
-        )
-        writer.u16BE(0x42)
-        writer.u8(2)
-        writer.u8(2)
-        writer.u32BE(1400)
-        writer.u32BE(65536)
-        writer.u32BE(1)
-        writer.u32BE(0)
-        writer.u32BE(0)
-        writer.u32BE(5000)
-        writer.u32BE(2)
-        writer.u32BE(2)
-        writer.u32BE(connectId)
-        return writer.data
-    }
-
-    /// A reliable command from the host carrying one sealed control packet.
-    private func hostPacket(seq: UInt16, plaintext: Data, hostSeq: UInt32) -> Data {
-        var sealed = MoonlightControlSealer(rikey: rikey)
-        for _ in 0 ..< hostSeq {
-            _ = sealed.seal(Data([0x00]))
-        }
-        let packet = sealed.seal(plaintext) ?? Data()
-        var writer = ByteWriter(capacity: 64)
-        writer.u16BE(0xA000)
-        writer.u16BE(0x2222)
-        EnetWire.commandHeader(
-            &writer,
-            command: EnetProtocol.commandSendReliable | EnetProtocol.flagAcknowledge,
-            channel: 0,
-            reliableSequence: seq
-        )
-        writer.u16BE(UInt16(packet.count))
-        writer.append(packet)
-        return writer.data
-    }
-
-    /// The plaintext the session sealed into one sent ENet datagram.
-    private func plaintext(of datagram: Data) -> Data? {
-        let reliable = Data(datagram.dropFirst(4 + 6))
-        guard case let .plaintext(plain) = MoonlightControlPacket.open(key: SymmetricKey(data: rikey), packet: reliable) else { return nil }
-        return plain
     }
 
     private func connect() async -> Bool {
