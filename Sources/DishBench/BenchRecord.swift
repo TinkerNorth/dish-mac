@@ -107,7 +107,7 @@ struct BenchRecord: Codable, Equatable {
 }
 
 extension StreamResult {
-    init(_ summary: LatencySummary, pad: String, source: String, rateHz: Int, datagrams: Int) {
+    init(_ summary: StreamLatency, pad: String, source: String, rateHz: Int, datagrams: Int) {
         self.init(
             pad: pad,
             source: source,

@@ -26,7 +26,7 @@ public func unwrapSequence(_ sequence: UInt16, near expected: Int) -> Int {
 /// A stream's latency figures: each arrival matched, through its sequence, to
 /// the send stamp of the frame it carried; the sequence ring is unwrapped
 /// against the frame the previous arrival resolved to.
-public struct LatencySummary: Equatable, Sendable {
+public struct StreamLatency: Equatable, Sendable {
     public static let overLimitNs: UInt64 = 1_000_000
 
     public let frames: Int

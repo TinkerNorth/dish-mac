@@ -11,7 +11,7 @@ import XCTest
 final class BenchOutputTests: XCTestCase {
 
     func testAStreamResultReadsItsSummaryInMicroseconds() {
-        let summary = LatencySummary(sentNs: [0, 1000, 2000, 3000], arrivals: [arrival(0, 40000), arrival(1, 1_501_000)])
+        let summary = StreamLatency(sentNs: [0, 1000, 2000, 3000], arrivals: [arrival(0, 40000), arrival(1, 1_501_000)])
         let result = StreamResult(summary, pad: "A", source: "Input", rateHz: 1000, datagrams: 5)
         XCTAssertEqual(result.frames, 4)
         XCTAssertEqual(result.received, 2)

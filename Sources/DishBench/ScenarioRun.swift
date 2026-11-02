@@ -259,7 +259,7 @@ final class ScenarioRun {
     private func result(_ stream: MeasuredStream, _ arrivals: [LoopbackSatellite.Arrival]) -> StreamResult {
         let named = arrivals.filter { Int($0.controllerIndex) == stream.controllerIndex }
         let inputs = named.filter { $0.msgType == ProtocolConstants.msgInput }.compactMap { streamArrival($0, of: stream) }
-        let summary = LatencySummary(sentNs: stream.published.values, arrivals: inputs)
+        let summary = StreamLatency(sentNs: stream.published.values, arrivals: inputs)
         return StreamResult(summary, pad: stream.pad, source: stream.source, rateHz: stream.rateHz, datagrams: named.count)
     }
 

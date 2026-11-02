@@ -18,7 +18,7 @@ final class SequenceStampsTests: XCTestCase {
     }
 
     func testEachArrivalIsMatchedToItsFramesStamp() {
-        let summary = LatencySummary(
+        let summary = StreamLatency(
             sentNs: [0, 1000, 2000, 3000],
             arrivals: [arrival(0, 500), arrival(1, 1600), arrival(3, 3100), arrival(1, 3200)]
         )
@@ -36,7 +36,7 @@ final class SequenceStampsTests: XCTestCase {
         let frames = 70000
         let sent = (0 ..< frames).map { UInt64($0) * 1000 }
         let arrivals = (0 ..< frames).map { arrival(UInt16(truncatingIfNeeded: $0), UInt64($0) * 1000 + 10) }
-        let summary = LatencySummary(sentNs: sent, arrivals: arrivals)
+        let summary = StreamLatency(sentNs: sent, arrivals: arrivals)
         XCTAssertEqual(summary.received, frames)
         XCTAssertEqual(summary.drops, 0)
         XCTAssertEqual(summary.maxNs, 10)
@@ -44,13 +44,13 @@ final class SequenceStampsTests: XCTestCase {
     }
 
     func testAFrameSlowerThanAMillisecondIsCountedOverTheLimit() {
-        let summary = LatencySummary(sentNs: [0, 0, 0], arrivals: [arrival(0, 10), arrival(1, 2_000_000), arrival(2, 2_000_001)])
+        let summary = StreamLatency(sentNs: [0, 0, 0], arrivals: [arrival(0, 10), arrival(1, 2_000_000), arrival(2, 2_000_001)])
         XCTAssertEqual(summary.overLimit, 2)
         XCTAssertEqual(summary.maxNs, 2_000_001)
     }
 
     func testNoArrivalsReadAsEveryFrameDropped() {
-        let summary = LatencySummary(sentNs: [0, 1000], arrivals: [])
+        let summary = StreamLatency(sentNs: [0, 1000], arrivals: [])
         XCTAssertEqual(summary.received, 0)
         XCTAssertEqual(summary.drops, 2)
         XCTAssertEqual(summary.p999Ns, 0)

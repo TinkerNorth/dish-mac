@@ -13,11 +13,12 @@ enum BenchCommand: Equatable {
 struct BenchOptions: Equatable {
     static let smokeSecs = 0.2
     static let warmUpSecs = 0.5
+    static let defaultMicHz = 50
 
     var rateHz = 1000
     var secs = 3.0
     var reps = 3
-    var micHz = 50
+    var micHz = defaultMicHz
     var json: String?
     var csv: String?
     var smoke = false

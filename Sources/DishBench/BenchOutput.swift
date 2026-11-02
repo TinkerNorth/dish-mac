@@ -10,11 +10,12 @@ func fixed(_ value: Double, digits: Int = 1) -> String {
     String(format: "%.\(digits)f", value)
 }
 
-let latencyHeader = markdownHeader(
-    ["scenario", "pad", "source", "rate Hz", "frames", "p50 us", "p99 us", "p99.9 us", "max us", "over 1 ms", "longest gap ms"]
-        + ["datagrams/report", "drops"],
-    textColumns: 3
-)
+let latencyColumns = [
+    "scenario", "pad", "source", "rate Hz", "frames", "p50 us", "p99 us", "p99.9 us", "max us", "over 1 ms", "longest gap ms",
+    "datagrams/report", "drops"
+]
+
+let latencyHeader = markdownHeader(latencyColumns, textColumns: 3)
 
 let lockHeader = markdownHeader(
     ["scenario", "lock", "role", "acquisitions", "contended", "max wait us", "p99 wait us", "max hold us", "p99 hold us"],
