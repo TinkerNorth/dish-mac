@@ -4,11 +4,6 @@ name: CodeQL
 #
 # CodeQL Swift requires macos runners. Build the package with `swift
 # build` against the autobuild detector.
-#
-# Pin map (verify with `gh api repos/<owner>/<repo>/git/ref/tags/<tag>`):
-#   actions/checkout         @ v6.0.2  → de0fac2e4500dabe0009e67214ff5f5447ce83dd
-#   actions/cache            @ v5.0.5  → 27d5ce7f107fe9357f9df03efb73ab90386fccae
-#   github/codeql-action/*   @ v4.35.5 → 9e0d7b8d25671d64c341c19c0152d693099fb5ba
 
 on:
   push:
