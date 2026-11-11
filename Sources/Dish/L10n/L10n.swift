@@ -10,7 +10,7 @@ import Foundation
 struct L10n {
     let catalog: StringCatalog
 
-    static let app = L10n(catalog: StringCatalog(bundle: .module))
+    static let app = L10n(catalog: StringCatalog(bundle: ResourceBundle.dish))
 
     /// The product name, never translated.
     let appName = "Dish"

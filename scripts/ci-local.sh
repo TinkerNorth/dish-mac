@@ -83,6 +83,8 @@ if [ "$QUICK" -eq 0 ]; then
     swift build --configuration release
     log "bundle.sh release"
     ./bundle.sh release
+    log "launch the bundled app with no build tree beside it"
+    scripts/launch-smoke.sh Dish.app
 fi
 
 log "all gates passed"

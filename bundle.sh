@@ -26,8 +26,10 @@ mkdir -p "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/Dish"
 cp "$PWD/Resources/Dish.icns" "$APP/Contents/Resources/Dish.icns"
 
-# SwiftPM puts the String Catalog into this resource bundle, and the
-# generated `Bundle.module` accessor looks for it in Contents/Resources.
+# SwiftPM puts the String Catalog into this resource bundle. The app asks for
+# it in Contents/Resources first (ResourceBundle.dish): the `Bundle.module`
+# accessor of SwiftPM's native build system looks only in the app's root and
+# in the compiling machine's build directory, which no user's Mac has.
 RESOURCE_BUNDLE="$(dirname "$BIN")/Dish_Dish.bundle"
 if [ ! -d "$RESOURCE_BUNDLE" ]; then
   echo "Resource bundle not found at $RESOURCE_BUNDLE — run 'swift build' first." >&2
