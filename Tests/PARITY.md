@@ -126,6 +126,14 @@ so macOS reads it", and stays so for the connection.
   picked again or reconnects. No pad of either kind was attached to the Mac
   this shipped from: the decoders are pinned by the desktops' hardware-run
   vectors (2015) and SDL's structs (2026), the rest through fakes.
+- **An 8BitDo pad in X-input mode is not readable on a Mac.** In that mode
+  the Ultimate 2 (2dc8:310b) speaks the Xbox 360 protocol on a vendor-class
+  USB interface. macOS's own driver for it, `XboxGamepad.dext`, binds only
+  Microsoft's 045e:028e (and three Xbox One and Series pads) by exact
+  identity, so the 8BitDo gets no driver, no HID device and no
+  GameController controller, and neither of Dish's paths can see it. Its
+  D-input mode (2dc8:6012) is a HID gamepad both paths can read; a reader of
+  the raw USB interface is not built.
 - **Mouse mode is the pad's own touchpad routed by the host**, as on
   Android: the pick is per controller, the descriptor declares `mouse` only
   when the pad has a touchpad and the host advertises mouse control, the
