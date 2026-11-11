@@ -51,12 +51,13 @@ extension WifiConnectionManager {
 
     private func putSlot(_ descriptor: ControllerDescriptor, conn: WifiConnection, connectionId: String) async {
         let server = conn.server
+        let proof = await proofFor(conn.id)
         let resp = await http.putController(
             ip: server.ip,
             port: server.httpPort,
             connectionId: connectionId,
             deviceId: deviceId,
-            hmacProof: proofFor(conn.id),
+            hmacProof: proof,
             descriptor: descriptor
         )
         if resp.unauthorized || resp.verdict == .unauthorized {
@@ -72,13 +73,14 @@ extension WifiConnectionManager {
     /// reconcile or the next session PUT.
     private func deleteSlot(_ index: Int, conn: WifiConnection, connectionId: String) async {
         let server = conn.server
+        let proof = await proofFor(conn.id)
         _ = await http.deleteController(
             ip: server.ip,
             port: server.httpPort,
             connectionId: connectionId,
             ctrlIdx: index,
             deviceId: deviceId,
-            hmacProof: proofFor(conn.id)
+            hmacProof: proof
         )
     }
 }

@@ -25,6 +25,8 @@ final class ConnectionStore {
 
     private let defaults: UserDefaults
     private let keyStore: KeyStore
+    /// The pairing keys as the manager reads them, off the main actor.
+    let keyReader: PairingKeyReader
     private let deviceIdKey = "deviceId"
     private let wifiListKey = "wifi_list"
     /// Legacy pairing-key prefix — pre-G17 builds kept keys in UserDefaults.
@@ -38,6 +40,7 @@ final class ConnectionStore {
     init(defaults: UserDefaults = .standard, keyStore: KeyStore = KeychainKeyStore()) {
         self.defaults = defaults
         self.keyStore = keyStore
+        keyReader = PairingKeyReader(keyStore: keyStore)
         migrateLegacyKeys()
     }
 
@@ -130,6 +133,8 @@ final class ConnectionStore {
         }
     }
 
+    /// The row and its pin; the key stays until the satellite has been told
+    /// (`forgetKey`), since the self-unpair's proof needs it.
     func forget(_ id: String) {
         var list = remembered()
         // Pin is keyed by IP; drop it via the row's IP before the row goes.
@@ -138,7 +143,6 @@ final class ConnectionStore {
         }
         list.removeAll { $0.id == id }
         persist(list)
-        keyStore.removePairingKey(for: id)
     }
 
     private func persist(_ list: [RememberedWifi]) {

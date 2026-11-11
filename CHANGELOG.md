@@ -98,6 +98,14 @@ the repos share a version number.
   as SDL and the other Dish clients send it, and a pad at rest whose sample
   reads all zeros on a new tick is sent as the stillness it is rather than
   dropped.
+- **Dish's window keeps working while macOS asks about the keychain.** Each
+  release is signed on its own, so the first time a new version reads a
+  satellite's pairing key, macOS asks whether Dish may use it. Dish asked
+  on the thread that draws its window, so the window froze until the
+  question was answered, at launch and again whenever the key was read.
+  The key is now read in the background, and the window keeps drawing
+  while macOS waits for the answer. The key stays in the login keychain,
+  as before.
 
 ## [1.2.1] - 2026-11-11
 

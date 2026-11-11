@@ -137,7 +137,7 @@ final class IntegrationReconcilePolicyTests: XCTestCase {
         // DELETE route stands in for the server-internal loss.
         let rest = FakeSatelliteRestScriptClient(satellite: satellite)
         let deviceId = store.getOrCreateDeviceId()
-        let proof = manager.proofFor(server.id)
+        let proof = await manager.proofFor(server.id)
         let reply = try await rest.request(
             "DELETE",
             "/api/connections/\(satellite.connectionId)/controllers/0",

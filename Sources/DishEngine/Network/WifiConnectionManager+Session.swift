@@ -63,7 +63,7 @@ extension WifiConnectionManager {
     /// pairing key never reaches the data plane.
     func openSession(conn: WifiConnection, server: DiscoveredServer, intent: ConnectIntent) async {
         let id = WifiConnection.idFor(server)
-        guard let pairingKey = pairingKeyData(for: id) else {
+        guard let pairingKey = await pairingKeyData(for: id) else {
             failOpenWithoutKey(conn, id: id, intent: intent)
             return
         }
@@ -365,7 +365,7 @@ extension WifiConnectionManager {
         guard conn.hasLiveSession, let client = conn.client else { return }
         let id = conn.id
         let server = conn.server
-        guard let pairingKey = pairingKeyData(for: id) else { return }
+        guard let pairingKey = await pairingKeyData(for: id) else { return }
         let descriptors = conn.desiredDescriptors
         let resp = await putSession(
             server: server,

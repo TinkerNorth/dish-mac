@@ -81,12 +81,13 @@ extension WifiConnectionManager {
             return
         }
         let server = conn.server
+        let proof = await proofFor(conn.id)
         let view = await http.getSession(
             ip: server.ip,
             port: server.httpPort,
             connectionId: connectionId,
             deviceId: deviceId,
-            hmacProof: proofFor(conn.id)
+            hmacProof: proof
         )
         conn.setReconcileInFlight(false)
         if view.unauthorized || view.verdict == .unauthorized {

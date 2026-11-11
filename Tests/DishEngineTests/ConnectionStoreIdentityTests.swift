@@ -181,7 +181,7 @@ final class ConnectionStoreIdentityTests: XCTestCase {
 
     // MARK: - forget / forgetKey
 
-    func testForgetDropsRowKeyAndPin() {
+    func testForgetDropsRowAndPinAndLeavesTheKeyForTheSelfUnpair() {
         let box = server(ip: "10.0.0.1", machineId: "m-1")
         store.remember(box)
         store.setSharedKey("aa11", for: "mid:m-1")
@@ -190,8 +190,8 @@ final class ConnectionStoreIdentityTests: XCTestCase {
         store.forget("mid:m-1")
 
         XCTAssertTrue(store.remembered().isEmpty)
-        XCTAssertNil(store.sharedKey(for: "mid:m-1"))
         XCTAssertNil(store.certPin(host: "10.0.0.1"))
+        XCTAssertEqual(store.sharedKey(for: "mid:m-1"), "aa11", "the manager drops it once the satellite is told")
     }
 
     func testForgetKeyKeepsRowAndPin() {
