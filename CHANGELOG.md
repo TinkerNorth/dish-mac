@@ -17,6 +17,17 @@ the repos share a version number.
 
 ---
 
+## [1.2.1] - 2026-11-11
+
+### Fixed
+
+- **Dish opens on your Mac.** Every download from 1.0.2 to 1.2.0 quit the
+  moment it started, on every Mac and whatever the security settings: the app
+  looked for its text in a folder that only exists on the machine that built
+  it. It now reads it from inside `Dish.app`, and every build, the released
+  one included, is launched once with no build files around it before it can
+  be published.
+
 ## [1.2.0] - 2026-11-02
 
 ### Changed

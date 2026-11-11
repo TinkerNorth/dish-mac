@@ -103,6 +103,11 @@ jobs:
       - name: Bundle .app
         run: ./bundle.sh release
 
+      # A user's Mac has no build tree to fall back on; the launch must not
+      # need one (1.0.2 to 1.2.0 crashed at launch everywhere but CI).
+      - name: Launch the bundled app with no build tree beside it
+        run: scripts/launch-smoke.sh Dish.app
+
       - name: Upload .app artifact
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

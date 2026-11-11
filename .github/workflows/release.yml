@@ -157,6 +157,11 @@ jobs:
           DISH_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: ./bundle.sh release
 
+      # The artifact users download must launch where no build tree exists;
+      # 1.0.2 to 1.2.0 shipped without this check and crashed at launch.
+      - name: Launch the bundled app with no build tree beside it
+        run: scripts/launch-smoke.sh Dish.app
+
       - name: Import signing certificate (if present)
         id: sign
         env:
