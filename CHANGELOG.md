@@ -54,6 +54,12 @@ the repos share a version number.
   the display wakes, which failed the test on a developer's Mac though Dish
   never plays a pad's audio to a monitor. It now plays into a USB output,
   the kind every pad's audio is, or into the Mac's own or a virtual one.
+- **The launch check leaves the developer's own Dish alone.** It launched the
+  app under a throwaway preferences home, but on macOS 27 the preferences
+  daemon honours that home for reads alone, so the launch's first-run writes,
+  a fresh device identity among them, could land in the developer's real
+  preferences. The check now keeps the app off the daemon, so it reads and
+  writes nothing but its own.
 
 ## [1.2.1] - 2026-11-11
 
