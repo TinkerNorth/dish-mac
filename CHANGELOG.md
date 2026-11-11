@@ -54,6 +54,14 @@ the repos share a version number.
   the display wakes, which failed the test on a developer's Mac though Dish
   never plays a pad's audio to a monitor. It now plays into a USB output,
   the kind every pad's audio is, or into the Mac's own or a virtual one.
+- **A Switch Pro Controller on a cable reaches Dish.** Plugged into a Mac,
+  the Pro stays silent until something starts it, and Dish's start left it
+  silent: Dish sent it the handshake, the timeout disable and full report
+  mode every few seconds, and the pad never answered with its input. Dish
+  now switches the pad's link to 3 Mbit and repeats the handshake before the
+  timeout disable, as Linux and SDL do, and the Pro streams within about
+  two seconds of Dish opening it. The N64 and SNES Online pads get the same
+  start.
 
 ## [1.2.1] - 2026-11-11
 

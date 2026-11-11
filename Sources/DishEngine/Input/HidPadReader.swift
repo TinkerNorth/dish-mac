@@ -9,8 +9,8 @@
 // GameController). Enumerating and reading gamepad usages needs no Input
 // Monitoring permission and no entitlement, so no access is asked for them.
 // Dish sends a Switch pad whose full reports have not arrived the start
-// sequence (dish-android's USB handshake, timeout disable and full report
-// mode): macOS's driver does not leave the N64 streaming. A Steam
+// sequence (the USB handshake at 3 Mbit, the timeout disable and full report
+// mode): macOS's driver leaves the Pro and the N64 silent. A Steam
 // Controller is opened only once the user picks Direct, since reading it
 // turns its keyboard and mouse off, and the 2026 pad's one interface
 // carries its keyboard and mouse, so macOS asks for Input Monitoring before

@@ -159,6 +159,15 @@ final class SwitchReportTests: XCTestCase {
         XCTAssertEqual(reading?.battery, PadBattery(level: 100, status: .charging))
     }
 
+    /// The Pro at rest, through IOHIDManager on a Mac once its stream
+    /// started: the 0x80 in byte 4 is no input, both sticks rest inside the
+    /// dead zone, and byte 2 says full on its cable.
+    func testTheIdleProReportCapturedOnAMacDecodesToNothingHeld() {
+        let reading = SwitchReportBytes(raw: CapturedSwitchPro.idleFullReport).decodeFresh(.pro)
+        XCTAssertEqual(reading?.report, GamepadReport.released)
+        XCTAssertEqual(reading?.battery, PadBattery(level: 100, status: .full))
+    }
+
     // MARK: - SNES
 
     func testSnesReadsProButtonsAndTriggersWithoutSticksOrMotion() {

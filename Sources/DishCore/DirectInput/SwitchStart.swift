@@ -2,23 +2,26 @@
 // Copyright (C) 2026 Dish contributors.
 //
 // A Switch-family pad on USB (the Pro, the N64, the SNES pad) streams its
-// full 0x30 reports only after three commands: the USB handshake, the
-// timeout disable that keeps it reporting, and subcommand 0x03 "full report
-// mode". macOS's driver does not leave the N64 streaming, so Dish sends them
-// itself to a pad it reads that stays quiet. The packets are dish-android's
-// kSwitchInitPackets (usb_parsers.cpp), each one full USB packet long, as
-// SDL writes them.
+// full 0x30 reports only once its USB link runs at 3 Mbit and its timeout is
+// off, and macOS's driver leaves it silent, so Dish starts a pad it reads
+// that stays quiet: the handshake, the switch to 3 Mbit, the handshake again,
+// the timeout disable, then subcommand 0x03 "full report mode", in the order
+// Linux's hid-nintendo and SDL send them, each one full USB packet long.
 
 /// One packet of the start sequence, in the order the pad takes them.
 public enum SwitchStartStep: CaseIterable, Equatable, Sendable {
     case handshake
+    case highSpeed
+    case handshakeAtHighSpeed
     case disableTimeout
     case fullReportMode
 
     /// The packet after this one; nil once the report mode is set.
     public var next: SwitchStartStep? {
         switch self {
-        case .handshake: .disableTimeout
+        case .handshake: .highSpeed
+        case .highSpeed: .handshakeAtHighSpeed
+        case .handshakeAtHighSpeed: .disableTimeout
         case .disableTimeout: .fullReportMode
         case .fullReportMode: nil
         }
@@ -29,6 +32,7 @@ public enum SwitchStartStep: CaseIterable, Equatable, Sendable {
 public let switchStartPacketBytes = 64
 
 private let handshakeBytes: [UInt8] = [0x80, 0x02]
+private let highSpeedBytes: [UInt8] = [0x80, 0x03]
 private let disableTimeoutBytes: [UInt8] = [0x80, 0x04]
 /// Report 0x01: the packet counter, the 8-byte neutral rumble pattern, then
 /// subcommand 0x03 with argument 0x30.
@@ -48,7 +52,8 @@ public func switchStartReportId(_ step: SwitchStartStep) -> UInt8 {
 
 private func switchStartBytes(_ step: SwitchStartStep) -> [UInt8] {
     switch step {
-    case .handshake: handshakeBytes
+    case .handshake, .handshakeAtHighSpeed: handshakeBytes
+    case .highSpeed: highSpeedBytes
     case .disableTimeout: disableTimeoutBytes
     case .fullReportMode: fullReportModeBytes
     }
