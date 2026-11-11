@@ -2854,6 +2854,41 @@
         }
       }
     },
+    "Allow Dish under Privacy & Security › Input Monitoring, then quit and reopen Dish." : {
+      "comment" : "Controllers: how to grant Input Monitoring. The pane named is macOS's own, in each language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dozvolite Dish u Privacy & Security › Input Monitoring, zatim zatvorite i ponovo otvorite Dish."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Erlaube Dish unter Datenschutz & Sicherheit › Eingabeüberwachung, beende Dish dann und öffne es erneut."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permite Dish en Privacidad y seguridad › Monitorización de entrada; luego cierra Dish y vuelve a abrirlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autorisez Dish dans Confidentialité et sécurité › Surveillance de l’entrée, puis quittez et rouvrez Dish."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Permita o Dish em Privacidade e Segurança › Monitoramento de Entrada e depois encerre e reabra o Dish."
+          }
+        }
+      }
+    },
     "Almost nothing." : {
       "comment" : "Help & FAQ: what does dish collect answer (one sentence of a paragraph).",
       "localizations" : {
@@ -7089,6 +7124,41 @@
         }
       }
     },
+    "Dish can read this controller directly." : {
+      "comment" : "Controllers: an offer card's first sentence, for a pad Dish reads only on the user's word (a Steam Controller).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish može direktno čitati ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish kann diesen Controller direkt lesen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish puede leer este mando directamente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish peut lire cette manette directement."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish pode ler este controle diretamente."
+          }
+        }
+      }
+    },
     "Dish can’t find any satellites. What now?" : {
       "comment" : "Help & FAQ: cant find satellites.",
       "localizations" : {
@@ -7190,6 +7260,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Dish fechou inesperadamente da última vez. O relatório abaixo teve a sua pasta pessoal, os endereços de rede e quaisquer valores parecidos com chaves removidos."
+          }
+        }
+      }
+    },
+    "Dish couldn’t open this controller; another app may be using it." : {
+      "comment" : "Controllers: the offer card's warning when the pad would not open for another reason.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish nije mogao otvoriti ovaj kontroler; možda ga koristi druga aplikacija."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish konnte diesen Controller nicht öffnen; vielleicht verwendet ihn eine andere App."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish no pudo abrir este mando; puede que otra app lo esté usando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish n’a pas pu ouvrir cette manette ; une autre app l’utilise peut-être."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish não conseguiu abrir este controle; outro app pode estar usando-o."
           }
         }
       }
@@ -7505,6 +7610,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Dish é gratuito e de código aberto — as doações mantêm essa promessa"
+          }
+        }
+      }
+    },
+    "Dish is reading this receiver directly." : {
+      "comment" : "Controllers: a Steam Controller wireless receiver Dish reads, with no controller connected to it yet.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish direktno čita ovaj prijemnik."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish liest diesen Empfänger direkt."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish está leyendo este receptor directamente."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish lit ce récepteur directement."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish está lendo este receptor diretamente."
           }
         }
       }
@@ -17519,6 +17659,41 @@
         }
       }
     },
+    "Quit that app, or unplug the controller and plug it back in." : {
+      "comment" : "Controllers: the way past a pad that would not open.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zatvorite tu aplikaciju ili isključite kontroler i ponovo ga priključite."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Beende diese App oder zieh den Controller ab und steck ihn wieder an."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cierra esa app, o desconecta el mando y vuelve a conectarlo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Quittez cette app, ou débranchez la manette et rebranchez-la."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Encerre esse app ou desconecte o controle e conecte-o de novo."
+          }
+        }
+      }
+    },
     "R3" : {
       "comment" : "A button name, the same in every language.",
       "localizations" : {
@@ -20319,6 +20494,41 @@
         }
       }
     },
+    "Stop reading directly" : {
+      "comment" : "Controllers: hand the pad back to macOS as a keyboard and mouse.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prestani direktno čitati"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nicht mehr direkt lesen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dejar de leer directamente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne plus lire directement"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Parar de ler diretamente"
+          }
+        }
+      }
+    },
     "Stored for this controller model — applies on the next report, no re-attach." : {
       "comment" : "Check the buttons: where the remap is kept (the desktops' words).",
       "localizations" : {
@@ -22279,6 +22489,41 @@
         }
       }
     },
+    "Turn on a controller paired with it." : {
+      "comment" : "Controllers: what the receiver waits for.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uključite kontroler uparen s njim."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Schalte einen damit gekoppelten Controller ein."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enciende un mando emparejado con él."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Allumez une manette appairée avec lui."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ligue um controle pareado com ele."
+          }
+        }
+      }
+    },
     "Turned off for this controller." : {
       "comment" : "Chip tooltip: the controller's own switch is off.",
       "localizations" : {
@@ -23574,6 +23819,41 @@
         }
       }
     },
+    "While it does, the controller’s keyboard and mouse are off." : {
+      "comment" : "Controllers: why the offer waits for the user: reading the pad turns its keyboard and mouse emulation off.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dok to čini, tastatura i miš kontrolera su isključeni."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Solange es das tut, sind Tastatur und Maus des Controllers aus."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mientras lo hace, el teclado y el ratón del mando están desactivados."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pendant ce temps, le clavier et la souris de la manette sont désactivés."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enquanto isso, o teclado e o mouse do controle ficam desligados."
+          }
+        }
+      }
+    },
     "While playing" : {
       "comment" : "Keep-awake mode.",
       "localizations" : {
@@ -24834,6 +25114,41 @@
         }
       }
     },
+    "macOS asks for Input Monitoring first, because the controller also acts as a keyboard." : {
+      "comment" : "Controllers: the offer's note before macOS's own prompt. The pane named is macOS's own, in each language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS prvo traži Input Monitoring, jer kontroler radi i kao tastatura."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS fragt zuerst nach der Eingabeüberwachung, weil der Controller auch als Tastatur arbeitet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS pide primero Monitorización de entrada, porque el mando también actúa como teclado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS demande d’abord la Surveillance de l’entrée, car la manette sert aussi de clavier."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS pede primeiro o Monitoramento de Entrada, porque o controle também funciona como teclado."
+          }
+        }
+      }
+    },
     "macOS does not read it, so Dish does" : {
       "comment" : "Diagnostics: why a pad macOS cannot read is Direct.",
       "localizations" : {
@@ -24865,6 +25180,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O macOS não o lê, então o Dish lê"
+          }
+        }
+      }
+    },
+    "macOS has not let Dish read this controller." : {
+      "comment" : "Controllers: the offer card's warning once macOS refused Input Monitoring.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS nije dozvolio Dishu da čita ovaj kontroler."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS hat Dish nicht erlaubt, diesen Controller zu lesen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS no ha permitido que Dish lea este mando."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "macOS n’a pas autorisé Dish à lire cette manette."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O macOS não permitiu que o Dish lesse este controle."
           }
         }
       }

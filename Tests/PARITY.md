@@ -22,7 +22,7 @@
 | Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked, each pad's lanes on its own controller index; not yet verified on a pad |
 | DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; not yet verified on a pad |
 | Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ⚠️ mic lamp as a chip on Home's binding strip (GameController reaches no DualSense lamp) |
-| Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery (pad, else the host Mac's) |
+| Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery: the wire carries the lower of the pad's own and the Mac's on both paths (a pad with none sends the Mac's), the card shows the pad's own |
 | Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ✅ Sentry (sentry-cocoa) behind "Share crash reports", on by default, armed only by an official build; the local redacted log and its report card stay |
 | Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ✅ `latest.json` from the release permalink; once per version, skippable, floor warning |
 | The window: the desktops' shell | – (Activities, two panes on sw600dp) | ✅ rail (labelled 236 px, 48 px icons, persisted) + per-page header + pushed pages, one toast host | ✅ the same | ✅ the same in SwiftUI: `NavigationSplitView` rail (236 pt labelled, icon strip collapsed, persisted as `ui_rail_collapsed`), per-page header (back chevron, title, streaming pill with Configure, mic chip, status line), a `NavigationStack` of pages, one toast host, 980×640 (min 900×620); no sheets at all (the pairing card and the Moonlight PIN are inline cards in their rows); ⌘, · ⌘1-3 · ⌘[ ; the Set up action between the rail's groups |
@@ -44,7 +44,7 @@
 | Six languages (en, bs, de, es, fr, pt-BR) | ✅ | ✅ | ✅ | ✅ every word, plural forms included |
 | Per-controller motion, rumble and touchpad switches | ✅ | ✅ | ✅ | ✅ the chips on Home's binding strip, clickable in place, and the switches on Configure binding; the light bar stays global, as on the desktops |
 | Home: the signal-path diagram | – | ✅ | ✅ | ✅ a boxed row per pad (pad node, a wire captioned with the measured rate and latency, the host node with its address, link chip and "slot n of 4"), the binding strip with Edit ›, ghost "Bind…" cards that open Set up on the pad, "Set up a controller" and the empty state's "Set up Dish ›" into the walk, and the events / sends / total footer; no row menu yet |
-| Controllers: a card per pad | – | ✅ | ✅ | ✅ dot, name, player number, family and rate (GameController hides the transport, so no Bluetooth / USB word), "Bound · host ›", Gyro / Touchpad / Lightbar / battery chips, the mic's live / muted button, the motion rate, the input path ("Standard" / "Direct") with its one reason, "Press any button on this controller" until a real change proves the path, "Not responding?" (a 5 s check, "Press A now", then a finding with Use Direct, Help support this controller or the connection hint), the desktops' Input path segmented control only where both paths work (never for the N64), an outline that lights while the pad reports input, a Direct pad's menu (Check the buttons, Help support this controller) and the "Layout guessed" chip, Dead zones…; no Poll Hz (that is the Direct path's figure) |
+| Controllers: a card per pad | – | ✅ | ✅ | ✅ dot, name, player number, family and rate (GameController hides the transport, so no Bluetooth / USB word), "Bound · host ›", Gyro / Touchpad / Lightbar / battery chips, the mic's live / muted button, the motion rate, the input path ("Standard" / "Direct") with its one reason, "Press any button on this controller" until a real change proves the path, "Not responding?" (a 5 s check, "Press A now", then a finding with Use Direct, Help support this controller or the connection hint), the desktops' Input path segmented control only where both paths work (never for the N64), an outline that lights while the pad reports input, a Direct pad's menu (Check the buttons, Help support this controller) and the "Layout guessed" chip, Dead zones…; no Poll Hz (that is the Direct path's figure); after the pads, a card per Steam Controller model Dish could read directly (what reading it does, Use Direct, macOS's refusal with Open System Settings, a receiver waiting for its controller, Stop reading directly) |
 | Configure binding: a draft and one apply | – | ✅ | ✅ | ✅ Input · Destination (satellites and Moonlight hosts with link chips) · Functions · Emulate as · What carries, Unbind / Cancel / Apply; the in-page "Applying binding…" overlay (Binding, Applying on the host, done or why not), cancellable until the host's link is up, 8 s for the host to answer; "Leave without applying?" on a dirty draft |
 | Per-pad dead zones | – | ✅ | ✅ | ✅ stick and trigger sliders (0–30 %) with live readouts under `deadzone:<id>` in the desktops' `{"s","t"}` shape, applied as the pad attaches and as they move; Reset to defaults (10 % · 5 %) |
 | Light, dark and system theme | ✅ | ✅ | ✅ | ✅ |
@@ -52,7 +52,7 @@
 | First-run welcome | – (replaced by the guided setup) | ✅ four pages, dots, Back / Skip / Next / Finish, Esc = Skip | ✅ the same | ✅ the same, full-window over the shell; Skip and Finish set `onboarding_welcome_completed`, Finish opens Set up |
 | Setup wizard: the one way a binding is created from scratch | ✅ guided setup (Input / Destination / Binding) | ✅ Input · Destination · Type · Session · Feel · Review, three stages, one apply | ✅ the same | ✅ the same as a page on Home (`SetupWizardMachine` in DishCore): Session for Moonlight only, Pair… with the inline card on Destination, one Bind through the apply overlay, "Leave setup?" past page 1, Connection lost / Controller unplugged in the page with Start over / Exit; from the rail's Set up, Settings, Home's empty state and invitation, a pad's ghost Bind…; no Direct path question (each pad's path is decided by its model and GameController's support) |
 | Help & FAQ | ✅ | ✅ | ✅ | ✅ the desktops' sections and answers word for word, folded until opened, "Walk me through setup", the privacy policy and the source |
-| Permission priming before the system asks | ✅ USB, Bluetooth, local network, microphone | – | – | ✅ local network: "Show me the prompt" on Connections and in Set up before the first scan ever (`local_network_primed`); a refusal offers Open System Settings in the empty state and the toast; the microphone is still asked at its first use |
+| Permission priming before the system asks | ✅ USB, Bluetooth, local network, microphone | – | – | ✅ local network: "Show me the prompt" on Connections and in Set up before the first scan ever (`local_network_primed`); a refusal offers Open System Settings in the empty state and the toast; the microphone is still asked at its first use · ⚠️ Input Monitoring: the 2026 Steam Controller's offer says macOS asks first (its one interface carries its keyboard and mouse), macOS's prompt comes with the Use Direct click, and a refusal shows on its card with Open System Settings (Privacy & Security › Input Monitoring) |
 | Emulate-as type picker (from the catalog) | ✅ | ✅ | ✅ | ✅ on Configure binding: Auto (the family's type from `emulates`) or a pick, kept with the binding across restarts |
 | Layout guessed | – | ✅ (the Direct card's badge) | ✅ (the same) | ⚠️ the desktops' "Layout guessed" chip on a generic Direct pad whose model is not in the verified table (by vendor, as `isKnownFastLaneModel`), on its Controllers card (a click opens Check the buttons) and as its Diagnostics card's chip; unverified on hardware here |
 | Check the buttons (per-model remap) | – | ✅ Configure controls (click a row, press the input) | ✅ (the same) | ⚠️ a guided press-to-assign walk over A B X Y LB RB Back Start Guide L3 R3, the d-pad, both triggers and each stick's Y direction ("Press the button you want as A"; Skip, Reset to defaults, Check again), each landing stored at once under `joystick_remaps` in the desktops' fields (Guide in one extra field `gd` the desktops ignore) and applied from the next report through a fixed table on the reader's thread; only for pads read through their descriptor; sticks are read by usage and not walked; unverified on hardware here |
@@ -67,6 +67,8 @@
 | Nintendo Switch Pro and SNES Online pads | ✅ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ read Direct by model under Android's Pro table (Home → Guide, ZL / ZR → LT / RT 255), the Pro's motion from its three IMU frames (Android's axis rotation; roll and the accel signs unverified on hardware); the Pro may be sent back to Standard when GameController shows it (`usb_path_choices`); unverified on hardware here |
 | A second identical Nintendo pad | ✅ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ its own lane and slot (`hid:057e:2019#1`) and player number; GameController keeps one controller for pads that share a USB serial (the Pro and the N64 both say `000000000001`), so with two pads of a kind which carrier drives which is unknown and rumble is unavailable, said so on the card |
 | Pads GameController does not support (generic HID) | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ read Direct when `supportsHIDDevice` stays no over ~30 ms and the report descriptor decodes (the desktops' parser, button orders and known-models table); "Layout guessed" unless the model is in the verified table; unverified on hardware here |
+| Steam Controller (2015: 28de:1102, receiver 1142) | ✅ (USB, verified on a wired pad) | ⚠️ (never verified) | ⚠️ (never verified) | ⚠️ · ❌ opt-in Direct: offered on Controllers and opened only on Use Direct (stored per model); the vendor interface, no permission needed; the desktops' decoder (sticks, the right pad as the right stick, triggers, buttons, gyro and accel), the quiet sequence on claim and the restore on every release and on quit; the receiver's slots asked for their controller and each a pad while it is there; no rumble (no motors) and no battery of its own (the Mac's is sent); BLE pads not read; unverified on hardware here |
+| Steam Controller (2026: 28de:1302, receivers 1304 and 1305) | 🔜 (this cycle) | 🔜 (this cycle) | 🔜 (this cycle) | ⚠️ · ❌ opt-in Direct as the 2015 pad, from SDL's driver: the state reports (0x42, 0x45, 0x47), the battery report into the battery rule, the receiver's wireless status (0x79, 0x46), lizard mode off and the IMU on at claim and lizard mode off again every 3 s, its haptic rumble report; macOS asks for Input Monitoring before the open; the receiver's slots 2–5, never its pogo pins; BLE (1303) not read; unverified on hardware here |
 | Pads without the extended profile (SNES, micro-profile pads) | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ | ⚠️ · ⚠️ the generic table of Apple's `GCInput…` names; the family is Nintendo (emulated as the Switch Pro by `emulates`) when the framework's words name one |
 | Motion | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (GCMotion on DualSense and DualShock 4) |
 | Touchpad | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (DualSense and DualShock 4 profiles) |
@@ -77,9 +79,11 @@ The macOS client has two input paths, one per pad: Standard
 (GameController.framework) and Direct (Dish's own HID reader). Direct reads
 the HID reports alongside macOS, opened without seizing the device (seizing a
 game controller is not possible through public API and would blind
-GameController), and sends nothing to the pad: rumble and the player lights
-of a Direct pad ride GameController's controller for it when the pairing is
-unambiguous. Nintendo's pads are Direct by model; any other pad is Direct
+GameController), and sends a pad nothing but the Switch start sequence and
+a claimed Steam Controller's own configuration and rumble: rumble and the
+player lights of any other Direct pad ride GameController's controller for
+it when the pairing is unambiguous. Nintendo's pads are Direct by model;
+Valve's Steam Controllers only on the user's pick; any other pad is Direct
 only when GameController does not support it. A Nintendo controller
 GameController lists while Dish's reader has no lane of its model (a pad
 the reader missed, a Bluetooth pad that did not match) is read through
@@ -90,7 +94,7 @@ so macOS reads it", and stays so for the connection.
 
 | | Android | Windows | Linux | macOS (this) |
 |---|---|---|---|---|
-| Rumble | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (CoreHaptics engines per handle) |
+| Rumble | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (CoreHaptics engines per handle; the 2026 Steam Controller's own haptic rumble report, re-sent every 40 ms until the host's hold ends; none for the 2015 one, which has no motors) |
 | Lightbar | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (`GCController.light`) |
 | Adaptive triggers | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (the API's shapes; GameController carries them over both links) |
 | Player LEDs | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ✅ (DualSense, by player index) |
@@ -106,9 +110,30 @@ so macOS reads it", and stays so for the connection.
   Monitoring permission and no entitlement. Each pad's source lives in one
   pure machine and is sticky for a connection; a Nintendo controller
   GameController lists gets no input slot of its own while Dish reads the
-  pad (R7). Direct is input only: sending HID output reports (Direct rumble)
-  could confuse Apple's driver and needs per-model hardware runs, so it is
-  not done.
+  pad (R7). Direct sends nothing an Apple driver could trip on: the Switch
+  start sequence only to a pad that stays silent, and the Steam
+  Controllers' configuration and the 2026 pad's rumble only to Valve's own
+  interfaces, which no Apple driver claims. Rumble on any other Direct pad
+  rides GameController.
+- **Steam Controllers are read only on the user's word.** Reading one turns
+  its keyboard and mouse emulation off (the 2015 pad until it reboots), so
+  it is never auto-claimed, as on the desktops: Controllers offers the
+  model, Use Direct opens it, stores the pick and quiets it, and Stop
+  reading directly (Standard, the hand-back) or quitting Dish restores it.
+  The 2026 pad's one interface carries its keyboard and mouse, so macOS
+  asks for Input Monitoring at that open (IOHIDFamily's
+  `RequiresTCCAuthorization`); a refusal stays on the card until the pad is
+  picked again or reconnects. No pad of either kind was attached to the Mac
+  this shipped from: the decoders are pinned by the desktops' hardware-run
+  vectors (2015) and SDL's structs (2026), the rest through fakes.
+- **An 8BitDo pad in X-input mode is not readable on a Mac.** In that mode
+  the Ultimate 2 (2dc8:310b) speaks the Xbox 360 protocol on a vendor-class
+  USB interface. macOS's own driver for it, `XboxGamepad.dext`, binds only
+  Microsoft's 045e:028e (and three Xbox One and Series pads) by exact
+  identity, so the 8BitDo gets no driver, no HID device and no
+  GameController controller, and neither of Dish's paths can see it. Its
+  D-input mode (2dc8:6012) is a HID gamepad both paths can read; a reader of
+  the raw USB interface is not built.
 - **Mouse mode is the pad's own touchpad routed by the host**, as on
   Android: the pick is per controller, the descriptor declares `mouse` only
   when the pad has a touchpad and the host advertises mouse control, the
@@ -125,8 +150,15 @@ so macOS reads it", and stays so for the connection.
 - **XUSB carries no Share button and no paddles**, so a pad's Share and
   paddle buttons stay unmapped, as on the other clients; Guide is the pad's
   Home button.
-- **Battery over USB is the host Mac's** when the pad reports none, which is
-  what the other desktop clients send too.
+- **Two batteries, the lower one.** MSG_BATTERY carries the lower of the
+  pad's own battery and the Mac's, on the GameController and the Direct
+  path alike and whatever the link (`lowestBattery`, the desktops' rule): a
+  pad with no battery, or one whose level is unknown, sends the Mac's (a
+  desktop Mac on mains reads 100 % wired), an unknown level sorts above
+  every known one, a tie goes to the pad and the status travels with the
+  reading that wins. The card keeps the pad's own reading, or the Mac's for
+  a GameController pad with none; the Mac's IOKit snapshot is read on a
+  utility queue, never on the main actor or the HID reader's thread.
 - **Controller audio is the pad's USB audio function**, matched to the pad
   by family and only when unambiguous (one pad of the family, one function
   of it), as dish-android matches; two pads of a family route nothing and
@@ -153,3 +185,10 @@ updates the rows above.
    picker, "What carries", the motion word, the link tier, Diagnostics and
    its inspector, the crash log, the per-controller switches, controller
    audio, mouse mode and the Moonlight host path shipped.)
+3. A run on both Steam Controllers: the 2015 pad wired and on its receiver,
+   the 2026 pad wired and on its Puck; lizard mode off while Dish reads it
+   and back after Stop reading directly and after quitting, macOS's Input
+   Monitoring prompt and a refusal, the motion signs, the 2026 pad's
+   battery and rumble, and a receiver's controller turned off and on. The
+   2015 pad's own battery (its status packet) and the Bluetooth pads of
+   both generations come after it.

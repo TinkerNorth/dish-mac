@@ -53,6 +53,9 @@ extension AppModel {
         paths.statePublisher
             .sink { [weak self] facts in self?.shellFacts.inputPaths = facts }
             .store(in: &cancellables)
+        paths.offers.statePublisher
+            .sink { [weak self] offers in self?.shellFacts.directOffers = offers }
+            .store(in: &cancellables)
         paths.records
             .sink { [weak self] record in self?.recordInputPath(record) }
             .store(in: &cancellables)

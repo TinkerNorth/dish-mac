@@ -27,6 +27,9 @@ struct ControllersPage: View {
                         DishSpinner(size: DishSize.buttonSpinner)
                     }
                     content(state.content)
+                    ForEach(state.offers) { offer in
+                        DirectOfferCard(state: offer, pick: pickPath)
+                    }
                 }
                 .padding(DishSpace.page)
             }

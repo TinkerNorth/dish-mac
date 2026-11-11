@@ -16,6 +16,13 @@ final class FakeHidPadReader: HidPadReading, @unchecked Sendable {
     private let wiringBox = LockedBox<HidPadWiring?>(nil)
     private let eventsBox = LockedBox<HidPadEvents?>(nil)
     private let releasedBox = LockedBox<[String]>([])
+    private let claimsBox = LockedBox<[Claim]>([])
+
+    /// One claim or unclaim the paths asked for, in order.
+    enum Claim: Equatable {
+        case claim(String)
+        case unclaim(String)
+    }
 
     var wiring: HidPadWiring? {
         wiringBox.get()
@@ -29,6 +36,10 @@ final class FakeHidPadReader: HidPadReading, @unchecked Sendable {
         releasedBox.get()
     }
 
+    var claims: [Claim] {
+        claimsBox.get()
+    }
+
     func start(wiring: HidPadWiring, events: HidPadEvents) {
         wiringBox.set(wiring)
         eventsBox.set(events)
@@ -36,6 +47,14 @@ final class FakeHidPadReader: HidPadReading, @unchecked Sendable {
 
     func release(slotId: String) {
         releasedBox.set(released + [slotId])
+    }
+
+    func claim(slotId: String) {
+        claimsBox.mutate { $0.append(.claim(slotId)) }
+    }
+
+    func unclaim(slotId: String) {
+        claimsBox.mutate { $0.append(.unclaim(slotId)) }
     }
 }
 
@@ -196,12 +215,32 @@ enum DirectFixtures {
         ]
     }
 
+    /// One of a Valve device's HID interfaces: its primary usage, its USB
+    /// interface number, and whether macOS gates opening it on Input
+    /// Monitoring, as IOKit gives them.
+    static func valveProperties(
+        productId: Int,
+        usagePage: Int = 0xFF00,
+        usage: Int = 0x0001,
+        interfaceNumber: Int? = nil,
+        requiresInputMonitoring: Bool = false
+    ) -> [String: Any] {
+        var properties: [String: Any] = [
+            kIOHIDVendorIDKey: 0x28DE, kIOHIDProductIDKey: productId, kIOHIDProductKey: "Steam Controller",
+            kIOHIDTransportKey: kIOHIDTransportUSBValue, kIOHIDPrimaryUsagePageKey: usagePage, kIOHIDPrimaryUsageKey: usage,
+            kIOHIDMaxInputReportSizeKey: 64
+        ]
+        properties[hidInterfaceNumberKey] = interfaceNumber
+        properties[hidRequiresInputMonitoringKey] = requiresInputMonitoring ? true : nil
+        return properties
+    }
+
     static func candidate(_ properties: [String: Any]) throws -> HidPadCandidate {
         try XCTUnwrap(hidPadCandidate(properties))
     }
 
-    static func lane(_ candidate: HidPadCandidate, slotId: String, wiring: HidPadWiring) -> HidPadLane {
-        HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: 0)
+    static func lane(_ candidate: HidPadCandidate, slotId: String, wiring: HidPadWiring, output: DirectOutput? = nil) -> HidPadLane {
+        HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: 0, output: output)
     }
 }
 
@@ -239,4 +278,88 @@ func drainMain() {
     let drained = XCTestExpectation(description: "the main queue ran what was queued before")
     DispatchQueue.main.async { drained.fulfill() }
     XCTWaiter().wait(for: [drained], timeout: 2)
+}
+
+/// A Steam Controller's interface as the output writes it: every report in
+/// order, and the next few refused, as a receiver under load refuses them.
+final class FakeReportWriter: HidReportWriting, @unchecked Sendable {
+    private let writesBox = LockedBox<[SteamWrite]>([])
+    private let refusalsBox = LockedBox(0)
+
+    var writes: [SteamWrite] {
+        writesBox.get()
+    }
+
+    func refuse(next count: Int) {
+        refusalsBox.set(count)
+    }
+
+    func write(_ report: SteamWrite) -> IOReturn {
+        writesBox.mutate { $0.append(report) }
+        let refused = refusalsBox.mutate { left in
+            guard left > 0 else { return false }
+            left -= 1
+            return true
+        }
+        return refused ? kIOReturnError : kIOReturnSuccess
+    }
+}
+
+/// Polls for a condition the output's own timers make true.
+func pollUntil(seconds: TimeInterval = 2, _ condition: () -> Bool) {
+    let deadline = Date().addingTimeInterval(seconds)
+    while Date() < deadline, !condition() {
+        Thread.sleep(forTimeInterval: 0.005)
+    }
+}
+
+/// A lane's output that writes nothing down but what it was asked.
+final class FakeDirectOutput: DirectOutput, @unchecked Sendable {
+    enum Call: Equatable {
+        case claimed
+        case connected
+        case left
+        case rumble(strong: UInt16, weak: UInt16, durationMs: UInt16)
+        case released
+        case gone
+        case releasedNow
+    }
+
+    private let callsBox = LockedBox<[Call]>([])
+
+    var calls: [Call] {
+        callsBox.get()
+    }
+
+    func claimed() {
+        record(.claimed)
+    }
+
+    func controllerConnected() {
+        record(.connected)
+    }
+
+    func controllerLeft() {
+        record(.left)
+    }
+
+    func rumble(strong: UInt16, weak: UInt16, durationMs: UInt16) {
+        record(.rumble(strong: strong, weak: weak, durationMs: durationMs))
+    }
+
+    func release() {
+        record(.released)
+    }
+
+    func deviceGone() {
+        record(.gone)
+    }
+
+    func releaseNow() {
+        record(.releasedNow)
+    }
+
+    private func record(_ call: Call) {
+        callsBox.mutate { $0.append(call) }
+    }
 }

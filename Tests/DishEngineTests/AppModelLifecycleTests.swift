@@ -18,6 +18,7 @@ final class AppModelLifecycleTests: XCTestCase {
     private var store: ConnectionStore!
     private var willSleep: PassthroughSubject<Void, Never>!
     private var didWake: PassthroughSubject<Void, Never>!
+    private var willTerminate: PassthroughSubject<Void, Never>!
     private var gateway: ScriptedMoonlightGateway!
     private var edges: FakeMoonlightEdges!
     private var moonlight: MoonlightConnectionManager!
@@ -35,12 +36,17 @@ final class AppModelLifecycleTests: XCTestCase {
         store = ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore())
         willSleep = PassthroughSubject()
         didWake = PassthroughSubject()
+        willTerminate = PassthroughSubject()
         clamshell = FakeClamshell()
         lan = CountingLan()
         makeMoonlight()
         model = AppModel(
             store: store,
-            lifecycle: LifecycleSignals(willSleep: willSleep.eraseToAnyPublisher(), didWake: didWake.eraseToAnyPublisher()),
+            lifecycle: LifecycleSignals(
+                willSleep: willSleep.eraseToAnyPublisher(),
+                didWake: didWake.eraseToAnyPublisher(),
+                willTerminate: willTerminate.eraseToAnyPublisher()
+            ),
             defaults: defaults,
             moonlight: moonlight,
             clamshell: clamshell,
@@ -326,6 +332,18 @@ final class AppModelLifecycleTests: XCTestCase {
         XCTAssertEqual(observedDirect, [0], "willSet timing: the raw sink sees the stale value")
         let settled = await waitUntil { observedSettled == [7] }
         XCTAssertTrue(settled, "the helper must deliver post-mutation state")
+    }
+
+    // MARK: - Quitting
+
+    func testQuittingGivesEveryPadReadOnAClaimBackBeforeTheProcessEnds() throws {
+        let output = FakeDirectOutput()
+        let wiring = HidPadWiring(processor: model.input.processor, notify: { _, _ in }, battery: { _, _ in })
+        let candidate = try DirectFixtures.candidate(DirectFixtures.valveProperties(productId: 0x1102, interfaceNumber: 2))
+        let lane = DirectFixtures.lane(candidate, slotId: "hid:28de:1102", wiring: wiring, output: output)
+        model.input.paths.hidPadArrived(HidPadArrival(slotId: "hid:28de:1102", lane: lane, probe: GameControllerProbe { false }))
+        willTerminate.send(())
+        XCTAssertEqual(output.calls, [.releasedNow], "the 2015 pad's keyboard and mouse come back before Dish exits")
     }
 }
 

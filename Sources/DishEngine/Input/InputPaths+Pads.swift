@@ -83,11 +83,37 @@ extension InputPaths {
         pads.removeValue(forKey: slotId)
         rawRates.removeValue(forKey: slotId)
         rawHz.removeValue(forKey: slotId)
+        refusals.removeValue(forKey: slotId)
         host?.hideDirectSlot(slotId)
         buttonCheck.laneGone(slotId: slotId)
         recordDrop(slotId, name: name)
         refreshOutputs()
         publishFacts()
+    }
+
+    /// A receiver's slot gained or lost its controller: its slot shows or hides.
+    func directLinkChanged(_ slotId: String) {
+        guard pads[slotId] != nil else { return }
+        refreshOutputs()
+        publishFacts()
+    }
+
+    /// macOS would not open a pad the user picked Direct for: it stays hidden,
+    /// and its offer says why, until it is picked again or comes back.
+    func claimRefused(_ slotId: String, _ refusal: ClaimRefusal) {
+        guard pads[slotId] != nil else { return }
+        refusals[slotId] = refusal
+        Self.log.info("CLAIM refused id=\(slotId, privacy: .public) refusal=\(String(describing: refusal), privacy: .public)")
+        refreshOutputs()
+        publishFacts()
+    }
+
+    /// The app is quitting: every pad Dish reads on a claim is given back
+    /// before the process ends, or the 2015 pad would stay mute.
+    func releaseClaimsNow() {
+        for key in pads.keys.sorted() where readsOnClaim(key) {
+            pads[key]?.arrival?.lane.output?.releaseNow()
+        }
     }
 
     // MARK: - GameController's controllers

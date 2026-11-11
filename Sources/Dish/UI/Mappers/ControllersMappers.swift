@@ -8,10 +8,12 @@ import SwiftUI
 
 /// Controllers is the inventory of pads: everything that belongs to the
 /// device, and the one binding-aware hand-off, "Bound · host ›", into
-/// Configure binding.
+/// Configure binding; after the pads, the ones Dish could read directly
+/// once the user asks.
 struct ControllersPageState: Equatable {
     let registering: Bool
     let content: ControllersContent
+    let offers: [DirectOfferCardState]
     let footer: TelemetryFooterState
 }
 
@@ -71,9 +73,12 @@ func controllersPageState(
     words: L10n = .app
 ) -> ControllersPageState {
     let cards = slots.map { controllerCard($0, facts.telemetry, path: facts.inputPaths[$0.id], words: words) }
+    let offers = facts.directOffers.map { directOfferCard($0, words: words) }
+    let nothing = cards.isEmpty && offers.isEmpty
     return ControllersPageState(
         registering: registering,
-        content: cards.isEmpty ? .empty(title: words.noControllersConnected, body: words.plugOneIn) : .cards(cards),
+        content: nothing ? .empty(title: words.noControllersConnected, body: words.plugOneIn) : .cards(cards),
+        offers: offers,
         footer: telemetryFooter(facts.telemetry, words: words)
     )
 }

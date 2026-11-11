@@ -32,11 +32,14 @@ extension GameControllerInput: InputPathHost {
         slots[index].family = slot.family
     }
 
+    /// A pad that drives its own rumble report takes the slot's rumble.
     func showDirectSlot(_ slot: Slot, lane: HidPadLane) {
         let fresh = !slots.contains { $0.id == slot.id }
         lane.use(feed: processor.feed(for: slot.id))
         upsertSlot(slot)
-        guard fresh, slot.capabilities.hasBattery else { return }
+        let ownRumble = lane.candidate.model?.drivesItsOwnRumble == true
+        padActuators.fileOutput(ownRumble ? lane.output : nil, for: slot.id)
+        guard fresh else { return }
         startDirectBatteryHeartbeat(slot.id, lane: lane)
     }
 
@@ -44,6 +47,7 @@ extension GameControllerInput: InputPathHost {
         guard slots.contains(where: { $0.id == slotId }) else { return }
         slots.removeAll { $0.id == slotId }
         processor.remove(deviceId: slotId)
+        padActuators.fileOutput(nil, for: slotId)
         cancelBatteryTimers(slotId)
     }
 
@@ -74,27 +78,41 @@ extension GameControllerInput: InputPathHost {
         fileController(carrier, for: directSlotId)
     }
 
+    /// The pad's own report lands on its card, and the wire hears the lower
+    /// of it and the Mac's at once.
     func directBatteryChanged(_ slotId: String, _ battery: PadBattery) {
-        guard let index = slots.firstIndex(where: { $0.id == slotId }) else { return }
-        slots[index].battery = batteryReading(battery)
+        guard slots.contains(where: { $0.id == slotId }) else { return }
+        showBattery(batteryReading(battery), onSlot: slotId)
+        sendDirectBattery(slotId, own: battery)
     }
 
-    /// MSG_BATTERY is a fixed 30 s heartbeat, so the battery the lane last
-    /// saw goes out again on that cadence, change or not.
+    /// MSG_BATTERY is a fixed 30 s heartbeat, first sent a second after the
+    /// pad shows: every Direct pad beats the lower of the battery its lane
+    /// last saw and the Mac's, and a pad that reports none beats the Mac's.
     private func startDirectBatteryHeartbeat(_ slotId: String, lane: HidPadLane) {
         cancelBatteryTimers(slotId)
         let timer = DispatchSource.makeTimerSource(queue: .main)
-        timer.schedule(deadline: .now() + .seconds(kBatteryPollIntervalSec), repeating: .seconds(kBatteryPollIntervalSec))
+        timer.schedule(deadline: .now() + .seconds(kBatteryFirstReportDelaySec), repeating: .seconds(kBatteryPollIntervalSec))
         timer.setEventHandler { [weak self, weak lane] in
-            MainActor.assumeIsolated { self?.repeatDirectBattery(slotId, lane: lane) }
+            MainActor.assumeIsolated { self?.beatDirectBattery(slotId, lane: lane) }
         }
         timer.resume()
         batteryTimers[slotId] = timer
     }
 
-    private func repeatDirectBattery(_ slotId: String, lane: HidPadLane?) {
-        guard let battery = lane?.latestBattery else { return }
-        processor.publishBattery(deviceId: slotId, level: battery.level, statusRaw: battery.status.rawValue)
+    func beatDirectBattery(_ slotId: String, lane: HidPadLane?) {
+        sendDirectBattery(slotId, own: lane?.latestBattery)
+    }
+
+    private func sendDirectBattery(_ slotId: String, own: PadBattery?) {
+        readHostBattery { [weak self] host in self?.publishDirectBattery(slotId, own: own, host: host) }
+    }
+
+    /// A pad that left while the Mac's battery was read sends nothing.
+    private func publishDirectBattery(_ slotId: String, own: PadBattery?, host: PadBattery) {
+        guard slots.contains(where: { $0.id == slotId }) else { return }
+        let sent = lowestBattery(pad: own, host: host)
+        processor.publishBattery(deviceId: slotId, level: sent.level, statusRaw: sent.status.rawValue)
     }
 }
 

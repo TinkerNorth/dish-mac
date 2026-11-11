@@ -39,6 +39,8 @@ package struct ShellFacts: Equatable {
     package var controllerRegistering = false
     /// Each visible slot's input path: Standard or Direct, why, the check.
     package var inputPaths: [String: SlotInputPath] = [:]
+    /// The opt-in models Dish could read directly, until a pad of one is read.
+    package var directOffers: [DirectOffer] = []
     /// The "Check the buttons" walk on screen, nil while none is.
     package var buttonCheck: ButtonCheckFacts?
     /// The "Help support this controller" capture on screen, nil while none is.

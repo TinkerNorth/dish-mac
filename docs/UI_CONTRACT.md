@@ -306,11 +306,20 @@ on screen (`buttonCheck`) and the support capture on screen
   else over its name) or the connection hint. A Direct pad's card has a
   menu (`cardMenu`): Check the buttons where Dish reads it through its
   declared layout (`SlotInputPath.remappable`), and Help support this
-  controller; a pad whose layout is guessed wears the desktops' "Layout
+  controller where the capture can open it (`SlotInputPath.capturable`,
+  never a Steam Controller, whose USB identity names its keyboard and mouse
+  too); a pad whose layout is guessed wears the desktops' "Layout
   guessed" chip (`layoutChip`), which opens Check the buttons, and its
   Diagnostics card carries the same word as its chip.
   The inspector draws the same block under its title, as its "Input path"
-  section. A pad that drops three times within a minute raises one "… keeps
+  section. After the pads comes a card per Steam Controller model Dish
+  could read directly (`directOfferCard`, from `ShellFacts.directOffers`,
+  drawn as an `EmptyStateCard`): what reading it does to the pad, Use Direct
+  (`pickInputPath(.direct)` on the model's lane), macOS's refusal in the
+  warning colour with Open System Settings on Privacy & Security › Input
+  Monitoring through `openURL`, a receiver waiting for its controller, and
+  Stop reading directly, the hand-back (`pickInputPath(.standard)`). The
+  empty state shows only when there is neither a pad nor an offer. A pad that drops three times within a minute raises one "… keeps
   disconnecting" warning toast per burst (`PadNotifier`, from
   `padKeepsDisconnecting`), and its Diagnostics card says so on a
   Disconnects line under the path, beside its Player line.

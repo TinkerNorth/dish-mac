@@ -5,14 +5,12 @@ import DishCore
 import Foundation
 import IOKit.ps
 
-/// Reads the *host Mac's* power state as a fallback battery source. A
-/// controller that doesn't surface its own charge — a wired/USB pad, or one
-/// whose `GCDeviceBattery` reports an unknown level — would otherwise show as
-/// "wired"/"unknown" on the satellite. We instead report the Mac it's plugged
-/// into: a laptop forwards its own battery percentage + charge state; a
-/// desktop Mac (Mac mini / Studio / Pro — no internal battery) reports
-/// level=100, status=wired, which is the honest "AC-powered, no battery"
-/// signal the wire protocol's `wired` status was defined for.
+/// Reads the *host Mac's* power state, the battery that competes with the
+/// pad's own: MSG_BATTERY carries the lower of the two (`lowestBattery`),
+/// and a pad that reports no charge of its own sends this one. A laptop
+/// reports its own percentage and charge state; a desktop Mac (Mac mini,
+/// Studio, Pro: no internal battery) reports level=100, status=wired, the
+/// honest "AC-powered, no battery" signal the wire's `wired` status names.
 ///
 /// The IOKit power-source plumbing is isolated to `snapshot()`; the
 /// snapshot → wire mapping is the pure `reading(from:)` function so the
@@ -38,13 +36,6 @@ enum HostBattery {
         let state: ChargeState
     }
 
-    /// Wire-ready battery reading: `level` is 0...100 or `0xFF` (unknown);
-    /// `status` is a `DishCore.BatteryStatus` raw value.
-    struct WireReading: Equatable {
-        let level: UInt8
-        let status: BatteryStatus
-    }
-
     /// Pure mapping from an IOKit-free snapshot to the wire reading. Extracted
     /// so unit tests can pin every branch without touching IOKit:
     ///
@@ -54,11 +45,11 @@ enum HostBattery {
     ///     the best-known charge state.
     ///   * a snapshot with a percentage → the clamped percentage + the
     ///     discharging/charging/full state.
-    static func reading(from snapshot: Snapshot?) -> WireReading {
+    static func reading(from snapshot: Snapshot?) -> PadBattery {
         guard let snapshot else {
             // No internal battery power source: a desktop Mac. The controller
             // is, transitively, mains-powered.
-            return WireReading(level: 100, status: .wired)
+            return PadBattery(level: 100, status: .wired)
         }
         let status: BatteryStatus = switch snapshot.state {
         case .unknown: .unknown
@@ -67,19 +58,19 @@ enum HostBattery {
         case .full: .full
         }
         guard let percentage = snapshot.percentage else {
-            return WireReading(level: 0xFF, status: status)
+            return PadBattery(level: ProtocolConstants.batteryLevelUnknown, status: status)
         }
         let clamped = min(100, max(0, percentage))
-        return WireReading(level: UInt8(clamped), status: status)
+        return PadBattery(level: UInt8(clamped), status: status)
     }
 
     /// Read the host Mac's internal-battery power source via IOKit. Returns
     /// `nil` when the machine has no internal battery (desktop Mac) — the
     /// caller maps that to `status=wired` through `reading(from:)`.
     ///
-    /// `IOPSCopyPowerSourcesInfo` is a cheap blocking snapshot of the power
-    /// manager's published state; it's safe to call from the battery poll
-    /// timer's main-queue tick.
+    /// `IOPSCopyPowerSourcesInfo` is a blocking snapshot of the power
+    /// manager's published state, so it is read on the battery queue, never
+    /// on the main actor or an input thread.
     static func snapshot() -> Snapshot? {
         guard let blob = IOPSCopyPowerSourcesInfo()?.takeRetainedValue(),
               let sources = IOPSCopyPowerSourcesList(blob)?.takeRetainedValue()
@@ -136,4 +127,10 @@ enum HostBattery {
         }
         return Snapshot(percentage: percentage, state: state)
     }
+}
+
+/// The Mac's battery, read through IOKit: the bridge's default.
+@Sendable
+func liveHostBattery() -> PadBattery {
+    HostBattery.reading(from: HostBattery.snapshot())
 }

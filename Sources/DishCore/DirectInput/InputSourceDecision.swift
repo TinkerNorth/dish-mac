@@ -5,7 +5,8 @@
 // (Standard) or Dish's own HID reader (Direct). Nintendo's Direct-by-model
 // pads go Direct unless the user sent a Switch Pro that GameController shows
 // back to Standard; a pad GameController does not support goes Direct when
-// Dish can decode it; everything else stays Standard.
+// Dish can decode it, or is offered when its model is opt-in; everything
+// else stays Standard.
 
 import Foundation
 
@@ -73,12 +74,15 @@ public enum PathDecision: Equatable, Sendable {
     case awaitGameController
     /// Neither path reads it.
     case unreadable
+    /// Dish can read it, once the user asks.
+    case offerDirect
 }
 
 public func decidePath(_ facts: PadPathFacts) -> PathDecision {
     switch facts.model?.rule {
     case .byModel: decideByModel(facts)
-    case .whenMacOSCannot, nil: decideBySupport(facts)
+    case .whenMacOSCannot, nil: decideBySupport(facts, whenMacOSCannot: .forward(.direct, .macOSCannotRead))
+    case .optIn: decideBySupport(facts, whenMacOSCannot: .offerDirect)
     }
 }
 
@@ -98,25 +102,28 @@ private func decideByModel(_ facts: PadPathFacts) -> PathDecision {
 }
 
 /// A stored Direct wins for a pad Dish decodes; otherwise GameController's
-/// support decides.
-private func decideBySupport(_ facts: PadPathFacts) -> PathDecision {
+/// support decides, and a pad it does not read that Dish decodes takes
+/// `whenMacOSCannot`: Direct at once, or, for an opt-in model, the offer.
+private func decideBySupport(_ facts: PadPathFacts, whenMacOSCannot: PathDecision) -> PathDecision {
     let pickedDirect = facts.stored == .direct && facts.decodable
     if pickedDirect { return .forward(.direct, .userPicked) }
     switch facts.gameController {
     case .pending: return .awaitGameController
     case .shows: return .forward(.standard, facts.stored == .standard ? .userPicked : .macOSReads)
-    case .doesNotShow: return facts.decodable ? .forward(.direct, .macOSCannotRead) : .unreadable
+    case .doesNotShow: return facts.decodable ? whenMacOSCannot : .unreadable
     }
 }
 
 /// Whether the user may move the pad onto `source`: Direct needs a decoder,
-/// Standard needs GameController to show the pad and the model to allow it.
+/// Standard needs GameController to show the pad and the model to allow it,
+/// or an opt-in model, which is handed back to macOS as it came.
 public func pathAvailable(_ source: InputSource, _ facts: PadPathFacts) -> Bool {
     switch source {
     case .direct: return facts.decodable
     case .standard:
         let shows = facts.gameController == .shows
         let allowed = facts.model?.offersStandard ?? true
-        return shows && allowed
+        let handsBack = facts.model?.rule == .optIn
+        return (shows && allowed) || handsBack
     }
 }

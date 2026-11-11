@@ -38,6 +38,8 @@ package enum RumbleCarriage: Equatable {
     case ambiguous
     /// Dish sends nothing back to this model.
     case notCarried
+    /// Dish sends the pad's own rumble report: the 2026 Steam Controller.
+    case ownReport
 }
 
 /// One visible slot's input path.
@@ -54,6 +56,8 @@ package struct SlotInputPath: Equatable {
     package var layoutGuessed = false
     /// Dish reads it through its declared layout, so "Check the buttons" can remap it.
     package var remappable = false
+    /// "Help support this controller" can capture it.
+    package var capturable = true
     package var rumble = RumbleCarriage.ownController
     /// The pad dropped three times within a minute.
     package var keepsDisconnecting = false
@@ -161,6 +165,10 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
     var bursts = DisconnectBursts()
     var rawRates: [String: InputRateTracker] = [:]
     var rawHz: [String: Int] = [:]
+    /// The opt-in lanes macOS would not let Dish open, by slot id.
+    var refusals: [String: ClaimRefusal] = [:]
+    /// The opt-in models the Controllers page offers to read directly.
+    let offers = StateSource<[DirectOffer]>(initial: [])
     var checkTimer: InputPathTimer?
     /// What the other threads' posts reach the paths through.
     let relay = PathsRelay()
@@ -189,8 +197,10 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
 
     /// The reader starts once the processor it publishes into exists.
     func start(processor: GamepadInputProcessor) {
-        let wiring = HidPadWiring(processor: processor, notify: makeNotify(), battery: makeBatteryPost(), captured: makeCapturePost())
-        reader.start(wiring: wiring, events: HidPadEvents(arrived: makeArrivalPost(), removed: makeRemovalPost()))
+        var wiring = HidPadWiring(processor: processor, notify: makeNotify(), battery: makeBatteryPost(), captured: makeCapturePost())
+        wiring.linkChanged = makeLinkPost()
+        let events = HidPadEvents(arrived: makeArrivalPost(), removed: makeRemovalPost(), refused: makeRefusalPost())
+        reader.start(wiring: wiring, events: events)
     }
 
     /// A gate for a pad's hot path that posts its events here.
@@ -224,6 +234,18 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
         }
     }
 
+    private func makeLinkPost() -> @Sendable (String) -> Void {
+        { [relay] slotId in
+            DispatchQueue.main.async { MainActor.assumeIsolated { relay.paths?.directLinkChanged(slotId) } }
+        }
+    }
+
+    private func makeRefusalPost() -> @Sendable (String, ClaimRefusal) -> Void {
+        { [relay] slotId, refusal in
+            DispatchQueue.main.async { MainActor.assumeIsolated { relay.paths?.claimRefused(slotId, refusal) } }
+        }
+    }
+
     // MARK: - The machine
 
     /// One event through the pad's machine, its effects run, the hot path's
@@ -244,7 +266,7 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
     private func run(_ effect: InputSourceEffect, key: String) {
         switch effect {
         case let .forward(source): forwarded(key, source)
-        case .stopForwarding: pads[key]?.gate.route(nil)
+        case .stopForwarding: stopped(key)
         case let .remember(source): remember(key, source)
         case let .verdict(verdict, offer): concluded(key, CheckOutcome(verdict: verdict, offer: offer))
         }
@@ -258,7 +280,30 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
         Self.log.info("\(line, privacy: .public)")
         records.send(InputPathRecord(subject: pad.name, note: .chosen(source, reason)))
         guard pad.arrival != nil else { return }
+        if source == .direct { claimIfOptIn(key) }
         refreshOutputs()
+    }
+
+    /// An opt-in pad is opened and configured only now, on the user's pick.
+    private func claimIfOptIn(_ key: String) {
+        guard readsOnClaim(key) else { return }
+        refusals.removeValue(forKey: key)
+        reader.claim(slotId: key)
+    }
+
+    /// An opt-in pad no longer forwarded is given back as it came, and its
+    /// slot goes: no Standard path takes its place.
+    private func stopped(_ key: String) {
+        pads[key]?.gate.route(nil)
+        guard readsOnClaim(key) else { return }
+        refusals.removeValue(forKey: key)
+        reader.unclaim(slotId: key)
+        refreshOutputs()
+    }
+
+    /// The lane waits for a claim before Dish opens or writes to it.
+    func readsOnClaim(_ key: String) -> Bool {
+        pads[key]?.arrival?.candidate.model?.rule == .optIn
     }
 
     private func remember(_ key: String, _ source: InputSource) {

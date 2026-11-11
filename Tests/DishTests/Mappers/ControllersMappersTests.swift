@@ -117,4 +117,67 @@ final class ControllersMappersTests: XCTestCase {
         XCTAssertNil(self.card(Fix.pad()).layoutChip)
         XCTAssertEqual(self.card(Fix.pad()).menu, [], "a pad macOS reads has no menu")
     }
+
+    // MARK: - Offers to read a pad directly
+
+    private func offer(_ standing: DirectOfferStanding) -> DirectOffer {
+        DirectOffer(id: "hid:28de:1102", name: "Valve Steam Controller", standing: standing)
+    }
+
+    func testAnOfferedPadSaysWhatReadingItDoesAndOffersUseDirect() {
+        let card = directOfferCard(offer(.offered(asksInputMonitoring: false)))
+        XCTAssertEqual(card.id, "hid:28de:1102")
+        XCTAssertEqual(card.title, "Valve Steam Controller")
+        XCTAssertEqual(card.message, "Dish can read this controller directly. While it does, the controller’s keyboard and mouse are off.")
+        XCTAssertNil(card.hint)
+        XCTAssertEqual(card.actions, [.useDirect("Use Direct")])
+    }
+
+    func testAPadWhoseInterfaceCarriesItsKeyboardWarnsThatMacOSAsksFirst() {
+        let card = directOfferCard(offer(.offered(asksInputMonitoring: true)))
+        XCTAssertTrue(card.message.hasSuffix("macOS asks for Input Monitoring first, because the controller also acts as a keyboard."))
+    }
+
+    func testARefusedPadSaysWhyAndOpensInputMonitoringOrHandsItBack() {
+        let card = directOfferCard(offer(.refused(.inputMonitoring)))
+        XCTAssertEqual(card.hint, "macOS has not let Dish read this controller.")
+        XCTAssertEqual(card.message, "Allow Dish under Privacy & Security › Input Monitoring, then quit and reopen Dish.")
+        guard case let .openSettings(link) = card.actions.first else { return XCTFail("System Settings first") }
+        XCTAssertEqual(link.title, "Open System Settings")
+        XCTAssertEqual(link.url?.absoluteString, "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")
+        XCTAssertEqual(card.actions.last, .stopReading("Stop reading directly"))
+    }
+
+    func testAPadThatWouldNotOpenNamesTheLikelyCauseAndHandsItBack() {
+        let card = directOfferCard(offer(.refused(.busy)))
+        XCTAssertEqual(card.hint, "Dish couldn’t open this controller; another app may be using it.")
+        XCTAssertEqual(card.message, "Quit that app, or unplug the controller and plug it back in.")
+        XCTAssertEqual(card.actions, [.stopReading("Stop reading directly")])
+    }
+
+    func testAReceiverWithNoControllerSaysWhatItWaitsFor() {
+        let card = directOfferCard(offer(.waitingForController))
+        XCTAssertEqual(card.message, "Dish is reading this receiver directly. Turn on a controller paired with it.")
+        XCTAssertNil(card.hint)
+        XCTAssertEqual(card.actions, [.stopReading("Stop reading directly")])
+    }
+
+    func testOffersFollowThePadsAndReplaceTheEmptyState() {
+        var facts = ShellFacts()
+        facts.directOffers = [offer(.offered(asksInputMonitoring: false))]
+        let alone = controllersPageState(slots: [], facts: facts)
+        XCTAssertEqual(alone.content, .cards([]), "an offer is something to show")
+        XCTAssertEqual(alone.offers.map(\.id), ["hid:28de:1102"])
+        let beside = controllersPageState(slots: [Fix.pad()], facts: facts)
+        guard case let .cards(cards) = beside.content else { return XCTFail("the pads first") }
+        XCTAssertEqual(cards.map(\.id), ["pad"])
+        XCTAssertEqual(beside.offers.count, 1)
+        XCTAssertEqual(controllersPageState(slots: [], facts: ShellFacts()).offers, [])
+    }
+
+    func testEachOfferActionHasItsOwnIdentity() {
+        let settings = SettingsLinkState(title: "Open System Settings", url: nil)
+        let ids = [DirectOfferAction.useDirect("a"), .openSettings(settings), .stopReading("b")].map(\.id)
+        XCTAssertEqual(Set(ids).count, 3)
+    }
 }

@@ -104,6 +104,48 @@ extension L10n {
         catalog.text("Check the cable or the Bluetooth connection, then try again")
     }
 
+    // MARK: - An offer to read a pad directly
+
+    var dishCanReadThisControllerDirectly: String {
+        catalog.text("Dish can read this controller directly.")
+    }
+
+    var whileItDoesItsKeyboardAndMouseAreOff: String {
+        catalog.text("While it does, the controller’s keyboard and mouse are off.")
+    }
+
+    var macOSAsksForInputMonitoringFirst: String {
+        catalog.text("macOS asks for Input Monitoring first, because the controller also acts as a keyboard.")
+    }
+
+    var macOSHasNotLetDishReadIt: String {
+        catalog.text("macOS has not let Dish read this controller.")
+    }
+
+    var allowDishUnderInputMonitoring: String {
+        catalog.text("Allow Dish under Privacy & Security › Input Monitoring, then quit and reopen Dish.")
+    }
+
+    var dishCouldNotOpenThisController: String {
+        catalog.text("Dish couldn’t open this controller; another app may be using it.")
+    }
+
+    var quitThatAppOrPlugItBackIn: String {
+        catalog.text("Quit that app, or unplug the controller and plug it back in.")
+    }
+
+    var dishIsReadingThisReceiverDirectly: String {
+        catalog.text("Dish is reading this receiver directly.")
+    }
+
+    var turnOnAControllerPairedWithIt: String {
+        catalog.text("Turn on a controller paired with it.")
+    }
+
+    var stopReadingDirectly: String {
+        catalog.text("Stop reading directly")
+    }
+
     // MARK: - Drops
 
     var playerWord: String {
