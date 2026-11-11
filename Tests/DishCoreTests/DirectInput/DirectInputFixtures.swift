@@ -250,3 +250,41 @@ struct TritonReportBytes {
         bytes.withUnsafeBufferPointer { decodeTritonReport($0) }
     }
 }
+
+/// A Switch Pro Controller (057e:2009) on USB as it answered a Mac running
+/// macOS 27, every report 64 bytes: silent as plugged in, it acknowledges
+/// each handshake and the switch to 3 Mbit, and streams its full reports
+/// from the timeout disable that follows a handshake at 3 Mbit. The
+/// handshake, timeout disable and report mode alone, a handshake sent
+/// twice, and the 3 Mbit switch without the handshake after it each left
+/// it silent.
+struct CapturedSwitchPro {
+    static let handshakeReply = paddedToOneUsbPacket([0x81, 0x02])
+    static let highSpeedReply = paddedToOneUsbPacket([0x81, 0x03])
+    /// The 0x21 reply to subcommand 0x03: the input state, then ack 0x80 for 0x03.
+    static let subcommandReply = paddedToOneUsbPacket([
+        0x21, 0xDC, 0x81, 0x00, 0x80, 0x00, 0x18, 0xB7, 0x7F, 0x4A, 0xE8, 0x82, 0x00, 0x80, 0x03
+    ])
+    /// At rest on its cable, the IMU frames all zero.
+    static let idleFullReport = paddedToOneUsbPacket([0x30, 0xA7, 0x81, 0x00, 0x80, 0x00, 0x19, 0xB7, 0x7F, 0x4B, 0xF8, 0x82])
+    static let fullReportModeSubcommand: [UInt8] = [0x01, 0x00, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x03, 0x30]
+
+    private static let handshakeAtThreeMegabit: [[UInt8]] = [[0x80, 0x02], [0x80, 0x03], [0x80, 0x02]]
+    private static let timeoutDisable: [UInt8] = [0x80, 0x04]
+
+    /// Each packet's command: its first two bytes.
+    private(set) var received: [[UInt8]] = []
+    private(set) var streams = false
+
+    mutating func receive(_ packet: [UInt8]) {
+        let command = Array(packet.prefix(2))
+        let lastThree = Array(received.suffix(Self.handshakeAtThreeMegabit.count))
+        let disablesTheTimeoutAtThreeMegabit = command == Self.timeoutDisable && lastThree == Self.handshakeAtThreeMegabit
+        if disablesTheTimeoutAtThreeMegabit { streams = true }
+        received.append(command)
+    }
+}
+
+private func paddedToOneUsbPacket(_ bytes: [UInt8]) -> [UInt8] {
+    bytes + [UInt8](repeating: 0, count: switchStartPacketBytes - bytes.count)
+}
