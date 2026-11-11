@@ -46,6 +46,15 @@ the repos share a version number.
   before sent no battery at all. The controller's card still shows the pad's
   own reading, and the Mac's battery is still read away from the main thread.
 
+### Fixed
+
+- **The audio output test no longer depends on the Mac's default output.**
+  It used to play silence into whatever the Mac's sound output was set to,
+  and a DisplayPort monitor's speakers can refuse to start for minutes after
+  the display wakes, which failed the test on a developer's Mac though Dish
+  never plays a pad's audio to a monitor. It now plays into a USB output,
+  the kind every pad's audio is, or into the Mac's own or a virtual one.
+
 ## [1.2.1] - 2026-11-11
 
 ### Fixed
