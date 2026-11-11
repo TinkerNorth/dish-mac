@@ -32,10 +32,13 @@ extension GameControllerInput: InputPathHost {
         slots[index].family = slot.family
     }
 
+    /// A pad that drives its own rumble report takes the slot's rumble.
     func showDirectSlot(_ slot: Slot, lane: HidPadLane) {
         let fresh = !slots.contains { $0.id == slot.id }
         lane.use(feed: processor.feed(for: slot.id))
         upsertSlot(slot)
+        let ownRumble = lane.candidate.model?.drivesItsOwnRumble == true
+        padActuators.fileOutput(ownRumble ? lane.output : nil, for: slot.id)
         guard fresh else { return }
         startDirectBatteryHeartbeat(slot.id, lane: lane)
     }
@@ -44,6 +47,7 @@ extension GameControllerInput: InputPathHost {
         guard slots.contains(where: { $0.id == slotId }) else { return }
         slots.removeAll { $0.id == slotId }
         processor.remove(deviceId: slotId)
+        padActuators.fileOutput(nil, for: slotId)
         cancelBatteryTimers(slotId)
     }
 

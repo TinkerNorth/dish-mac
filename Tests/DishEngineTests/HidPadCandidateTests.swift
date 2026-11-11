@@ -98,10 +98,10 @@ final class HidPadCandidateTests: XCTestCase {
         XCTAssertEqual(try DirectFixtures.candidate(properties).name, "1234:5678")
     }
 
-    func testTheMatchingNamesEachNintendoModelAndEveryGameUsageNeverSynthetic() {
+    func testTheMatchingNamesEachModelReadByIdentityAndEveryGameUsageNeverSynthetic() {
         let matching = hidPadMatching()
         let products = matching.compactMap { $0[kIOHIDProductIDKey] as? Int }
-        XCTAssertEqual(Set(products), [0x2009, 0x2019, 0x2017])
+        XCTAssertEqual(Set(products), [0x2009, 0x2019, 0x2017, 0x1102, 0x1142, 0x1302, 0x1304, 0x1305], "Nintendo's and Valve's")
         let usages = matching.compactMap { $0[kIOHIDDeviceUsageKey] as? Int }
         XCTAssertEqual(Set(usages), [0x04, 0x05, 0x08])
         XCTAssertTrue(matching.allSatisfy { $0[kIOHIDGCSyntheticDeviceKey] as? Bool == false })
@@ -134,5 +134,54 @@ final class HidPadCandidateTests: XCTestCase {
         XCTAssertEqual(transportWord(.bluetooth), "bluetooth")
         XCTAssertEqual(transportWord(.other("SPI")), "SPI")
         XCTAssertEqual(transportWord(.unknown), "unknown")
+    }
+
+    // MARK: - Valve's controllers
+
+    func testThe2015PadIsReadOnItsVendorInterfaceAndNeverItsKeyboardOrMouse() throws {
+        let pad = try DirectFixtures.candidate(DirectFixtures.valveProperties(productId: 0x1102, interfaceNumber: 2))
+        XCTAssertEqual(pad.decoder, .steamController)
+        XCTAssertEqual(pad.name, "Valve Steam Controller")
+        XCTAssertEqual(pad.family, .other)
+        XCTAssertFalse(pad.layoutGuessed)
+        XCTAssertFalse(pad.receiver)
+        XCTAssertFalse(pad.needsInputMonitoring, "a vendor interface opens with no permission")
+        XCTAssertEqual(laneKindWord(pad.decoder), "steam-2015")
+        XCTAssertNil(hidPadCandidate(DirectFixtures.valveProperties(productId: 0x1102, usagePage: 0x01, usage: 0x06, interfaceNumber: 1)))
+        XCTAssertNil(hidPadCandidate(DirectFixtures.valveProperties(productId: 0x1102, usagePage: 0x01, usage: 0x02, interfaceNumber: 0)))
+    }
+
+    func testThe2015DongleIsAReceiver() throws {
+        let slot = try DirectFixtures.candidate(DirectFixtures.valveProperties(productId: 0x1142, interfaceNumber: 1))
+        XCTAssertEqual(slot.decoder, .steamController)
+        XCTAssertTrue(slot.receiver, "a slot holds a controller only while one is connected")
+    }
+
+    func testThe2026PadsUnifiedInterfaceIsReadAndSaysItNeedsInputMonitoring() throws {
+        let properties = DirectFixtures.valveProperties(productId: 0x1302, usagePage: 0x01, usage: 0x06, requiresInputMonitoring: true)
+        let pad = try DirectFixtures.candidate(properties)
+        XCTAssertEqual(pad.decoder, .steamTriton)
+        XCTAssertEqual(pad.name, "Valve Steam Controller (2026)")
+        XCTAssertTrue(pad.needsInputMonitoring, "its keyboard and mouse share the interface, so macOS asks first")
+        XCTAssertEqual(laneKindWord(pad.decoder), "steam-2026")
+    }
+
+    func testA2026ReceiverIsReadOnItsSlotsAndNeverItsPogoPins() throws {
+        let slot = try DirectFixtures.candidate(DirectFixtures.valveProperties(productId: 0x1304, interfaceNumber: 3))
+        XCTAssertEqual(slot.decoder, .steamTriton)
+        XCTAssertTrue(slot.receiver)
+        XCTAssertNil(hidPadCandidate(DirectFixtures.valveProperties(productId: 0x1304, usage: 0x0002, interfaceNumber: 6)))
+        XCTAssertNil(hidPadCandidate(DirectFixtures.valveProperties(productId: 0x1305, interfaceNumber: 0)))
+    }
+
+    func testTheBluetoothSteamControllerIsNotRead() {
+        XCTAssertNil(hidPadCandidate(DirectFixtures.valveProperties(productId: 0x1303)))
+    }
+
+    func testOnlyAValveDeviceNeedsAWriterOfItsOwn() throws {
+        let steam = try DirectFixtures.candidate(DirectFixtures.valveProperties(productId: 0x1102, interfaceNumber: 2))
+        let n64 = try DirectFixtures.candidate(DirectFixtures.nintendoProperties(productId: 0x2019))
+        XCTAssertEqual(steam.steamPlan, SteamPlan(generation: .original, receiver: false))
+        XCTAssertNil(n64.steamPlan)
     }
 }

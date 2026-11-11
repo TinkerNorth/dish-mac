@@ -7,6 +7,7 @@ import Foundation
 /// The host's sleep and wake, as the desktops handle suspend and resume:
 /// sleep releases every held input and closes every session cleanly, wake
 /// reopens them and scans again, since a laptop may wake on another network.
+/// Quitting gives back every pad Dish reconfigured.
 package extension AppModel {
     /// Fires once on the wake after the lid closed on a stream, for the app to word.
     var lidPausedStreaming: AnyPublisher<Void, Never> {
@@ -20,6 +21,15 @@ package extension AppModel {
         lifecycle.didWake
             .sink { [weak self] in self?.resumeAfterWake() }
             .store(in: &cancellables)
+        lifecycle.willTerminate
+            .sink { [weak self] in self?.prepareToQuit() }
+            .store(in: &cancellables)
+    }
+
+    /// The 2015 Steam Controller's quiet settings outlive Dish until the pad
+    /// reboots, so its keyboard and mouse are restored before the process ends.
+    internal func prepareToQuit() {
+        input.paths.releaseClaimsNow()
     }
 
     /// The lid and the stream are read before anything closes; the released

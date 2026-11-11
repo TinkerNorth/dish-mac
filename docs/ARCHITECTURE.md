@@ -254,18 +254,30 @@ pads are read by Dish itself, by model: macOS lists the N64 pad and
 delivers none of its input. A gamepad GameController does not support
 (`GCController.supportsHIDDevice` still no after four checks over about
 30 ms, as SDL waits) and whose report descriptor the core can decode is
-read the same way. Everything else stays on GameController.
+read the same way. Valve's Steam Controllers (2015: 28de:1102, receiver
+1142; 2026: 1302, receivers 1304 and 1305) are read by their own decoders,
+but only once the user picks Direct (`DirectRule.optIn`). Everything else
+stays on GameController.
 
 - **The reader.** `IOKitHidPadReader` owns one `IOHIDManager`, matching the
-  three Nintendo models by identity and every game usage, all with
+  Nintendo and Valve models by identity and every game usage, all with
   `GCSyntheticDevice` false, scheduled on the run loop of a thread of its own
   (`com.tinkernorth.dish.hid`), never the main one. Each candidate
   (`hidPadCandidate`, decided from the device's properties alone) is opened
-  with `kIOHIDOptionsTypeNone`: Dish reads the reports alongside macOS and
-  never seizes the device. The one thing ever sent is the Switch start
-  sequence (see below). Gamepad usages
-  need no Input Monitoring permission and no entitlement, so no access is
-  requested. Arrival and removal hop to the main actor; a pad GameController
+  with `kIOHIDOptionsTypeNone` as it arrives, a Steam Controller only once
+  claimed: Dish reads the reports alongside macOS and never seizes the
+  device. What is ever sent: the Switch start sequence, and a claimed Steam
+  Controller's own reports (both below). Gamepad usages need no Input
+  Monitoring permission and no entitlement. A device whose collections
+  include a keyboard, a mouse or a touchpad does: IOHIDFamily marks it
+  `RequiresTCCAuthorization` and `IOHIDDeviceOpen` asks for Input Monitoring
+  before it opens, which is why the 2026 Steam Controller, whose one
+  interface carries its keyboard and mouse, is opened only on the user's
+  pick. Asking blocks until the user answers (`IOHIDRequestAccess` waits on
+  TCC with no timeout), so the reader reads the standing with
+  `IOHIDCheckAccess` first (`claimStep` in DishCore), opens only when no
+  prompt can come of it and asks on a queue of its own, never on its
+  thread. Arrival and removal hop to the main actor; a pad GameController
   turns out to read is released again.
 - **The Switch start sequence.** A Switch-family pad on USB streams its full
   0x30 reports only after three commands: the USB handshake (`80 02`), the
@@ -279,7 +291,30 @@ read the same way. Everything else stays on GameController.
   dish-android's three packets, one per tick, so starting one pad never
   stalls another's reports; a stream that stops for two seconds gets them
   again; sequences that bring nothing repeat every three seconds, then every
-  ten. Rumble over HID is still never sent.
+  ten. Rumble over HID goes only to the 2026 Steam Controller.
+- **Steam Controllers, on the user's word.** Reading one turns its keyboard
+  and mouse emulation ("lizard mode") off, so its machine settles on
+  `.offered`, the lane stays closed and Controllers shows its model's offer
+  card (`DirectOffer`, one per model, so a receiver's four slots make one).
+  Use Direct picks Direct for the model (stored in `usb_path_choices`, so
+  the next connect is claimed at once); the paths `claim` each lane and the
+  reader opens it there. A refused open (`ClaimRefusal`: Input Monitoring,
+  or busy) goes back to the main actor and the offer says why; Standard is
+  the hand-back, which `unclaim`s. Each lane's writes run on a
+  `SteamOutput` queue of their own, never the reader's thread, from the
+  core's `SteamPlan`: the 2015 pad is quieted (the desktops' clear mappings
+  and settings) and restored on every release (default mappings, default
+  settings, the right pad's mouse), since its settings persist until it
+  reboots, and `willTerminate` restores every claimed pad before the app
+  exits; the 2026 pad gets lizard mode off and its IMU on, lizard mode off
+  again every three seconds while it is read (its firmware's watchdog turns
+  it back on, which is also how it is restored), and its haptic rumble
+  report, re-sent every 40 ms inside the firmware's safety stop until the
+  host's hold ends. A receiver's slot is a pad only while its controller is
+  there: the lane marks it on the first state report or connect event (the
+  2015 receiver is asked with `ID_DONGLE_GET_WIRELESS_STATE`), the output
+  configures a controller fresh from a boot, and a disconnect releases what
+  it held before the slot hides.
 - **One device, one lane.** IOHIDManager hands back a separate device
   reference for every matching rule a device satisfies, so a Nintendo pad,
   which matches its model rule and the game-usage rule, arrives twice and

@@ -16,6 +16,9 @@ final class InputSourceMachineTests: XCTestCase {
     private static let pendingFacts = PadPathFacts(model: nil, decodable: true, gameController: .pending, stored: nil)
     private static let undecodableFacts = PadPathFacts(model: nil, decodable: false, gameController: .shows, stored: nil)
     private static let unreadableFacts = PadPathFacts(model: nil, decodable: false, gameController: .doesNotShow, stored: nil)
+    private static let steamFacts = PadPathFacts(
+        model: directModel(vendorId: 0x28DE, productId: 0x1142), decodable: true, gameController: .doesNotShow, stored: nil
+    )
 
     private func run(_ events: [InputSourceEvent], from state: InputSourceState = .initial) -> InputSourceReduction {
         events.reduce(InputSourceReduction(next: state)) { reduceInputSource($0.next, $1) }
@@ -215,5 +218,45 @@ final class InputSourceMachineTests: XCTestCase {
         both.sawDirect = true
         XCTAssertEqual(checkVerdict(both, forwarded: .standard, decodable: true).0, .standardWorks)
         XCTAssertEqual(checkVerdict(both, forwarded: .direct, decodable: true).0, .dishReadsIt)
+    }
+
+    // MARK: - An opt-in pad
+
+    func testAnOfferedPadMayOnlyBePickedDirect() {
+        let offered = connected(Self.steamFacts)
+        XCTAssertEqual(offered.phase, .offered)
+        XCTAssertNil(offered.reason, "nothing reads it yet")
+        XCTAssertTrue(offered.canPick(.direct))
+        XCTAssertFalse(offered.canPick(.standard), "macOS has it already")
+    }
+
+    func testPickingDirectOnAnOfferedPadForwardsItAndRemembersThePick() {
+        let reduction = run([.connected(Self.steamFacts), .userPicked(.direct)])
+        XCTAssertEqual(reduction.next.phase, .forwarding(.direct))
+        XCTAssertEqual(reduction.next.reason, .userPicked)
+        XCTAssertFalse(reduction.next.proven)
+        XCTAssertEqual(reduction.effects, [.forward(.direct), .remember(.direct)])
+    }
+
+    func testPickingStandardOnAnOptInPadMacOSCannotReadHandsItBack() {
+        let reduction = run([.connected(Self.steamFacts), .userPicked(.direct), .userPicked(.standard)])
+        XCTAssertEqual(reduction.next.phase, .offered, "macOS keeps it as a keyboard and mouse, and Dish offers it again")
+        XCTAssertNil(reduction.next.reason)
+        XCTAssertEqual(reduction.effects, [.stopForwarding, .remember(.standard)])
+    }
+
+    func testPickingStandardOnAnOptInPadGameControllerReadsMovesItThere() {
+        var facts = Self.steamFacts
+        facts.gameController = .shows
+        facts.stored = .direct
+        let reduction = run([.connected(facts), .userPicked(.standard)])
+        XCTAssertEqual(reduction.next.phase, .forwarding(.standard))
+        XCTAssertEqual(reduction.effects, [.forward(.standard), .remember(.standard)])
+    }
+
+    func testAnOfferedPadThatLeavesIsGone() {
+        let reduction = run([.connected(Self.steamFacts), .disconnected])
+        XCTAssertEqual(reduction.next, .initial)
+        XCTAssertEqual(reduction.effects, [], "nothing was forwarded")
     }
 }

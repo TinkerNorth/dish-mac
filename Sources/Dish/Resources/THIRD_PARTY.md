@@ -27,7 +27,7 @@ TinkerNorth artwork, covered by this repository's own license.
 
 ## 2. Reused facts, not reused code
 
-Five sets of published facts are implemented here from their documentation,
+Six sets of published facts are implemented here from their documentation,
 not copied as code, and one protocol is ported as adapted logic (section 2c):
 
 - **The XUSB (XInput) gamepad report layout and button bits**, from Microsoft's
@@ -61,6 +61,27 @@ not copied as code, and one protocol is ported as adapted logic (section 2c):
   SDL's controller list that the PDP Afterglow Wireless (0e6f:0186) speaks the
   Switch Pro protocol, which is why `DirectModels.swift` leaves it out. A reuse
   of constants and device facts, not SDL code; section 2d carries SDL's notice.
+- **The Steam Controllers' protocols** that `Sources/DishCore/DirectInput/`
+  decodes and writes (`SteamController.swift`, `SteamTriton.swift`,
+  `SteamPlan.swift`). For the 2015 pad (28de:1102, receiver 28de:1142): the
+  64-byte packet framing, the state packet's button bits, trigger full scale,
+  pad rotation and IMU scales, the receiver's wireless events and the quiet
+  and restore feature reports, mirrored byte for byte from the decoders of
+  dish-android and the desktop clients, which follow SDL's
+  `src/joystick/hidapi/SDL_hidapi_steam.c` and the Linux kernel's
+  `drivers/hid/hid-steam.c` (`steam_set_lizard_mode`, `steam_raw_event`);
+  the receiver's state request is SDL's. For the 2026 pad (28de:1302,
+  receivers 28de:1304 and 1305): the input report ids and layouts, the
+  battery and wireless status reports, the settings feature report (lizard
+  mode off, the IMU on), the three-second lizard refresh and the haptic
+  rumble output report with its 40 ms re-send, read from SDL's
+  `src/joystick/hidapi/SDL_hidapi_steam_triton.c` and the Valve-authored
+  `src/joystick/hidapi/steam/controller_structs.h` and
+  `controller_constants.h`; and the 2026 devices' HID interfaces (one unified
+  interface on the pad; a receiver's controllers on interfaces 2 to 5 beside
+  a pogo-pin interface of usage FF00:0002) from `hid-steam`. Only offsets,
+  identifiers and field meanings were used: no SDL or kernel code is here.
+  The kernel is `GPL-2.0-only`; section 2d carries SDL's notice.
 
 ## 2a. sentry-cocoa
 
@@ -181,20 +202,25 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## 2d. SDL (Switch Pro motion scaling and a device fact)
+## 2d. SDL (Switch Pro motion scaling, the Steam Controllers' protocols and a device fact)
 
 Simple DirectMedia Layer, SPDX `Zlib`. Upstream:
 <https://github.com/libsdl-org/SDL> (`src/joystick/hidapi/SDL_hidapi_switch.c`,
+`src/joystick/hidapi/SDL_hidapi_steam.c`,
+`src/joystick/hidapi/SDL_hidapi_steam_triton.c`, `src/joystick/hidapi/steam/`,
 `src/joystick/controller_list.h`).
 
-**No SDL code is compiled into Dish.** Section 2 lists the two constants and
-the one device fact reused; dish-android and the desktop clients carry the
-same attribution for the decoders these were mirrored from.
+**No SDL code is compiled into Dish.** Section 2 lists the constants, the
+Steam Controllers' report layouts and the device fact reused; dish-android
+and the desktop clients carry the same attribution for the decoders these
+were mirrored from.
 
 ```
 Simple DirectMedia Layer
-Copyright (C) 1997-2024 Sam Lantinga <slouken@libsdl.org>
+Copyright (C) 1997-2026 Sam Lantinga <slouken@libsdl.org>
 Controller list portions Copyright (C) Valve Corporation
+steam/controller_structs.h Copyright (C) 2020 Valve Corporation
+steam/controller_constants.h Copyright (C) 2021 Valve Corporation
 
 This software is provided 'as-is', without any express or implied
 warranty.  In no event will the authors be held liable for any damages

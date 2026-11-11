@@ -16,10 +16,18 @@ package struct LifecycleSignals {
     /// sessions reopen now rather than waiting out the backoff curve, and the
     /// LAN is scanned again.
     package let didWake: AnyPublisher<Void, Never>
+    /// The app is about to quit: what Dish changed on a pad is given back
+    /// while the process still runs.
+    package let willTerminate: AnyPublisher<Void, Never>
 
-    package init(willSleep: AnyPublisher<Void, Never>, didWake: AnyPublisher<Void, Never>) {
+    package init(
+        willSleep: AnyPublisher<Void, Never>,
+        didWake: AnyPublisher<Void, Never>,
+        willTerminate: AnyPublisher<Void, Never> = Empty().eraseToAnyPublisher()
+    ) {
         self.willSleep = willSleep
         self.didWake = didWake
+        self.willTerminate = willTerminate
     }
 
     /// Signals that never fire, for an engine with no host app.

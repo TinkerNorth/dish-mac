@@ -7,16 +7,22 @@
 // reads the reports alongside macOS and never seizes the device (seizing a
 // game controller is not possible through public API, and would blind
 // GameController). Enumerating and reading gamepad usages needs no Input
-// Monitoring permission and no entitlement, so no access is ever requested.
-// The one thing Dish sends is the Switch start sequence (dish-android's USB
-// handshake, timeout disable and full report mode), and only to a Switch
-// pad whose full reports have not arrived: macOS's driver does not leave the
-// N64 streaming.
+// Monitoring permission and no entitlement, so no access is asked for them.
+// Dish sends a Switch pad whose full reports have not arrived the start
+// sequence (dish-android's USB handshake, timeout disable and full report
+// mode): macOS's driver does not leave the N64 streaming. A Steam
+// Controller is opened only once the user picks Direct, since reading it
+// turns its keyboard and mouse off, and the 2026 pad's one interface
+// carries its keyboard and mouse, so macOS asks for Input Monitoring before
+// it opens: the standing is read first, and the user asked off this thread,
+// since asking blocks until they answer. A Steam Controller's writes run on
+// its own output's queue, never here.
 
 import DishCore
 import Foundation
 import GameController
 import IOKit.hid
+import IOKit.hidsystem
 import os
 
 /// GameController's answer for one device, asked on the main actor.
@@ -41,11 +47,31 @@ struct HidPadArrival {
     }
 }
 
+/// Why macOS would not let Dish open a pad it was asked to read.
+package enum ClaimRefusal: Equatable {
+    /// Its collections include a keyboard or a mouse, and Dish has no Input
+    /// Monitoring permission.
+    case inputMonitoring
+    /// Another app holds it, or it would not open.
+    case busy
+}
+
+/// `IOHIDDeviceOpen`'s answer as the user reads it.
+func claimRefusal(_ status: IOReturn) -> ClaimRefusal {
+    status == kIOReturnNotPermitted ? .inputMonitoring : .busy
+}
+
 /// What the reader tells the main actor, each call already on it.
 struct HidPadEvents {
     let arrived: @Sendable (HidPadArrival) -> Void
     let removed: @Sendable (_ slotId: String) -> Void
+    /// A claimed pad would not open.
+    var refused: @Sendable (_ slotId: String, _ refusal: ClaimRefusal) -> Void = ignoreRefusal
 }
+
+/// Nobody listening for a refusal.
+@Sendable
+func ignoreRefusal(_: String, _: ClaimRefusal) {}
 
 /// The reader's seam: IOKit in the app, a fake in tests, nothing at all in
 /// a test that builds the composition root.
@@ -54,6 +80,10 @@ protocol HidPadReading: AnyObject, Sendable {
     func start(wiring: HidPadWiring, events: HidPadEvents)
     /// Stops reading one pad GameController turned out to read.
     func release(slotId: String)
+    /// Opens an opt-in pad the user picked Direct for, and starts its output.
+    func claim(slotId: String)
+    /// Gives an opt-in pad back as it came; it stays open for a later claim.
+    func unclaim(slotId: String)
 }
 
 /// Reads nothing: the composition root's default outside the app.
@@ -63,6 +93,10 @@ final class InertHidPadReader: HidPadReading {
     func start(wiring: HidPadWiring, events: HidPadEvents) {}
 
     func release(slotId: String) {}
+
+    func claim(slotId: String) {}
+
+    func unclaim(slotId: String) {}
 }
 
 final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
@@ -90,6 +124,13 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     private var entries = HidEntryRegistry<Entry>()
     /// The start sequence's watch per Switch lane, by slot id.
     private var watches: [String: SwitchStreamWatch] = [:]
+    /// The opt-in lanes a claim opened, by slot id; every other lane opens
+    /// as it arrives.
+    private var opened: Set<String> = []
+    /// Asking for Input Monitoring blocks until the user answers
+    /// (`IOHIDRequestAccess` waits on TCC with no timeout), so it runs here,
+    /// never on the reader's thread.
+    private let accessQueue = DispatchQueue(label: "com.tinkernorth.dish.hid.access", qos: .userInitiated)
     private var wiring: HidPadWiring?
     private var events: HidPadEvents?
 
@@ -105,6 +146,14 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
 
     func release(slotId: String) {
         perform { [self] in releaseOnThread(slotId) }
+    }
+
+    func claim(slotId: String) {
+        perform { [self] in claimOnThread(slotId, asked: false) }
+    }
+
+    func unclaim(slotId: String) {
+        perform { [self] in unclaimOnThread(slotId) }
     }
 
     /// The thread's whole life: the manager scheduled on its run loop, then
@@ -161,11 +210,72 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         guard let candidate = hidPadCandidate(Self.properties(of: device)) else { return }
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
-        let lane = HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: DispatchTime.now().uptimeNanoseconds)
-        guard open(device, lane: lane) else { return }
+        let output = candidate.steamPlan.map { SteamOutput(slotId: slotId, plan: $0, writer: IOKitReportWriter(device: device)) }
+        let openedNs = DispatchTime.now().uptimeNanoseconds
+        let lane = HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: openedNs, output: output)
+        let waitsForAClaim = candidate.model?.rule == .optIn
+        guard waitsForAClaim || open(device, lane: lane) else { return }
         entries.file(registryId, Entry(device: device, lane: lane))
         startWatching(lane)
         events.arrived(HidPadArrival(slotId: slotId, lane: lane, probe: .live(device)))
+    }
+
+    // MARK: - An opt-in pad
+
+    /// The open is where macOS would ask for Input Monitoring, so the
+    /// standing is read first, without a prompt: the device opens only when
+    /// no prompt can come of it, the user is asked off this thread, and a
+    /// refusal goes to the main actor.
+    private func claimOnThread(_ slotId: String, asked: Bool) {
+        guard let entry = entries.reading.first(where: { $0.lane.slotId == slotId }) else { return }
+        if opened.contains(slotId) {
+            entry.lane.output?.claimed()
+            return
+        }
+        let needsInputMonitoring = entry.lane.candidate.needsInputMonitoring
+        let access = needsInputMonitoring ? Self.inputMonitoringAccess() : .granted
+        switch claimStep(needsInputMonitoring: needsInputMonitoring, access: access, asked: asked) {
+        case .open: openClaimed(entry)
+        case .ask: askForInputMonitoring(slotId)
+        case .refuse: refuse(entry, .inputMonitoring)
+        }
+    }
+
+    /// The answer is read back on the reader's thread, which decides again.
+    private func askForInputMonitoring(_ slotId: String) {
+        accessQueue.async { [self] in
+            // The grant is read again through IOHIDCheckAccess once back on the reader's thread.
+            _ = IOHIDRequestAccess(kIOHIDRequestTypeListenEvent)
+            perform { [self] in claimOnThread(slotId, asked: true) }
+        }
+    }
+
+    private func openClaimed(_ entry: Entry) {
+        let status = openStatus(entry.device, lane: entry.lane)
+        guard status == kIOReturnSuccess else { return refuse(entry, claimRefusal(status)) }
+        opened.insert(entry.lane.slotId)
+        entry.lane.output?.claimed()
+    }
+
+    private func refuse(_ entry: Entry, _ refusal: ClaimRefusal) {
+        let word = String(describing: refusal)
+        Self.log.error("DIRECT claim refused id=\(entry.lane.slotId, privacy: .public) refusal=\(word, privacy: .public)")
+        events?.refused(entry.lane.slotId, refusal)
+    }
+
+    /// `IOHIDCheckAccess` reads the standing without prompting.
+    private static func inputMonitoringAccess() -> InputMonitoringAccess {
+        blockingRegion("direct.checkAccess")
+        switch IOHIDCheckAccess(kIOHIDRequestTypeListenEvent) {
+        case kIOHIDAccessTypeGranted: return .granted
+        case kIOHIDAccessTypeDenied: return .denied
+        default: return .undecided
+        }
+    }
+
+    private func unclaimOnThread(_ slotId: String) {
+        guard let entry = entries.reading.first(where: { $0.lane.slotId == slotId }) else { return }
+        entry.lane.output?.release()
     }
 
     private func startWatching(_ lane: HidPadLane) {
@@ -218,16 +328,22 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         Int64(ns / nsPerMs)
     }
 
-    /// The lane is retained for the callback until `close` unregisters it.
     private func open(_ device: IOHIDDevice, lane: HidPadLane) -> Bool {
-        let status = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        let status = openStatus(device, lane: lane)
         guard status == kIOReturnSuccess else {
             Self.log.error("DIRECT open failed id=\(lane.slotId, privacy: .public) status=\(status)")
             return false
         }
+        return true
+    }
+
+    /// The lane is retained for the callback until `close` unregisters it.
+    private func openStatus(_ device: IOHIDDevice, lane: HidPadLane) -> IOReturn {
+        let status = IOHIDDeviceOpen(device, IOOptionBits(kIOHIDOptionsTypeNone))
+        guard status == kIOReturnSuccess else { return status }
         let context = Unmanaged.passRetained(lane).toOpaque()
         IOHIDDeviceRegisterInputReportCallback(device, lane.buffer, lane.capacity, hidPadReportCallback, context)
-        return true
+        return status
     }
 
     /// The device leaves once, whichever of its references reports it.
@@ -263,8 +379,14 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         close(entry)
     }
 
+    /// An opt-in lane no claim opened has nothing to close.
     private func close(_ entry: Entry) {
         forgetWatch(entry)
+        entry.lane.output?.deviceGone()
+        let slotId = entry.lane.slotId
+        let wasOpen = entry.lane.candidate.model?.rule != .optIn || opened.contains(slotId)
+        opened.remove(slotId)
+        guard wasOpen else { return }
         IOHIDDeviceRegisterInputReportCallback(entry.device, entry.lane.buffer, entry.lane.capacity, nil, nil)
         IOHIDDeviceClose(entry.device, IOOptionBits(kIOHIDOptionsTypeNone))
         Unmanaged.passUnretained(entry.lane).release()

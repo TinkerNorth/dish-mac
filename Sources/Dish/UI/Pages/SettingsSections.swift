@@ -216,4 +216,6 @@ enum DishLinks {
     static let github = "https://github.com/TinkerNorth"
     /// System Settings on Privacy & Security › Local Network.
     static let localNetworkSettings = "x-apple.systempreferences:com.apple.preference.security?Privacy_LocalNetwork"
+    /// System Settings on Privacy & Security › Input Monitoring.
+    static let inputMonitoringSettings = "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
 }

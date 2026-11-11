@@ -8,7 +8,9 @@
 // pad's source is Direct. A generic pad with a stored remap is read through
 // the remap's fixed table, swapped whole when the store changes; while
 // "Check the buttons" listens, the lane watches the declared sources for
-// the next raw change and posts it once.
+// the next raw change and posts it once. A Steam Controller's lane also
+// hears its receiver slot's controller come and go, and hands what the pad
+// must be sent to its output, which writes off this thread.
 
 import DishCore
 import Foundation
@@ -84,11 +86,17 @@ struct HidPadWiring {
     let battery: @Sendable (_ slotId: String, _ battery: PadBattery) -> Void
     /// The raw change the walk wished for, posted to the main actor once per wish.
     var captured: @Sendable (_ slotId: String, _ capture: RawCapture) -> Void = ignoreCapture
+    /// A receiver's slot gained or lost its controller, posted to the main actor.
+    var linkChanged: @Sendable (_ slotId: String) -> Void = ignoreLink
 }
 
 /// A lane nobody asked to listen posts nowhere.
 @Sendable
 func ignoreCapture(_: String, _: RawCapture) {}
+
+/// A wiring with no slot list to tell.
+@Sendable
+func ignoreLink(_: String) {}
 
 final class HidPadLane: @unchecked Sendable {
     let slotId: String
@@ -98,10 +106,16 @@ final class HidPadLane: @unchecked Sendable {
     /// IOKit writes each report here; owned by the lane for its whole life.
     let buffer: UnsafeMutablePointer<UInt8>
     let capacity: Int
+    /// What the pad is sent, written off this thread: a Steam Controller's.
+    let output: DirectOutput?
     private let wiring: HidPadWiring
     /// The last battery seen, packed, for the 30 s heartbeat on the main
     /// actor: written on the reader's thread, zero while none.
     private let batteryWord = AtomicWord.allocate()
+    /// One while a controller is there: from the start for a wired pad, for
+    /// a receiver's slot from its controller's first sign. Written here,
+    /// read on the main actor.
+    private let linkWord = AtomicWord.allocate()
     /// The stored remap as a table, from the main actor to the reader.
     private let remapMail = Mailbox<RemapBox>()
 
@@ -118,6 +132,7 @@ final class HidPadLane: @unchecked Sendable {
     /// watch; never set on a lane that does not read Switch reports.
     private(set) var lastFullReportNs: UInt64?
     private var calibration = SwitchStickCalibration()
+    private var steamHold = SteamStickHold()
     private var lastSeen: GamepadReport?
     private var lastPublished: GamepadReport?
     private var lastBattery: PadBattery?
@@ -125,26 +140,34 @@ final class HidPadLane: @unchecked Sendable {
     private var captureRest: HidRawState?
     private var capturePrevious = HidRawState()
 
-    init(slotId: String, candidate: HidPadCandidate, wiring: HidPadWiring, openedNs: UInt64) {
+    init(slotId: String, candidate: HidPadCandidate, wiring: HidPadWiring, openedNs: UInt64, output: DirectOutput? = nil) {
         self.slotId = slotId
         self.candidate = candidate
         self.wiring = wiring
+        self.output = output
         gate = PadGate(key: slotId, notify: wiring.notify)
         tally = LaneTally(openedNs: openedNs)
         capacity = candidate.reportCapacity
         feed = wiring.processor.feed(for: slotId)
         buffer = UnsafeMutablePointer<UInt8>.allocate(capacity: capacity)
         buffer.initialize(repeating: 0, count: capacity)
+        linkWord.store(candidate.receiver ? 0 : 1)
     }
 
     deinit {
         buffer.deallocate()
         batteryWord.deallocate()
+        linkWord.deallocate()
     }
 
     /// The battery the pad last reported while Direct.
     var latestBattery: PadBattery? {
         PadBattery(packed: batteryWord.load())
+    }
+
+    /// A controller is there to read: always for a wired pad.
+    var linked: Bool {
+        linkWord.load() != 0
     }
 
     /// The slot's feed again, from the main actor, after the slot was hidden
@@ -169,11 +192,18 @@ final class HidPadLane: @unchecked Sendable {
         if case .switchReport = candidate.decoder { true } else { false }
     }
 
-    /// One report off the wire, on the reader's thread. A decoded Switch
-    /// report is a full one, so it marks the stream whether or not the lane
-    /// is forwarded.
+    /// One report off the wire, on the reader's thread.
     func receive(_ report: UnsafeBufferPointer<UInt8>, nowNs: UInt64) {
         tally.count(nowNs: nowNs)
+        switch candidate.decoder {
+        case .switchReport, .hidGamepad: receivePad(report, nowNs: nowNs)
+        case .steamController, .steamTriton: receiveSteam(report)
+        }
+    }
+
+    /// A decoded Switch report is a full one, so it marks the stream whether
+    /// or not the lane is forwarded.
+    private func receivePad(_ report: UnsafeBufferPointer<UInt8>, nowNs: UInt64) {
         guard let reading = decode(report) else { return }
         if startsWithSwitchSequence { lastFullReportNs = nowNs }
         deliver(reading)
@@ -186,7 +216,65 @@ final class HidPadLane: @unchecked Sendable {
             return LaneReading(report: reading.report, motion: reading.motion, battery: reading.battery)
         case let .hidGamepad(layout):
             return decodeGamepad(layout, report)
+        case .steamController, .steamTriton:
+            return nil
         }
+    }
+
+    // MARK: - A Steam Controller
+
+    private func receiveSteam(_ report: UnsafeBufferPointer<UInt8>) {
+        guard let reading = decodeSteam(report) else { return }
+        switch reading {
+        case let .state(state, motion): steamState(LaneReading(report: state, motion: motion, battery: nil))
+        case let .battery(battery): steamBattery(battery)
+        case .link(.connected): linkUp()
+        case .link(.disconnected): linkDown()
+        }
+    }
+
+    private func decodeSteam(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? {
+        switch candidate.decoder {
+        case .steamController: decodeSteamControllerPacket(report, hold: &steamHold)
+        case .steamTriton: decodeTritonReport(report)
+        case .switchReport, .hidGamepad: nil
+        }
+    }
+
+    /// A report from a receiver's slot means its controller is there, a
+    /// connect event missed or not.
+    private func steamState(_ reading: LaneReading) {
+        if !linked { linkUp() }
+        deliver(reading)
+    }
+
+    private func steamBattery(_ battery: PadBattery) {
+        guard gate.forwards(.direct) else { return }
+        postBatteryIfChanged(battery)
+    }
+
+    /// A controller that connects has booted, its settings gone: the output
+    /// configures it again, and the slot list hears only a change.
+    private func linkUp() {
+        let arrived = linkWord.exchange(1) == 0
+        output?.controllerConnected()
+        guard arrived else { return }
+        wiring.linkChanged(slotId)
+    }
+
+    /// The controller's last input must not stay held on the host.
+    private func linkDown() {
+        guard linkWord.exchange(0) != 0 else { return }
+        output?.controllerLeft()
+        releaseHeld()
+        wiring.linkChanged(slotId)
+    }
+
+    private func releaseHeld() {
+        lastSeen = nil
+        steamHold = SteamStickHold()
+        guard gate.forwards(.direct) else { return }
+        publishIfChanged(.released)
     }
 
     /// The plain decode unless a remap is stored or the walk listens; then

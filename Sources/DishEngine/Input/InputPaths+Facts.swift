@@ -21,6 +21,7 @@ struct OutputCarriage: Equatable {
 /// controller of the pad's kind and exactly one pad of its model are
 /// connected: anything else could drive the wrong pad's motors.
 func outputCarriage(model: DirectModel?, carriers: [CarrierSeat], padsOfModel: Int) -> OutputCarriage {
+    if model?.drivesItsOwnRumble == true { return OutputCarriage(carrierId: nil, rumble: .ownReport) }
     guard let model, model.gameControllerCarriesOutput else { return OutputCarriage(carrierId: nil, rumble: .notCarried) }
     guard let only = carriers.first else { return OutputCarriage(carrierId: nil, rumble: .noCarrier) }
     let unambiguous = carriers.count == 1 && padsOfModel == 1
@@ -138,7 +139,7 @@ extension InputPaths {
 
     private func showOrHide(_ key: String) {
         guard let pad = pads[key], let lane = pad.arrival?.lane else { return }
-        guard pad.machine.phase == .forwarding(.direct) else {
+        guard showsDirectSlot(key) else {
             host?.carryOutput(directSlotId: key, via: nil)
             host?.hideDirectSlot(key)
             return
@@ -148,13 +149,23 @@ extension InputPaths {
         host?.showDirectSlot(directSlot(key, lane.candidate, output), lane: lane)
     }
 
-    /// Motion on the Switch Pro, rumble and player lights only through a
-    /// sure carrier, and a battery on every pad: its own where its reports
-    /// carry one, else the Mac's, as on the GameController path.
+    /// A Direct lane is a pad on the page while it forwards, its controller
+    /// is there (a receiver's slot may hold none) and macOS let Dish open it.
+    func showsDirectSlot(_ key: String) -> Bool {
+        guard let pad = pads[key], let lane = pad.arrival?.lane else { return false }
+        let forwarding = pad.machine.phase == .forwarding(.direct)
+        return forwarding && lane.linked && refusals[key] == nil
+    }
+
+    /// Motion where the pad has an IMU, rumble through a sure carrier or the
+    /// pad's own report, player lights only through a sure carrier, and a
+    /// battery on every pad: its own where its reports carry one, else the
+    /// Mac's, as on the GameController path.
     func directSlot(_ id: String, _ candidate: HidPadCandidate, _ output: OutputCarriage) -> GameControllerInput.Slot {
+        let rumbles = output.rumble == .carried || output.rumble == .ownReport
         let capabilities = ControllerCapabilities(
             hasMotion: candidate.model?.hasMotion ?? false,
-            hasRumble: output.rumble == .carried,
+            hasRumble: rumbles,
             hasBattery: true,
             hasPlayerLeds: output.carrierId != nil
         )
@@ -173,6 +184,7 @@ extension InputPaths {
             facts[id] = carrierFacts(id, nowMs: nowMs)
         }
         setState(facts)
+        offers.setState(directOffers())
     }
 
     /// A Direct lane has facts only while its own slot shows.
@@ -181,10 +193,11 @@ extension InputPaths {
         facts.playerNumber = players.number(for: key)
         facts.keepsDisconnecting = bursts.noticed.contains(key)
         guard let candidate = pad.arrival?.candidate else { return facts }
-        guard facts.source == .direct else { return nil }
+        guard showsDirectSlot(key) else { return nil }
         facts.rawReportHz = rawHz[key] ?? 0
         facts.layoutGuessed = candidate.layoutGuessed
         facts.remappable = readsDeclaredLayout(candidate)
+        facts.capturable = candidate.steamPlan == nil
         facts.rumble = carriage(of: key).rumble
         facts.transport = candidate.transport
         facts.hardwareId = candidate.hardwareId

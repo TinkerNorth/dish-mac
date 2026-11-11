@@ -99,4 +99,18 @@ final class InputSourceMachineTableTests: XCTestCase {
         ]))
         XCTAssertNil(reduceInputSource(start, .checkStarted(nowMs: 0)).next.check, "nothing is forwarded, so there is nothing to check")
     }
+
+    func testOfferedOnlyAPickOfDirectOrADisconnectMoves() {
+        let offered = PadPathFacts(
+            model: directModel(vendorId: 0x28DE, productId: 0x1102), decodable: true, gameController: .doesNotShow, stored: nil
+        )
+        let start = state(after: [.connected(offered)])
+        assertRows(from: start, rows([
+            (.offered, []), (.offered, []), (.offered, []), (.offered, []),
+            (.offered, []), (.offered, []),
+            (.forwarding(.direct), [.forward(.direct), .remember(.direct)]),
+            (.disconnected, [])
+        ]))
+        XCTAssertNil(reduceInputSource(start, .checkStarted(nowMs: 0)).next.check, "nothing is forwarded, so there is nothing to check")
+    }
 }

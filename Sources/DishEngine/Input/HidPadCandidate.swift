@@ -3,7 +3,8 @@
 //
 // Which HID devices the Direct reader reads, decided from the device's
 // IOKit properties alone so a fake dictionary tests every branch: Nintendo's
-// Direct-by-model pads by USB identity, and any other gamepad whose report
+// Direct-by-model pads and Valve's Steam Controllers by USB identity (the
+// interface that carries the controller), and any other gamepad whose report
 // descriptor Dish can decode. Joy-Cons, the charging grip and the devices
 // macOS synthesises for GameController are left alone.
 
@@ -16,6 +17,8 @@ import IOKit.hid
 enum DirectLaneDecoder: Equatable {
     case switchReport(SwitchPadKind)
     case hidGamepad(HidGamepadLayout)
+    case steamController
+    case steamTriton
 }
 
 /// A device the reader will read, and everything the main actor needs to
@@ -30,6 +33,9 @@ struct HidPadCandidate: Equatable {
     let decoder: DirectLaneDecoder
     /// The report buffer's size: the device's largest input report.
     let reportCapacity: Int
+    /// macOS asks for Input Monitoring before opening it: its collections
+    /// include a keyboard, a mouse or a touchpad.
+    var needsInputMonitoring = false
 
     /// The model's name, else the device's own, else its USB identity.
     var name: String {
@@ -48,6 +54,16 @@ struct HidPadCandidate: Equatable {
         vendorId == DirectVendor.nintendo ? .nintendo : .other
     }
 
+    /// One slot of a wireless receiver: a pad only while one is connected.
+    var receiver: Bool {
+        model?.receiver == true
+    }
+
+    /// What Dish writes to it: a Steam Controller's configuration.
+    var steamPlan: SteamPlan? {
+        model.flatMap(DishCore.steamPlan)
+    }
+
     var hardwareId: HidHardwareId {
         HidHardwareId(vendorId: Int(vendorId), productId: Int(productId))
     }
@@ -60,20 +76,29 @@ enum HidPadLimits {
     static let slotIdPrefix = "hid:"
 }
 
+/// A USB HID interface's number, which IOKit finds on the interface above
+/// the device (`kUSBInterfaceNumber`).
+let hidInterfaceNumberKey = "bInterfaceNumber"
+/// IOHIDFamily marks a device whose collections include a keyboard, a mouse
+/// or a touchpad, and `IOHIDDeviceOpen` asks for Input Monitoring before it
+/// opens one (`IOHIDDevice.cpp`, `IOHIDDeviceClass.m`).
+let hidRequiresInputMonitoringKey = "RequiresTCCAuthorization"
+
 /// The properties the reader reads off a device at attach.
 let hidPadPropertyKeys = [
     kIOHIDProductKey, kIOHIDVendorIDKey, kIOHIDProductIDKey, kIOHIDTransportKey, kIOHIDPrimaryUsagePageKey,
     kIOHIDPrimaryUsageKey, kIOHIDDeviceUsagePairsKey, kIOHIDGCSyntheticDeviceKey, kIOHIDMaxInputReportSizeKey,
-    kIOHIDReportDescriptorKey
+    kIOHIDReportDescriptorKey, hidInterfaceNumberKey, hidRequiresInputMonitoringKey
 ]
 
-/// The manager's matching: each Direct-by-model pad by USB identity, and
+/// The manager's matching: each model read by its USB identity (every
+/// interface of it; the candidate picks the one that carries the pad), and
 /// every game usage, all with `GCSyntheticDevice` false.
 func hidPadMatching() -> [[String: Any]] {
-    let byModel = directModels.filter { $0.rule == .byModel }.map { model in
+    let byIdentity = directModels.filter { $0.rule != .whenMacOSCannot }.map { model in
         [kIOHIDVendorIDKey: Int(model.vendorId), kIOHIDProductIDKey: Int(model.productId), kIOHIDGCSyntheticDeviceKey: false]
     }
-    return byModel + hidCensusMatching()
+    return byIdentity + hidCensusMatching()
 }
 
 /// The device the reader reads, or nil: a synthetic device, a Nintendo
@@ -87,7 +112,7 @@ func hidPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
     let model = directModel(vendorId: vendorId, productId: productId)
     guard let decoder = laneDecoder(model: model, vendorId: vendorId, productId: productId, properties: properties) else { return nil }
     let declaredCapacity = properties[kIOHIDMaxInputReportSizeKey] as? Int ?? 0
-    return HidPadCandidate(
+    var candidate = HidPadCandidate(
         vendorId: vendorId,
         productId: productId,
         product: properties[kIOHIDProductKey] as? String ?? "",
@@ -96,11 +121,32 @@ func hidPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
         decoder: decoder,
         reportCapacity: max(declaredCapacity, HidPadLimits.minimumReportCapacity)
     )
+    candidate.needsInputMonitoring = properties[hidRequiresInputMonitoringKey] as? Bool == true
+    return candidate
 }
 
-/// A Switch model decodes by its table; any other pad by its descriptor.
+/// A Switch model decodes by its table, a Steam Controller by its own
+/// decoder on the interface that carries it, any other pad by its descriptor.
 private func laneDecoder(model: DirectModel?, vendorId: UInt16, productId: UInt16, properties: [String: Any]) -> DirectLaneDecoder? {
-    if case let .switchReport(kind) = model?.decoder { return .switchReport(kind) }
+    switch model?.decoder {
+    case let .switchReport(kind): .switchReport(kind)
+    case .steamController: steamInterface(model, properties) ? .steamController : nil
+    case .steamTriton: steamInterface(model, properties) ? .steamTriton : nil
+    case .hidGamepad, nil: descriptorDecoder(vendorId: vendorId, productId: productId, properties: properties)
+    }
+}
+
+private func steamInterface(_ model: DirectModel?, _ properties: [String: Any]) -> Bool {
+    guard let model else { return false }
+    return steamInterfaceCarriesController(
+        model,
+        usagePage: properties[kIOHIDPrimaryUsagePageKey] as? Int,
+        usage: properties[kIOHIDPrimaryUsageKey] as? Int,
+        interfaceNumber: properties[hidInterfaceNumberKey] as? Int
+    )
+}
+
+private func descriptorDecoder(vendorId: UInt16, productId: UInt16, properties: [String: Any]) -> DirectLaneDecoder? {
     let nintendoLeftToMacOS = vendorId == DirectVendor.nintendo
     guard !nintendoLeftToMacOS, declaresGameUsage(properties) else { return nil }
     guard let descriptor = properties[kIOHIDReportDescriptorKey] as? Data else { return nil }
@@ -119,6 +165,8 @@ func laneKindWord(_ decoder: DirectLaneDecoder) -> String {
     case .switchReport(.n64): "switch-n64"
     case .switchReport(.snes): "switch-snes"
     case let .hidGamepad(layout): "hid-\(layout.order)"
+    case .steamController: "steam-2015"
+    case .steamTriton: "steam-2026"
     }
 }
 

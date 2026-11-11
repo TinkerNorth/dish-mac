@@ -175,7 +175,13 @@ final class InputPathMappersTests: XCTestCase {
         XCTAssertEqual(chip.look.ink, DishTheme.warning)
     }
 
-    func testADirectPadsMenuChecksItsButtonsWhereItCanAndAlwaysHelpsSupportIt() {
+    func testASteamControllersCardHasNoMenu() {
+        var path = directPath()
+        path.capturable = false
+        XCTAssertEqual(cardMenu(path), [], "its own decoders read it, and its identity names its keyboard and mouse too")
+    }
+
+    func testADirectPadsMenuChecksItsButtonsWhereItCanAndHelpsSupportIt() {
         var path = directPath()
         XCTAssertEqual(cardMenu(path), [.helpSupport("Help support this controller")], "a Nintendo pad's fixed decoder cannot be remapped")
         path.remappable = true

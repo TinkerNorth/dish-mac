@@ -16,11 +16,18 @@ public enum DirectRule: Equatable, Sendable {
     case byModel
     /// Only when GameController does not support it.
     case whenMacOSCannot
+    /// Only once the user picks Direct: reading it turns the pad's keyboard
+    /// and mouse off, and no such pad has been run on this path yet.
+    case optIn
 }
 
 public enum DirectDecoder: Equatable, Sendable {
     case switchReport(SwitchPadKind)
     case hidGamepad(HidButtonOrder)
+    /// The 2015 Steam Controller's vendor packets.
+    case steamController
+    /// The 2026 Steam Controller's numbered reports.
+    case steamTriton
 }
 
 /// The family a Direct pad is shown and emulated as.
@@ -42,13 +49,26 @@ public struct DirectModel: Equatable, Sendable {
     /// The user may send it back to GameController: only where both paths
     /// work. Never the N64, whose input GameController drops.
     public let offersStandard: Bool
+    /// A wireless receiver: each of its interfaces carries one paired
+    /// controller, connected or not.
+    public let receiver: Bool
 
     public var layoutVerified: Bool {
         hidLayoutVerified(vendorId: vendorId)
     }
 
     public var hasMotion: Bool {
-        decoder == .switchReport(.pro)
+        switch decoder {
+        case .switchReport(.pro), .steamController, .steamTriton: true
+        case .switchReport, .hidGamepad: false
+        }
+    }
+
+    /// Dish sends the pad's own rumble report, with no GameController behind
+    /// it: the 2026 Steam Controller alone. The 2015 one has trackpad voice
+    /// coils and no motors.
+    public var drivesItsOwnRumble: Bool {
+        decoder == .steamTriton
     }
 }
 
@@ -57,6 +77,7 @@ public enum DirectVendor {
     public static let nintendo: UInt16 = 0x057E
     public static let eightBitDo: UInt16 = 0x2DC8
     public static let pdp: UInt16 = 0x0E6F
+    public static let valve: UInt16 = 0x28DE
 }
 
 private func nintendoModel(_ productId: UInt16, _ name: String, _ kind: SwitchPadKind, offersStandard: Bool) -> DirectModel {
@@ -68,7 +89,24 @@ private func nintendoModel(_ productId: UInt16, _ name: String, _ kind: SwitchPa
         family: .nintendo,
         rule: .byModel,
         gameControllerCarriesOutput: true,
-        offersStandard: offersStandard
+        offersStandard: offersStandard,
+        receiver: false
+    )
+}
+
+/// Opt-in, because reading it reconfigures the pad and no such pad has been
+/// run on this path here.
+private func valveModel(_ productId: UInt16, _ name: String, _ decoder: DirectDecoder, receiver: Bool) -> DirectModel {
+    DirectModel(
+        vendorId: DirectVendor.valve,
+        productId: productId,
+        name: name,
+        decoder: decoder,
+        family: .other,
+        rule: .optIn,
+        gameControllerCarriesOutput: false,
+        offersStandard: true,
+        receiver: receiver
     )
 }
 
@@ -81,12 +119,14 @@ private func hidModel(_ vendorId: UInt16, _ productId: UInt16, _ name: String, _
         family: .other,
         rule: .whenMacOSCannot,
         gameControllerCarriesOutput: false,
-        offersStandard: true
+        offersStandard: true,
+        receiver: false
     )
 }
 
 /// The PDP Afterglow Wireless (0e6f:0186) is left out on purpose: its USB
-/// port is charge-only and it speaks the Switch Pro protocol.
+/// port is charge-only and it speaks the Switch Pro protocol. So is the 2026
+/// Steam Controller over Bluetooth LE (28de:1303): Dish reads no BLE pad.
 public let directModels: [DirectModel] = [
     nintendoModel(0x2009, "Nintendo Switch Pro Controller", .pro, offersStandard: true),
     nintendoModel(0x2019, "Nintendo N64 Online Controller", .n64, offersStandard: false),
@@ -99,8 +139,40 @@ public let directModels: [DirectModel] = [
     hidModel(DirectVendor.pdp, 0x0181, "PDP Faceoff Deluxe Wired Pro Controller (Switch)", .nintendoSwitch),
     hidModel(DirectVendor.pdp, 0x0184, "PDP Faceoff Deluxe+ Audio Controller (Switch)", .nintendoSwitch),
     hidModel(DirectVendor.pdp, 0x0185, "PDP Wired Fight Pad Pro (Switch)", .nintendoSwitch),
-    hidModel(DirectVendor.pdp, 0x0187, "PDP Rock Candy Wired Controller (Switch)", .nintendoSwitch)
+    hidModel(DirectVendor.pdp, 0x0187, "PDP Rock Candy Wired Controller (Switch)", .nintendoSwitch),
+    valveModel(0x1102, "Valve Steam Controller", .steamController, receiver: false),
+    valveModel(0x1142, "Valve Steam Controller (dongle)", .steamController, receiver: true),
+    valveModel(0x1302, "Valve Steam Controller (2026)", .steamTriton, receiver: false),
+    valveModel(0x1304, "Valve Steam Controller (2026) Puck", .steamTriton, receiver: true),
+    valveModel(0x1305, "Valve Steam Controller (2026) receiver", .steamTriton, receiver: true)
 ]
+
+/// The 2015 pad's controller interfaces are its vendor-defined ones; its
+/// keyboard and mouse ride their own.
+private let steamVendorPage = 0xFF00
+/// The 2026 receiver's slots (SDL's `HIDAPI_DriverSteamTriton_IsSupportedDevice`);
+/// its stripped pogo-pin interface is one collection of vendor usage
+/// FF00:0002 (Linux's `steam_is_valve_interface`).
+private let tritonReceiverSlots = 2 ... 5
+private let tritonPogoUsage = 0x0002
+
+/// Whether one of a Valve device's HID interfaces carries a controller: the
+/// 2015 pad's vendor interface, the 2026 pad's one unified interface, and a
+/// 2026 receiver's slots, never its pogo pins. An interface whose number
+/// IOKit does not give is judged by its usage alone.
+public func steamInterfaceCarriesController(_ model: DirectModel, usagePage: Int?, usage: Int?, interfaceNumber: Int?) -> Bool {
+    switch model.decoder {
+    case .steamController:
+        return usagePage == steamVendorPage
+    case .steamTriton:
+        guard model.receiver else { return true }
+        let pogoPins = usagePage == steamVendorPage && usage == tritonPogoUsage
+        let slot = interfaceNumber.map(tritonReceiverSlots.contains) ?? true
+        return slot && !pogoPins
+    case .switchReport, .hidGamepad:
+        return false
+    }
+}
 
 public func directModel(vendorId: UInt16, productId: UInt16) -> DirectModel? {
     directModels.first { $0.vendorId == vendorId && $0.productId == productId }

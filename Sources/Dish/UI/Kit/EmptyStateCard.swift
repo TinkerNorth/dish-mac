@@ -3,9 +3,9 @@
 
 import SwiftUI
 
-/// What a list says when it has nothing to list: a title and one line, the
-/// reason in the warning colour when the system is the cause, and the ways
-/// forward when there are any.
+/// What a list says when it has nothing to list, or a device it offers to
+/// read: a title and one line, the reason in the warning colour when the
+/// system is the cause, and the ways forward when there are any.
 struct EmptyStateCard<Actions: View>: View {
     let title: String
     let message: String

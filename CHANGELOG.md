@@ -19,6 +19,22 @@ the repos share a version number.
 
 ## [Unreleased]
 
+### Added
+
+- **Steam Controllers can be read directly, when you ask.** Both of Valve's
+  Steam Controllers, the 2015 pad (wired or on its wireless receiver) and the
+  2026 one (wired or on its Puck or receiver), are offered on Controllers
+  rather than read at once, because reading one turns its keyboard and mouse
+  off. Use Direct reads it, remembers the choice for the model and keeps its
+  keyboard and mouse quiet while Dish reads it; Stop reading directly, or
+  quitting Dish, gives them back. Its sticks, triggers, buttons and motion
+  reach the host, the 2026 pad's battery competes with the Mac's, and the
+  host's rumble drives the 2026 pad's motors (the 2015 pad has none). A
+  receiver shows a pad for each controller connected to it. The 2026 pad
+  also acts as a keyboard, so macOS asks for Input Monitoring first, and a
+  refusal shows on its card with a way to System Settings. Neither
+  controller has been tried with Dish yet.
+
 ### Changed
 
 - **A pad sends the lower of its battery and the Mac's.** When two batteries

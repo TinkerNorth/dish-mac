@@ -55,4 +55,14 @@ final class AppKitLifecycleTests: XCTestCase {
         XCTAssertEqual(willSleep(), 0, "input keeps flowing in the background, so nothing is released")
         XCTAssertEqual(didWake(), 0)
     }
+
+    func testTheAppQuittingFiresWillTerminateFromTheApplicationsCenter() {
+        let application = NotificationCenter()
+        let signals = appKitLifecycleSignals(workspace: workspace, application: application)
+        let willTerminate = count(signals.willTerminate)
+        workspace.post(name: NSApplication.willTerminateNotification, object: nil)
+        XCTAssertEqual(willTerminate(), 0, "the workspace never posts it")
+        application.post(name: NSApplication.willTerminateNotification, object: nil)
+        XCTAssertEqual(willTerminate(), 1)
+    }
 }

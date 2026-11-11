@@ -163,3 +163,90 @@ enum HidDescriptors {
         0x29, 0x08, 0x15, 0x00, 0x25, 0x01, 0x75, 0x01, 0x95, 0x08, 0x81, 0x02, 0xC0
     ]
 }
+
+/// A 2015 Steam Controller packet under construction: 64 bytes framed
+/// {version 0x0001 LE, type, payload length}, as the desktops' `steamState`
+/// and `steamWirelessEvent` build it (dish-android's vectors, verified on a
+/// wired 28de:1102).
+struct SteamPacketBytes {
+    var bytes = [UInt8](repeating: 0, count: 64)
+
+    /// A state packet with the 24-bit button word at bytes 8...10.
+    static func state(_ buttons: UInt32 = 0) -> SteamPacketBytes {
+        var packet = SteamPacketBytes()
+        packet.bytes[0] = 0x01
+        packet.bytes[2] = 0x01
+        packet.bytes[3] = 44
+        packet.bytes[8] = UInt8(buttons & 0xFF)
+        packet.bytes[9] = UInt8((buttons >> 8) & 0xFF)
+        packet.bytes[10] = UInt8((buttons >> 16) & 0xFF)
+        return packet
+    }
+
+    /// A receiver's wireless event: payload 0x01 disconnected, 0x02 connected.
+    static func wireless(_ payload: UInt8) -> SteamPacketBytes {
+        var packet = SteamPacketBytes()
+        packet.bytes[0] = 0x01
+        packet.bytes[2] = 0x03
+        packet.bytes[3] = 0x01
+        packet.bytes[4] = payload
+        return packet
+    }
+
+    mutating func setLe16(_ offset: Int, _ value: Int16) {
+        let word = UInt16(bitPattern: value)
+        bytes[offset] = UInt8(word & 0xFF)
+        bytes[offset + 1] = UInt8(word >> 8)
+    }
+
+    func decode(hold: inout SteamStickHold) -> SteamReading? {
+        bytes.withUnsafeBufferPointer { decodeSteamControllerPacket($0, hold: &hold) }
+    }
+
+    func decodeFresh() -> SteamReading? {
+        var hold = SteamStickHold()
+        return decode(hold: &hold)
+    }
+}
+
+/// A 2026 Steam Controller input report under construction: the report id,
+/// then SDL's `TritonMTUNoQuat_t` (46 bytes in all) or the battery and
+/// wireless payloads.
+struct TritonReportBytes {
+    var bytes: [UInt8]
+
+    /// A state report with the 32-bit button word at bytes 2...5.
+    static func state(_ buttons: UInt32 = 0, reportId: UInt8 = 0x42, length: Int = 46) -> TritonReportBytes {
+        var report = TritonReportBytes(bytes: [UInt8](repeating: 0, count: length))
+        report.bytes[0] = reportId
+        report.bytes[2] = UInt8(buttons & 0xFF)
+        report.bytes[3] = UInt8((buttons >> 8) & 0xFF)
+        report.bytes[4] = UInt8((buttons >> 16) & 0xFF)
+        report.bytes[5] = UInt8((buttons >> 24) & 0xFF)
+        return report
+    }
+
+    /// `TritonBatteryStatus_t`: the charge state, then the percent.
+    static func battery(chargeState: UInt8, level: UInt8) -> TritonReportBytes {
+        var report = TritonReportBytes(bytes: [UInt8](repeating: 0, count: 15))
+        report.bytes[0] = 0x43
+        report.bytes[1] = chargeState
+        report.bytes[2] = level
+        return report
+    }
+
+    /// A wireless status: 1 disconnected, 2 connected.
+    static func wireless(_ state: UInt8, reportId: UInt8 = 0x79) -> TritonReportBytes {
+        TritonReportBytes(bytes: [reportId, state])
+    }
+
+    mutating func setLe16(_ offset: Int, _ value: Int16) {
+        let word = UInt16(bitPattern: value)
+        bytes[offset] = UInt8(word & 0xFF)
+        bytes[offset + 1] = UInt8(word >> 8)
+    }
+
+    func decode() -> SteamReading? {
+        bytes.withUnsafeBufferPointer { decodeTritonReport($0) }
+    }
+}

@@ -17,6 +17,8 @@ public enum InputSourcePhase: Equatable, Sendable {
     case forwarding(InputSource)
     /// Connected, and neither path reads it.
     case unreadable
+    /// Connected; Dish reads it once the user asks.
+    case offered
 }
 
 /// A running check: when it started and which paths have reported a change.
@@ -95,10 +97,14 @@ public struct InputSourceState: Equatable, Sendable {
 
     public static let initial = InputSourceState()
 
-    /// Whether the user may move the pad onto `source` now.
+    /// Whether the user may move the pad onto `source` now: an offered pad
+    /// only onto Direct, since macOS has it already.
     public func canPick(_ source: InputSource) -> Bool {
-        guard case let .forwarding(current) = phase, current != source else { return false }
-        return pathAvailable(source, facts)
+        switch phase {
+        case let .forwarding(current): current != source && pathAvailable(source, facts)
+        case .offered: source == .direct && pathAvailable(.direct, facts)
+        case .disconnected, .awaitingGameController, .unreadable: false
+        }
     }
 }
 
@@ -118,6 +124,7 @@ public func reduceInputSource(_ state: InputSourceState, _ event: InputSourceEve
     case .awaitingGameController: whileAwaiting(state, event)
     case let .forwarding(source): whileForwarding(state, source, event)
     case .unreadable: whileUnreadable(state, event)
+    case .offered: whileOffered(state, event)
     }
 }
 
@@ -136,6 +143,9 @@ private func settle(_ facts: PadPathFacts) -> InputSourceReduction {
         return InputSourceReduction(next: next)
     case .unreadable:
         next.phase = .unreadable
+        return InputSourceReduction(next: next)
+    case .offerDirect:
+        next.phase = .offered
         return InputSourceReduction(next: next)
     }
 }
@@ -162,6 +172,18 @@ private func whileAwaiting(_ state: InputSourceState, _ event: InputSourceEvent)
 private func whileUnreadable(_ state: InputSourceState, _ event: InputSourceEvent) -> InputSourceReduction {
     guard event == .disconnected else { return InputSourceReduction(next: state) }
     return InputSourceReduction(next: .initial)
+}
+
+/// Nothing is forwarded until the user picks Direct.
+private func whileOffered(_ state: InputSourceState, _ event: InputSourceEvent) -> InputSourceReduction {
+    switch event {
+    case let .userPicked(picked):
+        pick(state, picked)
+    case .disconnected:
+        InputSourceReduction(next: .initial)
+    case .connected, .gameControllerResolved, .standardInputChanged, .directInputChanged, .checkStarted, .tick:
+        InputSourceReduction(next: state)
+    }
 }
 
 // MARK: - Forwarding
@@ -205,6 +227,27 @@ private func startCheck(_ state: InputSourceState, nowMs: Int64) -> InputSourceR
 
 private func pick(_ state: InputSourceState, _ picked: InputSource) -> InputSourceReduction {
     guard state.canPick(picked) else { return InputSourceReduction(next: state) }
+    return handsBack(state, picked) ? offerAgain(state) : switchPath(state, picked)
+}
+
+/// Standard on an opt-in pad GameController does not read is the hand-back.
+private func handsBack(_ state: InputSourceState, _ picked: InputSource) -> Bool {
+    let optIn = state.facts.model?.rule == .optIn
+    let macOSCannotRead = state.facts.gameController != .shows
+    return picked == .standard && optIn && macOSCannotRead
+}
+
+/// macOS keeps the pad as it came, and Dish offers it again.
+private func offerAgain(_ state: InputSourceState) -> InputSourceReduction {
+    var next = state
+    next.phase = .offered
+    next.reason = nil
+    next.proven = false
+    next.check = nil
+    return InputSourceReduction(next: next, effects: [.stopForwarding, .remember(.standard)])
+}
+
+private func switchPath(_ state: InputSourceState, _ picked: InputSource) -> InputSourceReduction {
     var next = state
     next.phase = .forwarding(picked)
     next.reason = .userPicked

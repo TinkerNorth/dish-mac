@@ -194,7 +194,9 @@ struct LayoutChipState: Equatable {
 }
 
 /// The card's menu: "Check the buttons" where Dish reads the pad through
-/// its declared layout, and "Help support this controller" for any Direct pad.
+/// its declared layout, and "Help support this controller" for a Direct pad
+/// the capture can open (not a Steam Controller, whose own decoders read it
+/// and whose USB identity names its keyboard and mouse too).
 enum CardMenuItemState: Equatable, Identifiable {
     case checkButtons(String)
     case helpSupport(String)
@@ -216,10 +218,92 @@ func layoutChip(_ path: SlotInputPath?, words: L10n = .app) -> LayoutChipState? 
 func cardMenu(_ path: SlotInputPath?, words: L10n = .app) -> [CardMenuItemState] {
     guard let path, path.source == .direct else { return [] }
     let check: [CardMenuItemState] = path.remappable ? [.checkButtons(words.checkTheButtons)] : []
-    return check + [.helpSupport(words.helpSupportThisController)]
+    let help: [CardMenuItemState] = path.capturable ? [.helpSupport(words.helpSupportThisController)] : []
+    return check + help
 }
 
 /// A Home node's path line: "Player 1 · Direct · Dish reads this model itself".
 func padNodePathLine(_ state: PadPathState) -> String {
     ([state.player].compactMap { $0 } + [state.path, state.reason]).joined(separator: " · ")
+}
+
+// MARK: - An offer to read a pad directly
+
+/// An opt-in model's card on Controllers: what Dish can do with it, why
+/// macOS stopped it where it did, and the ways on.
+struct DirectOfferCardState: Equatable, Identifiable {
+    /// A lane of the model, which every action names.
+    let id: String
+    let title: String
+    let message: String
+    /// The refusal, in the warning colour.
+    let hint: String?
+    let actions: [DirectOfferAction]
+}
+
+enum DirectOfferAction: Equatable, Identifiable {
+    case useDirect(String)
+    case openSettings(SettingsLinkState)
+    case stopReading(String)
+
+    var id: String {
+        switch self {
+        case .useDirect: "useDirect"
+        case .openSettings: "openSettings"
+        case .stopReading: "stopReading"
+        }
+    }
+}
+
+func directOfferCard(_ offer: DirectOffer, words: L10n = .app) -> DirectOfferCardState {
+    switch offer.standing {
+    case let .offered(asksInputMonitoring):
+        offeredCard(offer, asksInputMonitoring: asksInputMonitoring, words: words)
+    case let .refused(refusal):
+        refusedCard(offer, refusal, words: words)
+    case .waitingForController:
+        DirectOfferCardState(
+            id: offer.id,
+            title: offer.name,
+            message: paragraph(words.dishIsReadingThisReceiverDirectly, words.turnOnAControllerPairedWithIt),
+            hint: nil,
+            actions: [.stopReading(words.stopReadingDirectly)]
+        )
+    }
+}
+
+/// The note on Input Monitoring only where the pad's interface carries its
+/// keyboard, so macOS asks before Dish may open it.
+private func offeredCard(_ offer: DirectOffer, asksInputMonitoring: Bool, words: L10n) -> DirectOfferCardState {
+    let why = [words.dishCanReadThisControllerDirectly, words.whileItDoesItsKeyboardAndMouseAreOff]
+    let asks = asksInputMonitoring ? [words.macOSAsksForInputMonitoringFirst] : []
+    return DirectOfferCardState(
+        id: offer.id,
+        title: offer.name,
+        message: (why + asks).joined(separator: " "),
+        hint: nil,
+        actions: [.useDirect(words.useDirect)]
+    )
+}
+
+private func refusedCard(_ offer: DirectOffer, _ refusal: ClaimRefusal, words: L10n) -> DirectOfferCardState {
+    switch refusal {
+    case .inputMonitoring:
+        let settings = SettingsLinkState(title: words.openSystemSettings, url: URL(string: DishLinks.inputMonitoringSettings))
+        return DirectOfferCardState(
+            id: offer.id,
+            title: offer.name,
+            message: words.allowDishUnderInputMonitoring,
+            hint: words.macOSHasNotLetDishReadIt,
+            actions: [.openSettings(settings), .stopReading(words.stopReadingDirectly)]
+        )
+    case .busy:
+        return DirectOfferCardState(
+            id: offer.id,
+            title: offer.name,
+            message: words.quitThatAppOrPlugItBackIn,
+            hint: words.dishCouldNotOpenThisController,
+            actions: [.stopReading(words.stopReadingDirectly)]
+        )
+    }
 }
