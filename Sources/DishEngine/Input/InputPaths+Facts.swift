@@ -148,14 +148,14 @@ extension InputPaths {
         host?.showDirectSlot(directSlot(key, lane.candidate, output), lane: lane)
     }
 
-    /// Motion on the Switch Pro, the battery from a Switch report, rumble
-    /// and player lights only through a sure carrier.
+    /// Motion on the Switch Pro, rumble and player lights only through a
+    /// sure carrier, and a battery on every pad: its own where its reports
+    /// carry one, else the Mac's, as on the GameController path.
     func directSlot(_ id: String, _ candidate: HidPadCandidate, _ output: OutputCarriage) -> GameControllerInput.Slot {
-        let readsSwitchReports = if case .switchReport = candidate.decoder { true } else { false }
         let capabilities = ControllerCapabilities(
             hasMotion: candidate.model?.hasMotion ?? false,
             hasRumble: output.rumble == .carried,
-            hasBattery: readsSwitchReports,
+            hasBattery: true,
             hasPlayerLeds: output.carrierId != nil
         )
         return GameControllerInput.Slot(id: id, name: candidate.name, capabilities: capabilities, family: candidate.family)

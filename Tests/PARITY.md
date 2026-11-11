@@ -22,7 +22,7 @@
 | Controller audio (mic + speaker) | ✅ | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked, each pad's lanes on its own controller index; not yet verified on a pad |
 | DualSense HD haptics | ⚠️ | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; not yet verified on a pad |
 | Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ⚠️ mic lamp as a chip on Home's binding strip (GameController reaches no DualSense lamp) |
-| Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery (pad, else the host Mac's) |
+| Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery: the wire carries the lower of the pad's own and the Mac's on both paths (a pad with none sends the Mac's), the card shows the pad's own |
 | Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ✅ Sentry (sentry-cocoa) behind "Share crash reports", on by default, armed only by an official build; the local redacted log and its report card stay |
 | Update notice | – Play · ✅ GitHub build | ✅ | ✅ | ✅ `latest.json` from the release permalink; once per version, skippable, floor warning |
 | The window: the desktops' shell | – (Activities, two panes on sw600dp) | ✅ rail (labelled 236 px, 48 px icons, persisted) + per-page header + pushed pages, one toast host | ✅ the same | ✅ the same in SwiftUI: `NavigationSplitView` rail (236 pt labelled, icon strip collapsed, persisted as `ui_rail_collapsed`), per-page header (back chevron, title, streaming pill with Configure, mic chip, status line), a `NavigationStack` of pages, one toast host, 980×640 (min 900×620); no sheets at all (the pairing card and the Moonlight PIN are inline cards in their rows); ⌘, · ⌘1-3 · ⌘[ ; the Set up action between the rail's groups |
@@ -125,8 +125,15 @@ so macOS reads it", and stays so for the connection.
 - **XUSB carries no Share button and no paddles**, so a pad's Share and
   paddle buttons stay unmapped, as on the other clients; Guide is the pad's
   Home button.
-- **Battery over USB is the host Mac's** when the pad reports none, which is
-  what the other desktop clients send too.
+- **Two batteries, the lower one.** MSG_BATTERY carries the lower of the
+  pad's own battery and the Mac's, on the GameController and the Direct
+  path alike and whatever the link (`lowestBattery`, the desktops' rule): a
+  pad with no battery, or one whose level is unknown, sends the Mac's (a
+  desktop Mac on mains reads 100 % wired), an unknown level sorts above
+  every known one, a tie goes to the pad and the status travels with the
+  reading that wins. The card keeps the pad's own reading, or the Mac's for
+  a GameController pad with none; the Mac's IOKit snapshot is read on a
+  utility queue, never on the main actor or the HID reader's thread.
 - **Controller audio is the pad's USB audio function**, matched to the pad
   by family and only when unambiguous (one pad of the family, one function
   of it), as dish-android matches; two pads of a family route nothing and

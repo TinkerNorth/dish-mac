@@ -296,8 +296,10 @@ read the same way. Everything else stays on GameController.
   callback decodes in place (no `Data`, `Array` or `String` per report) and
   publishes through the processor under the pad's slot id (`hid:057e:2019`,
   `#n` for identical pads) only when the report changed something and only
-  while the pad's source is Direct; motion every report the Pro carries one,
-  the battery on change and on the 30 s heartbeat. The first second's count
+  while the pad's source is Direct; motion every report that carries it,
+  and the pad's battery posted to the main actor on change, which sends the
+  lower of it and the Mac's (`lowestBattery`) at once and on the 30 s
+  heartbeat, the Mac's alone for a pad that reports none. The first second's count
   is logged once per attach as `DEVCAPS DIRECT`.
 - **One machine per pad.** `InputPaths` runs the core's input-source machine
   on the main actor for every pad, Direct lanes and GameController pads

@@ -4,11 +4,11 @@
 import XCTest
 @testable import DishEngine
 
-/// Coverage for the host-battery fallback's pure snapshot → wire mapping
-/// (`HostBattery.reading(from:)`). When a controller doesn't surface a usable
-/// battery, the sender reports the host Mac's battery instead; this function
-/// is the only place where that decision turns into a `(level, status)` wire
-/// tuple, so every branch is pinned here.
+/// Coverage for the host battery's pure snapshot → wire mapping
+/// (`HostBattery.reading(from:)`). The Mac's battery competes with every
+/// pad's own (`lowestBattery`) and stands in for a pad that reports none;
+/// this function is the only place a power-source snapshot turns into a
+/// `(level, status)` wire tuple, so every branch is pinned here.
 ///
 /// The IOKit half (`HostBattery.snapshot()`) is intentionally out of scope —
 /// it would need a real power source to exercise, and the host the test runs

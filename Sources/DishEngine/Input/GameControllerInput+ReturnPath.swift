@@ -141,118 +141,59 @@ extension GameControllerInput {
         batteryStateTimers.removeValue(forKey: deviceId)?.cancel()
     }
 
-    /// Resolve the battery reading for a controller and forward it. A pad has
-    /// a *usable* reading when it exposes a `GCDeviceBattery` AND that battery
-    /// reports a non-negative level (a wireless pad). When it doesn't — a
-    /// wired/USB pad, or one whose level reads unknown — we fall back to the
-    /// host Mac's battery so the satellite still shows something honest.
-    ///
-    /// `force == true` (the 30 s timer) always forwards — MSG_BATTERY is a
-    /// fixed 30 s heartbeat so an unchanged value still has to reach the wire,
-    /// and a dropped UDP packet self-heals on the next tick. `force == false`
-    /// (the faster state-watch timer) forwards ONLY when the charging state
-    /// changed from the last forwarded value — the protocol's "report on every
-    /// charging-state transition" trigger, without spamming the wire.
-    ///
-    /// The host-fallback path needs a synchronous IOKit call, so the resolve
-    /// runs on `batteryWorkQueue`; the controller's own `GCDeviceBattery`
-    /// reads are cheap and stay on the main actor.
+    /// The pad's own `GCDeviceBattery` is read here, where the framework's
+    /// reads are cheap; the Mac's is a blocking IOKit snapshot, so it is
+    /// read on `batteryWorkQueue` and the two meet back on the main actor.
     func emitBattery(deviceId: String, controller: GCController, force: Bool) {
-        if let battery = controller.battery, battery.batteryLevel >= 0 {
-            // Controller's own battery — cheap reads, resolve inline.
-            forwardBattery(
-                deviceId: deviceId,
-                resolved: Self.resolveControllerBattery(battery),
-                force: force
-            )
-        } else {
-            // No usable controller battery — report the host Mac instead. The
-            // IOKit snapshot is blocking, so it runs off the main thread; the
-            // forward hops back to the main actor. `self` is rebound to a
-            // `let` so the nested `Task` doesn't reference the closure's
-            // captured `var self` (forbidden in Swift 5.9 concurrent code).
-            batteryWorkQueue.async { [weak self] in
-                guard let self else { return }
-                let resolved = Self.resolveHostBattery(
-                    HostBattery.reading(from: HostBattery.snapshot())
-                )
-                Task { @MainActor in
-                    self.forwardBattery(deviceId: deviceId, resolved: resolved, force: force)
-                }
-            }
+        let own = controller.battery.flatMap { Self.controllerBattery(level: $0.batteryLevel, state: $0.batteryState) }
+        readHostBattery { [weak self] host in self?.forwardBattery(deviceId: deviceId, own: own, host: host, force: force) }
+    }
+
+    /// `deliver` runs on the main actor with the Mac's battery.
+    func readHostBattery(_ deliver: @escaping @MainActor @Sendable (PadBattery) -> Void) {
+        let read = hostBattery
+        batteryWorkQueue.async {
+            let host = read()
+            Task { @MainActor in deliver(host) }
         }
     }
 
-    /// Update the slot-card pill and forward the resolved reading to the wire,
-    /// applying the `force` / charging-state-transition gate. Runs on the main
-    /// actor (it touches `slots` + `lastBatteryStatusRaw`).
-    func forwardBattery(
-        deviceId: String,
-        resolved: BatteryResolution,
-        force: Bool
-    ) {
-        let stateChanged = lastBatteryStatusRaw[deviceId] != resolved.statusRaw
-        // State-watch tick with no transition → nothing to do. The 30 s timer
-        // (force) still keeps the steady cadence.
-        guard force || stateChanged else { return }
-
-        // Update the slot card's battery pill.
-        let reading = BatteryReading(
-            level: resolved.level == 0xFF ? nil : Int(resolved.level),
-            state: resolved.displayState
-        )
-        if let idx = slots.firstIndex(where: { $0.id == deviceId }) {
-            slots[idx].battery = reading
-        }
-
-        lastBatteryStatusRaw[deviceId] = resolved.statusRaw
-        processor.publishBattery(
-            deviceId: deviceId,
-            level: resolved.level,
-            statusRaw: resolved.statusRaw
-        )
+    /// The card shows the pad's own reading, or the Mac's for a pad that
+    /// reports none; the wire carries the lower of the two. The 30 s timer
+    /// (`force`) always sends, since MSG_BATTERY is a heartbeat and a lost
+    /// datagram heals on the next tick; the state watch sends only when the
+    /// status on the wire moved, the protocol's charging-transition trigger.
+    func forwardBattery(deviceId: String, own: PadBattery?, host: PadBattery, force: Bool) {
+        showBattery(batteryReading(own ?? host), onSlot: deviceId)
+        let sent = lowestBattery(pad: own, host: host)
+        let statusMoved = lastBatteryStatusRaw[deviceId] != sent.status.rawValue
+        guard force || statusMoved else { return }
+        lastBatteryStatusRaw[deviceId] = sent.status.rawValue
+        processor.publishBattery(deviceId: deviceId, level: sent.level, statusRaw: sent.status.rawValue)
     }
 
-    /// Encode a controller's own `GCDeviceBattery` (a wireless pad reporting a
-    /// usable percentage) for the wire. `batteryLevel` is Float in 0..1.
-    static func resolveControllerBattery(
-        _ battery: GCDeviceBattery
-    ) -> BatteryResolution {
-        let raw = battery.batteryLevel
-        let level: UInt8 = raw > 1 ? 100 : UInt8(clamping: Int((raw * 100.0).rounded()))
-        let statusRaw: UInt8 = switch battery.batteryState {
-        case .unknown: 0
-        case .discharging: 1
-        case .charging: 2
-        case .full: 3
-        @unknown default: 0
-        }
-        let displayState: BatteryChargeState = switch battery.batteryState {
+    /// An unchanged reading is not written back, so the slots do not republish.
+    func showBattery(_ reading: BatteryReading, onSlot slotId: String) {
+        guard let index = slots.firstIndex(where: { $0.id == slotId }), slots[index].battery != reading else { return }
+        slots[index].battery = reading
+    }
+
+    /// A controller's own battery for the wire, `level` in 0...1: none when
+    /// the level reads unknown (a wired pad, or one that has not said yet),
+    /// so the Mac's stands in.
+    nonisolated static func controllerBattery(level: Float, state: GCDeviceBattery.State) -> PadBattery? {
+        guard level >= 0 else { return nil }
+        let percent: UInt8 = level > 1 ? 100 : UInt8(clamping: Int((level * 100.0).rounded()))
+        return PadBattery(level: percent, status: batteryStatus(state))
+    }
+
+    nonisolated static func batteryStatus(_ state: GCDeviceBattery.State) -> BatteryStatus {
+        switch state {
+        case .unknown: .unknown
         case .discharging: .discharging
         case .charging: .charging
         case .full: .full
-        default: .unknown
+        @unknown default: .unknown
         }
-        return BatteryResolution(level: level, statusRaw: statusRaw, displayState: displayState)
-    }
-
-    /// Adapt a host-Mac `HostBattery.WireReading` to the slot-card display
-    /// state. `wired` (a desktop Mac) has no charge-state pill, so it shows as
-    /// `.unknown` in the UI while still going out as `wired` on the wire.
-    /// `nonisolated` — pure value mapping, run on `batteryWorkQueue` off main.
-    nonisolated static func resolveHostBattery(
-        _ host: HostBattery.WireReading
-    ) -> BatteryResolution {
-        let displayState: BatteryChargeState = switch host.status {
-        case .discharging: .discharging
-        case .charging: .charging
-        case .full: .full
-        case .wired, .unknown: .unknown
-        }
-        return BatteryResolution(
-            level: host.level,
-            statusRaw: host.status.rawValue,
-            displayState: displayState
-        )
     }
 }

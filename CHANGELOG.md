@@ -17,6 +17,19 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **A pad sends the lower of its battery and the Mac's.** When two batteries
+  compete, the host now hears the lower one, as on the other Dish clients: a
+  pad that reports its own charge, wireless or on a cable, is compared with
+  the Mac, an unknown level counts as the higher, a tie goes to the pad, and
+  the charging state travels with the reading that wins. A pad that reports
+  no charge of its own sends the Mac's, a pad read directly included, which
+  before sent no battery at all. The controller's card still shows the pad's
+  own reading, and the Mac's battery is still read away from the main thread.
+
 ## [1.2.1] - 2026-11-11
 
 ### Fixed

@@ -66,6 +66,8 @@ final class GameControllerInput: ObservableObject {
     /// The framework's category word for a controller; a seam, since every
     /// snapshot controller a test can build reads "MFi".
     let categoryOf: (GCController) -> String
+    /// The Mac's own battery: a blocking IOKit read, run on `batteryWorkQueue`.
+    let hostBattery: @Sendable () -> PadBattery
     /// Each controller's handlers run on a serial queue of its own, so the
     /// hot path never waits behind the main thread or another pad; one per
     /// slot id, kept across a re-attach, so a pad's feed has one thread.
@@ -82,24 +84,20 @@ final class GameControllerInput: ObservableObject {
     /// IOKit's battery snapshot is a blocking call, kept off the main thread.
     let batteryWorkQueue = DispatchQueue(label: "dish.battery.iokit", qos: .utility)
     var batteryStateTimers: [String: DispatchSourceTimer] = [:]
+    /// The status each GameController pad last sent, for the state watch.
     var lastBatteryStatusRaw: [String: UInt8] = [:]
-
-    /// A battery reading as the wire and the slot card each want it.
-    struct BatteryResolution {
-        let level: UInt8
-        let statusRaw: UInt8
-        let displayState: BatteryChargeState
-    }
 
     /// `connected` is the launch sweep, the framework's list unless a test
     /// hands in its own. The paths start reading HID once they can publish.
     init(
         connected: [GCController] = GCController.controllers(),
         paths: InputPaths? = nil,
-        categoryOf: @escaping (GCController) -> String = { $0.productCategory }
+        categoryOf: @escaping (GCController) -> String = { $0.productCategory },
+        hostBattery: @escaping @Sendable () -> PadBattery = liveHostBattery
     ) {
         self.paths = paths ?? InputPaths(choices: UsbPathChoiceStore())
         self.categoryOf = categoryOf
+        self.hostBattery = hostBattery
         let actuators = PadActuators(queue: DispatchQueue(label: "dish.feedback", qos: .userInteractive))
         padActuators = actuators
         feedback = PadFeedback(actuators: actuators.actuators, queue: actuators.queue)

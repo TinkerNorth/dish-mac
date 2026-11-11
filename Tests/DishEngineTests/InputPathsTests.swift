@@ -136,7 +136,8 @@ final class InputPathsTests: XCTestCase {
         XCTAssertEqual(facts.reason, .macOSCannotRead)
         XCTAssertTrue(facts.layoutGuessed)
         XCTAssertEqual(facts.rumble, .notCarried)
-        XCTAssertEqual(host.directSlots["hid:1234:5678"]?.capabilities.hasBattery, false, "a generic pad reports no battery")
+        let slot = try XCTUnwrap(host.directSlots["hid:1234:5678"])
+        XCTAssertTrue(slot.capabilities.hasBattery, "a generic pad reports none of its own and sends the Mac's")
     }
 
     func testAPadGameControllerTakesOnASecondLookIsLeftToIt() throws {

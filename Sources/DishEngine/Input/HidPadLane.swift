@@ -74,7 +74,8 @@ final class LaneTally: @unchecked Sendable {
 }
 
 /// What a lane reaches beyond itself: the processor, and the main actor for
-/// a battery change and a raw change "Check the buttons" asked for.
+/// a battery change (which it sends) and a raw change "Check the buttons"
+/// asked for.
 struct HidPadWiring {
     let processor: GamepadInputProcessor
     /// The gate's "tell me" post, which hops to the main actor itself.
@@ -233,7 +234,7 @@ final class HidPadLane: @unchecked Sendable {
         }
         publishIfChanged(reading.report)
         if let motion = reading.motion { currentFeed().publishMotion(motion) }
-        if let battery = reading.battery { publishBatteryIfChanged(battery) }
+        if let battery = reading.battery { postBatteryIfChanged(battery) }
     }
 
     private func publishIfChanged(_ report: GamepadReport) {
@@ -247,11 +248,12 @@ final class HidPadLane: @unchecked Sendable {
         return feed
     }
 
-    private func publishBatteryIfChanged(_ battery: PadBattery) {
+    /// The wire hears the battery from the main actor, which must read the
+    /// Mac's first: a blocking call this thread never makes.
+    private func postBatteryIfChanged(_ battery: PadBattery) {
         guard lastBattery != battery else { return }
         lastBattery = battery
         batteryWord.store(battery.packed)
-        currentFeed().publishBattery(level: battery.level, statusRaw: battery.status.rawValue)
         wiring.battery(slotId, battery)
     }
 }
