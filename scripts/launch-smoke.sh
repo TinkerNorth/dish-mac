@@ -7,8 +7,11 @@
 #  back to the absolute build directory of the machine that compiled the app,
 #  so an app launched where that directory still exists can hide a missing
 #  resource bundle: releases 1.0.2 to 1.2.0 crashed at launch everywhere else.
-#  This moves .build aside, runs the app with a throwaway preferences home,
-#  and fails when the app has quit before DISH_SMOKE_SECONDS (default 8).
+#  This moves .build aside, runs the app with a throwaway preferences home
+#  and without the preferences daemon (through cfprefsd a fixed home redirects
+#  reads alone, and the launch's first-run writes would reach the developer's
+#  own preferences), and fails when the app has quit before DISH_SMOKE_SECONDS
+#  (default 8).
 #
 #  Usage: scripts/launch-smoke.sh [path/to/Dish.app]
 # ============================================================================
@@ -40,7 +43,7 @@ if [ -d .build ]; then
     mv .build "$HIDDEN_BUILD"
 fi
 
-CFFIXED_USER_HOME="$PREFERENCES_HOME" "$EXECUTABLE" > "$LAUNCH_LOG" 2>&1 &
+__CFPREFERENCES_AVOID_DAEMON=1 CFFIXED_USER_HOME="$PREFERENCES_HOME" "$EXECUTABLE" > "$LAUNCH_LOG" 2>&1 &
 APP_PID=$!
 sleep "$ALIVE_SECONDS"
 

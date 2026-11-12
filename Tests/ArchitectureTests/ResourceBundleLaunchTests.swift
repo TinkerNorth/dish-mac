@@ -58,7 +58,10 @@ final class ResourceBundleLaunchTests: XCTestCase {
         let script = try RepoFiles.read(Self.smokeScriptPath)
         XCTAssertTrue(script.contains("mv .build \"$HIDDEN_BUILD\""), "the native accessor's fallback is the build tree")
         XCTAssertTrue(script.contains("trap restore_build EXIT"), "the build tree comes back however the launch ends")
-        XCTAssertTrue(script.contains("CFFIXED_USER_HOME="), "a launch never touches the developer's own preferences")
+        XCTAssertTrue(
+            script.contains("__CFPREFERENCES_AVOID_DAEMON=1 CFFIXED_USER_HOME="),
+            "a launch reads and writes no preferences but its own: through the daemon a fixed home redirects reads alone"
+        )
         let attributes = try FileManager.default.attributesOfItem(atPath: RepoFiles.url(Self.smokeScriptPath).path)
         let permissions = try XCTUnwrap(attributes[.posixPermissions] as? NSNumber).intValue
         XCTAssertNotEqual(permissions & 0o111, 0, "the workflows run the script directly")
