@@ -4,31 +4,34 @@
 import DishCore
 import XCTest
 
-/// A Switch-family pad on USB streams its full reports only after the USB
-/// handshake, the timeout disable and "full report mode", which macOS's
-/// driver does not leave in place for the N64. The packets are dish-android's
-/// (`usb_parsers.cpp`, kSwitchInitPackets); the watch decides when to send
-/// them: never to a pad that streams, after a grace for Apple's own
+/// A Switch-family pad on USB streams its full reports only after Dish's
+/// start sequence, which macOS's driver never sends. The watch decides when
+/// to send it: never to a pad that streams, after a grace for Apple's own
 /// handshake, one packet per tick, and less often while nothing helps.
 final class SwitchStartTests: XCTestCase {
     private let opened: Int64 = 10000
+    private let tickMs: Int64 = 250
 
     // MARK: - The packets
 
-    func testTheHandshakeIsAndroidsFullUsbPacket() {
-        let expected = [UInt8(0x80), 0x02] + [UInt8](repeating: 0, count: 62)
-        XCTAssertEqual(switchStartPacket(.handshake), expected)
+    func testTheHandshakeIsAFullUsbPacket() {
+        XCTAssertEqual(switchStartPacket(.handshake), usbPacket([0x80, 0x02]))
     }
 
-    func testTheTimeoutDisableIsAndroidsFullUsbPacket() {
-        let expected = [UInt8(0x80), 0x04] + [UInt8](repeating: 0, count: 62)
-        XCTAssertEqual(switchStartPacket(.disableTimeout), expected)
+    func testTheSwitchToThreeMegabitIsAFullUsbPacket() {
+        XCTAssertEqual(switchStartPacket(.highSpeed), usbPacket([0x80, 0x03]))
+    }
+
+    func testTheHandshakeAtThreeMegabitIsTheHandshakeAgain() {
+        XCTAssertEqual(switchStartPacket(.handshakeAtHighSpeed), switchStartPacket(.handshake))
+    }
+
+    func testTheTimeoutDisableIsAFullUsbPacket() {
+        XCTAssertEqual(switchStartPacket(.disableTimeout), usbPacket([0x80, 0x04]))
     }
 
     func testFullReportModeIsTheSubcommandThreeWithArgumentThirtyBehindNeutralRumble() {
-        let subcommand: [UInt8] = [0x01, 0x00, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x03, 0x30]
-        let expected = subcommand + [UInt8](repeating: 0, count: 52)
-        XCTAssertEqual(switchStartPacket(.fullReportMode), expected)
+        XCTAssertEqual(switchStartPacket(.fullReportMode), usbPacket(CapturedSwitchPro.fullReportModeSubcommand))
     }
 
     func testEveryPacketIsOneUsbPacketLongAndNamesItsReportInItsFirstByte() {
@@ -39,10 +42,28 @@ final class SwitchStartTests: XCTestCase {
         }
     }
 
-    func testTheStepsRunHandshakeThenTimeoutThenReportMode() {
-        XCTAssertEqual(SwitchStartStep.handshake.next, .disableTimeout)
-        XCTAssertEqual(SwitchStartStep.disableTimeout.next, .fullReportMode)
-        XCTAssertNil(SwitchStartStep.fullReportMode.next)
+    /// Linux's hid-nintendo and SDL open every Switch pad on USB in this
+    /// order; dish-android's handshake, timeout disable and report mode
+    /// leave a Pro silent.
+    func testTheSequenceIsTheHandshakeAtThreeMegabitThenTheTimeoutDisableThenFullReportMode() {
+        let expected = [[0x80, 0x02], [0x80, 0x03], [0x80, 0x02], [0x80, 0x04], CapturedSwitchPro.fullReportModeSubcommand].map(usbPacket)
+        XCTAssertEqual(oneSequence().map(\.packet), expected)
+    }
+
+    // MARK: - The Pro, as it answered on a Mac
+
+    func testAQuietProStreamsOnceTheTimeoutDisableFollowsTheHandshakeAtThreeMegabit() {
+        var pad = CapturedSwitchPro()
+        for sent in oneSequence() {
+            pad.receive(sent.packet)
+        }
+        XCTAssertTrue(pad.streams, "the Pro took \(pad.received.count) packets and stayed silent")
+    }
+
+    func testTheProsAnswersBeforeItStreamsAreNoFullReports() {
+        let answers = [CapturedSwitchPro.handshakeReply, CapturedSwitchPro.highSpeedReply, CapturedSwitchPro.subcommandReply]
+        XCTAssertEqual(answers.map(isFullReport), [false, false, false])
+        XCTAssertTrue(isFullReport(CapturedSwitchPro.idleFullReport))
     }
 
     // MARK: - When to send
@@ -59,15 +80,22 @@ final class SwitchStartTests: XCTestCase {
         XCTAssertEqual(watch.due(lastFullReportMs: nil, nowMs: opened + SwitchStreamRule.graceMs), .send(.handshake))
     }
 
-    func testTheSequenceGoesOutOnePacketPerTick() {
+    func testTheSequenceGoesOutOnePacketPerTickThenWaits() {
+        let sequence = oneSequence()
+        let start = opened + SwitchStreamRule.graceMs
+        XCTAssertEqual(sequence.map(\.atMs), sequence.indices.map { start + Int64($0) * tickMs })
+        let watch = sentOneSequence(at: start)
+        XCTAssertEqual(watch.due(lastFullReportMs: nil, nowMs: start + Int64(sequence.count) * tickMs), .wait)
+    }
+
+    func testTheHandshakeAtThreeMegabitStartsNoNewSequence() {
         var watch = SwitchStreamWatch(openedMs: opened)
         let start = opened + SwitchStreamRule.graceMs
         watch.noteSent(.handshake, nowMs: start)
-        XCTAssertEqual(watch.due(lastFullReportMs: nil, nowMs: start + 250), .send(.disableTimeout))
-        watch.noteSent(.disableTimeout, nowMs: start + 250)
-        XCTAssertEqual(watch.due(lastFullReportMs: nil, nowMs: start + 500), .send(.fullReportMode))
-        watch.noteSent(.fullReportMode, nowMs: start + 500)
-        XCTAssertEqual(watch.due(lastFullReportMs: nil, nowMs: start + 750), .wait)
+        watch.noteSent(.highSpeed, nowMs: start + tickMs)
+        watch.noteSent(.handshakeAtHighSpeed, nowMs: start + 2 * tickMs)
+        XCTAssertEqual(watch.startsWithoutStream, 1)
+        XCTAssertEqual(watch.lastStartMs, start)
     }
 
     func testASequenceThatBroughtNoStreamIsRepeatedAfterTheRetryInterval() {
@@ -108,12 +136,26 @@ final class SwitchStartTests: XCTestCase {
         var watch = SwitchStreamWatch(openedMs: opened)
         let start = opened + SwitchStreamRule.graceMs
         watch.noteSent(.handshake, nowMs: start)
-        XCTAssertEqual(watch.due(lastFullReportMs: start + 100, nowMs: start + 250), .streaming)
+        XCTAssertEqual(watch.due(lastFullReportMs: start + 100, nowMs: start + tickMs), .streaming)
         watch.noteStreaming()
         XCTAssertEqual(watch.due(lastFullReportMs: start + 100, nowMs: start + SwitchStreamRule.stallMs + 100), .send(.handshake))
     }
 
     // MARK: - Helpers
+
+    /// The packets one sequence sends to a silent pad, as the reader's tick
+    /// would collect them, with the time each went out.
+    private func oneSequence() -> [SentPacket] {
+        var watch = SwitchStreamWatch(openedMs: opened)
+        var nowMs = opened + SwitchStreamRule.graceMs
+        var sent: [SentPacket] = []
+        while case let .send(step) = watch.due(lastFullReportMs: nil, nowMs: nowMs) {
+            sent.append(SentPacket(packet: switchStartPacket(step), atMs: nowMs))
+            watch.noteSent(step, nowMs: nowMs)
+            nowMs += tickMs
+        }
+        return sent
+    }
 
     private func sentOneSequence(at start: Int64) -> SwitchStreamWatch {
         var watch = SwitchStreamWatch(openedMs: opened)
@@ -122,8 +164,25 @@ final class SwitchStartTests: XCTestCase {
     }
 
     private func sendSequence(_ watch: inout SwitchStreamWatch, at start: Int64) {
-        watch.noteSent(.handshake, nowMs: start)
-        watch.noteSent(.disableTimeout, nowMs: start + 250)
-        watch.noteSent(.fullReportMode, nowMs: start + 500)
+        var step: SwitchStartStep? = .handshake
+        var nowMs = start
+        while let current = step {
+            watch.noteSent(current, nowMs: nowMs)
+            step = current.next
+            nowMs += tickMs
+        }
     }
+
+    private func usbPacket(_ bytes: [UInt8]) -> [UInt8] {
+        bytes + [UInt8](repeating: 0, count: switchStartPacketBytes - bytes.count)
+    }
+
+    private func isFullReport(_ bytes: [UInt8]) -> Bool {
+        bytes.withUnsafeBufferPointer(isSwitchInputReport)
+    }
+}
+
+private struct SentPacket {
+    let packet: [UInt8]
+    let atMs: Int64
 }
