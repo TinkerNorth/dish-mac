@@ -48,6 +48,16 @@ the repos share a version number.
 
 ### Fixed
 
+- **The 2026 Steam Controller's rumble and lizard-mode tests no longer race
+  the clock.** The output that re-sends the pad's rumble every 40 ms and
+  turns its keyboard and mouse off again every 3 s took its ticks from
+  dispatch timers, and the tests slept and polled around them, so a busy
+  build machine could run one tick late and fail the suite for a pad that
+  was behaving. The ticks now come through a seam the tests drive by hand,
+  the tests assert the exact reports written, and the pad is sent the same
+  reports at the same cadence as before, with one refinement: a new rumble
+  command restarts the 40 ms count from itself, as SDL counts it, instead of
+  from the last tick.
 - **The audio output test no longer depends on the Mac's default output.**
   It used to play silence into whatever the Mac's sound output was set to,
   and a DisplayPort monitor's speakers can refuse to start for minutes after

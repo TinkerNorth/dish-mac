@@ -11,6 +11,11 @@ final class TritonRumbleTests: XCTestCase {
 
     private let still = tritonRumbleReport(left: 0, right: 0)
 
+    func testTheCadenceIsSdls() {
+        XCTAssertEqual(TritonRumbleRule.resendMs, 40, "TRITON_RUMBLE_RESEND_INTERVAL_MS")
+        XCTAssertEqual(TritonRumbleRule.lizardRefreshMs, 3000, "the lizard-mode interval in HIDAPI_DriverSteamTriton_UpdateDevice")
+    }
+
     func testACommandSendsItsLevelAtOnce() {
         var rumble = TritonRumble()
         XCTAssertEqual(
