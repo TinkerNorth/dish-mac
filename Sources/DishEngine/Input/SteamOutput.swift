@@ -67,34 +67,31 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
     private let queue: DispatchQueue
     /// Read only on the queue.
     private let clockMs: () -> Int64
-    private let refreshMs: Int64
+    /// Started and stopped only on the queue.
+    private let refreshTicker: QueueTicker
+    private let rumbleTicker: QueueTicker
 
     // Owned by the queue.
     private var reading = false
     private var connected: Bool
     private var rumbleLevel = TritonRumble()
-    private var refreshTimer: DispatchSourceTimer?
-    private var rumbleTimer: DispatchSourceTimer?
 
     init(
         slotId: String,
         plan: SteamPlan,
         writer: HidReportWriting,
         clockMs: @escaping () -> Int64 = uptimeMs,
-        refreshMs: Int64 = TritonRumbleRule.lizardRefreshMs
+        refreshTicker: QueueTicker = DispatchTicker(),
+        rumbleTicker: QueueTicker = DispatchTicker()
     ) {
         self.slotId = slotId
         self.plan = plan
         self.writer = writer
         self.clockMs = clockMs
-        self.refreshMs = refreshMs
+        self.refreshTicker = refreshTicker
+        self.rumbleTicker = rumbleTicker
         queue = DispatchQueue(label: "com.tinkernorth.dish.steam.\(slotId)", qos: .userInitiated)
         connected = !plan.receiver
-    }
-
-    deinit {
-        refreshTimer?.cancel()
-        rumbleTimer?.cancel()
     }
 
     func claimed() {
@@ -150,7 +147,7 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
 
     private func leaveOnQueue() {
         connected = false
-        stopTimers()
+        stopTickers()
     }
 
     /// The 2015 pad has no motors; a pad not read, or a slot with no
@@ -159,66 +156,50 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
         guard plan.rumbles, reading, connected else { return }
         let report = rumbleLevel.command(strong: strong, weak: weak, durationMs: durationMs, nowMs: clockMs())
         sendRumble(report)
-        guard rumbleLevel.running else { return stopRumbleTimer() }
-        startRumbleTimer()
+        guard rumbleLevel.running else { return rumbleTicker.stop() }
+        startResending()
     }
 
     /// A slot with no controller has nothing to restore.
     private func releaseOnQueue() {
         guard reading else { return }
         reading = false
-        stopTimers()
+        stopTickers()
         guard connected else { return }
         send(plan.onRelease)
     }
 
     private func goneOnQueue() {
         reading = false
-        stopTimers()
+        stopTickers()
     }
 
-    // MARK: - The timers
+    // MARK: - The tickers
 
     private func startRefreshing() {
-        guard plan.refreshesLizardMode, refreshTimer == nil else { return }
-        refreshTimer = repeating(everyMs: refreshMs) { [weak self] in self?.refreshTick() }
+        guard plan.refreshesLizardMode else { return }
+        refreshTicker.start(everyMs: TritonRumbleRule.lizardRefreshMs, on: queue) { [weak self] in self?.refreshTick() }
     }
 
     private func refreshTick() {
         send(plan.refresh)
     }
 
-    private func startRumbleTimer() {
-        guard rumbleTimer == nil else { return }
-        rumbleTimer = repeating(everyMs: TritonRumbleRule.resendMs) { [weak self] in self?.rumbleTick() }
+    private func startResending() {
+        rumbleTicker.start(everyMs: TritonRumbleRule.resendMs, on: queue) { [weak self] in self?.rumbleTick() }
     }
 
     /// The level again inside the safety stop, and the stop once its hold ends.
     private func rumbleTick() {
         if let report = rumbleLevel.tick(nowMs: clockMs()) { sendRumble(report) }
         guard !rumbleLevel.running else { return }
-        stopRumbleTimer()
+        rumbleTicker.stop()
     }
 
-    private func stopRumbleTimer() {
-        rumbleTimer?.cancel()
-        rumbleTimer = nil
-    }
-
-    private func stopTimers() {
-        refreshTimer?.cancel()
-        refreshTimer = nil
-        stopRumbleTimer()
+    private func stopTickers() {
+        refreshTicker.stop()
+        rumbleTicker.stop()
         rumbleLevel = TritonRumble()
-    }
-
-    private func repeating(everyMs: Int64, _ work: @escaping () -> Void) -> DispatchSourceTimer {
-        let timer = DispatchSource.makeTimerSource(queue: queue)
-        let interval = DispatchTimeInterval.milliseconds(Int(everyMs))
-        timer.schedule(deadline: .now() + interval, repeating: interval)
-        timer.setEventHandler(handler: work)
-        timer.resume()
-        return timer
     }
 
     // MARK: - The writes

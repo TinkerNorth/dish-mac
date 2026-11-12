@@ -6,19 +6,28 @@ import IOKit.hid
 import XCTest
 @testable import DishEngine
 
+/// The output's clock as the tests start it, in milliseconds.
+private let clockStartMs: Int64 = 1000
+
 /// One Steam Controller's writes on the output's own queue: the plan at a
 /// claim, a connect and a release, the 2026 pad's lizard-mode refresh and
-/// rumble re-sends on their timers, and a refused feature write retried.
+/// rumble re-sends on tickers the test fires by hand, and a refused feature
+/// write retried.
 final class SteamOutputTests: XCTestCase {
 
     private let writer = FakeReportWriter()
+    private let clock = LockedBox<Int64>(clockStartMs)
+    private let refreshTicker = ManualQueueTicker()
+    private let rumbleTicker = ManualQueueTicker()
 
-    private func output(_ generation: SteamGeneration, receiver: Bool = false, refreshMs: Int64 = 60000) -> SteamOutput {
+    private func output(_ generation: SteamGeneration, receiver: Bool = false) -> SteamOutput {
         SteamOutput(
             slotId: "hid:28de:1102",
             plan: SteamPlan(generation: generation, receiver: receiver),
             writer: writer,
-            refreshMs: refreshMs
+            clockMs: clock.get,
+            refreshTicker: refreshTicker,
+            rumbleTicker: rumbleTicker
         )
     }
 
@@ -28,6 +37,12 @@ final class SteamOutputTests: XCTestCase {
 
     private func rumble(_ left: UInt16, _ right: UInt16) -> SteamWrite {
         SteamWrite(kind: .output, reportId: 0x80, bytes: tritonRumbleReport(left: left, right: right))
+    }
+
+    /// The resend ticker fires with the clock `elapsedMs` past the start.
+    private func tickRumble(afterMs elapsedMs: Int64) {
+        clock.set(clockStartMs + elapsedMs)
+        rumbleTicker.tick()
     }
 
     // MARK: - The plan
@@ -84,42 +99,71 @@ final class SteamOutputTests: XCTestCase {
         )
     }
 
-    // MARK: - The 2026 pad's timers
+    // MARK: - The 2026 pad's lizard-mode refresh
 
-    func testThe2026PadRefreshesLizardModeWhileItIsRead() {
-        let pad = output(.triton, refreshMs: 20)
+    func testThe2026PadRefreshesLizardModeOnSdlsPeriodWhileItIsRead() {
+        let pad = output(.triton)
+        let plan = SteamPlan(generation: .triton, receiver: false)
         pad.claimed()
-        let lizardOff = SteamWrite(kind: .feature, reportId: 1, bytes: tritonLizardOffReport())
-        pollUntil { writer.writes.filter { $0 == lizardOff }.count >= 3 }
-        XCTAssertGreaterThanOrEqual(writer.writes.filter { $0 == lizardOff }.count, 3, "the configure's own, then the refreshes")
+        pad.drain()
+        XCTAssertEqual(refreshTicker.periodMs, TritonRumbleRule.lizardRefreshMs)
+        refreshTicker.tick()
+        refreshTicker.tick()
+        XCTAssertEqual(writer.writes, plan.onConnect + plan.refresh + plan.refresh, "the configure's own, then one per tick")
         pad.release()
         pad.drain()
-        let afterRelease = writer.writes.count
-        Thread.sleep(forTimeInterval: 0.08)
-        XCTAssertEqual(writer.writes.count, afterRelease, "the watchdog restores lizard mode once the refresh stops")
+        XCTAssertFalse(refreshTicker.running, "the watchdog restores lizard mode once the refresh stops")
     }
 
-    func testAControllerThatLeavesStopsTheRefresh() {
-        let slot = output(.triton, receiver: true, refreshMs: 20)
+    func testThe2015PadIsNeverRefreshed() {
+        let pad = output(.original)
+        pad.claimed()
+        pad.drain()
+        XCTAssertFalse(refreshTicker.running, "its quiet settings persist until it reboots")
+    }
+
+    func testAReceiversSlotIsRefreshedOnlyWhileItHoldsAController() {
+        let slot = output(.triton, receiver: true)
         slot.claimed()
+        slot.drain()
+        XCTAssertFalse(refreshTicker.running, "an empty slot has nothing to refresh")
         slot.controllerConnected()
+        slot.drain()
+        XCTAssertEqual(refreshTicker.periodMs, TritonRumbleRule.lizardRefreshMs)
         slot.controllerLeft()
         slot.drain()
-        let written = writer.writes.count
-        Thread.sleep(forTimeInterval: 0.08)
-        XCTAssertEqual(writer.writes.count, written)
+        XCTAssertFalse(refreshTicker.running)
     }
 
-    func testTheRumbleIsSentAtOnceResentAndStoppedWhenItsHoldEnds() {
+    // MARK: - The 2026 pad's rumble
+
+    func testTheRumbleIsSentAtOnceResentEveryFortyMillisecondsAndStoppedWhenItsHoldEnds() {
         let pad = output(.triton)
         pad.claimed()
         pad.rumble(strong: 0x8000, weak: 0x2000, durationMs: 150)
         pad.drain()
-        XCTAssertEqual(rumbleWrites.first, rumble(0x8000, 0x2000))
-        pollUntil { rumbleWrites.last == rumble(0, 0) }
-        let levels = rumbleWrites.filter { $0 == rumble(0x8000, 0x2000) }.count
-        XCTAssertGreaterThanOrEqual(levels, 2, "re-sent inside the firmware's 50 ms stop")
-        XCTAssertEqual(rumbleWrites.last, rumble(0, 0), "the hold ends the level")
+        let level = rumble(0x8000, 0x2000)
+        XCTAssertEqual(rumbleWrites, [level])
+        XCTAssertEqual(rumbleTicker.periodMs, TritonRumbleRule.resendMs)
+        tickRumble(afterMs: 40)
+        tickRumble(afterMs: 80)
+        tickRumble(afterMs: 120)
+        XCTAssertEqual(rumbleWrites, [level, level, level, level], "re-sent inside the firmware's 50 ms stop")
+        tickRumble(afterMs: 160)
+        XCTAssertEqual(rumbleWrites, [level, level, level, level, rumble(0, 0)], "the hold ends the level")
+        XCTAssertFalse(rumbleTicker.running)
+    }
+
+    func testEachCommandRestartsTheResendSoItIsCountedFromTheLastSend() {
+        let pad = output(.triton)
+        pad.claimed()
+        pad.rumble(strong: 1, weak: 1, durationMs: 500)
+        pad.drain()
+        clock.set(clockStartMs + 30)
+        pad.rumble(strong: 1, weak: 1, durationMs: 500)
+        pad.drain()
+        XCTAssertEqual(rumbleWrites, [rumble(1, 1), rumble(1, 1)])
+        XCTAssertEqual(rumbleTicker.starts, 2, "the next resend is 40 ms after the command, not after the tick before it")
     }
 
     func testAZeroRumbleStopsAtOnceAndIsNotResent() {
@@ -128,8 +172,18 @@ final class SteamOutputTests: XCTestCase {
         pad.rumble(strong: 0x8000, weak: 0, durationMs: 500)
         pad.rumble(strong: 0, weak: 0, durationMs: 500)
         pad.drain()
-        Thread.sleep(forTimeInterval: 0.1)
         XCTAssertEqual(rumbleWrites, [rumble(0x8000, 0), rumble(0, 0)])
+        XCTAssertFalse(rumbleTicker.running)
+    }
+
+    func testAReleaseMidHoldStopsTheResendAndStillsTheMotors() {
+        let pad = output(.triton)
+        pad.claimed()
+        pad.rumble(strong: 5, weak: 5, durationMs: 500)
+        pad.release()
+        pad.drain()
+        XCTAssertEqual(rumbleWrites, [rumble(5, 5), rumble(0, 0)])
+        XCTAssertFalse(rumbleTicker.running)
     }
 
     func testThe2015PadAndAPadNotReadTakeNoRumble() {
@@ -141,19 +195,23 @@ final class SteamOutputTests: XCTestCase {
         original.drain()
         unclaimed.drain()
         XCTAssertEqual(rumbleWrites, [], "no motors on the 2015 pad, and nothing to a pad Dish does not read")
+        XCTAssertFalse(rumbleTicker.running)
     }
 
     func testADeviceThatLeftIsSentNothingMore() {
-        let pad = output(.triton, refreshMs: 20)
+        let pad = output(.triton)
         pad.claimed()
         pad.deviceGone()
         pad.rumble(strong: 1, weak: 1, durationMs: 500)
         pad.release()
         pad.drain()
-        let written = writer.writes.count
-        Thread.sleep(forTimeInterval: 0.08)
-        XCTAssertEqual(writer.writes.count, written)
-        XCTAssertEqual(rumbleWrites, [])
+        XCTAssertEqual(writer.writes, SteamPlan(generation: .triton, receiver: false).onConnect, "the configure, then nothing")
+        XCTAssertFalse(refreshTicker.running)
+        XCTAssertFalse(rumbleTicker.running)
+    }
+
+    func testTheHoldIsCappedWhereTheGameControllerPathCapsIt() {
+        XCTAssertEqual(TritonRumbleRule.maxHoldMs, Int64(RumbleActuator.maxHoldMs))
     }
 
     // MARK: - A receiver under load
