@@ -5,8 +5,10 @@
 // full 0x30 reports only once its USB link runs at 3 Mbit and its timeout is
 // off, and macOS's driver leaves it silent, so Dish starts a pad it reads
 // that stays quiet: the handshake, the switch to 3 Mbit, the handshake again,
-// the timeout disable, then subcommand 0x03 "full report mode", in the order
-// Linux's hid-nintendo and SDL send them, each one full USB packet long.
+// the timeout disable, then subcommand 0x03 "full report mode" and
+// subcommand 0x40 "enable IMU", without which the Pro's IMU words stay zero,
+// in the order Linux's hid-nintendo and SDL send them, each one full USB
+// packet long.
 
 /// One packet of the start sequence, in the order the pad takes them.
 public enum SwitchStartStep: CaseIterable, Equatable, Sendable {
@@ -15,15 +17,17 @@ public enum SwitchStartStep: CaseIterable, Equatable, Sendable {
     case handshakeAtHighSpeed
     case disableTimeout
     case fullReportMode
+    case enableImu
 
-    /// The packet after this one; nil once the report mode is set.
+    /// The packet after this one; nil once the IMU is on.
     public var next: SwitchStartStep? {
         switch self {
         case .handshake: .highSpeed
         case .highSpeed: .handshakeAtHighSpeed
         case .handshakeAtHighSpeed: .disableTimeout
         case .disableTimeout: .fullReportMode
-        case .fullReportMode: nil
+        case .fullReportMode: .enableImu
+        case .enableImu: nil
         }
     }
 }
@@ -37,6 +41,8 @@ private let disableTimeoutBytes: [UInt8] = [0x80, 0x04]
 /// Report 0x01: the packet counter, the 8-byte neutral rumble pattern, then
 /// subcommand 0x03 with argument 0x30.
 private let fullReportModeBytes: [UInt8] = [0x01, 0x00, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x03, 0x30]
+/// The same report, the next packet counter, subcommand 0x40 with argument 0x01.
+private let enableImuBytes: [UInt8] = [0x01, 0x01, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x40, 0x01]
 
 /// The step's packet, padded to one USB packet.
 public func switchStartPacket(_ step: SwitchStartStep) -> [UInt8] {
@@ -56,6 +62,7 @@ private func switchStartBytes(_ step: SwitchStartStep) -> [UInt8] {
     case .highSpeed: highSpeedBytes
     case .disableTimeout: disableTimeoutBytes
     case .fullReportMode: fullReportModeBytes
+    case .enableImu: enableImuBytes
     }
 }
 
@@ -83,8 +90,10 @@ public enum SwitchStreamAction: Equatable, Sendable {
     case send(SwitchStartStep)
 }
 
-/// One pad's start sequence over time: never sent to a pad that streams, one
-/// packet per tick, and less often while sequences bring nothing.
+/// One pad's start sequence over time: never started for a pad that
+/// streams, finished once started (the Pro streams from the timeout
+/// disable, and the subcommands after it configure that stream), one packet
+/// per tick, and less often while sequences bring nothing.
 public struct SwitchStreamWatch: Equatable, Sendable {
     public let openedMs: Int64
     /// When the last sequence's handshake went out.
@@ -99,8 +108,8 @@ public struct SwitchStreamWatch: Equatable, Sendable {
     }
 
     public func due(lastFullReportMs: Int64?, nowMs: Int64) -> SwitchStreamAction {
-        if isStreaming(lastFullReportMs, nowMs) { return .streaming }
         if let step = nextStep { return .send(step) }
+        if isStreaming(lastFullReportMs, nowMs) { return .streaming }
         return mayStart(lastFullReportMs, nowMs) ? .send(.handshake) : .wait
     }
 
@@ -112,8 +121,8 @@ public struct SwitchStreamWatch: Equatable, Sendable {
         nextStep = step.next
     }
 
-    /// The pad streams: a sequence in flight is dropped, and a later stall
-    /// starts again at once, with the quick retries.
+    /// The pad streams after its sequence: a later stall starts again at
+    /// once, with the quick retries.
     public mutating func noteStreaming() {
         nextStep = nil
         lastStartMs = nil

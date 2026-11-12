@@ -283,19 +283,22 @@ stays on GameController.
   0x30 reports only once its link runs at 3 Mbit with its timeout off: the
   USB handshake (`80 02`), the switch to 3 Mbit (`80 03`), the handshake
   again (`80 02`), the timeout disable (`80 04`), then subcommand `03 30`,
-  full report mode, the order Linux's hid-nintendo and SDL send. A Pro sent
-  dish-android's three packets (the handshake, the timeout disable and the
-  report mode) stays silent. macOS's driver leaves the Pro and the N64
-  silent (a pad that streamed before was most likely started by Chrome's own
-  Nintendo support), so a lane that reads Switch reports marks the time of
-  each full report, and `SwitchStreamWatch` (DishCore) decides on a 250 ms
-  tick on the reader's thread: a pad that streams is never sent anything; a
-  silent one waits out a one-second grace for Apple's own handshake, then
-  gets the five packets, one per tick, so starting one pad never stalls
-  another's reports, and what is left of them once the pad streams is
-  dropped; a stream that stops for two seconds gets them again; sequences
-  that bring nothing repeat every three seconds, then every ten. Rumble over
-  HID goes only to the 2026 Steam Controller.
+  full report mode, and subcommand `40 01`, the IMU enable, the order
+  Linux's hid-nintendo and SDL send. A Pro sent dish-android's three packets
+  (the handshake, the timeout disable and the report mode) stays silent, and
+  a Pro never sent the IMU enable streams every IMU word as zero. macOS's
+  driver leaves the Pro and the N64 silent (a pad that streamed before was
+  most likely started by Chrome's own Nintendo support), so a lane that
+  reads Switch reports marks the time of each full report, and
+  `SwitchStreamWatch` (DishCore) decides on a 250 ms tick on the reader's
+  thread: a pad that streams is never started; a silent one waits out a
+  one-second grace for Apple's own handshake, then gets the six packets, one
+  per tick, so starting one pad never stalls another's reports, and a
+  sequence once started is finished, since the Pro streams from its fourth
+  packet and the two subcommands after it configure that stream; a stream
+  that stops for two seconds gets them again; sequences that bring nothing
+  repeat every three seconds, then every ten. Rumble over HID goes only to
+  the 2026 Steam Controller.
 - **Steam Controllers, on the user's word.** Reading one turns its keyboard
   and mouse emulation ("lizard mode") off, so its machine settles on
   `.offered`, the lane stays closed and Controllers shows its model's offer

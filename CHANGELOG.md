@@ -62,6 +62,11 @@ the repos share a version number.
   timeout disable, as Linux and SDL do, and the Pro streams within about
   two seconds of Dish opening it. The N64 and SNES Online pads get the same
   start.
+- **A Switch Pro Controller's motion reaches the host over a cable.** Dish
+  started the pad but never switched its motion sensors on, so every motion
+  reading it sent for the Pro was zero. Dish now sends the switch-on Linux
+  and SDL send once the pad streams, and at rest the pad's accelerometer
+  reads gravity. Which way each axis points is not yet checked on a pad.
 
 ## [1.2.1] - 2026-11-11
 

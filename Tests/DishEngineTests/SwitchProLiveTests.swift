@@ -9,20 +9,24 @@ import XCTest
 
 /// The Direct reader against a real Switch Pro Controller on USB, which
 /// macOS's driver leaves silent: the reader's own start sequence has to
-/// bring its full reports. It runs only with the pad attached and
-/// `DISH_LIVE_SWITCH_PRO=1`, from the pad's plugged-in state, and hands the
-/// pad back in it.
+/// bring its full reports, and its motion. It runs only with the pad
+/// attached and `DISH_LIVE_SWITCH_PRO=1`, from the pad's plugged-in state,
+/// and hands the pad back in it.
 final class SwitchProLiveTests: XCTestCase {
     private static let slotId = "hid:057e:2009"
     private static let streamDeadline: TimeInterval = 8
     /// A streaming Pro sends about 75 full reports a second on USB.
     private static let leastReportsPerSecond: UInt64 = 50
+    private static let motionDeadline: TimeInterval = 4
+    /// At rest the accelerometer reads gravity, whichever way the pad lies.
+    private static let restingG = 0.8 ... 1.2
 
     private static var enabled: Bool {
         ProcessInfo.processInfo.environment["DISH_LIVE_SWITCH_PRO"] == "1"
     }
 
     private let reader = IOKitHidPadReader()
+    private let processor = GamepadInputProcessor()
     private let arrivals = ArrivalLog()
 
     override func setUpWithError() throws {
@@ -43,13 +47,39 @@ final class SwitchProLiveTests: XCTestCase {
     }
 
     func testTheReaderBringsAQuietProToStreamItsFullReports() throws {
-        reader.start(wiring: LiveWiring.discarding(), events: HidPadEvents(arrived: arrivals.recorder(), removed: ignoreRemoval))
+        let lane = try streamingLane()
+        XCTAssertGreaterThanOrEqual(reportsInOneSecond(lane), Self.leastReportsPerSecond, "the stream keeps coming")
+    }
+
+    /// The Pro's IMU is off until subcommand 0x40 turns it on: every IMU
+    /// word of its full reports reads zero, however the pad lies.
+    func testAProAtRestReadsGravityOnItsAccelerometerOnceItStreams() throws {
+        _ = try streamingLane()
+        let readsGravity = waitUntil(Self.motionDeadline) { latestAccelG().map(Self.restingG.contains) ?? false }
+        let samples = processor.tallySnapshot().motion[Self.slotId] ?? 0
+        let last = String(describing: processor.latestInput(Self.slotId)?.motion)
+        XCTAssertTrue(readsGravity, "about 1 g within \(Self.motionDeadline) s; the last of \(samples) motion samples read \(last)")
+    }
+
+    /// The reader opens the Pro, the lane is routed Direct, and its first
+    /// full report has arrived.
+    private func streamingLane() throws -> HidPadLane {
+        reader.start(wiring: LiveWiring.into(processor), events: HidPadEvents(arrived: arrivals.recorder(), removed: ignoreRemoval))
         let lane = try XCTUnwrap(waitForLane(), "the reader opened the Pro")
         lane.gate.route(.direct)
         let streamed = waitUntil(Self.streamDeadline) { lane.latestBattery != nil }
         let reports = lane.tally.snapshot().reports
         XCTAssertTrue(streamed, "a full report within \(Self.streamDeadline) s; the pad sent \(reports) reports in all")
-        XCTAssertGreaterThanOrEqual(reportsInOneSecond(lane), Self.leastReportsPerSecond, "the stream keeps coming")
+        return lane
+    }
+
+    /// The last motion sample's acceleration in g, off the wire's ±4 g scale.
+    private func latestAccelG() -> Double? {
+        guard let motion = processor.latestInput(Self.slotId)?.motion else { return nil }
+        let x = Double(motion.accelX)
+        let y = Double(motion.accelY)
+        let z = Double(motion.accelZ)
+        return (x * x + y * y + z * z).squareRoot() / Double(scaleAccel(1))
     }
 
     private func reportsInOneSecond(_ lane: HidPadLane) -> UInt64 {
@@ -88,10 +118,11 @@ private final class ArrivalLog: Sendable {
 @Sendable
 private func ignoreRemoval(_: String) {}
 
-/// A lane's wiring that publishes into a processor nobody reads.
+/// A lane's wiring that publishes into the test's processor, whose records
+/// the test reads; nothing else listens.
 private enum LiveWiring {
-    static func discarding() -> HidPadWiring {
-        HidPadWiring(processor: GamepadInputProcessor(), notify: ignoreNotify, battery: ignoreBattery)
+    static func into(_ processor: GamepadInputProcessor) -> HidPadWiring {
+        HidPadWiring(processor: processor, notify: ignoreNotify, battery: ignoreBattery)
     }
 }
 
