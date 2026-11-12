@@ -45,6 +45,11 @@ the repos share a version number.
   no charge of its own sends the Mac's, a pad read directly included, which
   before sent no battery at all. The controller's card still shows the pad's
   own reading, and the Mac's battery is still read away from the main thread.
+- **A 2026 Steam Controller's battery byte above 100 reads as unknown.** The
+  pad's battery report carries a percent, and a value past 100 used to show,
+  and be sent, as a full battery. It now counts as an unknown level, as the
+  other Dish clients count it: the host hears the Mac's battery in its place
+  and the controller's card says the level is unknown.
 
 ### Fixed
 
