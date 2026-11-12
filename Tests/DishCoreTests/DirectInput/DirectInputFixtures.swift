@@ -282,7 +282,8 @@ struct TritonReportBytes {
 /// from the timeout disable that follows a handshake at 3 Mbit. The
 /// handshake, timeout disable and report mode alone, a handshake sent
 /// twice, and the 3 Mbit switch without the handshake after it each left
-/// it silent.
+/// it silent. Its IMU words read zero, at rest on a desk, until subcommand
+/// 0x40 turns the IMU on.
 struct CapturedSwitchPro {
     static let handshakeReply = paddedToOneUsbPacket([0x81, 0x02])
     static let highSpeedReply = paddedToOneUsbPacket([0x81, 0x03])
@@ -293,20 +294,31 @@ struct CapturedSwitchPro {
     /// At rest on its cable, the IMU frames all zero.
     static let idleFullReport = paddedToOneUsbPacket([0x30, 0xA7, 0x81, 0x00, 0x80, 0x00, 0x19, 0xB7, 0x7F, 0x4B, 0xF8, 0x82])
     static let fullReportModeSubcommand: [UInt8] = [0x01, 0x00, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x03, 0x30]
+    static let enableImuSubcommand: [UInt8] = [0x01, 0x01, 0x00, 0x01, 0x40, 0x40, 0x00, 0x01, 0x40, 0x40, 0x40, 0x01]
 
     private static let handshakeAtThreeMegabit: [[UInt8]] = [[0x80, 0x02], [0x80, 0x03], [0x80, 0x02]]
     private static let timeoutDisable: [UInt8] = [0x80, 0x04]
+    private static let subcommandReport: UInt8 = 0x01
+    private static let subcommandByte = 10
+    private static let enableImu: [UInt8] = [0x40, 0x01]
 
     /// Each packet's command: its first two bytes.
     private(set) var received: [[UInt8]] = []
     private(set) var streams = false
+    private(set) var imuOn = false
 
     mutating func receive(_ packet: [UInt8]) {
         let command = Array(packet.prefix(2))
         let lastThree = Array(received.suffix(Self.handshakeAtThreeMegabit.count))
         let disablesTheTimeoutAtThreeMegabit = command == Self.timeoutDisable && lastThree == Self.handshakeAtThreeMegabit
         if disablesTheTimeoutAtThreeMegabit { streams = true }
+        if Self.enablesTheImu(packet) { imuOn = true }
         received.append(command)
+    }
+
+    private static func enablesTheImu(_ packet: [UInt8]) -> Bool {
+        let subcommand = Array(packet.dropFirst(subcommandByte).prefix(enableImu.count))
+        return packet[0] == subcommandReport && subcommand == enableImu
     }
 }
 

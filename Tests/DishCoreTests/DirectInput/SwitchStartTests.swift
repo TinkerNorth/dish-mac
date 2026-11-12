@@ -34,6 +34,15 @@ final class SwitchStartTests: XCTestCase {
         XCTAssertEqual(switchStartPacket(.fullReportMode), usbPacket(CapturedSwitchPro.fullReportModeSubcommand))
     }
 
+    func testTheImuEnableIsTheSubcommandFortyWithArgumentOneBehindNeutralRumble() {
+        XCTAssertEqual(switchStartPacket(.enableImu), usbPacket(CapturedSwitchPro.enableImuSubcommand))
+    }
+
+    func testTheSubcommandsCountTheirPacketsInTheirSecondByte() {
+        XCTAssertEqual(switchStartPacket(.fullReportMode)[1], 0)
+        XCTAssertEqual(switchStartPacket(.enableImu)[1], 1)
+    }
+
     func testEveryPacketIsOneUsbPacketLongAndNamesItsReportInItsFirstByte() {
         for step in SwitchStartStep.allCases {
             let packet = switchStartPacket(step)
@@ -44,10 +53,22 @@ final class SwitchStartTests: XCTestCase {
 
     /// Linux's hid-nintendo and SDL open every Switch pad on USB in this
     /// order; dish-android's handshake, timeout disable and report mode
-    /// leave a Pro silent.
-    func testTheSequenceIsTheHandshakeAtThreeMegabitThenTheTimeoutDisableThenFullReportMode() {
-        let expected = [[0x80, 0x02], [0x80, 0x03], [0x80, 0x02], [0x80, 0x04], CapturedSwitchPro.fullReportModeSubcommand].map(usbPacket)
-        XCTAssertEqual(oneSequence().map(\.packet), expected)
+    /// leave a Pro silent, and without the IMU enable its IMU words read zero.
+    func testTheSequenceIsTheHandshakeAtThreeMegabitTheTimeoutDisableFullReportModeThenTheImuEnable() {
+        let commands: [[UInt8]] = [[0x80, 0x02], [0x80, 0x03], [0x80, 0x02], [0x80, 0x04]]
+        let subcommands = [CapturedSwitchPro.fullReportModeSubcommand, CapturedSwitchPro.enableImuSubcommand]
+        XCTAssertEqual(oneSequence().map(\.packet), (commands + subcommands).map(usbPacket))
+    }
+
+    func testEachStepNamesTheOneAfterItAndTheImuEnableEndsTheSequence() {
+        var steps: [SwitchStartStep] = []
+        var step: SwitchStartStep? = .handshake
+        while let current = step {
+            steps.append(current)
+            step = current.next
+        }
+        XCTAssertEqual(steps, SwitchStartStep.allCases)
+        XCTAssertEqual(steps.last, .enableImu)
     }
 
     // MARK: - The Pro, as it answered on a Mac
@@ -58,6 +79,14 @@ final class SwitchStartTests: XCTestCase {
             pad.receive(sent.packet)
         }
         XCTAssertTrue(pad.streams, "the Pro took \(pad.received.count) packets and stayed silent")
+    }
+
+    func testTheProsImuIsOnOnceTheSequenceEnds() {
+        var pad = CapturedSwitchPro()
+        for sent in oneSequence() {
+            pad.receive(sent.packet)
+        }
+        XCTAssertTrue(pad.imuOn, "the Pro took \(pad.received.count) packets and its IMU words stayed zero")
     }
 
     func testTheProsAnswersBeforeItStreamsAreNoFullReports() {
@@ -132,13 +161,28 @@ final class SwitchStartTests: XCTestCase {
         XCTAssertEqual(watch.due(lastFullReportMs: lastReport, nowMs: lastReport + SwitchStreamRule.stallMs), .send(.handshake))
     }
 
-    func testAStreamThatStartsMidSequenceDropsTheRestOfIt() {
+    /// The Pro streams from the timeout disable, the fourth packet: the
+    /// report mode and the IMU enable still go out, and then nothing more.
+    func testAStreamThatStartsMidSequenceStillGetsTheRestOfItAndNoNewOne() {
         var watch = SwitchStreamWatch(openedMs: opened)
         let start = opened + SwitchStreamRule.graceMs
-        watch.noteSent(.handshake, nowMs: start)
-        XCTAssertEqual(watch.due(lastFullReportMs: start + 100, nowMs: start + tickMs), .streaming)
+        for step in [SwitchStartStep.handshake, .highSpeed, .handshakeAtHighSpeed, .disableTimeout] {
+            watch.noteSent(step, nowMs: start)
+        }
+        let streamingFrom = start + 100
+        XCTAssertEqual(watch.due(lastFullReportMs: streamingFrom, nowMs: start + tickMs), .send(.fullReportMode))
+        watch.noteSent(.fullReportMode, nowMs: start + tickMs)
+        XCTAssertEqual(watch.due(lastFullReportMs: streamingFrom, nowMs: start + 2 * tickMs), .send(.enableImu))
+        watch.noteSent(.enableImu, nowMs: start + 2 * tickMs)
+        XCTAssertEqual(watch.due(lastFullReportMs: streamingFrom, nowMs: start + 3 * tickMs), .streaming)
+    }
+
+    func testAStreamAfterASequenceStartsAgainOnlyOnceItStalls() {
+        var watch = sentOneSequence(at: opened + SwitchStreamRule.graceMs)
+        let streamingFrom = opened + SwitchStreamRule.graceMs + 100
         watch.noteStreaming()
-        XCTAssertEqual(watch.due(lastFullReportMs: start + 100, nowMs: start + SwitchStreamRule.stallMs + 100), .send(.handshake))
+        XCTAssertEqual(watch.due(lastFullReportMs: streamingFrom, nowMs: streamingFrom + SwitchStreamRule.stallMs - 1), .streaming)
+        XCTAssertEqual(watch.due(lastFullReportMs: streamingFrom, nowMs: streamingFrom + SwitchStreamRule.stallMs), .send(.handshake))
     }
 
     // MARK: - Helpers
