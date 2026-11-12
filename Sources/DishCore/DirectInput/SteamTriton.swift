@@ -159,8 +159,13 @@ private func tritonMotion(_ report: UnsafeBufferPointer<UInt8>) -> MotionSample?
 
 private func tritonBattery(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? {
     guard report.count >= TritonLayout.batteryLength else { return nil }
-    let level = min(report[TritonLayout.batteryLevel], TritonLayout.percentMax)
+    let level = tritonBatteryLevel(report[TritonLayout.batteryLevel])
     return .battery(PadBattery(level: level, status: tritonBatteryStatus(report[TritonLayout.chargeState])))
+}
+
+/// SDL passes the byte through; a value past a percent reads as unknown.
+func tritonBatteryLevel(_ byte: UInt8) -> UInt8 {
+    byte <= TritonLayout.percentMax ? byte : ProtocolConstants.batteryLevelUnknown
 }
 
 func tritonBatteryStatus(_ chargeState: UInt8) -> BatteryStatus {

@@ -163,8 +163,15 @@ final class SteamTritonTests: XCTestCase {
         }
     }
 
-    func testAPercentPastFullReadsFull() {
-        XCTAssertEqual(TritonReportBytes.battery(chargeState: 2, level: 180).decode(), .battery(PadBattery(level: 100, status: .charging)))
+    func testAPercentPastFullIsUnknownAsTheOtherClientsReadIt() {
+        for level: UInt8 in [101, 180, 255] {
+            XCTAssertEqual(
+                TritonReportBytes.battery(chargeState: 2, level: level).decode(),
+                .battery(PadBattery(level: ProtocolConstants.batteryLevelUnknown, status: .charging)),
+                "SDL passes the byte through, and \(level) is no percent the wire carries"
+            )
+        }
+        XCTAssertEqual(TritonReportBytes.battery(chargeState: 2, level: 100).decode(), .battery(PadBattery(level: 100, status: .charging)))
     }
 
     func testAShortBatteryReportIsNothing() {
