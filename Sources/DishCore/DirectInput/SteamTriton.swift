@@ -36,6 +36,8 @@ enum TritonLayout {
     static let rightTrigger = 8
     static let leftStick = 10
     static let rightStick = 14
+    static let imuTick = 30
+    static let imuTick16 = 32
     static let accel = 34
     static let gyro = 40
     static let chargeState = 1
@@ -93,31 +95,43 @@ let tritonButtonBits = [
     SteamButtonBit(mask: TritonButtonMask.dpadRight, button: .dpadRight)
 ]
 
+/// The pad's decode state that spans reports: the tick of the last IMU
+/// sample published, SDL's `last_sensor_tick32`, which starts at zero.
+public struct TritonCarry: Equatable, Sendable {
+    public var imuTick: UInt32 = 0
+
+    public init() {}
+}
+
 /// Nil for a report this decoder does not read, or one too short to.
-public func decodeTritonReport(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? {
+public func decodeTritonReport(_ report: UnsafeBufferPointer<UInt8>, carry: inout TritonCarry) -> SteamReading? {
     guard let reportId = report.first else { return nil }
     switch reportId {
-    case TritonReportId.state, TritonReportId.stateBle, TritonReportId.stateTimestamp: return tritonState(report)
+    case TritonReportId.state, TritonReportId.stateBle, TritonReportId.stateTimestamp: return tritonState(report, carry: &carry)
     case TritonReportId.battery: return tritonBattery(report)
     case TritonReportId.wireless, TritonReportId.wirelessX: return tritonLink(report)
     default: return nil
     }
 }
 
-/// The four button bytes as one little-endian word, read one by one so a
-/// report builds nothing.
-private func tritonButtonWord(_ report: UnsafeBufferPointer<UInt8>) -> UInt32 {
-    let byte0 = UInt32(report[TritonLayout.buttons])
-    let byte1 = UInt32(report[TritonLayout.buttons + 1]) << 8
-    let byte2 = UInt32(report[TritonLayout.buttons + 2]) << 16
-    let byte3 = UInt32(report[TritonLayout.buttons + 3]) << 24
+/// Four bytes as one little-endian word, read one by one so a report
+/// builds nothing.
+private func tritonWord32(_ report: UnsafeBufferPointer<UInt8>, _ offset: Int) -> UInt32 {
+    let byte0 = UInt32(report[offset])
+    let byte1 = UInt32(report[offset + 1]) << 8
+    let byte2 = UInt32(report[offset + 2]) << 16
+    let byte3 = UInt32(report[offset + 3]) << 24
     return byte0 | byte1 | byte2 | byte3
 }
 
+private func tritonWord16(_ report: UnsafeBufferPointer<UInt8>, _ offset: Int) -> UInt16 {
+    UInt16(report[offset]) | UInt16(report[offset + 1]) << 8
+}
+
 /// The sticks are up-positive, as the wire is; the triggers run 0...32767.
-private func tritonState(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? {
+private func tritonState(_ report: UnsafeBufferPointer<UInt8>, carry: inout TritonCarry) -> SteamReading? {
     guard report.count >= TritonLayout.stateLength else { return nil }
-    let buttons = steamButtons(tritonButtonWord(report), tritonButtonBits)
+    let buttons = steamButtons(tritonWord32(report, TritonLayout.buttons), tritonButtonBits)
     let state = GamepadReport(
         buttons: buttons.rawValue,
         lt: tritonTrigger(steamLe16(report, TritonLayout.leftTrigger)),
@@ -127,7 +141,7 @@ private func tritonState(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? 
         rx: steamLe16(report, TritonLayout.rightStick),
         ry: steamLe16(report, TritonLayout.rightStick + 2)
     )
-    return .state(state, motion: tritonMotion(report))
+    return .state(state, motion: tritonMotion(report, carry: &carry))
 }
 
 func tritonTrigger(_ raw: Int16) -> UInt8 {
@@ -135,18 +149,31 @@ func tritonTrigger(_ raw: Int16) -> UInt8 {
     return UInt8(clamping: pulled * 255 / TritonLayout.triggerMax)
 }
 
+/// The sample once, on the tick that brought it, as SDL publishes it.
+private func tritonMotion(_ report: UnsafeBufferPointer<UInt8>, carry: inout TritonCarry) -> MotionSample? {
+    let tick = tritonImuTick(report)
+    guard tick != carry.imuTick else { return nil }
+    carry.imuTick = tick
+    return tritonSample(report)
+}
+
+/// `TritonMTUIMUNoQuat_t` leads with a 32-bit tick; the timestamped
+/// report's `TritonMTUIMUNoQuat32usTS_t` with a 16-bit one, two bytes on.
+private func tritonImuTick(_ report: UnsafeBufferPointer<UInt8>) -> UInt32 {
+    let timestamped = report[0] == TritonReportId.stateTimestamp
+    guard !timestamped else { return UInt32(tritonWord16(report, TritonLayout.imuTick16)) }
+    return tritonWord32(report, TritonLayout.imuTick)
+}
+
 /// SDL's axes onto the wire: pitch on gyro X, yaw on gyro Z, roll on minus
-/// gyro Y; accel X, Z and minus Y. An all-zero block is a sensor that was
-/// never switched on.
-private func tritonMotion(_ report: UnsafeBufferPointer<UInt8>) -> MotionSample? {
+/// gyro Y; accel X, Z and minus Y.
+private func tritonSample(_ report: UnsafeBufferPointer<UInt8>) -> MotionSample {
     let ax = Int32(steamLe16(report, TritonLayout.accel))
     let ay = Int32(steamLe16(report, TritonLayout.accel + 2))
     let az = Int32(steamLe16(report, TritonLayout.accel + 4))
     let gx = Int32(steamLe16(report, TritonLayout.gyro))
     let gy = Int32(steamLe16(report, TritonLayout.gyro + 2))
     let gz = Int32(steamLe16(report, TritonLayout.gyro + 4))
-    let silent = (ax | ay | az | gx | gy | gz) == 0
-    guard !silent else { return nil }
     return MotionSample(
         gyroX: steamGyroToWire(gx),
         gyroY: steamGyroToWire(gz),

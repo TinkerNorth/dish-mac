@@ -90,6 +90,14 @@ the repos share a version number.
   timeout disable, as Linux and SDL do, and the Pro streams within about
   two seconds of Dish opening it. The N64 and SNES Online pads get the same
   start.
+- **The 2026 Steam Controller's motion reaches the host once per sensor
+  sample.** A state report can carry the sensor sample the report before it
+  carried, and Dish sent the host a motion sample for every state report
+  whose sensor words were not all zero, so one sample could arrive several
+  times. A sample now goes out once, when the report's sensor tick is new,
+  as SDL and the other Dish clients send it, and a pad at rest whose sample
+  reads all zeros on a new tick is sent as the stillness it is rather than
+  dropped.
 
 ## [1.2.1] - 2026-11-11
 

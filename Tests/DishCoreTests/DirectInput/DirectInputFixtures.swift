@@ -215,15 +215,27 @@ struct SteamPacketBytes {
 struct TritonReportBytes {
     var bytes: [UInt8]
 
-    /// A state report with the 32-bit button word at bytes 2...5.
-    static func state(_ buttons: UInt32 = 0, reportId: UInt8 = 0x42, length: Int = 46) -> TritonReportBytes {
+    /// A state report with the 32-bit button word at bytes 2...5 and the
+    /// IMU tick where the report's shape keeps it.
+    static func state(_ buttons: UInt32 = 0, reportId: UInt8 = 0x42, length: Int = 46, imuTick: UInt32 = 0) -> TritonReportBytes {
         var report = TritonReportBytes(bytes: [UInt8](repeating: 0, count: length))
         report.bytes[0] = reportId
         report.bytes[2] = UInt8(buttons & 0xFF)
         report.bytes[3] = UInt8((buttons >> 8) & 0xFF)
         report.bytes[4] = UInt8((buttons >> 16) & 0xFF)
         report.bytes[5] = UInt8((buttons >> 24) & 0xFF)
+        report.setImuTick(imuTick)
         return report
+    }
+
+    /// Four bytes at 30 (`TritonMTUIMUNoQuat_t`), or two at 32 on the
+    /// timestamped report 0x47 (`TritonMTUIMUNoQuat32usTS_t`).
+    mutating func setImuTick(_ tick: UInt32) {
+        if bytes[0] == 0x47 {
+            setLe16(32, Int16(truncatingIfNeeded: tick))
+        } else {
+            setLe32(30, tick)
+        }
     }
 
     /// `TritonBatteryStatus_t`: the charge state, then the percent.
@@ -246,8 +258,21 @@ struct TritonReportBytes {
         bytes[offset + 1] = UInt8(word >> 8)
     }
 
+    mutating func setLe32(_ offset: Int, _ value: UInt32) {
+        bytes[offset] = UInt8(value & 0xFF)
+        bytes[offset + 1] = UInt8((value >> 8) & 0xFF)
+        bytes[offset + 2] = UInt8((value >> 16) & 0xFF)
+        bytes[offset + 3] = UInt8((value >> 24) & 0xFF)
+    }
+
+    func decode(carry: inout TritonCarry) -> SteamReading? {
+        bytes.withUnsafeBufferPointer { decodeTritonReport($0, carry: &carry) }
+    }
+
+    /// Decoded as a pad's first report, against a fresh carry.
     func decode() -> SteamReading? {
-        bytes.withUnsafeBufferPointer { decodeTritonReport($0) }
+        var carry = TritonCarry()
+        return decode(carry: &carry)
     }
 }
 
