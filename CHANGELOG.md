@@ -63,6 +63,13 @@ the repos share a version number.
   reports at the same cadence as before, with one refinement: a new rumble
   command restarts the 40 ms count from itself, as SDL counts it, instead of
   from the last tick.
+- **The pad record's torn-read test no longer depends on who runs first.**
+  The test that checks the window never reads a pad's record half written
+  let the pad's thread write a fixed number of reports while the window
+  read alongside, and on a busy build machine the writer finished before
+  the window got one read in, so the test checked nothing and failed. The
+  window now decides how long the run is: the pad's thread writes until the
+  window has read the record twenty thousand times beside it.
 - **The audio output test no longer depends on the Mac's default output.**
   It used to play silence into whatever the Mac's sound output was set to,
   and a DisplayPort monitor's speakers can refuse to start for minutes after
