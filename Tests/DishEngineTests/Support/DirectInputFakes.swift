@@ -305,11 +305,45 @@ final class FakeReportWriter: HidReportWriting, @unchecked Sendable {
     }
 }
 
-/// Polls for a condition the output's own timers make true.
-func pollUntil(seconds: TimeInterval = 2, _ condition: () -> Bool) {
-    let deadline = Date().addingTimeInterval(seconds)
-    while Date() < deadline, !condition() {
-        Thread.sleep(forTimeInterval: 0.005)
+/// A ticker the test fires by hand: each tick runs on the queue the ticker
+/// was started on and has run when `tick()` returns; once stopped it ticks
+/// nothing, as a cancelled timer fires nothing.
+final class ManualQueueTicker: QueueTicker, @unchecked Sendable {
+    private struct Cadence {
+        let periodMs: Int64
+        let queue: DispatchQueue
+        let tick: @Sendable () -> Void
+    }
+
+    private let cadenceBox = LockedBox<Cadence?>(nil)
+    private let startsBox = LockedBox(0)
+
+    /// The period asked for; nil while stopped.
+    var periodMs: Int64? {
+        cadenceBox.get()?.periodMs
+    }
+
+    var running: Bool {
+        periodMs != nil
+    }
+
+    /// Every start, a restart included.
+    var starts: Int {
+        startsBox.get()
+    }
+
+    func start(everyMs: Int64, on queue: DispatchQueue, _ tick: @escaping @Sendable () -> Void) {
+        cadenceBox.set(Cadence(periodMs: everyMs, queue: queue, tick: tick))
+        startsBox.mutate { $0 += 1 }
+    }
+
+    func stop() {
+        cadenceBox.set(nil)
+    }
+
+    func tick() {
+        guard let cadence = cadenceBox.get() else { return }
+        cadence.queue.sync(execute: cadence.tick)
     }
 }
 

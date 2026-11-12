@@ -22,7 +22,7 @@ extension WifiConnectionManager {
     /// probe and open the pairing card.
     func pairAndConnect(conn: WifiConnection, server: DiscoveredServer, intent: ConnectIntent) async {
         let id = WifiConnection.idFor(server)
-        let hasStoredKey = store.sharedKey(for: id)?.count == 64
+        let hasStoredKey = await store.keyReader.pairingKeyHex(for: id)?.count == 64
         if hasStoredKey {
             await openSession(conn: conn, server: server, intent: intent)
             return

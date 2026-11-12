@@ -14,9 +14,10 @@ import Security
 /// Storage for per-satellite pairing keys (64-char hex), keyed by the stable
 /// satellite id (`mid:<machineId>` / legacy `wifi:<ip>:<port>`).
 ///
-/// Implementations must be safe to call from any thread — the manager calls
-/// on the main actor, tests from XCTest queues.
-protocol KeyStore {
+/// Implementations must be safe to call from any thread: the manager reads
+/// through `PairingKeyReader`'s queue, the store writes on the main actor,
+/// tests call from XCTest queues.
+protocol KeyStore: Sendable {
     /// The stored key, or nil when absent (or unreadable).
     func pairingKeyHex(for id: String) -> String?
     /// Persist (insert or replace) a key. Returns false when the backing
@@ -31,8 +32,8 @@ protocol KeyStore {
 /// Keychain-backed production store: one `kSecClassGenericPassword` item per
 /// satellite, service-scoped so the items are recognizably ours in Keychain
 /// Access. Uses the login keychain (no data-protection flag): the app is not
-/// sandboxed/entitled, and generic-password items created by this app are
-/// readable by it without a user prompt.
+/// sandboxed/entitled. An item's access list names the builds that may read
+/// it by code hash, so any other build's read waits on macOS's prompt.
 final class KeychainKeyStore: KeyStore {
 
     /// `kSecAttrService` value for every item this store owns.

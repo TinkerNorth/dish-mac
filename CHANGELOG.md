@@ -45,15 +45,43 @@ the repos share a version number.
   no charge of its own sends the Mac's, a pad read directly included, which
   before sent no battery at all. The controller's card still shows the pad's
   own reading, and the Mac's battery is still read away from the main thread.
+- **A 2026 Steam Controller's battery byte above 100 reads as unknown.** The
+  pad's battery report carries a percent, and a value past 100 used to show,
+  and be sent, as a full battery. It now counts as an unknown level, as the
+  other Dish clients count it: the host hears the Mac's battery in its place
+  and the controller's card says the level is unknown.
 
 ### Fixed
 
+- **The 2026 Steam Controller's rumble and lizard-mode tests no longer race
+  the clock.** The output that re-sends the pad's rumble every 40 ms and
+  turns its keyboard and mouse off again every 3 s took its ticks from
+  dispatch timers, and the tests slept and polled around them, so a busy
+  build machine could run one tick late and fail the suite for a pad that
+  was behaving. The ticks now come through a seam the tests drive by hand,
+  the tests assert the exact reports written, and the pad is sent the same
+  reports at the same cadence as before, with one refinement: a new rumble
+  command restarts the 40 ms count from itself, as SDL counts it, instead of
+  from the last tick.
+- **The pad record's torn-read test no longer depends on who runs first.**
+  The test that checks the window never reads a pad's record half written
+  let the pad's thread write a fixed number of reports while the window
+  read alongside, and on a busy build machine the writer finished before
+  the window got one read in, so the test checked nothing and failed. The
+  window now decides how long the run is: the pad's thread writes until the
+  window has read the record twenty thousand times beside it.
 - **The audio output test no longer depends on the Mac's default output.**
   It used to play silence into whatever the Mac's sound output was set to,
   and a DisplayPort monitor's speakers can refuse to start for minutes after
   the display wakes, which failed the test on a developer's Mac though Dish
   never plays a pad's audio to a monitor. It now plays into a USB output,
   the kind every pad's audio is, or into the Mac's own or a virtual one.
+- **The launch check leaves the developer's own Dish alone.** It launched the
+  app under a throwaway preferences home, but on macOS 27 the preferences
+  daemon honours that home for reads alone, so the launch's first-run writes,
+  a fresh device identity among them, could land in the developer's real
+  preferences. The check now keeps the app off the daemon, so it reads and
+  writes nothing but its own.
 - **A Switch Pro Controller on a cable reaches Dish.** Plugged into a Mac,
   the Pro stays silent until something starts it, and Dish's start left it
   silent: Dish sent it the handshake, the timeout disable and full report
@@ -67,6 +95,22 @@ the repos share a version number.
   reading it sent for the Pro was zero. Dish now sends the switch-on Linux
   and SDL send once the pad streams, and at rest the pad's accelerometer
   reads gravity. Which way each axis points is not yet checked on a pad.
+- **The 2026 Steam Controller's motion reaches the host once per sensor
+  sample.** A state report can carry the sensor sample the report before it
+  carried, and Dish sent the host a motion sample for every state report
+  whose sensor words were not all zero, so one sample could arrive several
+  times. A sample now goes out once, when the report's sensor tick is new,
+  as SDL and the other Dish clients send it, and a pad at rest whose sample
+  reads all zeros on a new tick is sent as the stillness it is rather than
+  dropped.
+- **Dish's window keeps working while macOS asks about the keychain.** Each
+  release is signed on its own, so the first time a new version reads a
+  satellite's pairing key, macOS asks whether Dish may use it. Dish asked
+  on the thread that draws its window, so the window froze until the
+  question was answered, at launch and again whenever the key was read.
+  The key is now read in the background, and the window keeps drawing
+  while macOS waits for the answer. The key stays in the login keychain,
+  as before.
 
 ## [1.2.1] - 2026-11-11
 

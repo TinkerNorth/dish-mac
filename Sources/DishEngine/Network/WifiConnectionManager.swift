@@ -267,37 +267,57 @@ package final class WifiConnectionManager: ObservableObject {
         }
     }
 
+    /// Where a closed session's `DELETE /api/connections/{id}` goes.
+    struct SessionClose {
+        let id: String
+        let server: DiscoveredServer
+        let connectionId: String
+    }
+
     /// Graceful close: `DELETE /api/connections/{id}`. The row and the key
     /// survive, and no scheduled retry resurrects a session the user closed.
     func disconnect(id: String) {
-        guard let conn = connections[id] else { return }
+        guard let close = closeLocally(id) else { return }
+        Task { await closeRemotely(close) }
+    }
+
+    /// The row stops linking at once; nil when the satellite holds no
+    /// session of ours to close.
+    private func closeLocally(_ id: String) -> SessionClose? {
+        guard let conn = connections[id] else { return nil }
         dropPairing(id)
-        let server = conn.server
-        let connectionId = conn.connectionId
-        let did = deviceId
-        let proof = proofFor(id)
+        let close = conn.connectionId.map { SessionClose(id: id, server: conn.server, connectionId: $0) }
         conn.markDisconnected()
         clearRetry(id)
-        guard let connectionId else { return }
+        return close
+    }
+
+    private func closeRemotely(_ close: SessionClose) async {
+        let proof = await proofFor(close.id)
+        sendClose(close, proof: proof)
+    }
+
+    private func sendClose(_ close: SessionClose, proof: String) {
+        let did = deviceId
         let http = http
         Task.detached(priority: .utility) {
             await http.deleteSession(
-                ip: server.ip,
-                port: server.httpPort,
-                connectionId: connectionId,
+                ip: close.server.ip,
+                port: close.server.httpPort,
+                connectionId: close.connectionId,
                 deviceId: did,
                 hmacProof: proof
             )
         }
     }
 
-    /// Forget self-unpairs server-side (`DELETE /api/pair`) before the key is
-    /// dropped, because the proof needs the key; then the row, the key, the
-    /// pin, the catalog and every retry marker go.
+    /// Forget self-unpairs server-side (`DELETE /api/pair`) and closes the
+    /// session before the key is dropped, because both proofs need the key;
+    /// the row, the pin, the catalog and every retry marker go at once.
     func forget(id: String) {
+        let endpoint = rememberedEndpoint(id)
         dropPairing(id)
-        selfUnpair(id)
-        disconnect(id: id)
+        let close = closeLocally(id)
         store.forget(id)
         connections.removeValue(forKey: id)
         perConnCancellables.removeValue(forKey: id)
@@ -308,11 +328,19 @@ package final class WifiConnectionManager: ObservableObject {
         clearStale(id)
         clearRetry(id)
         recomputeAnyRegistering()
+        Task { await signOff(id, endpoint: endpoint, close: close) }
     }
 
-    private func selfUnpair(_ id: String) {
-        let proof = proofFor(id)
-        guard let endpoint = rememberedEndpoint(id), !proof.isEmpty else { return }
+    /// The key is read once for both proofs, and dropped once they are made.
+    private func signOff(_ id: String, endpoint: SatelliteEndpoint?, close: SessionClose?) async {
+        let proof = await proofFor(id)
+        selfUnpair(endpoint, proof: proof)
+        if let close { sendClose(close, proof: proof) }
+        store.forgetKey(for: id)
+    }
+
+    private func selfUnpair(_ endpoint: SatelliteEndpoint?, proof: String) {
+        guard let endpoint, !proof.isEmpty else { return }
         let did = deviceId
         let http = http
         Task.detached(priority: .utility) {
@@ -320,25 +348,31 @@ package final class WifiConnectionManager: ObservableObject {
         }
     }
 
-    private func rememberedEndpoint(_ id: String) -> (ip: String, httpPort: Int)? {
+    /// Where a satellite's REST control plane answers.
+    struct SatelliteEndpoint {
+        let ip: String
+        let httpPort: Int
+    }
+
+    private func rememberedEndpoint(_ id: String) -> SatelliteEndpoint? {
         if let pooled = connections[id] {
-            return (pooled.server.ip, pooled.server.httpPort)
+            return SatelliteEndpoint(ip: pooled.server.ip, httpPort: pooled.server.httpPort)
         }
-        return store.remembered().first { $0.id == id }.map { ($0.ip, $0.httpPort) }
+        return store.remembered().first { $0.id == id }.map { SatelliteEndpoint(ip: $0.ip, httpPort: $0.httpPort) }
     }
 
     // MARK: - Auth material
 
-    /// The stored pairing key as raw bytes, or nil when absent or malformed.
-    func pairingKeyData(for id: String) -> Data? {
-        guard let hex = store.sharedKey(for: id), hex.count == 64,
-              let data = hexToBytes(hex), data.count == 32 else { return nil }
-        return data
+    /// The stored pairing key as raw bytes, or nil when absent or malformed,
+    /// read off the main actor (`PairingKeyReader`).
+    func pairingKeyData(for id: String) async -> Data? {
+        let hex = await store.keyReader.pairingKeyHex(for: id)
+        return hex.flatMap(pairingKeyBytes)
     }
 
     /// The `X-Hmac-Proof` header value; empty when no key is stored.
-    func proofFor(_ id: String) -> String {
-        guard let key = pairingKeyData(for: id) else { return "" }
+    func proofFor(_ id: String) async -> String {
+        guard let key = await pairingKeyData(for: id) else { return "" }
         return SessionCrypto.hmacProofHex(pairingKey: key, deviceId: deviceId)
     }
 
@@ -398,4 +432,10 @@ package final class WifiConnectionManager: ObservableObject {
     package func remembered() -> [RememberedWifi] {
         store.remembered()
     }
+}
+
+/// A stored key's 32 bytes, from its 64 hex characters.
+private func pairingKeyBytes(_ hex: String) -> Data? {
+    guard hex.count == 64, let data = hexToBytes(hex), data.count == 32 else { return nil }
+    return data
 }

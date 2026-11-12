@@ -32,30 +32,50 @@ final class PadFeedTests: XCTestCase {
         XCTAssertEqual(GamepadInputProcessor.Deadzones(packed: zones.packed), zones)
     }
 
-    /// The pad's thread writes reports whose fields all carry one number;
-    /// the main actor reads the record meanwhile. A read that mixed two
-    /// writes would hold two numbers.
+    /// The reads the main actor makes while the pad's thread keeps writing;
+    /// the writer stops only once they are made, so no runner's scheduling
+    /// can finish it before the reader starts.
+    private static let consistentReads = 20000
+    /// Reads that come back busy or empty beyond this count fail the test
+    /// instead of spinning it forever.
+    private static let readAttempts = 20_000_000
+
+    /// The pad's thread writes reports whose fields all carry one number
+    /// until the main actor has read the record thousands of times
+    /// meanwhile. A read that mixed two writes would hold two numbers.
     func testTheMainActorNeverReadsARecordHalfWritten() {
         let processor = GamepadInputProcessor()
         let feed = processor.feed(for: "pad")
-        let done = DispatchSemaphore(value: 0)
-        let writes = 20000
+        let stop = AtomicBool(false)
+        let published = AtomicInt(0)
+        let stopped = DispatchSemaphore(value: 0)
         Thread {
-            for step in 1 ... writes {
+            var step = 0
+            while !stop.get() {
+                step += 1
                 let value = Int16(truncatingIfNeeded: step)
                 feed.publish(GamepadReport(buttons: UInt16(bitPattern: value), lx: value, ly: value, rx: value, ry: value))
             }
-            done.signal()
+            published.set(step)
+            stopped.signal()
         }.start()
         var reads = 0
-        while done.wait(timeout: .now()) == .timedOut {
+        var attempts = 0
+        while reads < Self.consistentReads, attempts < Self.readAttempts {
+            attempts += 1
             guard let input = processor.latestInput("pad"), let raw = input.raw else { continue }
             reads += 1
             XCTAssertEqual(Set([raw.lx, raw.ly, raw.rx, raw.ry, Int16(bitPattern: raw.buttons)]).count, 1, "one write's fields")
             XCTAssertEqual(input.filtered, raw, "no dead zone, so the host's view is the pad's")
         }
-        XCTAssertGreaterThan(reads, 0)
-        XCTAssertEqual(processor.latestInput("pad")?.reports, UInt64(writes))
+        stop.set(true)
+        XCTAssertEqual(stopped.wait(timeout: .now() + 5), .success)
+        XCTAssertEqual(reads, Self.consistentReads, "every read was made while the pad kept writing")
+        XCTAssertEqual(
+            processor.latestInput("pad")?.reports,
+            UInt64(published.get()),
+            "the writer stopped after the reads, having published every report counted"
+        )
     }
 
     /// A route posted from the main actor while another thread publishes
