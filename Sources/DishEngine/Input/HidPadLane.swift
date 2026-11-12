@@ -133,6 +133,7 @@ final class HidPadLane: @unchecked Sendable {
     private(set) var lastFullReportNs: UInt64?
     private var calibration = SwitchStickCalibration()
     private var steamHold = SteamStickHold()
+    private var tritonCarry = TritonCarry()
     private var lastSeen: GamepadReport?
     private var lastPublished: GamepadReport?
     private var lastBattery: PadBattery?
@@ -236,7 +237,7 @@ final class HidPadLane: @unchecked Sendable {
     private func decodeSteam(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? {
         switch candidate.decoder {
         case .steamController: decodeSteamControllerPacket(report, hold: &steamHold)
-        case .steamTriton: decodeTritonReport(report)
+        case .steamTriton: decodeTritonReport(report, carry: &tritonCarry)
         case .switchReport, .hidGamepad: nil
         }
     }

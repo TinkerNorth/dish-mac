@@ -7,7 +7,7 @@ import XCTest
 /// The 2026 Steam Controller's input reports and the reports Dish sends it:
 /// SDL's `SDL_hidapi_steam_triton.c` and `controller_structs.h` read byte by
 /// byte, the button and axis mapping SDL's and the Linux `hid-steam` table's,
-/// which agree.
+/// which agree, and motion once per IMU tick, as SDL publishes it.
 final class SteamTritonTests: XCTestCase {
 
     private enum Button {
@@ -39,6 +39,8 @@ final class SteamTritonTests: XCTestCase {
         static let gripTouches: UInt32 = 0x3000_0000
     }
 
+    private static let stillSample = MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0)
+
     private func report(_ bytes: TritonReportBytes) throws -> GamepadReport {
         guard case let .state(report, _) = bytes.decode() else {
             XCTFail("not a state report")
@@ -47,9 +49,22 @@ final class SteamTritonTests: XCTestCase {
         return report
     }
 
-    private func motion(_ bytes: TritonReportBytes) -> MotionSample? {
-        guard case let .state(_, motion) = bytes.decode() else { return nil }
+    private func motion(_ reading: SteamReading?) -> MotionSample? {
+        guard case let .state(_, motion) = reading else { return nil }
         return motion
+    }
+
+    /// Each report's motion through one pad's carry, in order.
+    private func motions(_ reports: [TritonReportBytes]) -> [MotionSample?] {
+        var carry = TritonCarry()
+        return reports.map { motion($0.decode(carry: &carry)) }
+    }
+
+    /// A state report on `imuTick` whose gyro X reads `gyroX`.
+    private func sample(imuTick: UInt32, gyroX: Int16, reportId: UInt8 = 0x42) -> TritonReportBytes {
+        var bytes = TritonReportBytes.state(reportId: reportId, imuTick: imuTick)
+        bytes.setLe16(40, gyroX)
+        return bytes
     }
 
     // MARK: - Buttons
@@ -106,27 +121,71 @@ final class SteamTritonTests: XCTestCase {
     // MARK: - Motion
 
     func testTheImuMapsSdlsAxesOntoTheWire() {
-        var bytes = TritonReportBytes.state()
+        var bytes = TritonReportBytes.state(imuTick: 1)
         for (offset, value) in [(34, 1000), (36, 2000), (38, 3000), (40, 4000), (42, 5000), (44, 6000)] {
             bytes.setLe16(offset, Int16(value))
         }
         let expected = MotionSample(gyroX: 3999, gyroY: 5999, gyroZ: -4999, accelX: 499, accelY: 1499, accelZ: -999)
-        XCTAssertEqual(motion(bytes), expected, "pitch is gyro X, yaw gyro Z, roll minus gyro Y")
+        XCTAssertEqual(motion(bytes.decode()), expected, "pitch is gyro X, yaw gyro Z, roll minus gyro Y")
     }
 
-    func testASilentImuBlockPublishesNoMotion() {
-        XCTAssertNil(motion(.state(Button.buttonA)))
+    func testAReportThatRepeatsTheImuTickPublishesNoMotionAgain() {
+        let repeated = sample(imuTick: 7, gyroX: 100)
+        XCTAssertEqual(
+            motions([repeated, repeated]).map { $0?.gyroX },
+            [99, nil],
+            "the host has the sample; the report is input, not motion"
+        )
+    }
+
+    func testAChangedImuTickPublishesTheNextSample() {
+        let first = sample(imuTick: 7, gyroX: 100)
+        let next = sample(imuTick: 8, gyroX: 200)
+        XCTAssertEqual(motions([first, next]).map { $0?.gyroX }, [99, 199])
+    }
+
+    func testAnAllZeroImuBlockOnANewTickIsPublishedAsSdlPublishesIt() {
+        let still = TritonReportBytes.state(imuTick: 5)
+        XCTAssertEqual(motions([still, still]), [Self.stillSample, nil], "a pad at rest reads zero; the tick says the sample is new")
+    }
+
+    func testTheCarryStartsAtTickZeroAsSdlsLastTickDoes() {
+        XCTAssertEqual(motions([sample(imuTick: 0, gyroX: 100), sample(imuTick: 1, gyroX: 100)]).map { $0?.gyroX }, [nil, 99])
+    }
+
+    func testTheTickIsFourBytesAtThirtyOrTwoAtThirtyTwoByReportShape() {
+        for reportId: UInt8 in [0x42, 0x45] {
+            let first = TritonReportBytes.state(reportId: reportId, imuTick: 9)
+            var lowHalf = first
+            lowHalf.setLe16(30, 10)
+            XCTAssertEqual(
+                motions([first, lowHalf]).map { $0 != nil },
+                [true, true],
+                String(format: "report 0x%02X: the tick's low half is at 30", reportId)
+            )
+        }
+        let first = TritonReportBytes.state(reportId: 0x47, imuTick: 9)
+        var padPressure = first
+        padPressure.setLe16(30, 10)
+        var nextTick = first
+        nextTick.setLe16(32, 10)
+        XCTAssertEqual(
+            motions([first, padPressure, nextTick]).map { $0 != nil },
+            [true, false, true],
+            "report 0x47: bytes 30-31 are the right pad's pressure and the tick is the two bytes at 32"
+        )
     }
 
     // MARK: - The report shapes
 
     func testTheBleAndTimestampStateReportsReadTheSameFields() {
-        var plain = TritonReportBytes.state(Button.buttonA)
+        var plain = TritonReportBytes.state(Button.buttonA, imuTick: 1)
         plain.setLe16(10, 1234)
         plain.setLe16(44, 600)
         for reportId: UInt8 in [0x45, 0x47] {
             var other = plain
             other.bytes[0] = reportId
+            other.setImuTick(1)
             XCTAssertEqual(other.decode(), plain.decode(), String(format: "report 0x%02X", reportId))
         }
     }
