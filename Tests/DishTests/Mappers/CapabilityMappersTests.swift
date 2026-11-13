@@ -35,7 +35,14 @@ final class CapabilityMappersTests: XCTestCase {
     )
 
     private let edgeFeatures = TypeFeatureFacts(
-        motion: true, touchpad: true, rumble: true, lightbar: true, triggerEffects: true, playerLeds: true, mic: true, speaker: true,
+        motion: true,
+        touchpad: true,
+        rumble: true,
+        lightbar: true,
+        triggerEffects: true,
+        playerLeds: true,
+        mic: true,
+        speaker: true,
         extendedButtons: true
     )
 
