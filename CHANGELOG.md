@@ -32,8 +32,7 @@ the repos share a version number.
   host makes of them depends on the controller it emulates: today a Switch
   Pro renders Capture, and a type with back buttons follows. A DualSense Edge
   read through macOS shows Dish no paddles, so its back buttons stay as they
-  were. None of this has been tried on a pad yet; a Switch Pro at rest was
-  seen to hold none of these buttons.
+  were. None of this has been tried on a pad yet.
 - **Room on the wire for a controller's extra buttons.** `[wire-coordinated]`
   Protocol 4. Dish now speaks Satellite protocol 4: on a session that settled
   on it, every controller report carries a second word for the buttons an
