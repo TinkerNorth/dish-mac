@@ -1,6 +1,6 @@
 # Dish for macOS: Privacy Policy
 
-**Effective date:** 2026-10-27.
+**Effective date:** 2026-11-13.
 **Canonical copy:** this file, at
 [`https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md`](https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md).
 
@@ -211,7 +211,7 @@ so treat it as sensitive before attaching it to a public issue.
 | Keychain | Storing the pairing key of each satellite. |
 | A power-management assertion (IOKit) | Keeping the Mac awake while a bound controller is being used, or for as long as one is connected, as your keep-awake mode says; the display too only if you ask. Released when the condition ends. |
 | User notifications | One notice, the first time closing the window leaves Dish running behind the menu-bar item. macOS asks you for permission before it is shown. |
-| Host battery readout (IOKit) | Reporting your Mac's battery to the satellite in place of a pad that reports none. |
+| Host battery readout (IOKit power sources) | Reading your Mac's internal battery from macOS's list of power sources (`IOPSCopyPowerSourcesInfo`): its charge as a percentage of its capacity, and whether it is charging, full or discharging. Any other power source, such as a UPS, is skipped, and a Mac with no internal battery reads as 100 % on mains power. For a controller bound to a satellite or a Moonlight host, Dish sends the lower of the controller's own battery and the Mac's, with the charging state of the one it sends (an unknown level counts as the higher, and a tie goes to the controller); a controller that reports no battery of its own sends the Mac's. A controller that is not bound sends neither. The Mac's battery is read, and the result sent, a second after a controller shows and every 30 seconds after; in between, a controller on the Standard path reads it every 3 seconds and sends only when the charging state to send has changed, and a controller on the Direct path reads and sends it whenever its own reading changes. The controller's card shows the controller's own reading (the Mac's, for a controller on the Standard path that reports none). |
 | Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
 | `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |
 
