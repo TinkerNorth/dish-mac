@@ -23,8 +23,9 @@ public enum SteamLink: Equatable, Sendable {
 
 /// One report off a Steam Controller's interface, of either generation.
 public enum SteamReading: Equatable, Sendable {
-    /// The pad on the XUSB layout, and its IMU when the block carries one.
-    case state(GamepadReport, motion: MotionSample?)
+    /// The pad on the XUSB layout, its IMU when the block carries one, and
+    /// its two trackpads raw, for the router to land by the slot's pick.
+    case state(GamepadReport, motion: MotionSample?, pads: SteamPads)
     /// The pad's own charge: the 2026 pad's battery report.
     case battery(PadBattery)
     case link(SteamLink)
@@ -120,7 +121,8 @@ struct SteamButtonBit {
 }
 
 /// By position, as for every pad: south is XUSB A. Menu is Back and Escape
-/// is Start, as SDL has them; the left thumb's two sources are decided apart.
+/// is Start, as SDL has them; the left thumb's two sources are decided apart,
+/// and the pad clicks are the trackpad router's.
 let steamControllerButtonBits = [
     SteamButtonBit(mask: SteamButtonMask.south, button: .faceA),
     SteamButtonBit(mask: SteamButtonMask.east, button: .faceB),
@@ -134,8 +136,7 @@ let steamControllerButtonBits = [
     SteamButtonBit(mask: SteamButtonMask.dpadUp, button: .dpadUp),
     SteamButtonBit(mask: SteamButtonMask.dpadDown, button: .dpadDown),
     SteamButtonBit(mask: SteamButtonMask.dpadLeft, button: .dpadLeft),
-    SteamButtonBit(mask: SteamButtonMask.dpadRight, button: .dpadRight),
-    SteamButtonBit(mask: SteamButtonMask.rightPadClicked, button: .rightThumb)
+    SteamButtonBit(mask: SteamButtonMask.dpadRight, button: .dpadRight)
 ]
 
 func steamButtons(_ held: UInt32, _ table: [SteamButtonBit]) -> WireButtonWord {
@@ -154,8 +155,7 @@ struct SteamExtendedBit {
 }
 
 /// The grips are SDL's two Steam paddles and the full-pull trigger bits its
-/// trigger clicks. The right pad's click stays R3 while the pad is the right
-/// stick, and the left pad's click is decided with the stick's.
+/// trigger clicks; the pad clicks are the trackpad router's.
 let steamControllerExtendedBits = [
     SteamExtendedBit(mask: SteamButtonMask.backLeft, ext: ProtocolConstants.extButtonLeftPaddle1),
     SteamExtendedBit(mask: SteamButtonMask.backRight, ext: ProtocolConstants.extButtonRightPaddle1),
@@ -237,26 +237,59 @@ private func steamControllerState(_ packet: UnsafeBufferPointer<UInt8>, hold: in
     holdLeftStick(packet, axes, hold: &hold)
     var buttons = steamButtons(held, steamControllerButtonBits)
     if leftThumbHeld(held, axes) { buttons.insert(.leftThumb) }
-    let right = steamRightStick(packet, fingerDown: held & SteamButtonMask.rightPadFinger != 0)
     let report = GamepadReport(
         buttons: buttons.rawValue,
         lt: steamTrigger(packet[SteamPacketLayout.leftTrigger]),
         rt: steamTrigger(packet[SteamPacketLayout.rightTrigger]),
         lx: hold.x,
         ly: hold.y,
-        rx: right.x,
-        ry: right.y,
-        extButtons: steamExtendedButtons(held, steamControllerExtendedBits) | steamLeftPadClick(held)
+        extButtons: steamExtendedButtons(held, steamControllerExtendedBits)
     )
-    return .state(report, motion: steamControllerMotion(packet))
+    return .state(report, motion: steamControllerMotion(packet), pads: steamPads(packet, held: held))
 }
 
-/// The left pad's click under a finger is the pad's own; with no finger the
-/// firmware reports it as the stick's click, which `leftThumbHeld` takes.
-private func steamLeftPadClick(_ held: UInt32) -> UInt32 {
-    let fingerOnPad = held & SteamButtonMask.leftPadFinger != 0
-    let padClicked = held & SteamButtonMask.leftPadClicked != 0
-    return fingerOnPad && padClicked ? ProtocolConstants.extButtonLeftPadClick : 0
+/// The two pads as the router takes them. The left pad shares the left
+/// axes with the stick and is read while a finger is on it; a left-pad
+/// click with no finger is the stick's (`leftThumbHeld`), so not the pad's.
+private func steamPads(_ packet: UnsafeBufferPointer<UInt8>, held: UInt32) -> SteamPads {
+    let leftFinger = held & SteamButtonMask.leftPadFinger != 0
+    let rightFinger = held & SteamButtonMask.rightPadFinger != 0
+    let left = steamPad(packet, at: SteamPacketLayout.leftAxes, fingerDown: leftFinger, rotation: .leftPad)
+    let right = steamPad(packet, at: SteamPacketLayout.rightPad, fingerDown: rightFinger, rotation: .rightPad)
+    return SteamPads(
+        left: SteamPadSample(active: left.active, x: left.x, y: left.y, clicked: leftFinger && held & SteamButtonMask.leftPadClicked != 0),
+        right: SteamPadSample(active: right.active, x: right.x, y: right.y, clicked: held & SteamButtonMask.rightPadClicked != 0)
+    )
+}
+
+/// SDL rotates the right pad by the shell angle and the left pad by its
+/// negative.
+private enum SteamPadRotation {
+    case leftPad
+    case rightPad
+}
+
+/// A pad rotated back square while a finger is on it; SDL's further +1000
+/// per axis would park a stick off centre, so it is left out.
+private func steamPad(
+    _ packet: UnsafeBufferPointer<UInt8>,
+    at offset: Int,
+    fingerDown: Bool,
+    rotation: SteamPadRotation
+) -> SteamPadSample {
+    guard fingerDown else { return SteamPadSample() }
+    let x = Int64(steamLe16(packet, offset))
+    let y = Int64(steamLe16(packet, offset + 2))
+    switch rotation {
+    case .rightPad:
+        let rotatedX = (SteamScale.padCos * x - SteamScale.padSin * y) / SteamScale.q16
+        let rotatedY = (SteamScale.padSin * x + SteamScale.padCos * y) / SteamScale.q16
+        return SteamPadSample(active: true, x: Int16(clamping: rotatedX), y: Int16(clamping: rotatedY))
+    case .leftPad:
+        let rotatedX = (SteamScale.padCos * x + SteamScale.padSin * y) / SteamScale.q16
+        let rotatedY = (SteamScale.padCos * y - SteamScale.padSin * x) / SteamScale.q16
+        return SteamPadSample(active: true, x: Int16(clamping: rotatedX), y: Int16(clamping: rotatedY))
+    }
 }
 
 /// The stick is up-positive, as the wire is.
@@ -278,17 +311,6 @@ private func leftThumbHeld(_ held: UInt32, _ axes: SteamLeftAxes) -> Bool {
     let stickClicked = held & SteamButtonMask.stickButton != 0
     let padClicked = held & SteamButtonMask.leftPadClicked != 0
     return stickClicked || (padClicked && axes == .stick && held & SteamButtonMask.leftPadAndStick == 0)
-}
-
-/// The right pad, rotated back square, while a finger is on it; SDL's
-/// further +1000 per axis would park a stick off centre, so it is left out.
-private func steamRightStick(_ packet: UnsafeBufferPointer<UInt8>, fingerDown: Bool) -> (x: Int16, y: Int16) {
-    guard fingerDown else { return (0, 0) }
-    let x = Int64(steamLe16(packet, SteamPacketLayout.rightPad))
-    let y = Int64(steamLe16(packet, SteamPacketLayout.rightPad + 2))
-    let rotatedX = (SteamScale.padCos * x - SteamScale.padSin * y) / SteamScale.q16
-    let rotatedY = (SteamScale.padSin * x + SteamScale.padCos * y) / SteamScale.q16
-    return (Int16(clamping: rotatedX), Int16(clamping: rotatedY))
 }
 
 /// The byte widened to Valve's 15-bit scale, saturating at its full scale.

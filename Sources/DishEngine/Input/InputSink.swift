@@ -10,7 +10,8 @@ import Foundation
 protocol InputSink: AnyObject {
     func sendReport(_ report: GamepadReport)
     func sendMotion(_ sample: MotionSample, timestampDeltaUs: UInt32)
-    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32)
+    /// `scrollV` is the wheel's turn since the last sample, an event the POINTER frame carries.
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, scrollV: Int16)
     func sendBattery(level: UInt8, status: BatteryStatus)
 }
 
@@ -33,8 +34,8 @@ final class SatellitePadSink: InputSink {
         connection.sendMotion(sample, timestampDeltaUs: timestampDeltaUs, controllerIndex: controllerIndex)
     }
 
-    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
-        connection.sendTouchpad(sample: sample, eventTimeMs: eventTimeMs, controllerIndex: controllerIndex)
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, scrollV: Int16) {
+        connection.sendTouchpad(sample: sample, eventTimeMs: eventTimeMs, scrollV: scrollV, controllerIndex: controllerIndex)
     }
 
     func sendBattery(level: UInt8, status: BatteryStatus) {
@@ -61,8 +62,8 @@ final class SatelliteClientSink: InputSink {
         client.sendMotion(controllerIndex: controllerIndex, sample: sample, timestampDeltaUs: timestampDeltaUs)
     }
 
-    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
-        client.sendTouchpad(controllerIndex: controllerIndex, sample: sample, eventTimeMs: eventTimeMs)
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, scrollV: Int16) {
+        client.sendTouchpad(controllerIndex: controllerIndex, sample: sample, eventTimeMs: eventTimeMs, scrollV: scrollV)
     }
 
     func sendBattery(level: UInt8, status: BatteryStatus) {
@@ -91,7 +92,8 @@ final class MoonlightPadSink: InputSink {
         link.sendMotion(slotId, sample)
     }
 
-    func sendTouchpad(sample: TouchpadSample, eventTimeMs _: UInt32) {
+    /// The host's pad path has no wheel.
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs _: UInt32, scrollV _: Int16) {
         link.sendTouchpad(slotId, sample: sample)
     }
 

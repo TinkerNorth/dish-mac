@@ -36,6 +36,12 @@ enum TritonLayout {
     static let rightTrigger = 8
     static let leftStick = 10
     static let rightStick = 14
+    /// Left x, y, pressure, then right x, y, pressure: from 18 on the plain
+    /// reports, from 20 on the timestamped one, whose u16 pad timestamp
+    /// comes first.
+    static let pads = 18
+    static let padsTimestamped = 20
+    static let rightPadWithinPads = 6
     static let imuTick = 30
     static let imuTick16 = 32
     static let accel = 34
@@ -78,9 +84,11 @@ enum TritonButtonMask {
     static let l5: UInt32 = 0x0004_0000
     static let leftShoulder: UInt32 = 0x0008_0000
     static let rightStickTouch: UInt32 = 0x0010_0000
+    static let rightPadTouch: UInt32 = 0x0020_0000
     static let rightPadClick: UInt32 = 0x0040_0000
     static let rightTriggerClick: UInt32 = 0x0080_0000
     static let leftStickTouch: UInt32 = 0x0100_0000
+    static let leftPadTouch: UInt32 = 0x0200_0000
     static let leftPadClick: UInt32 = 0x0400_0000
     static let leftTriggerClick: UInt32 = 0x0800_0000
     static let rightGripTouch: UInt32 = 0x1000_0000
@@ -108,17 +116,15 @@ let tritonButtonBits = [
 ]
 
 /// SDL's names for the rest: QAM is misc1, R4/L4/R5/L5 are paddle 1 to 4,
-/// the pad clicks touchpad and misc2, the trigger clicks misc3 and misc4,
-/// and the stick and grip touches its capsense inputs. The pad touches have
-/// no slot in the word.
+/// the trigger clicks misc3 and misc4, and the stick and grip touches its
+/// capsense inputs. The pad clicks are the trackpad router's, and the pad
+/// touches have no slot in the word.
 let tritonExtendedBits = [
     SteamExtendedBit(mask: TritonButtonMask.quickAccess, ext: ProtocolConstants.extButtonMisc1),
     SteamExtendedBit(mask: TritonButtonMask.r4, ext: ProtocolConstants.extButtonRightPaddle1),
     SteamExtendedBit(mask: TritonButtonMask.l4, ext: ProtocolConstants.extButtonLeftPaddle1),
     SteamExtendedBit(mask: TritonButtonMask.r5, ext: ProtocolConstants.extButtonRightPaddle2),
     SteamExtendedBit(mask: TritonButtonMask.l5, ext: ProtocolConstants.extButtonLeftPaddle2),
-    SteamExtendedBit(mask: TritonButtonMask.leftPadClick, ext: ProtocolConstants.extButtonLeftPadClick),
-    SteamExtendedBit(mask: TritonButtonMask.rightPadClick, ext: ProtocolConstants.extButtonRightPadClick),
     SteamExtendedBit(mask: TritonButtonMask.leftTriggerClick, ext: ProtocolConstants.extButtonLeftTriggerClick),
     SteamExtendedBit(mask: TritonButtonMask.rightTriggerClick, ext: ProtocolConstants.extButtonRightTriggerClick),
     SteamExtendedBit(mask: TritonButtonMask.leftStickTouch, ext: ProtocolConstants.extButtonLeftStickTouch),
@@ -175,7 +181,33 @@ private func tritonState(_ report: UnsafeBufferPointer<UInt8>, carry: inout Trit
         ry: steamLe16(report, TritonLayout.rightStick + 2),
         extButtons: steamExtendedButtons(held, tritonExtendedBits)
     )
-    return .state(state, motion: tritonMotion(report, carry: &carry))
+    return .state(state, motion: tritonMotion(report, carry: &carry), pads: tritonPads(report, held: held))
+}
+
+/// Both pads as the router takes them: a pad is active on its touch bit and
+/// reads nothing otherwise, and the timestamped report moves them by two.
+private func tritonPads(_ report: UnsafeBufferPointer<UInt8>, held: UInt32) -> SteamPads {
+    let timestamped = report[0] == TritonReportId.stateTimestamp
+    let offset = timestamped ? TritonLayout.padsTimestamped : TritonLayout.pads
+    return SteamPads(
+        left: tritonPad(
+            report,
+            at: offset,
+            touched: held & TritonButtonMask.leftPadTouch != 0,
+            clicked: held & TritonButtonMask.leftPadClick != 0
+        ),
+        right: tritonPad(
+            report,
+            at: offset + TritonLayout.rightPadWithinPads,
+            touched: held & TritonButtonMask.rightPadTouch != 0,
+            clicked: held & TritonButtonMask.rightPadClick != 0
+        )
+    )
+}
+
+private func tritonPad(_ report: UnsafeBufferPointer<UInt8>, at offset: Int, touched: Bool, clicked: Bool) -> SteamPadSample {
+    guard touched else { return SteamPadSample(clicked: clicked) }
+    return SteamPadSample(active: true, x: steamLe16(report, offset), y: steamLe16(report, offset + 2), clicked: clicked)
 }
 
 func tritonTrigger(_ raw: Int16) -> UInt8 {

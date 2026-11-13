@@ -256,7 +256,11 @@ func functionsSection(_ candidate: ControllerSlot, words: L10n = .app) -> Functi
     ]
     let switches = rows.filter(\.present).map(\.row)
     let touchpad = caps.hasTouchpad
-        ? TouchpadPickState(title: words.touchpad, options: touchpadPickOptions(candidate, words: words), selected: choice.touchpad)
+        ? TouchpadPickState(
+            title: touchpadPickTitle(candidate, words: words),
+            options: touchpadPickOptions(candidate, words: words),
+            selected: choice.touchpad
+        )
         : nil
     let nothing = switches.isEmpty && touchpad == nil ? words.nothingToTune : nil
     return FunctionsSectionState(title: words.functionsSection, switches: switches, touchpad: touchpad, nothing: nothing)

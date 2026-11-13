@@ -110,6 +110,29 @@ final class InputPathsSteamTests: XCTestCase {
         XCTAssertNotNil(host.directSlots[Self.wired])
     }
 
+    // MARK: - The trackpads
+
+    func testEachSteamControllersSlotHasTheTrackpadsItsModelHasForThePickToRoute() throws {
+        try arrive(productId: 0x1102, slotId: Self.wired)
+        try arrive(productId: 0x1302, slotId: Self.triton, inputMonitoring: true)
+        XCTAssertTrue(paths.pick(slotId: Self.wired, .direct))
+        XCTAssertTrue(paths.pick(slotId: Self.triton, .direct))
+        let wired = try XCTUnwrap(host.directSlots[Self.wired])
+        XCTAssertEqual(wired.trackpads, .rightStickByDefault)
+        XCTAssertTrue(wired.capabilities.hasTouchpad, "the trackpads are the pick's to route")
+        XCTAssertEqual(host.directSlots[Self.triton]?.trackpads, .twoPads)
+    }
+
+    func testTheSlotsPickReachesItsLaneAndAnUnknownSlotReachesNoOne() throws {
+        let lane = try arrive(productId: 0x1102, slotId: Self.wired)
+        XCTAssertTrue(paths.pick(slotId: Self.wired, .direct))
+        XCTAssertEqual(lane.trackpadPick, .stick, "the 2015 pad's default until the pick arrives")
+        paths.setTrackpadPick(.pad, slotId: Self.wired)
+        XCTAssertEqual(lane.trackpadPick, .pad)
+        paths.setTrackpadPick(.mouse, slotId: "hid:28de:9999")
+        XCTAssertEqual(lane.trackpadPick, .pad, "another slot's pick is not this lane's")
+    }
+
     func testHandingItBackReleasesItAndOffersItAgain() throws {
         try arrive(productId: 0x1102, slotId: Self.wired)
         XCTAssertTrue(paths.pick(slotId: Self.wired, .direct))

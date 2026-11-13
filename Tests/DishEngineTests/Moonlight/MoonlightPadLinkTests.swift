@@ -209,7 +209,7 @@ final class MoonlightPadLinkTests: XCTestCase {
         let sink: InputSink = MoonlightPadSink(link: link, slotId: "a")
         sink.sendReport(GamepadReport(buttons: UInt16(MoonlightButton.buttonB)))
         sink.sendBattery(level: 20, status: .full)
-        sink.sendTouchpad(sample: click(false), eventTimeMs: 99)
+        sink.sendTouchpad(sample: click(false), eventTimeMs: 99, scrollV: 0)
         link.onMotionRequest(controller: 0, rateHz: 200, type: MoonlightMotionType.gyro)
         sink.sendMotion(MotionSample(gyroX: 100, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0), timestampDeltaUs: 1000)
         let sent = sender.take()

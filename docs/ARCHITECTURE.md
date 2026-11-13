@@ -347,6 +347,26 @@ stays on GameController.
   lower of it and the Mac's (`lowestBattery`) at once and on the 30 s
   heartbeat, the Mac's alone for a pad that reports none. The first second's count
   is logged once per attach as `DEVCAPS DIRECT`.
+- **A Steam Controller's trackpads route by the slot's pick.** The Steam
+  decoders hand the lane raw pad samples beside the report (`SteamPads`:
+  live, x, y, click; the 2015 pads through SDL's ±15° shell rotation), and
+  the core's `routeSteamTrackpads` composes them by the pick and the model:
+  the 2015 right pad as the right stick with its click as R3 (`stick`), both
+  pads on the one touch surface, left half and right half (`pad`), the right
+  pad as the cursor and left button with the left pad's click as the right
+  button and its vertical travel as the wheel (`mouse`), or the clicks on the
+  extended-buttons word alone (`off`); every position lands in at most one
+  wire field and every click in exactly one. The pick reaches the lane as
+  one atomic word (`useTrackpadPick`), written on the main actor whenever
+  the slot list is rebuilt from the preferences in force
+  (`effectivePreferences`: the store's pick where the model offers it, else
+  the model's default, held to the emulated type's surface and the host's
+  mouse grant; the slot list, the wire and the lanes read that one
+  resolution) and read per report. The surface leaves through the pad's
+  feed as a `TouchpadSample` only when it changed or the wheel turned,
+  with the POINTER frame's right button and `scrollV`, and is lifted once
+  when the lane stops forwarding; nothing is allocated per report.
+  `LockLawTests` runs a Steam lane in `pad` beside the Switch Pro's.
 - **One machine per pad.** `InputPaths` runs the core's input-source machine
   on the main actor for every pad, Direct lanes and GameController pads
   alike, and runs its effects: the gate's route, the slot list, the stored

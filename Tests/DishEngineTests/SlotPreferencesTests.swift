@@ -48,7 +48,84 @@ final class SlotPreferencesTests: XCTestCase {
         )
     }
 
+    func testTheStickPickSendsNoTouchSurfaceAndStillNamesItself() {
+        XCTAssertEqual(
+            effectiveFlags(global: ForwardingFlags(), slot: SlotPreferences(touchpad: .stick)),
+            ForwardingFlags(touchpad: false, touchpadPick: .stick),
+            "the right stick rides the report, not the touch frame"
+        )
+    }
+
+    // MARK: - The pick in force
+
+    func testASteamControllersUnchosenPickIsItsModelsDefault() {
+        let unchosen = SlotPreferences(motion: false, touchpad: .mouse)
+        let pad2015 = effectiveSlotPreferences(
+            stored: unchosen,
+            trackpads: .rightStickByDefault,
+            typeOffersDs4: true,
+            hostMouseControl: true
+        )
+        XCTAssertEqual(pad2015, SlotPreferences(motion: false, touchpad: .stick), "the other switches pass through")
+        let pad2026 = effectiveSlotPreferences(stored: unchosen, trackpads: .twoPads, typeOffersDs4: false, hostMouseControl: true)
+        XCTAssertEqual(pad2026.touchpad, .off, "no surface on the type, nothing by default")
+        XCTAssertEqual(
+            effectiveSlotPreferences(stored: nil, trackpads: .twoPads, typeOffersDs4: true, hostMouseControl: false).touchpad,
+            .pad
+        )
+    }
+
+    func testASteamControllersChosenPickIsHeldToWhatThePathCarries() {
+        let mouse = SlotPreferences(touchpad: .mouse, touchpadStored: true)
+        XCTAssertEqual(
+            effectiveSlotPreferences(stored: mouse, trackpads: .twoPads, typeOffersDs4: true, hostMouseControl: true).touchpad,
+            .mouse
+        )
+        XCTAssertEqual(
+            effectiveSlotPreferences(stored: mouse, trackpads: .twoPads, typeOffersDs4: true, hostMouseControl: false).touchpad,
+            .off,
+            "no host grant, no mouse, never the pad instead"
+        )
+        let stick = SlotPreferences(touchpad: .stick, touchpadStored: true)
+        XCTAssertEqual(
+            effectiveSlotPreferences(stored: stick, trackpads: .rightStickByDefault, typeOffersDs4: false, hostMouseControl: false)
+                .touchpad,
+            .stick
+        )
+        XCTAssertEqual(
+            effectiveSlotPreferences(stored: stick, trackpads: .twoPads, typeOffersDs4: true, hostMouseControl: true).touchpad,
+            .pad,
+            "a pick the model does not offer falls to its default"
+        )
+    }
+
+    func testAPadWithoutTrackpadsKeepsItsOwnPickWhateverThePathCarries() {
+        let mouse = SlotPreferences(touchpad: .mouse)
+        XCTAssertEqual(effectiveSlotPreferences(stored: mouse, trackpads: .none, typeOffersDs4: false, hostMouseControl: false), mouse)
+        XCTAssertEqual(
+            effectiveSlotPreferences(stored: nil, trackpads: .none, typeOffersDs4: false, hostMouseControl: false),
+            SlotPreferences()
+        )
+    }
+
     // MARK: - The store
+
+    func testOnlyAChosenPickIsWrittenAndReadBackAsChosen() {
+        let store = SlotPreferenceStore(defaults: defaults)
+        store.setMotion(false, for: "steam")
+        XCTAssertFalse(store.preferences(for: "steam").touchpadStored)
+        XCTAssertEqual(defaults.string(forKey: SlotPreferenceStore.touchpadModeKey), "[]", "an unchosen pick has no row")
+        store.setTouchpadPick(.stick, for: "steam")
+        XCTAssertTrue(store.preferences(for: "steam").touchpadStored)
+        XCTAssertEqual(defaults.string(forKey: SlotPreferenceStore.touchpadModeKey), #"[{"mode":"stick","slotId":"steam"}]"#)
+        XCTAssertEqual(
+            defaults.string(forKey: SlotPreferenceStore.touchpadKey),
+            #"[{"enabled":false,"slotId":"steam"}]"#,
+            "an older build reads no touch surface"
+        )
+        let relaunch = SlotPreferenceStore(defaults: defaults).preferences(for: "steam")
+        XCTAssertEqual(relaunch, SlotPreferences(motion: false, touchpad: .stick, touchpadStored: true))
+    }
 
     func testTheMicIsOffUntilAskedAndTheSpeakerOn() {
         let store = SlotPreferenceStore(defaults: defaults)
@@ -102,7 +179,7 @@ final class SlotPreferencesTests: XCTestCase {
         store.setMotion(false, for: "ds")
         store.setRumble(false, for: "xbox")
         store.setTouchpad(false, for: "ds")
-        XCTAssertEqual(store.preferences(for: "ds"), SlotPreferences(motion: false, rumble: true, touchpad: .off))
+        XCTAssertEqual(store.preferences(for: "ds"), SlotPreferences(motion: false, rumble: true, touchpad: .off, touchpadStored: true))
         XCTAssertEqual(store.preferences(for: "xbox"), SlotPreferences(motion: true, rumble: false, touchpad: .pad))
         let relaunch = SlotPreferenceStore(defaults: defaults)
         XCTAssertEqual(relaunch.state, store.state, "the switches survive a relaunch")

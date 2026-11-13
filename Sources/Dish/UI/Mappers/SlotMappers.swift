@@ -67,8 +67,9 @@ func capabilityChips(
     let gyro = slot.capabilities.hasMotion
         ? switchChip(words.gyro, feature: words.motion, .motion, slot: slot, global: global, words: words)
         : CapabilityChipModel(label: words.noGyro, on: false, available: false, help: words.motionUnavailableHelp)
+    let touchpad = touchpadPickTitle(slot, words: words)
     let optional: [(present: Bool, label: String, feature: String, key: SlotSwitch)] = [
-        (slot.capabilities.hasTouchpad, words.touchpad, words.touchpad, .touchpad),
+        (slot.capabilities.hasTouchpad, touchpad, touchpad, .touchpad),
         (slot.capabilities.hasRumble, words.rumble, words.rumble, .rumble),
         (slot.capabilities.hasMic, words.mic, words.microphone, .mic),
         (slot.capabilities.hasSpeaker, words.speaker, words.speaker, .speaker)
@@ -106,7 +107,7 @@ private func switchChip(
     }
     let help = ownOn
         ? "\(switchedOnSentence(key, feature: feature, slot.preferences, words: words)) \(words.clickToTurnOffForThisController)"
-        : "\(words.turnedOffForThisController) \(words.clickToTurnOnForThisController)"
+        : "\(switchedOffSentence(key, slot.preferences, words: words)) \(words.clickToTurnOnForThisController)"
     return CapabilityChipModel(label: label, on: ownOn, available: true, help: help, switch: key, toggle: true)
 }
 
@@ -122,6 +123,15 @@ private func switchedOnSentence(_ key: SlotSwitch, feature: String, _ preference
     }
 }
 
+/// What a switched-off chip says: off, or for a Steam Controller whose
+/// right trackpad is its right stick, where the trackpad went instead.
+private func switchedOffSentence(_ key: SlotSwitch, _ preferences: SlotPreferences, words: L10n) -> String {
+    switch key {
+    case .touchpad: preferences.touchpad == .stick ? words.rightTrackpadIsTheRightStick : words.turnedOffForThisController
+    case .motion, .rumble, .mic, .speaker: words.turnedOffForThisController
+    }
+}
+
 /// One choice of the touchpad picker; the mouse is offered only by a host
 /// that advertises mouse control.
 struct TouchpadPickOption: Equatable, Identifiable {
@@ -130,8 +140,10 @@ struct TouchpadPickOption: Equatable, Identifiable {
     let enabled: Bool
 }
 
+/// The choices the pad's trackpads allow, in their order: today's three for
+/// a touchpad pad, the 2015 Steam Controller's four with the stick first.
 func touchpadPickOptions(_ slot: ControllerSlot, words: L10n = .app) -> [TouchpadPickOption] {
-    TouchpadPick.pickerOrder.map { pick in
+    trackpadPickChoices(slot.trackpads).map { pick in
         TouchpadPickOption(id: pick, label: touchpadPickText(pick, words: words), enabled: touchpadPickOffered(pick, slot))
     }
 }
@@ -141,14 +153,15 @@ func touchpadPickText(_ pick: TouchpadPick, words: L10n = .app) -> String {
     case .off: words.off
     case .pad: words.pad
     case .mouse: words.mouse
+    case .stick: words.rightStick
     }
 }
 
-/// Off and the pad render are always on offer; the mouse needs the host's
-/// word, and an unprobed host has not spoken yet.
+/// Off, the pad render and the stick are on offer whenever listed; the
+/// mouse needs the host's word, and an unprobed host has not spoken yet.
 func touchpadPickOffered(_ pick: TouchpadPick, _ slot: ControllerSlot) -> Bool {
     switch pick {
-    case .off, .pad: true
+    case .off, .pad, .stick: true
     case .mouse: slot.hostProbe?.mouseControl == true
     }
 }
@@ -226,7 +239,7 @@ func switchValue(_ key: SlotSwitch, _ preferences: SlotPreferences) -> Bool {
     switch key {
     case .motion: preferences.motion
     case .rumble: preferences.rumble
-    case .touchpad: preferences.touchpad != .off
+    case .touchpad: preferences.touchpad.carriesSurface
     case .mic: preferences.mic
     case .speaker: preferences.speaker
     }
@@ -258,4 +271,13 @@ private func detectedChip(_ label: String, feature: String, on: Bool, words: L10
         available: true,
         help: on ? words.detectedOn(feature) : words.detectedOff(feature)
     )
+}
+
+/// The picker's title: a Steam Controller has trackpads, every other pad a
+/// touchpad.
+func touchpadPickTitle(_ slot: ControllerSlot, words: L10n = .app) -> String {
+    switch slot.trackpads {
+    case .none: words.touchpad
+    case .rightStickByDefault, .twoPads: words.trackpads
+    }
 }

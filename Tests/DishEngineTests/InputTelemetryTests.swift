@@ -119,6 +119,6 @@ final class InputTelemetryTests: XCTestCase {
 private final class DiscardingSink: InputSink {
     func sendReport(_: GamepadReport) {}
     func sendMotion(_: MotionSample, timestampDeltaUs _: UInt32) {}
-    func sendTouchpad(sample _: TouchpadSample, eventTimeMs _: UInt32) {}
+    func sendTouchpad(sample _: TouchpadSample, eventTimeMs _: UInt32, scrollV _: Int16) {}
     func sendBattery(level _: UInt8, status _: BatteryStatus) {}
 }

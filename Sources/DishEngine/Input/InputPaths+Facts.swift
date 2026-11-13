@@ -160,18 +160,29 @@ extension InputPaths {
     /// Motion where the pad has an IMU, rumble through a sure carrier or the
     /// pad's own report, player lights only through a sure carrier, a
     /// battery on every pad (its own where its reports carry one, else the
-    /// Mac's, as on the GameController path), and the extended buttons
-    /// where the model's decoder fills the word.
+    /// Mac's, as on the GameController path), the extended buttons where
+    /// the model's decoder fills the word, and a touchpad where the model
+    /// has trackpads for the pick to route.
     func directSlot(_ id: String, _ candidate: HidPadCandidate, _ output: OutputCarriage) -> GameControllerInput.Slot {
         let rumbles = output.rumble == .carried || output.rumble == .ownReport
+        let trackpads = candidate.model?.trackpads ?? .none
         let capabilities = ControllerCapabilities(
             hasMotion: candidate.model?.hasMotion ?? false,
+            hasTouchpad: trackpads != .none,
             hasRumble: rumbles,
             hasBattery: true,
             hasPlayerLeds: output.carrierId != nil,
             hasExtendedButtons: candidate.model?.hasExtendedButtons ?? false
         )
-        return GameControllerInput.Slot(id: id, name: candidate.name, capabilities: capabilities, family: candidate.family)
+        var slot = GameControllerInput.Slot(id: id, name: candidate.name, capabilities: capabilities, family: candidate.family)
+        slot.trackpads = trackpads
+        return slot
+    }
+
+    /// The slot's trackpad pick in force, for its lane's router; a pad that
+    /// is not a Direct lane has no router to tell.
+    func setTrackpadPick(_ pick: TouchpadPick, slotId: String) {
+        pads[slotId]?.arrival?.lane.useTrackpadPick(pick)
     }
 
     // MARK: - The facts

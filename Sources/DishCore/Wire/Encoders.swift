@@ -150,7 +150,7 @@ public enum Encoders {
     ) {
         out[0] = controllerIndex
         out[1] = pointerFingerFlags(sample)
-        out[2] = sample.buttonPressed ? ProtocolConstants.pointerButtonLeft : 0
+        out[2] = pointerButtons(sample)
         out[3] = sample.finger0.id
         storeLE16(sample.finger0.x, into: out, at: 4)
         storeLE16(sample.finger0.y, into: out, at: 6)
@@ -166,6 +166,13 @@ public enum Encoders {
         if sample.finger0.active { flags |= ProtocolConstants.pointerFinger0Active }
         if sample.finger1.active { flags |= ProtocolConstants.pointerFinger1Active }
         return flags
+    }
+
+    private static func pointerButtons(_ sample: TouchpadSample) -> UInt8 {
+        var buttons: UInt8 = 0
+        if sample.buttonPressed { buttons |= ProtocolConstants.pointerButtonLeft }
+        if sample.rightButtonPressed { buttons |= ProtocolConstants.pointerButtonRight }
+        return buttons
     }
 
     // MARK: - Private stores (zero-based offsets into the payload)

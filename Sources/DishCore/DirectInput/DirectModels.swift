@@ -79,6 +79,17 @@ public struct DirectModel: Equatable, Sendable {
         case .switchReport, .hidGamepad: false
         }
     }
+
+    /// The trackpads the router lands by the slot's pick: the 2015 pad's
+    /// right pad is its right stick by default, the 2026 pad has two beside
+    /// a real right stick.
+    public var trackpads: SteamTrackpads {
+        switch decoder {
+        case .steamController: .rightStickByDefault
+        case .steamTriton: .twoPads
+        case .switchReport, .hidGamepad: .none
+        }
+    }
 }
 
 public enum DirectVendor {

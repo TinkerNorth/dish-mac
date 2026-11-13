@@ -15,16 +15,49 @@ package struct SlotPreferences: Hashable {
     package var motion = true
     package var rumble = true
     package var touchpad = TouchpadPick.pad
+    /// Whether the touchpad pick was ever chosen for this controller; a
+    /// Steam Controller's unchosen pick is its model's default instead.
+    package var touchpadStored = false
     package var mic = false
     package var speaker = true
 
-    package init(motion: Bool = true, rumble: Bool = true, touchpad: TouchpadPick = .pad, mic: Bool = false, speaker: Bool = true) {
+    package init(
+        motion: Bool = true,
+        rumble: Bool = true,
+        touchpad: TouchpadPick = .pad,
+        touchpadStored: Bool = false,
+        mic: Bool = false,
+        speaker: Bool = true
+    ) {
         self.motion = motion
         self.rumble = rumble
         self.touchpad = touchpad
+        self.touchpadStored = touchpadStored
         self.mic = mic
         self.speaker = speaker
     }
+}
+
+/// The preferences in force for a slot: the store's, with a Steam
+/// Controller's trackpad pick resolved to the one the model offers, its
+/// default when none was chosen, held to what the path carries. Every other
+/// pad keeps its own pick.
+package func effectiveSlotPreferences(
+    stored: SlotPreferences?,
+    trackpads: SteamTrackpads,
+    typeOffersDs4: Bool,
+    hostMouseControl: Bool
+) -> SlotPreferences {
+    var preferences = stored ?? SlotPreferences()
+    guard trackpads != .none else { return preferences }
+    let chosen = preferences.touchpadStored ? preferences.touchpad : nil
+    preferences.touchpad = effectiveTrackpadPick(
+        stored: chosen,
+        trackpads: trackpads,
+        typeOffersDs4: typeOffersDs4,
+        hostMouseControl: hostMouseControl
+    )
+    return preferences
 }
 
 /// The switches a controller carries, for the intent that flips one.
@@ -44,7 +77,7 @@ package enum SlotSwitch: Equatable {
 package func effectiveFlags(global: ForwardingFlags, slot: SlotPreferences) -> ForwardingFlags {
     ForwardingFlags(
         motion: global.motion && slot.motion,
-        touchpad: global.touchpad && slot.touchpad != .off,
+        touchpad: global.touchpad && slot.touchpad.carriesSurface,
         rumble: global.rumble && slot.rumble,
         lightbar: global.lightbar,
         mic: slot.mic,
@@ -93,11 +126,17 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
 
     /// The chip's click: off, or the pad render again.
     package func setTouchpad(_ enabled: Bool, for slotId: String) {
-        update(slotId) { $0.touchpad = enabled ? .pad : .off }
+        update(slotId) {
+            $0.touchpad = enabled ? .pad : .off
+            $0.touchpadStored = true
+        }
     }
 
     package func setTouchpadPick(_ pick: TouchpadPick, for slotId: String) {
-        update(slotId) { $0.touchpad = pick }
+        update(slotId) {
+            $0.touchpad = pick
+            $0.touchpadStored = true
+        }
     }
 
     package func setMic(_ enabled: Bool, for slotId: String) {
@@ -124,7 +163,7 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
     private func write(_ all: [String: SlotPreferences]) {
         defaults.set(Self.rows(all) { $0.motion }, forKey: Self.motionKey)
         defaults.set(Self.rows(all) { $0.rumble }, forKey: Self.rumbleKey)
-        defaults.set(Self.rows(all) { $0.touchpad != .off }, forKey: Self.touchpadKey)
+        defaults.set(Self.rows(all) { $0.touchpad.carriesSurface }, forKey: Self.touchpadKey)
         defaults.set(Self.modeRows(all), forKey: Self.touchpadModeKey)
         defaults.set(Self.rows(all) { $0.mic }, forKey: Self.micKey)
         defaults.set(Self.rows(all) { $0.speaker }, forKey: Self.speakerKey)
@@ -135,8 +174,11 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
         encode(all.keys.sorted().map { ["slotId": $0, "enabled": enabled(all[$0] ?? SlotPreferences())] as [String: Any] })
     }
 
+    /// Only a chosen pick is written, so an unchosen one reads as unchosen
+    /// on the next launch.
     private static func modeRows(_ all: [String: SlotPreferences]) -> String {
-        encode(all.keys.sorted().map { ["slotId": $0, "mode": (all[$0] ?? SlotPreferences()).touchpad.wireName] as [String: Any] })
+        let chosen = all.keys.sorted().filter { all[$0]?.touchpadStored == true }
+        return encode(chosen.map { ["slotId": $0, "mode": (all[$0] ?? SlotPreferences()).touchpad.wireName] as [String: Any] })
     }
 
     private static func encode(_ rows: [[String: Any]]) -> String {
@@ -157,6 +199,7 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
         }
         for (slotId, mode) in parseModes(defaults.string(forKey: touchpadModeKey)) {
             all[slotId, default: SlotPreferences()].touchpad = mode
+            all[slotId, default: SlotPreferences()].touchpadStored = true
         }
         for (slotId, enabled) in parse(defaults.string(forKey: micKey)) {
             all[slotId, default: SlotPreferences()].mic = enabled

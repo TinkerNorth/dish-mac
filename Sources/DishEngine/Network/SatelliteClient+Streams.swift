@@ -63,11 +63,11 @@ extension SatelliteClient {
     /// later, the 16-byte frame on version 1, which drops anything longer.
     /// Coordinates are normalised int16; the caller scales. Hot path:
     /// GameController touchpad callback thread.
-    func sendTouchpad(controllerIndex: Int, sample: TouchpadSample, eventTimeMs: UInt32) {
+    func sendTouchpad(controllerIndex: Int, sample: TouchpadSample, eventTimeMs: UInt32, scrollV: Int16 = 0) {
         let index = UInt8(truncatingIfNeeded: controllerIndex)
         if ProtocolConstants.settledSpeaksV2(settledProtocolVersion) {
             sendEncrypted(msgType: ProtocolConstants.msgTouchpad, payloadCount: 1 + ProtocolConstants.pointerPayloadBytes) { out in
-                Encoders.writePointerPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs, into: out)
+                Encoders.writePointerPayload(controllerIndex: index, sample: sample, eventTimeMs: eventTimeMs, scrollV: scrollV, into: out)
             }
         } else {
             sendEncrypted(msgType: ProtocolConstants.msgTouchpad, payloadCount: 1 + ProtocolConstants.touchpadPayloadBytes) { out in

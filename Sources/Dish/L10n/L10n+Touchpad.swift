@@ -11,7 +11,15 @@ extension L10n {
         catalog.text("Pad")
     }
 
+    var trackpads: String {
+        catalog.text("Trackpads")
+    }
+
     var touchpadMovesTheMouse: String {
         catalog.text("The touchpad moves the host’s mouse; the pad’s click is the left button.")
+    }
+
+    var rightTrackpadIsTheRightStick: String {
+        catalog.text("The right trackpad is the right stick.")
     }
 }

@@ -200,4 +200,44 @@ final class SlotSwitchesMappersTests: XCTestCase {
         bound.hostProbe = probed(mouseControl: false)
         XCTAssertEqual(touchpadPickOptions(bound).map(\.enabled), [true, true, false])
     }
+
+    // MARK: - A Steam Controller's trackpads
+
+    private func steamSlot(_ trackpads: SteamTrackpads, _ preferences: SlotPreferences = SlotPreferences()) -> ControllerSlot {
+        var steam = slot(preferences)
+        steam.trackpads = trackpads
+        return steam
+    }
+
+    func testASteamControllersPickerIsTitledForItsTrackpadsAndListsItsModelsChoices() {
+        let pad2015 = steamSlot(.rightStickByDefault)
+        XCTAssertEqual(touchpadPickTitle(pad2015), "Trackpads")
+        XCTAssertEqual(touchpadPickOptions(pad2015).map(\.label), ["Right stick", "Pad", "Mouse", "Off"])
+        XCTAssertEqual(touchpadPickOptions(pad2015).map(\.enabled), [true, true, false, true], "the stick needs no host's word")
+        XCTAssertEqual(
+            touchpadPickOptions(steamSlot(.twoPads)).map(\.label),
+            ["Pad", "Mouse", "Off"],
+            "a real right stick leaves no stick pick"
+        )
+        XCTAssertEqual(touchpadPickTitle(slot()), "Touchpad")
+        XCTAssertEqual(touchpadPickOptions(slot()).map(\.label), ["Off", "Pad", "Mouse"], "every other pad keeps today's picker")
+    }
+
+    func testTheConfigurePageShowsASteamControllersPickInForceUnderTheTrackpadsTitle() {
+        let functions = functionsSection(steamSlot(.rightStickByDefault, SlotPreferences(touchpad: .stick)))
+        XCTAssertEqual(functions.touchpad?.title, "Trackpads")
+        XCTAssertEqual(functions.touchpad?.selected, .stick)
+        XCTAssertEqual(functions.touchpad?.options.map(\.id), [.stick, .pad, .mouse, .off])
+    }
+
+    func testTheChipOnTheStickPickReadsOffAndSaysTheRightTrackpadIsTheStick() throws {
+        let chips = capabilityChips(for: steamSlot(.rightStickByDefault, SlotPreferences(touchpad: .stick)), ForwardingFlags())
+        let trackpads = try chip("Trackpads", in: chips)
+        XCTAssertFalse(trackpads.on, "no touch surface is sent")
+        XCTAssertEqual(trackpads.help, "The right trackpad is the right stick. Click to turn it on for this controller.")
+        XCTAssertEqual(trackpads.switch, .touchpad)
+        let asPad = try chip("Trackpads", in: capabilityChips(for: steamSlot(.twoPads, SlotPreferences(touchpad: .pad)), ForwardingFlags()))
+        XCTAssertTrue(asPad.on)
+        XCTAssertEqual(asPad.help, "Trackpads detected — forwarding to the host is on Click to turn it off for this controller.")
+    }
 }

@@ -121,4 +121,39 @@ final class AppModelInputPathTests: XCTestCase {
         model.pageDisappeared(.helpSupport(deviceKey: "057e:2019"))
         XCTAssertNil(model.shellFacts.supportCapture)
     }
+
+    // MARK: - A Steam Controller's trackpads
+
+    private static let steam = "hid:28de:1102"
+
+    /// A Steam Controller is offered once GameController's settle has said
+    /// no, on the live scheduler's clock, and read only on the user's pick.
+    private func arriveSteamController() throws -> HidPadLane {
+        let wiring = try XCTUnwrap(reader.wiring, "the root starts the reader")
+        let candidate = try DirectFixtures.candidate(DirectFixtures.valveProperties(productId: 0x1102, interfaceNumber: 2))
+        let lane = DirectFixtures.lane(candidate, slotId: Self.steam, wiring: wiring)
+        model.input.paths.hidPadArrived(HidPadArrival(slotId: Self.steam, lane: lane, probe: GameControllerProbe { false }))
+        XCTAssertTrue(settled { !self.model.input.paths.offers.state.isEmpty }, "the pad is offered")
+        XCTAssertTrue(model.pickInputPath(slotId: Self.steam, .direct))
+        return lane
+    }
+
+    private func settled(_ predicate: () -> Bool) -> Bool {
+        let deadline = Date().addingTimeInterval(2)
+        while !predicate(), Date() < deadline {
+            RunLoop.main.run(until: Date().addingTimeInterval(0.02))
+        }
+        return predicate()
+    }
+
+    func testASteamControllersSlotShowsThePickInForceAndItsLaneRoutesByIt() throws {
+        let lane = try arriveSteamController()
+        let slot = try XCTUnwrap(model.slots.first { $0.id == Self.steam })
+        XCTAssertEqual(slot.trackpads, .rightStickByDefault)
+        XCTAssertEqual(slot.preferences.touchpad, .stick, "the 2015 pad's default, nothing chosen")
+        XCTAssertEqual(lane.trackpadPick, .stick)
+        model.setTouchpadPick(.pad, slotId: Self.steam)
+        XCTAssertEqual(model.slots.first { $0.id == Self.steam }?.preferences.touchpad, .pad)
+        XCTAssertEqual(lane.trackpadPick, .pad, "the lane hears the pick without a report in between")
+    }
 }

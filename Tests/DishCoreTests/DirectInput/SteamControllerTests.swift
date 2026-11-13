@@ -36,7 +36,7 @@ final class SteamControllerTests: XCTestCase {
     private struct NotAStatePacket: Error {}
 
     private func state(_ packet: SteamPacketBytes, hold: inout SteamStickHold) throws -> (GamepadReport, MotionSample?) {
-        guard case let .state(report, motion) = packet.decode(hold: &hold) else {
+        guard case let .state(report, motion, _) = packet.decode(hold: &hold) else {
             XCTFail("not a state packet")
             throw NotAStatePacket()
         }
@@ -48,8 +48,17 @@ final class SteamControllerTests: XCTestCase {
         return try XCTUnwrap(stateReport(packet.decode(hold: &hold)))
     }
 
+    private func pads(_ packet: SteamPacketBytes) throws -> SteamPads {
+        var hold = SteamStickHold()
+        guard case let .state(_, _, pads) = packet.decode(hold: &hold) else {
+            XCTFail("not a state packet")
+            throw NotAStatePacket()
+        }
+        return pads
+    }
+
     private func stateReport(_ reading: SteamReading?) -> GamepadReport? {
-        guard case let .state(report, _) = reading else { return nil }
+        guard case let .state(report, _, _) = reading else { return nil }
         return report
     }
 
@@ -145,23 +154,22 @@ final class SteamControllerTests: XCTestCase {
         let idle = try report(.state(Button.leftPadClicked))
         XCTAssertEqual(idle.buttons, WireButton.leftThumb.bit)
         XCTAssertEqual(idle.extButtons, 0, "the stick's click alone")
+        XCTAssertFalse(try pads(.state(Button.leftPadClicked)).left.clicked, "not the pad's")
     }
 
-    func testALeftPadClickUnderAFingerIsTheLeftPadClickAndNotTheStickClick() throws {
-        let onPad = try report(.state(Button.leftPadClicked | Button.leftPadFinger))
+    func testALeftPadClickUnderAFingerIsThePadsAndNotTheSticks() throws {
+        let packet = SteamPacketBytes.state(Button.leftPadClicked | Button.leftPadFinger)
+        let onPad = try report(packet)
         XCTAssertEqual(onPad.buttons, 0, "a finger on the pad owns the click")
-        XCTAssertEqual(onPad.extButtons, ProtocolConstants.extButtonLeftPadClick)
+        XCTAssertEqual(onPad.extButtons, 0, "the router lands it by the pick")
+        XCTAssertTrue(try pads(packet).left.clicked)
     }
 
-    func testTheStickAndRightPadClicksAreTheThumbButtons() throws {
-        let buttons = try report(.state(Button.stickButton | Button.rightPadClicked)).buttons
-        XCTAssertEqual(buttons, WireButtonWord([.leftThumb, .rightThumb]).rawValue)
-    }
-
-    func testTheRightPadClickStaysTheRightStickClickAloneWhileThePadIsTheStick() throws {
-        let clicked = try report(.state(Button.rightPadClicked | Button.rightPadFinger))
-        XCTAssertEqual(clicked.buttons, WireButton.rightThumb.bit)
-        XCTAssertEqual(clicked.extButtons, 0, "one wire field per click")
+    func testTheStickClickIsTheLeftThumbAndTheRightPadClickIsThePadsNotR3() throws {
+        let packet = SteamPacketBytes.state(Button.stickButton | Button.rightPadClicked)
+        XCTAssertEqual(try report(packet).buttons, WireButton.leftThumb.bit)
+        XCTAssertEqual(try report(packet).extButtons, 0)
+        XCTAssertTrue(try pads(packet).right.clicked)
     }
 
     // MARK: - The extras on the extended-buttons word
@@ -189,30 +197,41 @@ final class SteamControllerTests: XCTestCase {
             | Button.leftPadClicked | Button.leftPadFinger
         let expected = ProtocolConstants.extButtonLeftPaddle1 | ProtocolConstants.extButtonRightPaddle1
             | ProtocolConstants.extButtonLeftTriggerClick | ProtocolConstants.extButtonRightTriggerClick
-            | ProtocolConstants.extButtonLeftPadClick
-        XCTAssertEqual(try report(.state(extras)).extButtons, expected)
+        XCTAssertEqual(try report(.state(extras)).extButtons, expected, "the pad clicks are the router's")
+        XCTAssertTrue(try pads(.state(extras)).left.clicked)
     }
 
-    // MARK: - The right pad as the right stick
+    // MARK: - The trackpads as the router takes them
 
-    func testTheRightPadDrivesTheRightStickThroughTheShellRotation() throws {
+    func testTheRightPadIsReadThroughTheShellRotationAndLeavesTheRightStickToTheRouter() throws {
         var packet = SteamPacketBytes.state(Button.rightPadFinger)
         packet.setLe16(20, 10000)
-        let rotated = try report(packet)
-        XCTAssertEqual(rotated.rx, 9659)
-        XCTAssertEqual(rotated.ry, 2588)
+        let right = try pads(packet).right
+        XCTAssertEqual([right.x, right.y], [9659, 2588])
+        XCTAssertTrue(right.active)
+        let decoded = try report(packet)
+        XCTAssertEqual([decoded.rx, decoded.ry], [0, 0], "the router decides what the pad is")
     }
 
-    func testTheRightStickRecentresWhenTheFingerLifts() throws {
+    func testTheLeftPadIsReadThroughTheOppositeRotationWhileAFingerIsOnIt() throws {
+        var packet = SteamPacketBytes.state(Button.leftPadFinger)
+        packet.setLe16(16, 10000)
+        let left = try pads(packet).left
+        XCTAssertTrue(left.active)
+        XCTAssertEqual([left.x, left.y], [9659, -2588], "SDL rotates the left pad by the shell angle's negative")
+        var idle = packet
+        idle.bytes[10] = 0
+        XCTAssertEqual(try pads(idle).left, SteamPadSample(), "the shared left axes are the stick's then")
+    }
+
+    func testAPadSampleLiftsWithTheFinger() throws {
         var held = SteamPacketBytes.state(Button.rightPadFinger)
         held.setLe16(20, 20000)
         held.setLe16(22, 20000)
-        XCTAssertNotEqual(try report(held).rx, 0)
+        XCTAssertTrue(try pads(held).right.active)
         var lifted = held
         lifted.bytes[10] = 0
-        let next = try report(lifted)
-        XCTAssertEqual(next.rx, 0)
-        XCTAssertEqual(next.ry, 0)
+        XCTAssertEqual(try pads(lifted).right, SteamPadSample())
     }
 
     // MARK: - Motion

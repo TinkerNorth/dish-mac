@@ -241,4 +241,76 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertNil(slot.typeFeatures)
         XCTAssertNil(slot.hostProbe)
     }
+
+    // MARK: - The trackpad pick in force
+
+    private func steamSlot(_ trackpads: SteamTrackpads) -> GameControllerInput.Slot {
+        var gc = GameControllerInput.Slot(
+            id: "steam",
+            name: "Steam Controller",
+            capabilities: ControllerCapabilities(hasTouchpad: true),
+            family: .other
+        )
+        gc.trackpads = trackpads
+        return gc
+    }
+
+    @MainActor
+    func testAnUnboundSteamControllerStartsOnItsModelsDefaultAndCarriesItOnTheSlot() throws {
+        let inForce = effectivePreferences(gcSlots: [steamSlot(.rightStickByDefault)], bindings: [:], facts: SlotFactsSnapshot())
+        XCTAssertEqual(inForce["steam"]?.touchpad, .stick)
+        XCTAssertEqual(
+            effectivePreferences(gcSlots: [steamSlot(.twoPads)], bindings: [:], facts: SlotFactsSnapshot())["steam"]?.touchpad,
+            .pad
+        )
+        var facts = SlotFactsSnapshot()
+        facts.preferences = inForce
+        let slot = try XCTUnwrap(composeSlots(gcSlots: [steamSlot(.rightStickByDefault)], connections: [], bindings: [:], facts: facts)
+            .first)
+        XCTAssertEqual(slot.trackpads, .rightStickByDefault)
+        XCTAssertEqual(slot.preferences.touchpad, .stick)
+    }
+
+    @MainActor
+    func testABoundSteamControllersPickFollowsTheEmulatedTypesSurfaceAndTheHostsGrant() throws {
+        let key = SlotKey(connectionId: "sat", slotId: "steam")
+        var facts = try SlotFactsSnapshot(catalogs: ["sat": catalog()], probes: ["sat": probe("{\"host\":{}}")])
+        facts.overrides = [key: 0]
+        let xbox = effectivePreferences(gcSlots: [steamSlot(.twoPads)], bindings: ["steam": "sat"], facts: facts)
+        XCTAssertEqual(xbox["steam"]?.touchpad, .off, "the Xbox 360 type renders no touch surface")
+        facts.overrides = [key: 1]
+        let ds4 = effectivePreferences(gcSlots: [steamSlot(.twoPads)], bindings: ["steam": "sat"], facts: facts)
+        XCTAssertEqual(ds4["steam"]?.touchpad, .pad)
+        facts.preferences = ["steam": SlotPreferences(touchpad: .mouse, touchpadStored: true)]
+        let ungranted = effectivePreferences(gcSlots: [steamSlot(.twoPads)], bindings: ["steam": "sat"], facts: facts)
+        XCTAssertEqual(ungranted["steam"]?.touchpad, .off, "the host grants no mouse control")
+        facts.probes = try ["sat": probe("{\"host\":{\"mouseControl\":{\"supported\":true,\"available\":true}}}")]
+        let granted = effectivePreferences(gcSlots: [steamSlot(.twoPads)], bindings: ["steam": "sat"], facts: facts)
+        XCTAssertEqual(granted["steam"]?.touchpad, .mouse)
+    }
+
+    @MainActor
+    func testAPadWithoutTrackpadsKeepsItsStoredPickAndAMoonlightBindingRefusesNothing() {
+        let gc = GameControllerInput.Slot(
+            id: "pad",
+            name: "DualSense",
+            capabilities: ControllerCapabilities(hasTouchpad: true),
+            family: .dualSense
+        )
+        var facts = SlotFactsSnapshot()
+        facts.preferences = [
+            "pad": SlotPreferences(touchpad: .mouse, touchpadStored: true),
+            "steam": SlotPreferences(touchpad: .mouse, touchpadStored: true)
+        ]
+        facts.moonlightHostTypes = ["moon": 0]
+        let inForce = effectivePreferences(gcSlots: [gc, steamSlot(.twoPads)], bindings: ["pad": "moon", "steam": "moon"], facts: facts)
+        XCTAssertEqual(inForce["pad"]?.touchpad, .mouse, "the solver decides for a touchpad pad")
+        XCTAssertEqual(inForce["steam"]?.touchpad, .mouse, "a Moonlight host's layers are unread")
+    }
+
+    func testTheRoutingTableReadsOnlyTheBoundSlotsSwitches() {
+        let inForce = ["pad": SlotPreferences(touchpad: .mouse), "steam": SlotPreferences(touchpad: .stick)]
+        XCTAssertEqual(boundSlotPreferences(inForce, bindings: ["steam": "sat"]), ["steam": SlotPreferences(touchpad: .stick)])
+        XCTAssertEqual(boundSlotPreferences(inForce, bindings: [:]), [:], "an unbound slot has no route to reach")
+    }
 }

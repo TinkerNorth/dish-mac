@@ -25,9 +25,13 @@ final class PadFeedTests: XCTestCase {
         let touch = TouchpadSample(
             finger0: TouchpadFinger(active: true, id: 255, x: .min, y: .max),
             finger1: TouchpadFinger(active: false, id: 1, x: -1, y: 1),
-            buttonPressed: true
+            buttonPressed: true,
+            rightButtonPressed: true
         )
         XCTAssertEqual(TouchpadSample(packedLow: touch.packedLow, high: touch.packedHigh), touch)
+        var leftOnly = touch
+        leftOnly.rightButtonPressed = false
+        XCTAssertEqual(TouchpadSample(packedLow: leftOnly.packedLow, high: leftOnly.packedHigh), leftOnly)
         let zones = GamepadInputProcessor.Deadzones(stickFlat: -5, triggerFlat: 255)
         XCTAssertEqual(GamepadInputProcessor.Deadzones(packed: zones.packed), zones)
     }
