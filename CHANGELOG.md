@@ -111,6 +111,13 @@ the repos share a version number.
 
 ### Fixed
 
+- **The privacy policy says when the Mac's battery is sent.** Since a pad
+  sends the lower of its battery and the Mac's, the Mac's internal battery
+  level and charging state, read from IOKit's power sources, reach the
+  satellite or Moonlight host a controller is bound to whenever they are the
+  lower, not only for a pad that reports no battery, as the policy said. It
+  now says what is read, from where and when it is sent, and its effective
+  date moves to 2026-11-13.
 - **The 2026 Steam Controller's rumble and lizard-mode tests no longer race
   the clock.** The output that re-sends the pad's rumble every 40 ms and
   turns its keyboard and mouse off again every 3 s took its ticks from
