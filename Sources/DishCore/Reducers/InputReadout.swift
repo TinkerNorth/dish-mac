@@ -2,9 +2,10 @@
 // Copyright (C) 2026 Dish contributors.
 //
 // What the input inspector shows of one wire report: which buttons the XUSB
-// word holds down, and the sticks, triggers, motion and touch in human
-// units. The button table carries the layout the report builders write, so
-// the inspector cannot name a bit the wire does not carry.
+// word and the protocol 4 extended-buttons word hold down, and the sticks,
+// triggers, motion and touch in human units. The button tables carry the
+// layout the report builders write, so the inspector cannot name a bit the
+// wire does not carry.
 
 import Foundation
 
@@ -53,6 +54,44 @@ public enum WireButton: CaseIterable, Equatable, Sendable {
 /// The buttons a report's XUSB word holds down, in wire-bit order.
 public func pressedButtons(_ wButtons: UInt16) -> [WireButton] {
     WireButton.allCases.filter { wButtons & $0.bit != 0 }
+}
+
+public enum ExtendedButton: CaseIterable, Equatable, Sendable {
+    case rightPaddle1
+    case leftPaddle1
+    case rightPaddle2
+    case leftPaddle2
+    case misc1
+    case leftPadClick
+    case rightPadClick
+    case leftTriggerClick
+    case rightTriggerClick
+    case leftStickTouch
+    case rightStickTouch
+    case leftGripTouch
+    case rightGripTouch
+
+    public var bit: UInt32 {
+        switch self {
+        case .rightPaddle1: ProtocolConstants.extButtonRightPaddle1
+        case .leftPaddle1: ProtocolConstants.extButtonLeftPaddle1
+        case .rightPaddle2: ProtocolConstants.extButtonRightPaddle2
+        case .leftPaddle2: ProtocolConstants.extButtonLeftPaddle2
+        case .misc1: ProtocolConstants.extButtonMisc1
+        case .leftPadClick: ProtocolConstants.extButtonLeftPadClick
+        case .rightPadClick: ProtocolConstants.extButtonRightPadClick
+        case .leftTriggerClick: ProtocolConstants.extButtonLeftTriggerClick
+        case .rightTriggerClick: ProtocolConstants.extButtonRightTriggerClick
+        case .leftStickTouch: ProtocolConstants.extButtonLeftStickTouch
+        case .rightStickTouch: ProtocolConstants.extButtonRightStickTouch
+        case .leftGripTouch: ProtocolConstants.extButtonLeftGripTouch
+        case .rightGripTouch: ProtocolConstants.extButtonRightGripTouch
+        }
+    }
+}
+
+public func pressedExtendedButtons(_ extButtons: UInt32) -> [ExtendedButton] {
+    ExtendedButton.allCases.filter { extButtons & $0.bit != 0 }
 }
 
 public enum InputReadout {

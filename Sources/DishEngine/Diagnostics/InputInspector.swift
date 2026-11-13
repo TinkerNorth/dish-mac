@@ -45,11 +45,15 @@ package struct TouchReadout: Hashable {
     package var finger1: TouchFinger?
     package var finger2: TouchFinger?
     package var click: Bool
+    package var rightClick: Bool
+    package var wheel: Int16
 
-    package init(finger1: TouchFinger?, finger2: TouchFinger?, click: Bool) {
+    package init(finger1: TouchFinger?, finger2: TouchFinger?, click: Bool, rightClick: Bool, wheel: Int16) {
         self.finger1 = finger1
         self.finger2 = finger2
         self.click = click
+        self.rightClick = rightClick
+        self.wheel = wheel
     }
 }
 
@@ -58,6 +62,7 @@ package struct TouchReadout: Hashable {
 /// (before them, what the stick tests read), motion and touch.
 package struct InputSnapshot: Hashable {
     package var buttons: UInt16
+    package var extButtons: UInt32
     package var leftStick: StickSample
     package var rightStick: StickSample
     package var leftTrigger: Float
@@ -69,6 +74,7 @@ package struct InputSnapshot: Hashable {
 
     package init(
         buttons: UInt16,
+        extButtons: UInt32,
         leftStick: StickSample,
         rightStick: StickSample,
         leftTrigger: Float,
@@ -79,6 +85,7 @@ package struct InputSnapshot: Hashable {
         touch: TouchReadout?
     ) {
         self.buttons = buttons
+        self.extButtons = extButtons
         self.leftStick = leftStick
         self.rightStick = rightStick
         self.leftTrigger = leftTrigger
@@ -197,6 +204,7 @@ func inputSnapshot(_ input: LatestInput) -> InputSnapshot? {
     guard let filtered = input.filtered, let raw = input.raw else { return nil }
     return InputSnapshot(
         buttons: filtered.buttons,
+        extButtons: filtered.extButtons,
         leftStick: InputReadout.stickSample(x: filtered.lx, y: filtered.ly),
         rightStick: InputReadout.stickSample(x: filtered.rx, y: filtered.ry),
         leftTrigger: InputReadout.triggerFraction(filtered.lt),
@@ -204,7 +212,7 @@ func inputSnapshot(_ input: LatestInput) -> InputSnapshot? {
         rawLeft: InputReadout.stickSample(x: raw.lx, y: raw.ly),
         rawRight: InputReadout.stickSample(x: raw.rx, y: raw.ry),
         motion: input.motion.map(motionReadout),
-        touch: input.touch.map(touchReadout)
+        touch: input.touch.map { touchReadout($0, wheel: input.scrollV) }
     )
 }
 
@@ -219,8 +227,14 @@ func motionReadout(_ sample: MotionSample) -> MotionReadout {
     )
 }
 
-func touchReadout(_ sample: TouchpadSample) -> TouchReadout {
-    TouchReadout(finger1: touchFinger(sample.finger0), finger2: touchFinger(sample.finger1), click: sample.buttonPressed)
+func touchReadout(_ sample: TouchpadSample, wheel: Int16) -> TouchReadout {
+    TouchReadout(
+        finger1: touchFinger(sample.finger0),
+        finger2: touchFinger(sample.finger1),
+        click: sample.buttonPressed,
+        rightClick: sample.rightButtonPressed,
+        wheel: wheel
+    )
 }
 
 private func touchFinger(_ finger: TouchpadFinger) -> TouchFinger? {

@@ -117,6 +117,9 @@ struct InspectorPage: View {
                 monoLine(state.gyro)
                 monoLine(state.accel)
                 monoLine(state.touch)
+                if let pointer = state.pointer {
+                    monoLine(pointer)
+                }
             }
         }
     }

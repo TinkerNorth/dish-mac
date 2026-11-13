@@ -116,8 +116,13 @@ final class GamepadInputProcessor: @unchecked Sendable {
         feed(for: deviceId).publishMotion(sample, nowNs: nowNs)
     }
 
-    func publishTouchpad(deviceId: DeviceId, sample: TouchpadSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
-        feed(for: deviceId).publishTouchpad(sample, nowNs: nowNs)
+    func publishTouchpad(
+        deviceId: DeviceId,
+        sample: TouchpadSample,
+        scrollV: Int16 = 0,
+        nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds
+    ) {
+        feed(for: deviceId).publishTouchpad(sample, scrollV: scrollV, nowNs: nowNs)
     }
 
     /// The main actor's battery timers: through the route it resolved, on

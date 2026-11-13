@@ -21,6 +21,13 @@ the repos share a version number.
 
 ### Added
 
+- **The controller inspector shows a controller's extra buttons.** Its live
+  input now names a back paddle, the Misc 1 button (a Switch Pro
+  Controller's Capture, the 2026 Steam Controller's "..."), a trackpad or
+  trigger click and a stick or grip touch as you press them, after the usual
+  buttons. With a Steam Controller's trackpads set to Mouse, its right click
+  and a turn of its scroll wheel show under the touchpad. Before, the
+  inspector showed only the buttons an Xbox controller has.
 - **The 8BitDo Ultimate 2 Wireless works with its switch on X-input.** In
   that mode the controller speaks the Xbox 360 protocol, which macOS has no
   driver for, so a Mac never saw it and only D-input worked. Dish now reads

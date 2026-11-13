@@ -77,6 +77,20 @@ final class InputInspectorTests: XCTestCase {
         XCTAssertEqual(touch?.click, true)
     }
 
+    func testTheSnapshotCarriesTheExtendedButtonsAndThePointersRightButtonAndWheel() {
+        inspector.arm("pad")
+        let paddleAndMisc = ProtocolConstants.extButtonLeftPaddle1 | ProtocolConstants.extButtonMisc1
+        let rightClick = TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false, rightButtonPressed: true)
+        let notchDown = -ProtocolConstants.scrollUnitsPerNotch
+        processor.publish(deviceId: "pad", state: GamepadReport(extButtons: paddleAndMisc))
+        processor.publishTouchpad(deviceId: "pad", sample: rightClick, scrollV: notchDown)
+        inspector.tick()
+        let snapshot = inspector.state.snapshot
+        XCTAssertEqual(snapshot?.extButtons, paddleAndMisc)
+        XCTAssertEqual(snapshot?.touch?.rightClick, true)
+        XCTAssertEqual(snapshot?.touch?.wheel, notchDown, "the record keeps the turn the pointer frame carried")
+    }
+
     func testAStickTestRunsOnTheInspectorsClockAndReadsTheRawSticks() {
         processor.setDeadzones(deviceId: "pad", .init(stickFlat: 5000, triggerFlat: 0))
         inspector.arm("pad")
