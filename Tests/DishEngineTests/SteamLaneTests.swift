@@ -13,6 +13,8 @@ final class SteamLaneTests: XCTestCase {
 
     private let reports = LockedBox<[GamepadReport]>([])
     private let motion = LockedBox<[MotionSample]>([])
+    private let touches = LockedBox<[TouchpadSample]>([])
+    private let wheel = LockedBox<[Int16]>([])
     private let batteries = LockedBox<[PadBattery]>([])
     private let links = LockedBox<[String]>([])
     private let output = FakeDirectOutput()
@@ -21,11 +23,17 @@ final class SteamLaneTests: XCTestCase {
     private func lane(productId: Int, interfaceNumber: Int?) throws -> HidPadLane {
         let reports = reports
         let motion = motion
+        let touches = touches
+        let wheel = wheel
         let batteries = batteries
         let links = links
         processor.send(
             reports: { _, report in reports.mutate { $0.append(report) } },
-            motion: { _, sample, _ in motion.mutate { $0.append(sample) } }
+            motion: { _, sample, _ in motion.mutate { $0.append(sample) } },
+            touchpad: { _, sample, _, scrollV in
+                touches.mutate { $0.append(sample) }
+                wheel.mutate { $0.append(scrollV) }
+            }
         )
         var wiring = HidPadWiring(
             processor: processor,
@@ -40,6 +48,77 @@ final class SteamLaneTests: XCTestCase {
 
     private func steamState(_ buttons: UInt32) -> [UInt8] {
         SteamLanePackets.state(buttons)
+    }
+
+    private static let leftPadClicked: UInt32 = 0x020000
+    private static let rightPadClicked: UInt32 = 0x040000
+    private static let leftPadFinger: UInt32 = 0x080000
+    private static let rightPadFinger: UInt32 = 0x100000
+
+    /// A state packet with the left pad's y (the shared left axes, bytes
+    /// 18...19) and the right pad's x (bytes 20...21).
+    private func padState(_ buttons: UInt32, leftY: Int16 = 0, rightX: Int16 = 0) -> [UInt8] {
+        var bytes = steamState(buttons)
+        bytes[18] = UInt8(truncatingIfNeeded: UInt16(bitPattern: leftY))
+        bytes[19] = UInt8(truncatingIfNeeded: UInt16(bitPattern: leftY) >> 8)
+        bytes[20] = UInt8(truncatingIfNeeded: UInt16(bitPattern: rightX))
+        bytes[21] = UInt8(truncatingIfNeeded: UInt16(bitPattern: rightX) >> 8)
+        return bytes
+    }
+
+    // MARK: - The trackpads by the slot's pick
+
+    func testThe2015RightPadIsTheRightStickUntilThePickSaysPad() throws {
+        let pad = try lane(productId: 0x1102, interfaceNumber: 2)
+        pad.gate.route(.direct)
+        feedReport(padState(Self.rightPadFinger, rightX: 10000), to: pad)
+        XCTAssertEqual(reports.get().last?.rx, 9659, "the stick pick is the lane's default")
+        XCTAssertEqual(touches.get(), [], "the stick puts nothing on the surface")
+        pad.useTrackpadPick(.pad)
+        feedReport(padState(Self.rightPadFinger, rightX: 10001), to: pad)
+        XCTAssertEqual(reports.get().last?.rx, 0, "the pad pick gives up the stick")
+        let touch = try XCTUnwrap(touches.get().last)
+        XCTAssertTrue(touch.finger1.active, "the right pad is finger 1")
+        XCTAssertGreaterThan(touch.finger1.x, 16384, "on the right half")
+        XCTAssertFalse(touch.finger0.active)
+    }
+
+    func testMouseModeLandsTheLeftPadClickOnTheRightButtonAndItsTravelOnTheWheel() throws {
+        let pad = try lane(productId: 0x1102, interfaceNumber: 2)
+        pad.gate.route(.direct)
+        pad.useTrackpadPick(.mouse)
+        feedReport(padState(Self.leftPadFinger | Self.leftPadClicked), to: pad)
+        let clicked = try XCTUnwrap(touches.get().last)
+        XCTAssertTrue(clicked.rightButtonPressed)
+        XCTAssertFalse(clicked.buttonPressed)
+        XCTAssertFalse(clicked.finger0.active, "the left pad is no finger in mouse mode")
+        XCTAssertEqual(reports.get().last?.buttons, 0, "neither L3 nor R3")
+        feedReport(padState(Self.leftPadFinger | Self.leftPadClicked, leftY: 5000), to: pad)
+        XCTAssertEqual(wheel.get().last, ProtocolConstants.scrollUnitsPerNotch, "one notch of travel")
+    }
+
+    func testOffPutsThePadClicksOnTheWordAndLiftsTheSurface() throws {
+        let pad = try lane(productId: 0x1102, interfaceNumber: 2)
+        pad.gate.route(.direct)
+        pad.useTrackpadPick(.pad)
+        feedReport(padState(Self.rightPadFinger, rightX: 10000), to: pad)
+        XCTAssertEqual(touches.get().last?.finger1.active, true)
+        pad.useTrackpadPick(.off)
+        feedReport(padState(Self.rightPadFinger | Self.rightPadClicked, rightX: 10000), to: pad)
+        XCTAssertEqual(reports.get().last?.extButtons, ProtocolConstants.extButtonRightPadClick)
+        XCTAssertEqual(reports.get().last?.buttons, 0, "not R3")
+        XCTAssertEqual(touches.get().last?.finger1.active, false, "the surface lifts once")
+    }
+
+    func testTheSurfaceIsPublishedOnChangeOnly() throws {
+        let pad = try lane(productId: 0x1102, interfaceNumber: 2)
+        pad.gate.route(.direct)
+        pad.useTrackpadPick(.pad)
+        feedReport(padState(Self.rightPadFinger, rightX: 10000), to: pad)
+        feedReport(padState(Self.rightPadFinger, rightX: 10000), to: pad)
+        XCTAssertEqual(touches.get().count, 1, "a repeat of the surface is not sent")
+        feedReport(padState(Self.rightPadFinger, rightX: 12000), to: pad)
+        XCTAssertEqual(touches.get().count, 2)
     }
 
     // MARK: - A wired pad

@@ -376,9 +376,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
         live.sendBattery(controllerIndex: controllerIndex, level: level, status: status)
     }
 
-    nonisolated func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, controllerIndex: Int) {
+    nonisolated func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, scrollV: Int16 = 0, controllerIndex: Int) {
         guard let live = clientRef.get() else { return }
-        live.sendTouchpad(controllerIndex: controllerIndex, sample: sample, eventTimeMs: eventTimeMs)
+        live.sendTouchpad(controllerIndex: controllerIndex, sample: sample, eventTimeMs: eventTimeMs, scrollV: scrollV)
     }
 
     /// One pad's mic lane, from the capture thread; nothing while no session

@@ -21,6 +21,20 @@ the repos share a version number.
 
 ### Added
 
+- **A Steam Controller's trackpads are yours to route.** A Steam Controller
+  Dish reads directly now has a Trackpads pick on Configure binding, and its
+  chip on Home: Right stick (the 2015 pad's default, its right trackpad as
+  the right stick and its click as the stick's, as before), Pad (the two
+  trackpads side by side on the emulated controller's touchpad, each click
+  the touchpad's click), Mouse (the right trackpad moves the host's mouse
+  and clicks its left button, a click on the left trackpad is the right
+  button and a swipe along it turns the wheel) and Off (the clicks reach
+  the host as extra buttons alone). The 2026 pad has a real right stick, so
+  it starts on Pad when the emulated controller has a touchpad and on Off
+  otherwise; the mouse is only ever chosen, and a pick the host or the
+  emulated controller cannot carry shows as Off rather than as something
+  else. A trackpad or a click lands in one place on the wire, never two.
+  Not yet tried on a Steam Controller.
 - **The DualSense Edge is a controller type: the DualSense with four back
   buttons.** A Satellite that speaks protocol 4 offers it in the Emulate
   picker, last in the list; it is never picked for you, a DualSense is still

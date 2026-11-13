@@ -78,6 +78,7 @@ func composeSlots(
         slot.audioRoute = route?.verdict
         slot.micMuted = facts.mutes.contains(gc.id)
         slot.family = gc.family
+        slot.trackpads = gc.trackpads
         guard let connectionId = bindings[gc.id] else { return slot }
         slot.boundConnectionId = connectionId
         slot.boundStatus = connections.first { $0.id == connectionId }
@@ -85,6 +86,60 @@ func composeSlots(
         attachBindingFacts(to: &slot, gc: gc, connectionId: connectionId, facts: facts)
         return slot
     }
+}
+
+/// The preferences in force per slot, the store's with each Steam
+/// Controller's trackpad pick resolved against its model, the emulated
+/// type's surface and the host's mouse grant; an unbound pad's unread
+/// layers refuse nothing. One resolution feeds the slot list, the wire and
+/// the lanes, so they agree.
+func effectivePreferences(
+    gcSlots: [GameControllerInput.Slot],
+    bindings: [String: String],
+    facts: SlotFactsSnapshot
+) -> [String: SlotPreferences] {
+    let inForce = gcSlots.map { preferencesInForce($0, connectionId: bindings[$0.id], facts: facts) }
+    return Dictionary(uniqueKeysWithValues: inForce)
+}
+
+/// The bound slots' rows of that table: what the routing table reads, since
+/// an unbound slot has no route for its switches to reach.
+func boundSlotPreferences(_ preferences: [String: SlotPreferences], bindings: [String: String]) -> [String: SlotPreferences] {
+    preferences.filter { bindings[$0.key] != nil }
+}
+
+/// One slot's row of the table: its preferences in force under its id.
+private func preferencesInForce(
+    _ gc: GameControllerInput.Slot,
+    connectionId: String?,
+    facts: SlotFactsSnapshot
+) -> (String, SlotPreferences) {
+    let layers = bindingLayers(gc: gc, connectionId: connectionId, facts: facts)
+    let preferences = effectiveSlotPreferences(
+        stored: facts.preferences[gc.id],
+        trackpads: gc.trackpads,
+        typeOffersDs4: layers.typeOffersDs4,
+        hostMouseControl: layers.hostMouseControl
+    )
+    return (gc.id, preferences)
+}
+
+/// What a binding's type and host say about the touch surface and the
+/// mouse: true wherever the layer is unread or the binding is not a
+/// satellite's.
+private func bindingLayers(
+    gc: GameControllerInput.Slot,
+    connectionId: String?,
+    facts: SlotFactsSnapshot
+) -> (typeOffersDs4: Bool, hostMouseControl: Bool) {
+    guard let connectionId, facts.moonlightHostTypes[connectionId] == nil else { return (true, true) }
+    let catalog = facts.catalogs[connectionId]
+    let override = facts.overrides[SlotKey(connectionId: connectionId, slotId: gc.id)]
+    let type = emulatedControllerType(override: override, catalog: catalog, family: gc.family)
+    let features = typeFeatureFacts(in: catalog, type: type)
+    let typeOffersDs4 = features.map { typeOffersDs4Touchpad(supported: $0.touchpad, modes: $0.touchpadModes) } ?? true
+    let hostMouseControl = hostProbeFacts(facts.probes[connectionId])?.mouseControl ?? true
+    return (typeOffersDs4, hostMouseControl)
 }
 
 /// The emulated type and its facts, the host's facts and the motion word

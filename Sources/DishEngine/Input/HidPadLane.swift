@@ -116,6 +116,10 @@ final class HidPadLane: @unchecked Sendable {
     /// a receiver's slot from its controller's first sign. Written here,
     /// read on the main actor.
     private let linkWord = AtomicWord.allocate()
+    /// The slot's trackpad pick, written by the main actor and read per
+    /// report; the 2015 pad's default until the pick arrives, which the
+    /// 2026 pad's router reads as off.
+    private let trackpadPickWord = AtomicWord.allocate(TouchpadPick.stick.code)
     /// The stored remap as a table, from the main actor to the reader.
     private let remapMail = Mailbox<RemapBox>()
 
@@ -133,9 +137,13 @@ final class HidPadLane: @unchecked Sendable {
     private(set) var lastFullReportNs: UInt64?
     private var calibration = SwitchStickCalibration()
     private var steamHold = SteamStickHold()
+    private var steamScroll = SteamPadScroll()
     private var tritonCarry = TritonCarry()
     private var lastSeen: GamepadReport?
     private var lastPublished: GamepadReport?
+    /// The last surface published; lifted while the lane is not forwarded,
+    /// so the first live surface once forwarded goes out whole.
+    private var lastSurface = SteamSurface.lifted
     private var lastBattery: PadBattery?
     /// The declared sources when the walk opened, and in the last report.
     private var captureRest: HidRawState?
@@ -159,6 +167,17 @@ final class HidPadLane: @unchecked Sendable {
         buffer.deallocate()
         batteryWord.deallocate()
         linkWord.deallocate()
+        trackpadPickWord.deallocate()
+    }
+
+    /// The pick the router reads, as the main actor last set it.
+    var trackpadPick: TouchpadPick {
+        TouchpadPick(code: trackpadPickWord.load())
+    }
+
+    /// The slot's trackpad pick from now on; the next report routes by it.
+    func useTrackpadPick(_ pick: TouchpadPick) {
+        trackpadPickWord.store(pick.code)
     }
 
     /// The battery the pad last reported while Direct.
@@ -227,11 +246,43 @@ final class HidPadLane: @unchecked Sendable {
     private func receiveSteam(_ report: UnsafeBufferPointer<UInt8>) {
         guard let reading = decodeSteam(report) else { return }
         switch reading {
-        case let .state(state, motion): steamState(LaneReading(report: state, motion: motion, battery: nil))
+        case let .state(state, motion, pads): steamState(state, motion: motion, pads: pads)
         case let .battery(battery): steamBattery(battery)
         case .link(.connected): linkUp()
         case .link(.disconnected): linkDown()
         }
+    }
+
+    /// The pads land by the slot's pick before the state is delivered, so
+    /// the report the processor sees already has the pads' share of it.
+    private func steamState(_ state: GamepadReport, motion: MotionSample?, pads: SteamPads) {
+        let pick = TouchpadPick(code: trackpadPickWord.loadRelaxed())
+        let trackpads = candidate.model?.trackpads ?? .none
+        let routed = routeSteamTrackpads(pick: pick, trackpads: trackpads, pads: pads, report: state, scroll: &steamScroll)
+        steamState(LaneReading(report: routed.report, motion: motion, battery: nil))
+        publishSurface(routed.surface)
+    }
+
+    /// The surface goes out when it changed or the wheel turned (an event
+    /// the frame carries once).
+    private func publishSurface(_ surface: SteamSurface) {
+        guard gate.forwards(.direct) else {
+            lastSurface = .lifted
+            return
+        }
+        let changed = lastSurface != surface
+        let wheelTurned = surface.scrollV != 0
+        guard changed || wheelTurned else { return }
+        lastSurface = surface
+        let feed = currentFeed()
+        let ids = feed.advanceTouchIds(finger0Active: surface.finger0.active, finger1Active: surface.finger1.active)
+        let sample = TouchpadSample(
+            finger0: TouchpadFinger(active: surface.finger0.active, id: ids.finger0, x: surface.finger0.x, y: surface.finger0.y),
+            finger1: TouchpadFinger(active: surface.finger1.active, id: ids.finger1, x: surface.finger1.x, y: surface.finger1.y),
+            buttonPressed: surface.leftButton,
+            rightButtonPressed: surface.rightButton
+        )
+        feed.publishTouchpad(sample, scrollV: surface.scrollV)
     }
 
     private func decodeSteam(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? {
@@ -271,11 +322,15 @@ final class HidPadLane: @unchecked Sendable {
         wiring.linkChanged(slotId)
     }
 
+    /// The controller's last input, and its last touch, must not stay held
+    /// on the host.
     private func releaseHeld() {
         lastSeen = nil
         steamHold = SteamStickHold()
+        steamScroll = SteamPadScroll()
         guard gate.forwards(.direct) else { return }
         publishIfChanged(.released)
+        publishSurface(.lifted)
     }
 
     /// The plain decode unless a remap is stored or the walk listens; then

@@ -43,15 +43,14 @@ final class SteamTritonTests: XCTestCase {
         static let leftGripTouch: UInt32 = 0x2000_0000
     }
 
-    /// Each extra bit and the extended button SDL names it.
+    /// Each extra bit and the extended button SDL names it; the pad clicks
+    /// are the trackpad router's.
     private static let extraRows: [(bit: UInt32, ext: UInt32)] = [
         (Button.quickAccess, ProtocolConstants.extButtonMisc1),
         (Button.r4, ProtocolConstants.extButtonRightPaddle1),
         (Button.l4, ProtocolConstants.extButtonLeftPaddle1),
         (Button.r5, ProtocolConstants.extButtonRightPaddle2),
         (Button.l5, ProtocolConstants.extButtonLeftPaddle2),
-        (Button.leftPadClick, ProtocolConstants.extButtonLeftPadClick),
-        (Button.rightPadClick, ProtocolConstants.extButtonRightPadClick),
         (Button.leftTriggerClick, ProtocolConstants.extButtonLeftTriggerClick),
         (Button.rightTriggerClick, ProtocolConstants.extButtonRightTriggerClick),
         (Button.leftStickTouch, ProtocolConstants.extButtonLeftStickTouch),
@@ -63,15 +62,23 @@ final class SteamTritonTests: XCTestCase {
     private static let stillSample = MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0)
 
     private func report(_ bytes: TritonReportBytes) throws -> GamepadReport {
-        guard case let .state(report, _) = bytes.decode() else {
+        guard case let .state(report, _, _) = bytes.decode() else {
             XCTFail("not a state report")
             return GamepadReport()
         }
         return report
     }
 
+    private func pads(_ bytes: TritonReportBytes) throws -> SteamPads {
+        guard case let .state(_, _, pads) = bytes.decode() else {
+            XCTFail("not a state report")
+            return SteamPads()
+        }
+        return pads
+    }
+
     private func motion(_ reading: SteamReading?) -> MotionSample? {
-        guard case let .state(_, motion) = reading else { return nil }
+        guard case let .state(_, motion, _) = reading else { return nil }
         return motion
     }
 
@@ -120,7 +127,40 @@ final class SteamTritonTests: XCTestCase {
 
     func testEveryExtraRidesTheWordAtOnce() throws {
         let everyBit = Self.extraRows.reduce(UInt32(0)) { $0 | $1.bit }
-        XCTAssertEqual(try report(.state(everyBit)).extButtons, ProtocolConstants.extButtonsKnownMask)
+        let padClicks = ProtocolConstants.extButtonLeftPadClick | ProtocolConstants.extButtonRightPadClick
+        XCTAssertEqual(try report(.state(everyBit)).extButtons, ProtocolConstants.extButtonsKnownMask & ~padClicks)
+    }
+
+    func testThePadClicksAreThePadsAndNotTheWords() throws {
+        let bytes = TritonReportBytes.state(Button.leftPadClick | Button.rightPadClick)
+        XCTAssertEqual(try report(bytes).extButtons, 0, "the router lands them by the pick")
+        XCTAssertTrue(try pads(bytes).left.clicked)
+        XCTAssertTrue(try pads(bytes).right.clicked)
+    }
+
+    // MARK: - The trackpads as the router takes them
+
+    func testThePadsAreReadAt18And24OnThePlainReportsAnd20And26OnTheTimestampReport() throws {
+        for (reportId, offset) in [(UInt8(0x42), 18), (0x45, 18), (0x47, 20)] {
+            var bytes = TritonReportBytes.state(Button.leftPadTouch | Button.rightPadTouch, reportId: reportId)
+            bytes.setLe16(offset, 1000)
+            bytes.setLe16(offset + 2, -2000)
+            bytes.setLe16(offset + 6, 3000)
+            bytes.setLe16(offset + 8, -4000)
+            let decoded = try pads(bytes)
+            XCTAssertEqual(decoded.left, SteamPadSample(active: true, x: 1000, y: -2000), "report \(String(reportId, radix: 16))")
+            XCTAssertEqual(decoded.right, SteamPadSample(active: true, x: 3000, y: -4000), "report \(String(reportId, radix: 16))")
+        }
+    }
+
+    func testAPadIsActiveOnlyOnItsTouchBitAndReadsNothingOtherwise() throws {
+        var bytes = TritonReportBytes.state(Button.rightPadTouch)
+        bytes.setLe16(18, 1000)
+        bytes.setLe16(24, 3000)
+        let decoded = try pads(bytes)
+        XCTAssertEqual(decoded.left, SteamPadSample(), "no touch, no position")
+        XCTAssertEqual(decoded.right, SteamPadSample(active: true, x: 3000, y: 0))
+        XCTAssertEqual(try report(bytes).extButtons, 0, "a pad touch has no slot in the word")
     }
 
     func testThePadTouchesAndTheMappedButtonsLeaveTheWordClear() throws {

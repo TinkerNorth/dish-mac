@@ -56,6 +56,8 @@ final class GameControllerInput: ObservableObject {
         var battery: BatteryReading?
         /// The pad's family, which picks the catalog type it is emulated as.
         var family: PadFamily = .other
+        /// A Steam Controller's trackpads, which the touchpad pick routes.
+        var trackpads: SteamTrackpads = .none
     }
 
     @Published var slots: [Slot] = []

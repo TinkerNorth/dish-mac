@@ -51,6 +51,21 @@ final class EncodersTests: XCTestCase {
         XCTAssertEqual(GamepadReport.released.extButtons, 0)
     }
 
+    // MARK: - MSG_TOUCHPAD POINTER buttons (0x000C, version 2)
+
+    func testThePointerFramesButtonsByteCarriesTheLeftAndRightButtonsAndTheSixteenByteFrameOnlyTheClick() {
+        let both = TouchpadSample(finger0: .none, finger1: .none, buttonPressed: true, rightButtonPressed: true)
+        XCTAssertEqual([UInt8](Encoders.pointerPayload(controllerIndex: 0, sample: both, eventTimeMs: 0))[2], 0x03)
+        let rightOnly = TouchpadSample(finger0: .none, finger1: .none, buttonPressed: false, rightButtonPressed: true)
+        XCTAssertEqual([UInt8](Encoders.pointerPayload(controllerIndex: 0, sample: rightOnly, eventTimeMs: 0))[2], 0x02)
+        XCTAssertEqual(
+            [UInt8](Encoders.touchpadPayload(controllerIndex: 0, sample: rightOnly, eventTimeMs: 0))[1],
+            0,
+            "version 1 has no right button"
+        )
+        XCTAssertEqual([UInt8](Encoders.touchpadPayload(controllerIndex: 0, sample: both, eventTimeMs: 0))[1], 0x04)
+    }
+
     // MARK: - MSG_MOTION (0x000A)
 
     func testMotionPayloadPinsTheSeventeenByteLittleEndianLayout() {

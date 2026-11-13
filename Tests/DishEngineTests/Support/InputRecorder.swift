@@ -76,7 +76,7 @@ private final class RecordingSink: InputSink {
         log.mutate { $0.append(.motion(deviceId, sample, deltaUs: timestampDeltaUs)) }
     }
 
-    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, scrollV _: Int16) {
         log.mutate { $0.append(.touchpad(deviceId, sample, eventTimeMs: eventTimeMs)) }
     }
 
@@ -91,7 +91,7 @@ extension GamepadInputProcessor {
     func send(
         reports: ((String, GamepadReport) -> Void)? = nil,
         motion: ((String, MotionSample, UInt32) -> Void)? = nil,
-        touchpad: ((String, TouchpadSample, UInt32) -> Void)? = nil,
+        touchpad: ((String, TouchpadSample, UInt32, Int16) -> Void)? = nil,
         batteries: ((String, UInt8, UInt8) -> Void)? = nil
     ) {
         route { deviceId in
@@ -106,14 +106,14 @@ private final class ClosureSink: InputSink {
     let deviceId: String
     let reports: ((String, GamepadReport) -> Void)?
     let motion: ((String, MotionSample, UInt32) -> Void)?
-    let touchpad: ((String, TouchpadSample, UInt32) -> Void)?
+    let touchpad: ((String, TouchpadSample, UInt32, Int16) -> Void)?
     let batteries: ((String, UInt8, UInt8) -> Void)?
 
     init(
         deviceId: String,
         reports: ((String, GamepadReport) -> Void)?,
         motion: ((String, MotionSample, UInt32) -> Void)?,
-        touchpad: ((String, TouchpadSample, UInt32) -> Void)?,
+        touchpad: ((String, TouchpadSample, UInt32, Int16) -> Void)?,
         batteries: ((String, UInt8, UInt8) -> Void)?
     ) {
         self.deviceId = deviceId
@@ -131,8 +131,8 @@ private final class ClosureSink: InputSink {
         motion?(deviceId, sample, timestampDeltaUs)
     }
 
-    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32) {
-        touchpad?(deviceId, sample, eventTimeMs)
+    func sendTouchpad(sample: TouchpadSample, eventTimeMs: UInt32, scrollV: Int16) {
+        touchpad?(deviceId, sample, eventTimeMs, scrollV)
     }
 
     func sendBattery(level: UInt8, status: BatteryStatus) {

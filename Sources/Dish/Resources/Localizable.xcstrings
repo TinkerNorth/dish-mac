@@ -21684,6 +21684,41 @@
         }
       }
     },
+    "The right trackpad is the right stick." : {
+      "comment" : "Chip tooltip on a 2015 Steam Controller whose trackpad pick is the right stick.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desni trackpad je desna palica."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das rechte Trackpad ist der rechte Stick."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El trackpad derecho es el stick derecho."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le trackpad droit est le stick droit."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O trackpad direito é o analógico direito."
+          }
+        }
+      }
+    },
     "The satellite accepted, but the controller link would not open. Try again." : {
       "comment" : "Failure: the UDP socket could not be set up.",
       "localizations" : {
@@ -22520,6 +22555,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Touchpad para o host"
+          }
+        }
+      }
+    },
+    "Trackpads" : {
+      "comment" : "The touchpad picker's title on a Steam Controller slot, which has two trackpads.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trackpadovi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trackpads"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trackpads"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trackpads"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trackpads"
           }
         }
       }

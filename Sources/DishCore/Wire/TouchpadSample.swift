@@ -26,11 +26,16 @@ public struct TouchpadFinger: Equatable, Sendable {
 public struct TouchpadSample: Equatable, Sendable {
     public var finger0: TouchpadFinger
     public var finger1: TouchpadFinger
+    /// The pad's click, the POINTER frame's left button.
     public var buttonPressed: Bool
+    /// The POINTER frame's right button: a Steam Controller's left pad
+    /// clicked in mouse mode. Nothing on the 16-byte frame.
+    public var rightButtonPressed: Bool
 
-    public init(finger0: TouchpadFinger, finger1: TouchpadFinger, buttonPressed: Bool) {
+    public init(finger0: TouchpadFinger, finger1: TouchpadFinger, buttonPressed: Bool, rightButtonPressed: Bool = false) {
         self.finger0 = finger0
         self.finger1 = finger1
         self.buttonPressed = buttonPressed
+        self.rightButtonPressed = rightButtonPressed
     }
 }

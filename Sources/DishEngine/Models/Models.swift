@@ -382,6 +382,9 @@ package struct ControllerSlot: Identifiable, Hashable {
     package var audio: ControllerAudioState?
     /// The user muted this controller's microphone (in memory only).
     package var micMuted = false
+    /// The Steam Controller trackpads the pad has, which decide the
+    /// touchpad picker's choices and default.
+    package var trackpads = SteamTrackpads.none
     /// The pad's family, the word the Controllers card shows for its link.
     package var family = PadFamily.other
 

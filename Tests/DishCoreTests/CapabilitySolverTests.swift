@@ -194,6 +194,13 @@ final class CapabilitySolverTests: XCTestCase {
         XCTAssertEqual(try row(.mouse, inputs).verdict, .available)
     }
 
+    func testTheStickPickReadsBothTouchRowsOffNeverUnavailable() throws {
+        var inputs = everythingCarries()
+        inputs.userTouchpadPick = .stick
+        XCTAssertEqual(try row(.touchpad, inputs).verdict, .off, "the right stick is no touchpad routing")
+        XCTAssertEqual(try row(.mouse, inputs).verdict, .off)
+    }
+
     func testASwitchOffAnUnavailableFeatureStillReadsUnavailable() throws {
         var inputs = everythingCarries()
         inputs.padMotion = false

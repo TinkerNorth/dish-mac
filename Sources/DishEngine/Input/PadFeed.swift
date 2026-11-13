@@ -86,12 +86,13 @@ final class PadFeed {
         route.sink.sendMotion(sample, timestampDeltaUs: deltaUs)
     }
 
-    /// Forward a touchpad sample stamped with the publish instant: the
-    /// framework surfaces no per-event timestamp.
-    func publishTouchpad(_ sample: TouchpadSample, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
+    /// Forward a touchpad sample stamped with the publish instant (the
+    /// framework surfaces no per-event timestamp), with the wheel's turn
+    /// since the last sample, an event the POINTER frame carries.
+    func publishTouchpad(_ sample: TouchpadSample, scrollV: Int16 = 0, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
         record.write(touch: sample)
         guard let route = currentRoute(), route.flags.touchpad else { return }
-        route.sink.sendTouchpad(sample: sample, eventTimeMs: UInt32(truncatingIfNeeded: nowNs / 1_000_000))
+        route.sink.sendTouchpad(sample: sample, eventTimeMs: UInt32(truncatingIfNeeded: nowNs / 1_000_000), scrollV: scrollV)
     }
 
     /// An unknown status byte from a future firmware reads as unknown.
@@ -325,7 +326,7 @@ extension TouchpadSample {
 
     var packedHigh: Int64 {
         (finger0.active ? 1 : 0) | Int64(finger0.id) << 1 | (finger1.active ? 1 << 9 : 0) | Int64(finger1.id) << 10
-            | (buttonPressed ? 1 << 18 : 0)
+            | (buttonPressed ? 1 << 18 : 0) | (rightButtonPressed ? 1 << 19 : 0)
     }
 
     init(packedLow low: Int64, high: Int64) {
@@ -342,7 +343,8 @@ extension TouchpadSample {
                 x: int16(low, at: 32),
                 y: int16(low, at: 48)
             ),
-            buttonPressed: high & 1 << 18 != 0
+            buttonPressed: high & 1 << 18 != 0,
+            rightButtonPressed: high & 1 << 19 != 0
         )
     }
 }

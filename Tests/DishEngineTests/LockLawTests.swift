@@ -26,6 +26,8 @@ final class LockLawTests: XCTestCase {
         let run = try runTheHotPaths()
         XCTAssertGreaterThan(run.inputArrivals, 0, "the pad's reports reached the satellite")
         XCTAssertGreaterThan(run.directArrivals, 0, "the Direct pad's reports reached the satellite")
+        XCTAssertGreaterThan(run.steamArrivals, 0, "the Steam Controller's reports reached the satellite")
+        XCTAssertGreaterThan(run.steamTouches, 0, "and its trackpads as touch frames")
         XCTAssertGreaterThan(run.feedback.rumble, 0, "rumble reached the actuators")
         XCTAssertGreaterThan(run.feedback.lightbar, 0, "the light bar reached the actuators")
         XCTAssertGreaterThan(run.tallied, 0, "the main actor read the tally")
@@ -135,6 +137,8 @@ final class LockLawTests: XCTestCase {
         let snapshot: LockStatsSnapshot
         let inputArrivals: Int
         let directArrivals: Int
+        let steamArrivals: Int
+        let steamTouches: Int
         let feedback: FramePathFeedback
         let tallied: UInt64
     }
@@ -144,11 +148,13 @@ final class LockLawTests: XCTestCase {
         satellite.start()
         let rig = try FramePathRig(satellitePort: satellite.port, token: satellite.token, key: satellite.key, pads: 1)
         let direct = try rig.addSwitchProLane()
+        let steam = try rig.addSteamControllerLane()
         drainMain()
         resetLockStats()
         let group = DispatchGroup()
         startInputProducer(rig, group: group)
         startDirectReader(direct, group: group)
+        startSteamReader(steam, group: group)
         startFeedbackSender(satellite, controllerIndex: UInt8(rig.controllerIndices[0]), group: group)
         var tallied: UInt64 = 0
         var tick = 0
@@ -169,6 +175,8 @@ final class LockLawTests: XCTestCase {
             snapshot: snapshot,
             inputArrivals: inputs(arrivals, controllerIndex: rig.controllerIndices[0]),
             directArrivals: inputs(arrivals, controllerIndex: direct.controllerIndex),
+            steamArrivals: inputs(arrivals, controllerIndex: steam.controllerIndex),
+            steamTouches: touches(arrivals, controllerIndex: steam.controllerIndex),
             feedback: feedback,
             tallied: tallied
         )
@@ -192,6 +200,20 @@ final class LockLawTests: XCTestCase {
             ThreadRole.hidReader.enterThread()
             for frame in 0 ..< LockLawRun.frames {
                 direct.feed(rightStickX: LockLawRun.stickBase + UInt16(frame % 256), rightStickY: LockLawRun.stickBase)
+                Thread.sleep(forTimeInterval: LockLawRun.frameSeconds)
+            }
+            group.leave()
+        }
+    }
+
+    /// A finger sliding along the 2015 pad's right trackpad, which the pad
+    /// pick lands on the touch surface.
+    private func startSteamReader(_ steam: SteamPadFeed, group: DispatchGroup) {
+        group.enter()
+        startThread {
+            ThreadRole.hidReader.enterThread()
+            for frame in 0 ..< LockLawRun.frames {
+                steam.feed(rightPadX: Int16(truncatingIfNeeded: frame * LockLawRun.padStep), rightPadY: Int16(LockLawRun.padStep))
                 Thread.sleep(forTimeInterval: LockLawRun.frameSeconds)
             }
             group.leave()
@@ -298,6 +320,8 @@ private enum LockLawRun {
     static let settleNs: UInt64 = 300_000_000
     /// A raw Switch stick value just past the dead zone.
     static let stickBase: UInt16 = 2369
+    /// The Steam pad's finger moves this far per frame, so every surface differs.
+    static let padStep = 16
 }
 
 /// A producer at the input queue's quality of service, as a pad's are.
@@ -332,6 +356,10 @@ private func publishMoonlightFrame(_ frame: Int, on rig: MoonlightPathRig) {
 
 private func inputs(_ arrivals: [LoopbackSatellite.Arrival], controllerIndex: Int) -> Int {
     arrivals.filter { $0.msgType == ProtocolConstants.msgInput && Int($0.controllerIndex) == controllerIndex }.count
+}
+
+private func touches(_ arrivals: [LoopbackSatellite.Arrival], controllerIndex: Int) -> Int {
+    arrivals.filter { $0.msgType == ProtocolConstants.msgTouchpad && Int($0.controllerIndex) == controllerIndex }.count
 }
 
 private func labels(_ pairs: some Sequence<LockPair>) -> Set<String> {

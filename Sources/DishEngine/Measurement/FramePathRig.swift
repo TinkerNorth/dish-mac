@@ -99,8 +99,22 @@ package final class FramePathRig {
     /// A Switch Pro pad read directly, on the next free index and routed like
     /// any slot; its reports go through IOKit's callback.
     package func addSwitchProLane() throws -> DirectFeed {
-        guard let candidate = hidPadCandidate(switchProProperties()) else { throw FramePathRigError.directPad }
-        let slotId = HidPadLimits.slotIdPrefix + "057e:2009"
+        let attached = try attachDirectLane(switchProProperties(), productKey: "057e:2009")
+        return DirectFeed(lane: attached.lane, controllerIndex: attached.index)
+    }
+
+    /// A 2015 Steam Controller read directly with its trackpads picked as
+    /// the touch surface, so each report lands on the input frame and the
+    /// touchpad frame both.
+    package func addSteamControllerLane() throws -> SteamPadFeed {
+        let attached = try attachDirectLane(steamControllerProperties(), productKey: "28de:1102")
+        attached.lane.useTrackpadPick(.pad)
+        return SteamPadFeed(lane: attached.lane, controllerIndex: attached.index)
+    }
+
+    private func attachDirectLane(_ properties: [String: Any], productKey: String) throws -> (lane: HidPadLane, index: Int) {
+        guard let candidate = hidPadCandidate(properties) else { throw FramePathRigError.directPad }
+        let slotId = HidPadLimits.slotIdPrefix + productKey
         guard let index = connection.attachSlot(slotId, controllerType: 0, capabilities: rigCapabilities) else {
             throw FramePathRigError.slotsFull
         }
@@ -110,7 +124,7 @@ package final class FramePathRig {
         lanes.append(lane)
         bindings[slotId] = connection.id
         refreshRouting()
-        return DirectFeed(lane: lane, controllerIndex: index)
+        return (lane, index)
     }
 
     /// What GameController's report handler does with a change, from the
@@ -206,6 +220,45 @@ package final class DirectFeed: @unchecked Sendable {
     }
 }
 
+/// A 2015 Steam Controller's state packets with a finger on the right
+/// trackpad, written into the lane's buffer and handed to IOKit's callback.
+package final class SteamPadFeed: @unchecked Sendable {
+    private static let reportLength = 64
+    private static let rightPad = 20
+    /// A state packet (type 1, 44 bytes) at rest but for the right pad's
+    /// finger bit.
+    private static let fingerOnRightPad: [UInt8] = [0x01, 0x00, 0x01, 0x2C, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x10]
+
+    package let controllerIndex: Int
+    private let lane: HidPadLane
+
+    init(lane: HidPadLane, controllerIndex: Int) {
+        self.lane = lane
+        self.controllerIndex = controllerIndex
+        lane.buffer.update(repeating: 0, count: lane.capacity)
+        for (offset, byte) in Self.fingerOnRightPad.enumerated() {
+            lane.buffer[offset] = byte
+        }
+    }
+
+    /// One state packet whose right pad reads `x`, `y` before the shell rotation.
+    package func feed(rightPadX x: Int16, rightPadY y: Int16) {
+        lane.buffer[Self.rightPad] = UInt8(truncatingIfNeeded: x)
+        lane.buffer[Self.rightPad + 1] = UInt8(truncatingIfNeeded: x >> 8)
+        lane.buffer[Self.rightPad + 2] = UInt8(truncatingIfNeeded: y)
+        lane.buffer[Self.rightPad + 3] = UInt8(truncatingIfNeeded: y >> 8)
+        hidPadReportCallback(
+            context: Unmanaged.passUnretained(lane).toOpaque(),
+            result: kIOReturnSuccess,
+            sender: nil,
+            type: kIOHIDReportTypeInput,
+            reportId: 0,
+            report: lane.buffer,
+            length: min(Self.reportLength, lane.capacity)
+        )
+    }
+}
+
 /// The rig's pads declare what a DualSense would, so every stream routes.
 private let rigCapabilities = ControllerCapabilities(
     hasMotion: true,
@@ -221,6 +274,15 @@ private func switchProProperties() -> [String: Any] {
     [
         kIOHIDVendorIDKey: 0x057E, kIOHIDProductIDKey: 0x2009, kIOHIDProductKey: "Pro Controller",
         kIOHIDTransportKey: kIOHIDTransportUSBValue, kIOHIDMaxInputReportSizeKey: 64
+    ]
+}
+
+/// The wired 2015 pad's vendor interface, the one its state packets ride.
+private func steamControllerProperties() -> [String: Any] {
+    [
+        kIOHIDVendorIDKey: 0x28DE, kIOHIDProductIDKey: 0x1102, kIOHIDProductKey: "Steam Controller",
+        kIOHIDTransportKey: kIOHIDTransportUSBValue, kIOHIDPrimaryUsagePageKey: 0xFF00, kIOHIDPrimaryUsageKey: 0x0001,
+        kIOHIDMaxInputReportSizeKey: 64, hidInterfaceNumberKey: 2
     ]
 }
 

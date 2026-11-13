@@ -54,11 +54,13 @@ public enum CapVerdict: Equatable, Sendable {
 }
 
 /// How the user routes the touchpad: not at all, as the pad's own touchpad,
-/// or as the host's mouse.
+/// as the host's mouse, or, on the 2015 Steam Controller, its right trackpad
+/// as the right stick with its click as R3.
 public enum TouchpadPick: Equatable, Sendable {
     case off
     case pad
     case mouse
+    case stick
 }
 
 public struct CapabilityInputs: Equatable, Sendable {

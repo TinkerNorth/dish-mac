@@ -13,7 +13,8 @@ final class InPlaceEncodingTests: XCTestCase {
     private let sample = TouchpadSample(
         finger0: TouchpadFinger(active: true, id: 7, x: -1200, y: 3400),
         finger1: TouchpadFinger(active: false, id: 2, x: 5, y: -6),
-        buttonPressed: true
+        buttonPressed: true,
+        rightButtonPressed: true
     )
 
     private func written(_ count: Int, _ write: (UnsafeMutableRawBufferPointer) -> Void) -> Data {

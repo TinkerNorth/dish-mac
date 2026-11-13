@@ -48,6 +48,12 @@ package final class AppModel: ObservableObject {
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
+    /// Each bound slot's switches in force: the store's, with a Steam
+    /// Controller's trackpad pick resolved against its model and its binding
+    /// as the slot list was last rebuilt. The routing table reads these, so
+    /// the wire sees the resolution the slot list and the lanes see; an
+    /// unbound slot has no route for them to reach.
+    @Published private(set) var boundPreferences: [String: SlotPreferences] = [:]
     /// The satellite whose row shows the pairing card.
     @Published package internal(set) var pairingTarget: DiscoveredServer?
     /// The Moonlight host that minted a PIN for the user to type into it; its row shows the card.
@@ -293,7 +299,7 @@ package final class AppModel: ObservableObject {
     /// before the write lands.
     private func observeRoutingTable() {
         let globalSwitches = settings.objectWillChange.afterMutationSettles().map { _ in () }.prepend(())
-        let switches = Publishers.CombineLatest(globalSwitches, slotPreferences.statePublisher)
+        let switches = Publishers.CombineLatest(globalSwitches, $boundPreferences.removeDuplicates())
         Publishers.CombineLatest4(hub.$bindings, wifi.$connections, moonlight.$connections, switches)
             .sink { [weak self] bindings, pool, hosts, switches in
                 self?.refreshRouting(bindings: bindings, pool: pool, hosts: hosts, preferences: switches.1)
@@ -389,7 +395,10 @@ package final class AppModel: ObservableObject {
         facts.catalogs = wifi.catalogs
         facts.probes = wifi.capabilities
         facts.moonlightHostTypes = Dictionary(uniqueKeysWithValues: moonlight.rememberedHosts.map { ($0.id, $0.emulatedType) })
+        facts.preferences = effectivePreferences(gcSlots: gcSlots, bindings: bindings, facts: facts)
         slots = composeSlots(gcSlots: gcSlots, connections: connections, bindings: bindings, facts: facts)
         self.connections = connections
+        boundPreferences = boundSlotPreferences(facts.preferences, bindings: bindings)
+        pushTrackpadPicks(facts.preferences)
     }
 }

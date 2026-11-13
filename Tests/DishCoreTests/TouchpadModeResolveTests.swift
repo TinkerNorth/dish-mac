@@ -32,14 +32,26 @@ final class TouchpadModeResolveTests: XCTestCase {
         XCTAssertEqual(resolveTouchpadMode(pick: .off, padHasTouchpad: true, typeOffersDs4: true, hostMouseControl: true), .off)
     }
 
+    func testTheStickPickDeclaresNoSurfaceOnTheWire() {
+        XCTAssertEqual(resolveTouchpadMode(pick: .stick, padHasTouchpad: true, typeOffersDs4: true, hostMouseControl: true), .off)
+    }
+
+    func testOnlyThePadAndTheMousePicksCarryATouchSurface() {
+        XCTAssertTrue(TouchpadPick.pad.carriesSurface)
+        XCTAssertTrue(TouchpadPick.mouse.carriesSurface)
+        XCTAssertFalse(TouchpadPick.off.carriesSurface)
+        XCTAssertFalse(TouchpadPick.stick.carriesSurface, "the right stick is no touch surface")
+    }
+
     func testTheWireNamesRoundTripAndUnknownNamesReadAsOff() {
         XCTAssertEqual(TouchpadPick(wireName: "ds4"), .pad)
         XCTAssertEqual(TouchpadPick(wireName: "mouse"), .mouse)
         XCTAssertEqual(TouchpadPick(wireName: "off"), .off)
+        XCTAssertEqual(TouchpadPick(wireName: "stick"), .stick)
         XCTAssertEqual(TouchpadPick(wireName: "banana"), .off)
         XCTAssertEqual(TouchpadPick(wireName: ""), .off)
-        XCTAssertEqual(TouchpadPick.pickerOrder.map(\.wireName), ["off", "ds4", "mouse"])
-        for name in ["off", "ds4", "mouse"] {
+        XCTAssertEqual(TouchpadPick.pickerOrder.map(\.wireName), ["off", "ds4", "mouse"], "the stick is a Steam Controller's alone")
+        for name in ["off", "ds4", "mouse", "stick"] {
             XCTAssertTrue(isValidTouchpadPickName(name), name)
         }
         for name in ["", "DS4", "touchpad", "Mouse"] {

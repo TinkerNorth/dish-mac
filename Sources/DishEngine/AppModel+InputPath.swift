@@ -34,6 +34,14 @@ package extension AppModel {
 
 extension AppModel {
 
+    /// Every Direct lane hears its slot's pick in force; a Steam
+    /// Controller's router routes its trackpads by it.
+    func pushTrackpadPicks(_ preferences: [String: SlotPreferences]) {
+        for (slotId, preference) in preferences {
+            input.paths.setTrackpadPick(preference.touchpad, slotId: slotId)
+        }
+    }
+
     /// The paths over the stores they keep, and the Direct reader and the
     /// support capture the app hands in (neither opens anything otherwise).
     static func inputPaths(_ prefs: AppPreferenceStores, reader: HidPadReading?, capture: HidReportCapturing?) -> InputPaths {

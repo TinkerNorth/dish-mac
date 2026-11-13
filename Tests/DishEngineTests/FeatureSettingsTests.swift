@@ -210,7 +210,7 @@ final class TouchpadProcessorTests: XCTestCase {
     }
 
     private func install(_ proc: GamepadInputProcessor, into captured: @escaping (Captured) -> Void) {
-        proc.send(touchpad: { id, sample, eventMs in
+        proc.send(touchpad: { id, sample, eventMs, _ in
             captured(Captured(id: id, sample: sample, eventMs: eventMs))
         })
     }
