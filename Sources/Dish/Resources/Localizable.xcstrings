@@ -8839,6 +8839,41 @@
         }
       }
     },
+    "Extra buttons" : {
+      "comment" : "A caps word feature: the protocol 4 extended buttons (paddles, the Steam \"...\" button, pad and trigger clicks, capacitive touches).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dodatna dugmad"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zusätzliche Tasten"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botones adicionales"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Boutons supplémentaires"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Botões extras"
+          }
+        }
+      }
+    },
     "FORWARDED FEATURES" : {
       "comment" : "Settings section eyebrow, uppercase.",
       "localizations" : {

@@ -244,6 +244,12 @@ final class GamepadInputProcessorTests: XCTestCase {
         XCTAssertEqual(out.buttons, 0xABCD)
     }
 
+    func testApplyDeadzonesNeverTouchesTheExtendedButtons() {
+        let dz = GamepadInputProcessor.Deadzones(stickFlat: 32767, triggerFlat: 255)
+        let state = GamepadInputProcessor.DeviceState(extButtons: 0x1FFF)
+        XCTAssertEqual(applyDeadzones(state, dz).extButtons, 0x1FFF)
+    }
+
     func testPublishUsesPerDeviceDeadzones() {
         let proc = GamepadInputProcessor()
         let recorder = InputRecorder()

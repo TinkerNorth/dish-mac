@@ -280,7 +280,7 @@ extension GamepadReport {
     }
 
     var packedHigh: Int64 {
-        field(rx, at: 0) | field(ry, at: 16)
+        field(rx, at: 0) | field(ry, at: 16) | Int64(extButtons) << 32
     }
 
     init(packedLow low: Int64, high: Int64) {
@@ -291,7 +291,8 @@ extension GamepadReport {
             lx: int16(low, at: 32),
             ly: int16(low, at: 48),
             rx: int16(high, at: 0),
-            ry: int16(high, at: 16)
+            ry: int16(high, at: 16),
+            extButtons: UInt32(truncatingIfNeeded: high >> 32)
         )
     }
 }

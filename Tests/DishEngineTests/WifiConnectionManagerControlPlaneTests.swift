@@ -160,7 +160,7 @@ final class WifiConnectionManagerControlPlaneTests: XCTestCase {
 
     func testASatelliteFloorAboveOurVersionIsTerminalAndKeepsTheKey() async {
         prePair()
-        satellite.protocolRange = 4 ... 5
+        satellite.protocolRange = 5 ... 6
 
         manager.connect(to: server)
 

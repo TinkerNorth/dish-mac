@@ -11,8 +11,8 @@ import XCTest
 
 final class ProtocolConstantsTests: XCTestCase {
 
-    func testTheClientOffersThreeAndStillSpeaksOne() {
-        XCTAssertEqual(ProtocolConstants.protocolVersion, 3)
+    func testTheClientOffersFourAndStillSpeaksOne() {
+        XCTAssertEqual(ProtocolConstants.protocolVersion, 4)
         XCTAssertEqual(ProtocolConstants.protocolVersionMin, 1)
     }
 
@@ -25,6 +25,42 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertFalse(ProtocolConstants.settledSpeaksV2(1))
         XCTAssertTrue(ProtocolConstants.settledSpeaksV2(2))
         XCTAssertTrue(ProtocolConstants.settledSpeaksV2(3))
+    }
+
+    func testOnlyASessionSettledOnFourOrLaterCarriesTheExtendedButtonsWord() {
+        for version in 1 ... 3 {
+            XCTAssertFalse(ProtocolConstants.settledSpeaksV4(version), "protocol \(version)")
+            XCTAssertEqual(ProtocolConstants.inputPayloadBytes(settledVersion: version), 13, "protocol \(version)")
+        }
+        XCTAssertTrue(ProtocolConstants.settledSpeaksV4(4))
+        XCTAssertTrue(ProtocolConstants.settledSpeaksV4(5))
+        XCTAssertEqual(ProtocolConstants.inputPayloadBytes(settledVersion: 4), 17)
+        XCTAssertEqual(ProtocolConstants.inputPayloadBytes(settledVersion: 5), 17)
+    }
+
+    func testTheExtendedButtonBitsAreTheContractTableInSdlsNames() {
+        XCTAssertEqual(ProtocolConstants.extButtonRightPaddle1, 0x0001)
+        XCTAssertEqual(ProtocolConstants.extButtonLeftPaddle1, 0x0002)
+        XCTAssertEqual(ProtocolConstants.extButtonRightPaddle2, 0x0004)
+        XCTAssertEqual(ProtocolConstants.extButtonLeftPaddle2, 0x0008)
+        XCTAssertEqual(ProtocolConstants.extButtonMisc1, 0x0010)
+        XCTAssertEqual(ProtocolConstants.extButtonLeftPadClick, 0x0020)
+        XCTAssertEqual(ProtocolConstants.extButtonRightPadClick, 0x0040)
+        XCTAssertEqual(ProtocolConstants.extButtonLeftTriggerClick, 0x0080)
+        XCTAssertEqual(ProtocolConstants.extButtonRightTriggerClick, 0x0100)
+        XCTAssertEqual(ProtocolConstants.extButtonLeftStickTouch, 0x0200)
+        XCTAssertEqual(ProtocolConstants.extButtonRightStickTouch, 0x0400)
+        XCTAssertEqual(ProtocolConstants.extButtonLeftGripTouch, 0x0800)
+        XCTAssertEqual(ProtocolConstants.extButtonRightGripTouch, 0x1000)
+        let everyKnownBit = ProtocolConstants.extButtonRightPaddle1 | ProtocolConstants.extButtonLeftPaddle1
+            | ProtocolConstants.extButtonRightPaddle2 | ProtocolConstants.extButtonLeftPaddle2
+            | ProtocolConstants.extButtonMisc1 | ProtocolConstants.extButtonLeftPadClick
+            | ProtocolConstants.extButtonRightPadClick | ProtocolConstants.extButtonLeftTriggerClick
+            | ProtocolConstants.extButtonRightTriggerClick | ProtocolConstants.extButtonLeftStickTouch
+            | ProtocolConstants.extButtonRightStickTouch | ProtocolConstants.extButtonLeftGripTouch
+            | ProtocolConstants.extButtonRightGripTouch
+        XCTAssertEqual(ProtocolConstants.extButtonsKnownMask, everyKnownBit)
+        XCTAssertEqual(ProtocolConstants.extButtonsKnownMask, 0x1FFF, "bits 0x2000 and up are reserved")
     }
 
     func testOpcodeValuesMatchSatelliteTypesHeader() {
@@ -69,6 +105,7 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertEqual(ProtocolConstants.cryptoNonceSize, 12)
         XCTAssertEqual(ProtocolConstants.sessionSaltSize, 8)
         XCTAssertEqual(ProtocolConstants.inputPayloadBytes, 13)
+        XCTAssertEqual(ProtocolConstants.inputPayloadBytesV4, 17)
         XCTAssertEqual(ProtocolConstants.motionPayloadBytes, 17)
         XCTAssertEqual(ProtocolConstants.batteryPayloadBytes, 3)
         // 15 post-ctrlIdx bytes = 16-byte inner payload; the trailing
@@ -97,6 +134,7 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertEqual(ProtocolConstants.capMic, 0x0040)
         XCTAssertEqual(ProtocolConstants.capSpeaker, 0x0080)
         XCTAssertEqual(ProtocolConstants.capHapticAudio, 0x0100)
+        XCTAssertEqual(ProtocolConstants.capExtendedButtons, 0x0200)
         XCTAssertEqual(ProtocolConstants.controllerTypeXbox, 0)
         XCTAssertEqual(ProtocolConstants.controllerTypePlayStation, 1)
         XCTAssertEqual(ProtocolConstants.controllerTypeDualSense, 2)

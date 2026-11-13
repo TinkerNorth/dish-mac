@@ -21,6 +21,15 @@ the repos share a version number.
 
 ### Added
 
+- **Room on the wire for a controller's extra buttons.** `[wire-coordinated]`
+  Protocol 4. Dish now speaks Satellite protocol 4: on a session that settled
+  on it, every controller report carries a second word for the buttons an
+  Xbox pad does not have (back paddles, the Steam Controller's "..." button,
+  trackpad and trigger clicks, the capacitive touches), and a controller that
+  sources them says so in its capabilities, shown as "Extra buttons" on
+  Diagnostics. This update adds the word and the claim; the controllers that
+  fill it follow. An older Satellite keeps working at protocol 3 and sees
+  exactly what it saw before.
 - **Steam Controllers can be read directly, when you ask.** Both of Valve's
   Steam Controllers, the 2015 pad (wired or on its wireless receiver) and the
   2026 one (wired or on its Puck or receiver), are offered on Controllers

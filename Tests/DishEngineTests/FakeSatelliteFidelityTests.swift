@@ -87,7 +87,7 @@ final class FakeSatelliteFidelitySelfTests: XCTestCase {
         harness.udp.send(FakeSatelliteCrypto.tokenBE(context.token) + FakeSatelliteCrypto.be32(2) + paddedBox)
         let input = try XCTUnwrap(harness.satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
         XCTAssertEqual(input.payload.count, 13, "payload must be sliced to msgLen")
-        XCTAssertEqual(input.detail, .input(ctrlIdx: 0, report: report))
+        XCTAssertEqual(input.detail, .input(ctrlIdx: 0, report: report, extButtons: 0))
     }
 
     func testSessionPutAuthPrecedesVersionCheck() async throws {

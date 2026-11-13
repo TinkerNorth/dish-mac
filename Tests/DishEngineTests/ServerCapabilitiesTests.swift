@@ -12,7 +12,7 @@ final class ServerCapabilitiesTests: XCTestCase {
     func testTheFakeFixtureParses() throws {
         let json = FakeSatelliteRest.capabilitiesJSON(controllerAudio: false)
         let probe = try JSONDecoder().decode(ServerCapabilitiesDTO.self, from: Data(json.utf8))
-        XCTAssertEqual(probe.protocolVersion, 3)
+        XCTAssertEqual(probe.protocolVersion, 4)
         XCTAssertEqual(probe.serverVersion, "1.6.0")
         XCTAssertEqual(probe.maxControllers, 16)
         XCTAssertTrue(probe.backendAvailable)

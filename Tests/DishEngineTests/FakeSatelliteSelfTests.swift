@@ -272,7 +272,7 @@ final class FakeSatelliteRestSelfTests: XCTestCase {
             json: ["deviceId": "d3", "deviceName": "n", "pin": "1234", "protocolVersion": 9]
         )
         XCTAssertEqual(rejected.status, 409)
-        XCTAssertEqual(rejected.int("supported"), 3)
+        XCTAssertEqual(rejected.int("supported"), 4, "the fake speaks the real satellite's newest version")
         XCTAssertEqual(rejected.int("supportedMin"), 1)
         // Absent protocolVersion means 1 (contract §Versioning).
         let absent = try await rest.request("POST", "/api/pair", json: ["deviceId": "d3", "deviceName": "n", "pin": "1234"])
@@ -285,7 +285,7 @@ final class FakeSatelliteRestSelfTests: XCTestCase {
             _ = try await FakeSatelliteScript.putSession(rest, deviceId: "d3", pairingKey: key, controllers: [])
             XCTFail("expected 409 from a range that excludes the offer")
         } catch {}
-        satellite.protocolRange = 1 ... 3
+        satellite.protocolRange = 1 ... 4
         _ = try await FakeSatelliteScript.putSession(rest, deviceId: "d3", pairingKey: key, controllers: [])
     }
 
@@ -340,7 +340,7 @@ final class FakeSatelliteRestSelfTests: XCTestCase {
         XCTAssertEqual(satellite.catalogRequests, 2)
         let caps = try await rest.request("GET", "/api/server/capabilities")
         XCTAssertEqual(caps.status, 200)
-        XCTAssertEqual(caps.int("protocolVersion"), 3)
+        XCTAssertEqual(caps.int("protocolVersion"), 4)
         XCTAssertEqual((caps.dict("backend"))?["id"] as? String, "fake")
     }
 

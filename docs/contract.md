@@ -3,7 +3,7 @@
 The protocol contract (REST surface, UDP streams, crypto, liveness,
 identity) lives in ONE place: **`satellite/docs/contract.md`** in the
 [TinkerNorth/satellite](https://github.com/TinkerNorth/satellite) repo. This
-client offers protocol 3 and still speaks 1; this file only records the
+client offers protocol 4 and still speaks 1; this file only records the
 macOS-side mapping. When code and contract disagree, the contract wins.
 
 ## Where the contract lands in this app
@@ -17,8 +17,8 @@ URLSession, and stores.
 |---|---|
 | HKDF session key, `hmacProof`, packet AEAD (dir-nonce, AAD = token) | `Sources/DishCore/Wire/SessionCrypto.swift` (cross-repo pinned vectors: `Tests/DishCoreTests/SessionCryptoVectorTests.swift`) |
 | Packet framing (`token(4)‖counter(4)` header, `msgType‖msgLen‖payload` inner frame) | `Sources/DishCore/Wire/PacketCodec.swift` |
-| Stream payload codecs — input(13), motion(17), battery(3), touchpad(16 incl. `eventTimeMs`) up; `HeartbeatAck` / `RumbleCommand` / `LightbarCommand` down | `Sources/DishCore/Wire/Encoders.swift` |
-| Protocol constants (v1 opcodes, deleted topology opcodes absent-with-comment, caps, apply results, touchpad modes, cadences/sizes) | `Sources/DishCore/ProtocolConstants.swift` |
+| Stream payload codecs — input(13, or 17 with the extended-buttons word on a session settled on 4), motion(17), battery(3), touchpad(16 incl. `eventTimeMs`) up; `HeartbeatAck` / `RumbleCommand` / `LightbarCommand` down | `Sources/DishCore/Wire/Encoders.swift` |
+| Protocol constants (v1 opcodes, deleted topology opcodes absent-with-comment, caps, the extended-button bits, apply results, touchpad modes, cadences/sizes) | `Sources/DishCore/ProtocolConstants.swift` |
 | Reconcile rules (epoch/bitmap drift → GET → benign-adopt vs re-PUT) + `counterNeedsRepush` re-key threshold | `Sources/DishCore/Reducers/Reconcile.swift` |
 | Close-notify 0x000F reason → follow-up action policy | `Sources/DishCore/Reducers/CloseNotify.swift` |
 | Exponential reconnect backoff (1 s → 60 s cap) | `Sources/DishCore/Reducers/Backoff.swift` |
@@ -40,6 +40,7 @@ URLSession, and stores.
 | Discovery: legacy UDP `:9879` beacon (fallback) | `Sources/DishEngine/Network/LANDiscovery.swift` |
 | Versioning: the offer, the 409 range, the settled version that keys the frames, the compat chip | `Sources/DishCore/Reducers/ProtocolNegotiation.swift`, applied by `lowerOfferOrFail` and `adoptGrant` in `Sources/DishEngine/Network/WifiConnectionManager+Session.swift` |
 | 0x000C POINTER frame (version 2) beside the 16-byte TOUCHPAD frame | `Sources/DishCore/Wire/Encoders.swift` (`pointerPayload`), chosen by the settled version in `SatelliteClient.sendTouchpad` |
+| INPUT 0x0001 extended-buttons word (version 4, 17 bytes; SDL's names, `extButton*`) and the `extendedButtons` cap, a claim the pad sources the word | `GamepadReport.extButtons` and `Encoders.writeInputPayload` in `Sources/DishCore/Wire/`, keyed on the settled version in `SatelliteClient.sendReport`; the claim from `ControllerCapabilities.hasExtendedButtons` in `Sources/DishEngine/Network/DescriptorCaps.swift` |
 | TRIGGER_EFFECTS 0x0010 and PLAYER_LEDS 0x0011 return paths | `Sources/DishCore/Wire/FeedbackCommands.swift`, `Sources/DishEngine/Input/DualSenseTriggerEffect.swift`, `Sources/DishEngine/Input/GameControllerInput+ReturnPath.swift` |
 | Descriptor caps as promises (the hardware AND the user's switch), `touchpadMode` | `Sources/DishEngine/Network/DescriptorCaps.swift` |
 | `touchpadMode` ∈ `off`/`ds4`/`mouse` from the controller's pick, the type's `modes` and the host's `mouseControl`; the session's `hostFeatures.mouseControl` request and its grant | `Sources/DishCore/Reducers/TouchpadModeResolve.swift`; `WifiConnection.wantsMouseControl`, carried by every session PUT in `WifiConnectionManager+Session.swift` and converged by `convergeHostFeatures` through the re-key path when a pick flips mid-session |
@@ -52,8 +53,9 @@ URLSession, and stores.
 | The pad's USB audio function (Core Audio HAL), its match to a pad by family, Opus through AudioToolbox, the HAL output and input units, the microphone permission | `Sources/DishEngine/Audio/` (`PadAudioDevices`, `PadAudioRoutes`, `OpusCodec`, `AudioUnits`, `MicPermission`), driven by `ControllerAudioEngine` and wired by `AudioPipeline` |
 
 Test double: `Tests/DishEngineTests/Support/FakeSatellite/` is an in-process
-satellite that accepts a configurable protocol range (1...3 by default, like
-the real one), settles and echoes the offer, decodes both 0x000C shapes, and
+satellite that accepts a configurable protocol range (1...4 by default, like
+the real one), settles and echoes the offer, decodes both 0x000C shapes and
+INPUT by length (the extended-buttons word from 17 bytes, 0 below), and
 injects every return path (REST + UDP, independent CryptoKit crypto asserted
 against the same pinned vectors); the control-plane, data-plane, negotiation
 and `Integration*` suites drive it end-to-end.

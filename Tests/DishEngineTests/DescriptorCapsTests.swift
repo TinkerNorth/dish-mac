@@ -29,6 +29,13 @@ final class DescriptorCapsTests: XCTestCase {
         XCTAssertEqual(word & (ProtocolConstants.capMic | ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio), 0)
     }
 
+    func testTheExtendedButtonsClaimFollowsThePadAloneWithNoSwitch() {
+        let everySwitchOff = ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false, mic: false, speaker: false)
+        let sources = ControllerCapabilities(hasExtendedButtons: true)
+        XCTAssertNotEqual(descriptorCaps(sources, everySwitchOff) & ProtocolConstants.capExtendedButtons, 0)
+        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags()) & ProtocolConstants.capExtendedButtons, 0)
+    }
+
     func testTheAudioCapsFollowTheAudioFunctionAndTheControllersSwitches() {
         let dualSense = ControllerCapabilities(hasRumble: true, hasMic: true, hasSpeaker: true, hasHapticLanes: true)
         let on = descriptorCaps(dualSense, ForwardingFlags(mic: true, speaker: true))

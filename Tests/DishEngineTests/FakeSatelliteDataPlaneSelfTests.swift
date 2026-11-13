@@ -30,7 +30,7 @@ final class FakeSatelliteDataPlaneSelfTests: XCTestCase {
         try harness.sendUp(FakeSatelliteOpcode.input, Data([0]) + report, counter: 2)
         let input = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
         XCTAssertEqual(input.counter, 2)
-        XCTAssertEqual(input.detail, .input(ctrlIdx: 0, report: report))
+        XCTAssertEqual(input.detail, .input(ctrlIdx: 0, report: report, extButtons: 0))
         // 16-byte touchpad frame; eventTimeMs u32 LE at offset 12.
         let touchPayload = Data([0, 0b101, 7]) + le16(320) + le16(-471) + Data([9]) + le16(0) + le16(0) + le32(0xDEAD_BEEF)
         XCTAssertEqual(touchPayload.count, 16)
@@ -50,6 +50,22 @@ final class FakeSatelliteDataPlaneSelfTests: XCTestCase {
         XCTAssertEqual(close.opcode, FakeSatelliteOpcode.sessionClose)
         XCTAssertEqual(close.counter, 2)
         XCTAssertEqual(close.payload, Data([FakeSatelliteCloseReason.kicked.rawValue]))
+    }
+
+    /// The protocol 4 INPUT is read by length, as the satellite reads it: 17
+    /// bytes carry the word, 13 to 16 read it as 0.
+    func testAnInputFrameIsReadByLengthForTheExtendedButtonsWord() async throws {
+        let harness = try await ScriptedHarness.boot(controllers: [ds4Descriptor], hostFeatures: [:])
+        defer { harness.shutdown() }
+        let report = Data((0 ..< 12).map { UInt8($0) })
+        try harness.sendUp(FakeSatelliteOpcode.input, Data([1]) + report + Data([0x03, 0x10, 0x00, 0x00]), counter: 1)
+        try harness.sendUp(FakeSatelliteOpcode.input, Data([1]) + report + Data([0xFF, 0xFF]), counter: 2)
+        XCTAssertTrue(harness.satellite.awaitFrameCount(opcode: FakeSatelliteOpcode.input, atLeast: 2))
+        let inputs = harness.satellite.frames.filter { $0.opcode == FakeSatelliteOpcode.input }.map(\.detail)
+        XCTAssertEqual(inputs, [
+            .input(ctrlIdx: 1, report: report, extButtons: 0x1003),
+            .input(ctrlIdx: 1, report: report, extButtons: 0)
+        ])
     }
 
     func testReplayGuardDropsNonMonotonicCounters() async throws {

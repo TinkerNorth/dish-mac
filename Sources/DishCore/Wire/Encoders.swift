@@ -11,13 +11,22 @@ import Foundation
 /// inner payload only — wrap with `PacketCodec.innerFrame` + `SessionCrypto.seal`.
 public enum Encoders {
 
-    /// MSG_INPUT (0x0001): `ctrlIdx(1) + XUSB_REPORT(12 LE)` = 13 bytes.
-    public static func inputPayload(controllerIndex: UInt8, report: GamepadReport) -> Data {
-        payload(ProtocolConstants.inputPayloadBytes) { writeInputPayload(controllerIndex: controllerIndex, report: report, into: $0) }
+    /// MSG_INPUT (0x0001): `ctrlIdx(1) + XUSB_REPORT(12 LE)` = 13 bytes, and
+    /// on a session settled on version 4 or later `+ extButtons(u32 LE)` =
+    /// 17 bytes, the reserved bits written as 0.
+    public static func inputPayload(controllerIndex: UInt8, report: GamepadReport, settledVersion: Int) -> Data {
+        payload(ProtocolConstants.inputPayloadBytes(settledVersion: settledVersion)) { out in
+            writeInputPayload(controllerIndex: controllerIndex, report: report, settledVersion: settledVersion, into: out)
+        }
     }
 
-    /// `inputPayload` written into the first 13 bytes of `out`.
-    public static func writeInputPayload(controllerIndex: UInt8, report: GamepadReport, into out: UnsafeMutableRawBufferPointer) {
+    /// `inputPayload` written into the first 13 or 17 bytes of `out`.
+    public static func writeInputPayload(
+        controllerIndex: UInt8,
+        report: GamepadReport,
+        settledVersion: Int,
+        into out: UnsafeMutableRawBufferPointer
+    ) {
         out[0] = controllerIndex
         out[1] = UInt8(truncatingIfNeeded: report.buttons)
         out[2] = UInt8(truncatingIfNeeded: report.buttons >> 8)
@@ -27,6 +36,8 @@ public enum Encoders {
         storeLE16(report.ly, into: out, at: 7)
         storeLE16(report.rx, into: out, at: 9)
         storeLE16(report.ry, into: out, at: 11)
+        guard ProtocolConstants.settledSpeaksV4(settledVersion) else { return }
+        storeLE32(report.extButtons & ProtocolConstants.extButtonsKnownMask, into: out, at: ProtocolConstants.inputPayloadBytes)
     }
 
     /// MSG_MOTION (0x000A): `ctrlIdx(1) + gyroX/Y/Z(3 × i16 LE) +

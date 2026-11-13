@@ -101,11 +101,11 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
 
     // MARK: - Settlement keys the frames and the chip
 
-    func testAVersionThreeSatelliteSettlesCurrentAndStreamsThePointerFrame() async throws {
+    func testAVersionFourSatelliteSettlesCurrentAndStreamsThePointerFrame() async throws {
         prePair()
         let conn = try await connectAndAwaitLive()
         XCTAssertEqual(offers, [ProtocolConstants.protocolVersion])
-        XCTAssertEqual(conn.settledProtocolVersion, 3)
+        XCTAssertEqual(conn.settledProtocolVersion, 4)
         XCTAssertEqual(conn.protocolCompat, .current)
 
         conn.sendTouchpad(sample: touchpadSample, eventTimeMs: 7, controllerIndex: 0)
@@ -123,7 +123,7 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         prePair()
         satellite.protocolRange = 1 ... 1
         let conn = try await connectAndAwaitLive()
-        XCTAssertEqual(satellite.rejectedOffers, [3])
+        XCTAssertEqual(satellite.rejectedOffers, [4])
         XCTAssertEqual(offers, [1], "the 409 lowers the offer to the satellite's ceiling at once")
         XCTAssertEqual(conn.settledProtocolVersion, 1)
         XCTAssertEqual(conn.offeredProtocolVersion, 1, "the lowered offer sticks to the connection")
@@ -146,20 +146,20 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         let idle = await waitUntil { self.manager.get(self.server.id)?.state == .idle }
         XCTAssertTrue(idle)
         _ = try await connectAndAwaitLive()
-        XCTAssertEqual(satellite.rejectedOffers, [3], "the second connect never repeats the rejected offer")
+        XCTAssertEqual(satellite.rejectedOffers, [4], "the second connect never repeats the rejected offer")
         XCTAssertEqual(offers, [1, 1])
         XCTAssertEqual(conn.settledProtocolVersion, 1)
     }
 
     func testAFloorAboveOursSetsTheRedChipAndKeepsTheKey() async {
         prePair()
-        satellite.protocolRange = 4 ... 5
+        satellite.protocolRange = 5 ... 6
         manager.connect(to: server)
         let surfaced = await waitUntil { self.failures.contains(.dishUpdateRequired) }
         XCTAssertTrue(surfaced)
         XCTAssertEqual(manager.get(server.id)?.protocolCompat, .dishUpdateRequired)
         XCTAssertNotNil(store.sharedKey(for: server.id))
-        XCTAssertEqual(satellite.rejectedOffers, [3], "a disjoint range is not re-offered")
+        XCTAssertEqual(satellite.rejectedOffers, [4], "a disjoint range is not re-offered")
         XCTAssertEqual(offers, [])
     }
 
@@ -191,7 +191,7 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         _ = try await connectAndAwaitLive()
         let probe = try XCTUnwrap(manager.capabilities[server.id])
         XCTAssertTrue(probe.reachable)
-        XCTAssertEqual(probe.protocolVersion, 3)
+        XCTAssertEqual(probe.protocolVersion, 4)
         XCTAssertTrue(probe.host.catalog.supported)
     }
 
