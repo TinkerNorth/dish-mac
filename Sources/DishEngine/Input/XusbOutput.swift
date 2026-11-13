@@ -13,6 +13,9 @@ import os
 
 final class XusbOutput: DirectOutput, @unchecked Sendable {
     static let log = Logger(subsystem: "com.tinkernorth.dish", category: "Direct")
+    /// Six of an Xbox 360 pad's 8 ms OUT polls: room for a report in flight
+    /// ahead of the stop, and a pause at quit too short to notice.
+    static let quitStopBoundMs = 48
 
     private let slotId: String
     private let pipe: UsbOutputPipe
@@ -54,7 +57,12 @@ final class XusbOutput: DirectOutput, @unchecked Sendable {
     }
 
     func releaseNow() {
-        queue.sync { self.stillOnQueue() }
+        let stop = DispatchWorkItem { self.stillOnQueue() }
+        queue.async(execute: stop)
+        let deadline = DispatchTime.now() + .milliseconds(Self.quitStopBoundMs)
+        let outcome = stop.wait(timeout: deadline)
+        guard outcome == .timedOut else { return }
+        pipe.abort()
     }
 
     /// Everything posted before this call has run: the tests' join.

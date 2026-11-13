@@ -30,6 +30,8 @@ protocol UsbInputPipe: AnyObject {
 /// An interface's interrupt OUT pipe; a write returns once the transfer has.
 protocol UsbOutputPipe: AnyObject, Sendable {
     func write(_ bytes: [UInt8]) -> IOReturn
+    /// Fails the write in flight as aborted, without waiting for it.
+    func abort()
 }
 
 /// An interface the reader opened, until it is closed.

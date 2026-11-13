@@ -247,11 +247,7 @@ final class IOUSBHostInputPipe: UsbInputPipe {
     /// The read in flight completes as aborted on the reader's queue, after
     /// this returns: a synchronous abort would wait on that queue.
     func abort() {
-        do {
-            try pipe.__abort(with: .asynchronous)
-        } catch {
-            IOUSBHostXusbBus.log.error("XUSB abort failed status=\(ioReturn(of: error))")
-        }
+        abortAsynchronously(pipe)
     }
 }
 
@@ -273,6 +269,20 @@ final class IOUSBHostOutputPipe: UsbOutputPipe, @unchecked Sendable {
         } catch {
             return ioReturn(of: error)
         }
+    }
+
+    /// The write in flight fails as aborted after this returns, so the
+    /// caller never waits on the queue that write holds.
+    func abort() {
+        abortAsynchronously(pipe)
+    }
+}
+
+private func abortAsynchronously(_ pipe: IOUSBHostPipe) {
+    do {
+        try pipe.__abort(with: .asynchronous)
+    } catch {
+        IOUSBHostXusbBus.log.error("XUSB abort failed status=\(ioReturn(of: error))")
     }
 }
 

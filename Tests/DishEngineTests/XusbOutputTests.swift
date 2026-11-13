@@ -11,12 +11,24 @@ import XCTest
 final class XusbOutputTests: XCTestCase {
 
     private static let level = xusbRumbleReport(strong: 0x8000, weak: 0x1000)
+    /// Room past the bound for a busy runner to schedule the quitting thread.
+    private static let quitSlack = DispatchTimeInterval.seconds(2)
 
     private let pipe = FakeUsbOutputPipe()
     private let ticker = ManualQueueTicker()
 
     private func output() -> XusbOutput {
         XusbOutput(slotId: "hid:2dc8:310b", pipe: pipe, holdTicker: ticker)
+    }
+
+    /// A quit that never returns then fails the wait instead of hanging the suite.
+    private func releaseNowOffTheMainThread(_ output: XusbOutput) -> DispatchSemaphore {
+        let returned = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            output.releaseNow()
+            returned.signal()
+        }
+        return returned
     }
 
     func testAHostCommandGoesOutAtOnceAndHoldsForItsDuration() {
@@ -64,16 +76,31 @@ final class XusbOutputTests: XCTestCase {
         XCTAssertEqual(pipe.writes.count, 2, "a hold that ended sends no second stop")
     }
 
-    func testAReleaseStillsARunningPadAndQuittingDoesSoBeforeItReturns() {
-        let released = output()
-        released.rumble(strong: 0x8000, weak: 0x1000, durationMs: 500)
-        released.release()
-        released.drain()
+    func testAReleaseStillsARunningPad() {
+        let output = output()
+        output.rumble(strong: 0x8000, weak: 0x1000, durationMs: 500)
+        output.release()
+        output.drain()
         XCTAssertEqual(pipe.writes, [Self.level, xusbRumbleStop])
-        let quitting = output()
-        quitting.rumble(strong: 0x8000, weak: 0x1000, durationMs: 500)
-        quitting.releaseNow()
-        XCTAssertEqual(pipe.writes, [Self.level, xusbRumbleStop, Self.level, xusbRumbleStop])
+    }
+
+    func testQuittingStillsARunningPadBeforeItReturnsAndAbortsNothing() {
+        let output = output()
+        output.rumble(strong: 0x8000, weak: 0x1000, durationMs: 500)
+        output.releaseNow()
+        XCTAssertEqual(pipe.writes, [Self.level, xusbRumbleStop])
+        XCTAssertEqual(pipe.aborts, 0)
+    }
+
+    func testQuittingAPadThatStoppedTakingTransfersAbortsItsPipeOnceTheBoundPasses() {
+        let output = output()
+        output.rumble(strong: 0x8000, weak: 0x1000, durationMs: 500)
+        output.drain()
+        pipe.wedge()
+        let returned = releaseNowOffTheMainThread(output)
+        let deadline = DispatchTime.now() + .milliseconds(XusbOutput.quitStopBoundMs) + Self.quitSlack
+        XCTAssertEqual(returned.wait(timeout: deadline), .success, "the quit returned")
+        XCTAssertEqual(pipe.aborts, 1)
     }
 
     func testAStillPadIsSentNothingOnReleaseOrAtQuit() {

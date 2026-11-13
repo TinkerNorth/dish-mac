@@ -119,16 +119,40 @@ final class FakeUsbInputPipe: UsbInputPipe, @unchecked Sendable {
 }
 
 /// An interrupt OUT pipe that keeps every report it was handed, in order.
+/// Once wedged, as a pad that stays attached but takes no transfer, a write
+/// blocks until the pipe is aborted and then fails as aborted.
 final class FakeUsbOutputPipe: UsbOutputPipe, @unchecked Sendable {
     private let writesBox = LockedBox<[[UInt8]]>([])
+    private let wedgedBox = LockedBox(false)
+    private let abortsBox = LockedBox(0)
+    private let aborted = DispatchSemaphore(value: 0)
 
     var writes: [[UInt8]] {
         writesBox.get()
     }
 
+    var aborts: Int {
+        abortsBox.get()
+    }
+
+    func wedge() {
+        wedgedBox.set(true)
+    }
+
     func write(_ bytes: [UInt8]) -> IOReturn {
+        guard !wedgedBox.get() else { return blockUntilAborted() }
         writesBox.mutate { $0.append(bytes) }
         return kIOReturnSuccess
+    }
+
+    func abort() {
+        abortsBox.mutate { $0 += 1 }
+        aborted.signal()
+    }
+
+    private func blockUntilAborted() -> IOReturn {
+        aborted.wait()
+        return kIOReturnAborted
     }
 }
 
