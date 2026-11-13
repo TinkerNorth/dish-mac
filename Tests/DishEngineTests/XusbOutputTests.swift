@@ -17,8 +17,8 @@ final class XusbOutputTests: XCTestCase {
     private let pipe = FakeUsbOutputPipe()
     private let ticker = ManualQueueTicker()
 
-    private func output() -> XusbOutput {
-        XusbOutput(slotId: "hid:2dc8:310b", pipe: pipe, holdTicker: ticker)
+    private func output(quitBoundMs: Int = XusbFixtures.quitBoundPastAnyStallMs) -> XusbOutput {
+        XusbOutput(slotId: "hid:2dc8:310b", pipe: pipe, quitBoundMs: quitBoundMs, holdTicker: ticker)
     }
 
     /// A quit that never returns then fails the wait instead of hanging the suite.
@@ -93,7 +93,7 @@ final class XusbOutputTests: XCTestCase {
     }
 
     func testQuittingAPadThatStoppedTakingTransfersAbortsItsPipeOnceTheBoundPasses() {
-        let output = output()
+        let output = output(quitBoundMs: XusbOutput.quitStopBoundMs)
         output.rumble(strong: 0x8000, weak: 0x1000, durationMs: 500)
         output.drain()
         pipe.wedge()

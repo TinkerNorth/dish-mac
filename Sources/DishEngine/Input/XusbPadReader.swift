@@ -158,6 +158,8 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     /// Every bus event and every read completes here, so the entries stay
     /// single-threaded.
     let queue: DispatchQueue
+    /// How long quitting waits for each pad's stop.
+    let quitBoundMs: Int
     private let started = AtomicBool(false)
 
     // Touched only on the queue.
@@ -165,9 +167,14 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     private var wiring: HidPadWiring?
     private var events: HidPadEvents?
 
-    init(bus: XusbBus, queue: DispatchQueue = ThreadRole.hidReader.queue(label: XusbPadReader.queueLabel, qos: .userInteractive)) {
+    init(
+        bus: XusbBus,
+        queue: DispatchQueue = ThreadRole.hidReader.queue(label: XusbPadReader.queueLabel, qos: .userInteractive),
+        quitBoundMs: Int = XusbOutput.quitStopBoundMs
+    ) {
         self.bus = bus
         self.queue = queue
+        self.quitBoundMs = quitBoundMs
     }
 
     func start(wiring: HidPadWiring, events: HidPadEvents) {
@@ -213,7 +220,7 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     /// The reads start before the paths hear of the pad: its lane keeps the
     /// first reports as the baseline until it is forwarded.
     private func read(_ pad: XusbArrivingPad, _ interface: XusbOpenInterface) {
-        let output = interface.output.map { XusbOutput(slotId: pad.slotId, pipe: $0) }
+        let output = interface.output.map { XusbOutput(slotId: pad.slotId, pipe: $0, quitBoundMs: quitBoundMs) }
         let lane = pad.lane(output: output)
         let reads = XusbReadLoop(lane: lane, pipe: interface.input) { [weak self] slotId, status in
             self?.readFailed(slotId, status)

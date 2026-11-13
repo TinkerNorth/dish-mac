@@ -19,6 +19,7 @@ final class XusbOutput: DirectOutput, @unchecked Sendable {
 
     private let slotId: String
     private let pipe: UsbOutputPipe
+    private let quitBoundMs: Int
     private let queue: DispatchQueue
     /// Started and stopped only on the queue.
     private let holdTicker: QueueTicker
@@ -28,9 +29,10 @@ final class XusbOutput: DirectOutput, @unchecked Sendable {
     private var holding = false
     private var gone = false
 
-    init(slotId: String, pipe: UsbOutputPipe, holdTicker: QueueTicker = DispatchTicker()) {
+    init(slotId: String, pipe: UsbOutputPipe, quitBoundMs: Int, holdTicker: QueueTicker = DispatchTicker()) {
         self.slotId = slotId
         self.pipe = pipe
+        self.quitBoundMs = quitBoundMs
         self.holdTicker = holdTicker
         queue = DispatchQueue(label: "com.tinkernorth.dish.xusb.\(slotId)", qos: .userInitiated)
     }
@@ -59,7 +61,7 @@ final class XusbOutput: DirectOutput, @unchecked Sendable {
     func releaseNow() {
         let stop = DispatchWorkItem { self.stillOnQueue() }
         queue.async(execute: stop)
-        let deadline = DispatchTime.now() + .milliseconds(Self.quitStopBoundMs)
+        let deadline = DispatchTime.now() + .milliseconds(quitBoundMs)
         let outcome = stop.wait(timeout: deadline)
         guard outcome == .timedOut else { return }
         pipe.abort()

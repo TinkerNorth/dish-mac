@@ -15,6 +15,10 @@ enum XusbFixtures {
     /// Type 0x00, length 0x14, nothing held, the sticks at rest.
     static let idle: [UInt8] = [0x00, 0x14] + [UInt8](repeating: 0, count: 18)
 
+    /// A quit bound no runner stall reaches: a healthy quit then fails only
+    /// on a real regression.
+    static let quitBoundPastAnyStallMs = 10000
+
     /// The idle report with A held: bit 0x10 of byte 3.
     static var pressedA: [UInt8] {
         var bytes = idle

@@ -29,7 +29,7 @@ final class XusbPadReaderTests: XCTestCase {
         suite = "dish.test.\(UUID().uuidString)"
         defaults = UserDefaults(suiteName: suite)
         bus = FakeXusbBus()
-        reader = XusbPadReader(bus: bus)
+        reader = XusbPadReader(bus: bus, quitBoundMs: XusbFixtures.quitBoundPastAnyStallMs)
         scheduler = ManualPathScheduler()
     }
 
@@ -106,6 +106,10 @@ final class XusbPadReaderTests: XCTestCase {
         try settleRumble(input)
         input.paths.releaseClaimsNow()
         XCTAssertEqual(port.interface?.fakeOutput.writes, [Self.level, xusbRumbleStop], "the pad holds a level until it is sent another")
+    }
+
+    func testAReaderLeftToItsDefaultGivesEachPad48MsToTakeItsStopAtQuit() {
+        XCTAssertEqual(XusbPadReader(bus: FakeXusbBus()).quitBoundMs, 48)
     }
 
     func testTheSlotRumblesByItsOwnReportWithNoExtrasMotionTouchpadOrLights() throws {
