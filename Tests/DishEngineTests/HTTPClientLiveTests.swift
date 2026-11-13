@@ -274,8 +274,8 @@ final class HTTPClientLiveTests: XCTestCase {
         let catalog = await client.getCatalog(ip: "127.0.0.1", port: Int(ports.rest))
         XCTAssertEqual(catalog.locale, "en")
         XCTAssertEqual(catalog.serverVersion, "1.6.0")
-        XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3])
-        XCTAssertEqual(catalog.controllerTypes.map(\.slug), ["xbox360", "ds4", "dualsense", "switchpro"])
+        XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3, 4])
+        XCTAssertEqual(catalog.controllerTypes.map(\.slug), ["xbox360", "ds4", "dualsense", "switchpro", "dualsenseedge"])
         let ds4 = catalog.controllerTypes[1]
         XCTAssertTrue(ds4.features.motion.supported)
         XCTAssertTrue(ds4.features.touchpad.supported)
