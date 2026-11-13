@@ -19,6 +19,8 @@ enum DirectLaneDecoder: Equatable {
     case hidGamepad(HidGamepadLayout)
     case steamController
     case steamTriton
+    /// The XUSB reader's lanes, whose reports come off a USB pipe.
+    case xusb
 }
 
 /// A device the reader will read, and everything the main actor needs to
@@ -62,6 +64,15 @@ struct HidPadCandidate: Equatable {
     /// What Dish writes to it: a Steam Controller's configuration.
     var steamPlan: SteamPlan? {
         model.flatMap(DishCore.steamPlan)
+    }
+
+    /// "Help support this controller" records a pad's HID reports: never a
+    /// Steam Controller's, and an XUSB pad sends none.
+    var capturable: Bool {
+        switch decoder {
+        case .switchReport, .hidGamepad: true
+        case .steamController, .steamTriton, .xusb: false
+        }
     }
 
     var hardwareId: HidHardwareId {
@@ -126,12 +137,14 @@ func hidPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
 }
 
 /// A Switch model decodes by its table, a Steam Controller by its own
-/// decoder on the interface that carries it, any other pad by its descriptor.
+/// decoder on the interface that carries it, an XUSB model never here (the
+/// XUSB reader reads it), any other pad by its descriptor.
 private func laneDecoder(model: DirectModel?, vendorId: UInt16, productId: UInt16, properties: [String: Any]) -> DirectLaneDecoder? {
     switch model?.decoder {
     case let .switchReport(kind): .switchReport(kind)
     case .steamController: steamInterface(model, properties) ? .steamController : nil
     case .steamTriton: steamInterface(model, properties) ? .steamTriton : nil
+    case .xusb: nil
     case .hidGamepad, nil: descriptorDecoder(vendorId: vendorId, productId: productId, properties: properties)
     }
 }
@@ -167,6 +180,7 @@ func laneKindWord(_ decoder: DirectLaneDecoder) -> String {
     case let .hidGamepad(layout): "hid-\(layout.order)"
     case .steamController: "steam-2015"
     case .steamTriton: "steam-2026"
+    case .xusb: "xusb"
     }
 }
 

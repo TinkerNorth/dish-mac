@@ -67,6 +67,10 @@ final class HidPadCandidateTests: XCTestCase {
         XCTAssertTrue(candidate.layoutGuessed)
     }
 
+    func testAnXusbModelIsLeftToTheXusbReaderWhateverHidDeviceItShows() {
+        XCTAssertNil(hidPadCandidate(DirectFixtures.gamepadProperties(vendorId: 0x2DC8, productId: 0x310B)))
+    }
+
     func testADeviceWithoutAGameUsageOrADescriptorIsLeftAlone() {
         var keyboard = DirectFixtures.gamepadProperties()
         keyboard[kIOHIDPrimaryUsageKey] = 0x06

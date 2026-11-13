@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 //
-// One Direct pad on the reader's thread. IOKit writes each input report into
-// the lane's preallocated buffer and calls `hidPadReportCallback`, which
-// decodes it in place: no Data, Array or String is built per report, and a
+// One Direct pad on its reader's thread. IOKit writes each input report into
+// the lane's preallocated buffer and calls `hidPadReportCallback`, and the
+// XUSB reader hands it each report its pipe read, on its queue; either way
+// it is decoded in place: no Data, Array or String is built per report, and a
 // report only reaches the processor when it changed something while the
 // pad's source is Direct. A generic pad with a stored remap is read through
 // the remap's fixed table, swapped whole when the store changes; while
@@ -216,7 +217,7 @@ final class HidPadLane: @unchecked Sendable {
     func receive(_ report: UnsafeBufferPointer<UInt8>, nowNs: UInt64) {
         tally.count(nowNs: nowNs)
         switch candidate.decoder {
-        case .switchReport, .hidGamepad: receivePad(report, nowNs: nowNs)
+        case .switchReport, .hidGamepad, .xusb: receivePad(report, nowNs: nowNs)
         case .steamController, .steamTriton: receiveSteam(report)
         }
     }
@@ -236,6 +237,8 @@ final class HidPadLane: @unchecked Sendable {
             return LaneReading(report: reading.report, motion: reading.motion, battery: reading.battery)
         case let .hidGamepad(layout):
             return decodeGamepad(layout, report)
+        case .xusb:
+            return gamepadReading(decodeXusbReport(report))
         case .steamController, .steamTriton:
             return nil
         }
@@ -289,7 +292,7 @@ final class HidPadLane: @unchecked Sendable {
         switch candidate.decoder {
         case .steamController: decodeSteamControllerPacket(report, hold: &steamHold)
         case .steamTriton: decodeTritonReport(report, carry: &tritonCarry)
-        case .switchReport, .hidGamepad: nil
+        case .switchReport, .hidGamepad, .xusb: nil
         }
     }
 

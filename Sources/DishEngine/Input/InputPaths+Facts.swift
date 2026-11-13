@@ -210,7 +210,7 @@ extension InputPaths {
         facts.rawReportHz = rawHz[key] ?? 0
         facts.layoutGuessed = candidate.layoutGuessed
         facts.remappable = readsDeclaredLayout(candidate)
-        facts.capturable = candidate.steamPlan == nil
+        facts.capturable = candidate.capturable
         facts.rumble = carriage(of: key).rumble
         facts.transport = candidate.transport
         facts.hardwareId = candidate.hardwareId

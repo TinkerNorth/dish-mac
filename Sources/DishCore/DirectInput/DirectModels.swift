@@ -4,7 +4,8 @@
 // The pads Dish reads itself, by USB identity. The Nintendo rows are Direct
 // by model (macOS lists the N64 pad and delivers none of its input); the
 // generic HID rows are the desktops' known models (`UsbReportParsers.h`
-// `kKnownModels`), Direct when macOS cannot read them. Joy-Cons and the
+// `kKnownModels`), Direct when macOS cannot read them, as is the XUSB row,
+// dish-android's (`usb_parsers.cpp` `kKnownDevices`). Joy-Cons and the
 // charging grip stay with macOS. A layout is verified by vendor exactly as
 // the desktops' `isKnownFastLaneModel` has it, and guessed otherwise.
 
@@ -28,6 +29,9 @@ public enum DirectDecoder: Equatable, Sendable {
     case steamController
     /// The 2026 Steam Controller's numbered reports.
     case steamTriton
+    /// An Xbox 360 pad's input reports on its XUSB vendor interface, read
+    /// over USB: macOS has no HID device for it.
+    case xusb
 }
 
 /// The family a Direct pad is shown and emulated as.
@@ -60,15 +64,18 @@ public struct DirectModel: Equatable, Sendable {
     public var hasMotion: Bool {
         switch decoder {
         case .switchReport(.pro), .steamController, .steamTriton: true
-        case .switchReport, .hidGamepad: false
+        case .switchReport, .hidGamepad, .xusb: false
         }
     }
 
     /// Dish sends the pad's own rumble report, with no GameController behind
-    /// it: the 2026 Steam Controller alone. The 2015 one has trackpad voice
-    /// coils and no motors.
+    /// it: the 2026 Steam Controller and the XUSB pads. The 2015 Steam
+    /// Controller has trackpad voice coils and no motors.
     public var drivesItsOwnRumble: Bool {
-        decoder == .steamTriton
+        switch decoder {
+        case .steamTriton, .xusb: true
+        case .switchReport, .hidGamepad, .steamController: false
+        }
     }
 
     /// The decoder fills the protocol 4 extended-buttons word: the Steam
@@ -76,7 +83,7 @@ public struct DirectModel: Equatable, Sendable {
     public var hasExtendedButtons: Bool {
         switch decoder {
         case .switchReport(.pro), .steamController, .steamTriton: true
-        case .switchReport, .hidGamepad: false
+        case .switchReport, .hidGamepad, .xusb: false
         }
     }
 
@@ -87,7 +94,7 @@ public struct DirectModel: Equatable, Sendable {
         switch decoder {
         case .steamController: .rightStickByDefault
         case .steamTriton: .twoPads
-        case .switchReport, .hidGamepad: .none
+        case .switchReport, .hidGamepad, .xusb: .none
         }
     }
 }
@@ -144,6 +151,22 @@ private func hidModel(_ vendorId: UInt16, _ productId: UInt16, _ name: String, _
     )
 }
 
+/// An Xbox 360 pad on its vendor interface: macOS has no driver for it, so
+/// GameController never lists it and only Dish reads it.
+private func xusbModel(_ vendorId: UInt16, _ productId: UInt16, _ name: String) -> DirectModel {
+    DirectModel(
+        vendorId: vendorId,
+        productId: productId,
+        name: name,
+        decoder: .xusb,
+        family: .other,
+        rule: .whenMacOSCannot,
+        gameControllerCarriesOutput: false,
+        offersStandard: false,
+        receiver: false
+    )
+}
+
 /// The PDP Afterglow Wireless (0e6f:0186) is left out on purpose: its USB
 /// port is charge-only and it speaks the Switch Pro protocol. So is the 2026
 /// Steam Controller over Bluetooth LE (28de:1303): Dish reads no BLE pad.
@@ -155,6 +178,7 @@ public let directModels: [DirectModel] = [
     hidModel(DirectVendor.eightBitDo, 0x3100, "8BitDo USB Wireless Adapter (D-input)", .eightBitDo),
     hidModel(DirectVendor.eightBitDo, 0x3105, "8BitDo USB Wireless Adapter 2 (D-input)", .eightBitDo),
     hidModel(DirectVendor.eightBitDo, 0x5006, "8BitDo M30 (D-input)", .eightBitDo),
+    xusbModel(DirectVendor.eightBitDo, 0x310B, "8BitDo Ultimate 2 Wireless Controller"),
     hidModel(DirectVendor.pdp, 0x0180, "PDP Faceoff Wired Pro Controller (Switch)", .nintendoSwitch),
     hidModel(DirectVendor.pdp, 0x0181, "PDP Faceoff Deluxe Wired Pro Controller (Switch)", .nintendoSwitch),
     hidModel(DirectVendor.pdp, 0x0184, "PDP Faceoff Deluxe+ Audio Controller (Switch)", .nintendoSwitch),
@@ -189,7 +213,7 @@ public func steamInterfaceCarriesController(_ model: DirectModel, usagePage: Int
         let pogoPins = usagePage == steamVendorPage && usage == tritonPogoUsage
         let slot = interfaceNumber.map(tritonReceiverSlots.contains) ?? true
         return slot && !pogoPins
-    case .switchReport, .hidGamepad:
+    case .switchReport, .hidGamepad, .xusb:
         return false
     }
 }

@@ -8,7 +8,7 @@ import Foundation
 package enum ThreadRole: Int, CaseIterable {
     /// GameController's handler queue.
     case input
-    /// The Direct reader's thread.
+    /// The Direct readers: the HID reader's thread and the XUSB reader's queue.
     case hidReader
     /// The satellite's receive loop.
     case receive

@@ -99,7 +99,7 @@ package final class FramePathRig {
     /// A Switch Pro pad read directly, on the next free index and routed like
     /// any slot; its reports go through IOKit's callback.
     package func addSwitchProLane() throws -> DirectFeed {
-        let attached = try attachDirectLane(switchProProperties(), productKey: "057e:2009")
+        let attached = try attachDirectLane(hidPadCandidate(switchProProperties()), productKey: "057e:2009")
         return DirectFeed(lane: attached.lane, controllerIndex: attached.index)
     }
 
@@ -107,13 +107,19 @@ package final class FramePathRig {
     /// the touch surface, so each report lands on the input frame and the
     /// touchpad frame both.
     package func addSteamControllerLane() throws -> SteamPadFeed {
-        let attached = try attachDirectLane(steamControllerProperties(), productKey: "28de:1102")
+        let attached = try attachDirectLane(hidPadCandidate(steamControllerProperties()), productKey: "28de:1102")
         attached.lane.useTrackpadPick(.pad)
         return SteamPadFeed(lane: attached.lane, controllerIndex: attached.index)
     }
 
-    private func attachDirectLane(_ properties: [String: Any], productKey: String) throws -> (lane: HidPadLane, index: Int) {
-        guard let candidate = hidPadCandidate(properties) else { throw FramePathRigError.directPad }
+    /// A lane of the caller's own candidate, bound like the others, which the
+    /// caller feeds as its reader would: the XUSB reader's read loop.
+    func addDirectLane(_ candidate: HidPadCandidate) throws -> (lane: HidPadLane, index: Int) {
+        try attachDirectLane(candidate, productKey: usbPathKey(vendorId: candidate.vendorId, productId: candidate.productId))
+    }
+
+    private func attachDirectLane(_ candidate: HidPadCandidate?, productKey: String) throws -> (lane: HidPadLane, index: Int) {
+        guard let candidate else { throw FramePathRigError.directPad }
         let slotId = HidPadLimits.slotIdPrefix + productKey
         guard let index = connection.attachSlot(slotId, controllerType: 0, capabilities: rigCapabilities) else {
             throw FramePathRigError.slotsFull

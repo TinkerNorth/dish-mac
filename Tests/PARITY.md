@@ -67,6 +67,7 @@
 | Nintendo Switch Pro and SNES Online pads | ✅ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ read Direct by model under Android's Pro table (Home → Guide, ZL / ZR → LT / RT 255), the Pro's motion from its three IMU frames (Android's axis rotation; roll and the accel signs unverified on hardware); the Pro may be sent back to Standard when GameController shows it (`usb_path_choices`); a Pro run on a Mac over USB on 2026-11-11: macOS's driver leaves it silent, dish-android's start sequence leaves it silent too, and the handshake, the switch to 3 Mbit, the handshake again and the timeout disable bring ~75 full reports/s (`SwitchProLiveTests`, `DISH_LIVE_SWITCH_PRO=1`), its idle report decoding to nothing held, the extended-buttons word included (the live harness gained that check too, but no Pro was on this Mac's USB when it ran on 2026-11-13); presses not yet run, so Capture as `misc1` (shared byte 0x20, SDL's SWITCH_SHARE) rests on the byte fixture; its IMU frames read zero until the IMU enable (subcommand 0x40) follows full report mode, which Dish sends since 2026-11-12: at rest the accelerometer then reads about 1 g (`SwitchProLiveTests`), the axis signs still unverified; the SNES pad unverified on hardware |
 | A second identical Nintendo pad | ✅ · ✅ | ⚠️ · ⚠️ | ⚠️ · ⚠️ | ⚠️ · ⚠️ its own lane and slot (`hid:057e:2019#1`) and player number; GameController keeps one controller for pads that share a USB serial (the Pro and the N64 both say `000000000001`), so with two pads of a kind which carrier drives which is unknown and rumble is unavailable, said so on the card |
 | Pads GameController does not support (generic HID) | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ read Direct when `supportsHIDDevice` stays no over ~30 ms and the report descriptor decodes (the desktops' parser, button orders and known-models table); "Layout guessed" unless the model is in the verified table; unverified on hardware here |
+| 8BitDo Ultimate 2 Wireless in X-input mode (2dc8:310b, an Xbox 360 XUSB interface) | ✅ · – (Direct: its `XINPUT_360` row) | ✅ · – (Standard: Windows' XInput driver) | ✅ · – (Standard: `xpad`) | ⚠️ · – read Direct by Dish's XUSB reader, since macOS has no driver for it and neither GameController nor IOHIDManager sees it ("macOS does not read it, so Dish does"): IOUSBHost selects the device's first configuration when none is selected (a vendor-class device arrives unconfigured), opens the vendor interface (FF/5D/01) of a model the table names, reads its first interrupt IN endpoint a report at a time under dish-android's XINPUT_360 table (the XUSB button word, 8-bit triggers, up-positive sticks; the word's unassigned bit dropped) and writes its rumble report (each motor's high byte) to the first interrupt OUT endpoint, then the stop once the host's hold ends and before Dish quits, since the pad holds a level until it is sent another; no motion, no extended buttons, no player lights, no support capture; an interface another client holds is refused and the paths hear a `busy` refusal (no slot, logged); `LockLawTests` runs its read loop on its queue in the HID reader's role; unverified on hardware: the configuration, the pipe reads and the rumble (`XusbLiveTests` with `DISH_LIVE_XUSB=1` checks the first two) |
 | Steam Controller (2015: 28de:1102, receiver 1142) | ✅ (USB, verified on a wired pad) | ⚠️ (never verified) | ⚠️ (never verified) | ⚠️ · ❌ opt-in Direct: offered on Controllers and opened only on Use Direct (stored per model); the vendor interface, no permission needed; the desktops' decoder (sticks, triggers, buttons, gyro and accel), both trackpads raw through SDL's ±15° shell rotation to the trackpad router (the Trackpads row below; a left-pad click with no finger on it stays the stick's click), the grips as `leftPaddle1` / `rightPaddle1` and the full-pull trigger bits as the trigger clicks on the extended-buttons word, the quiet sequence on claim and the restore on every release and on quit; the receiver's slots asked for their controller and each a pad while it is there; no rumble (no motors) and no battery of its own (the Mac's is sent); BLE pads not read; unverified on hardware here |
 | Steam Controller (2026: 28de:1302, receivers 1304 and 1305) | 🔜 (this cycle) | 🔜 (this cycle) | 🔜 (this cycle) | ⚠️ · ❌ opt-in Direct as the 2015 pad, from SDL's driver: the state reports (0x42, 0x45, 0x47) with QAM as `misc1`, R4 / L4 / R5 / L5 as the four paddles, the trigger clicks and the stick and grip touches on the extended-buttons word (the pad touches have no slot in it), both trackpads (18 / 24 on 0x42 and 0x45, 20 / 26 on 0x47, each live on its touch bit) and their clicks to the trackpad router (the Trackpads row below), the battery report into the battery rule, the receiver's wireless status (0x79, 0x46), lizard mode off and the IMU on at claim and lizard mode off again every 3 s, its haptic rumble report; macOS asks for Input Monitoring before the open; the receiver's slots 2–5, never its pogo pins; BLE (1303) not read; unverified on hardware here |
 | Pads without the extended profile (SNES, micro-profile pads) | ✅ · ✅ | ✅ · ✅ | ✅ · ✅ | ⚠️ · ⚠️ the generic table of Apple's `GCInput…` names; the family is Nintendo (emulated as the Switch Pro by `emulates`) when the framework's words name one |
@@ -78,13 +79,14 @@
 | Extra buttons (protocol 4: paddles, Capture, the Steam clicks and touches) | ✅ · – (#279: both Steam Controllers, the Switch Pro, a Direct DualSense Edge) | 🔜 · 🔜 | 🔜 · 🔜 | ⚠️ · ❌ Direct only, from the Steam Controllers and the Switch Pro (the rows above); a DualSense Edge is read through GameController, and `GCDualSenseGamepad` exposes no paddle or Fn button in the macOS 27.2 SDK (`GCInputLeftPaddle` / `GCInputRightPaddle` are racing-wheel names, the Xbox paddles `GCInputXboxPaddleOne…Four`), so an Edge's back buttons are not sourced; Dish reads no DualSense directly, so SDL's input byte 10 bits do not apply; an Xbox Elite's paddles through `physicalInputProfile` are a follow-up |
 
 The macOS client has two input paths, one per pad: Standard
-(GameController.framework) and Direct (Dish's own HID reader). Direct reads
-the HID reports alongside macOS, opened without seizing the device (seizing a
-game controller is not possible through public API and would blind
-GameController), and sends a pad nothing but the Switch start sequence and
-a claimed Steam Controller's own configuration and rumble: rumble and the
-player lights of any other Direct pad ride GameController's controller for
-it when the pairing is unambiguous. Nintendo's pads are Direct by model;
+(GameController.framework) and Direct (Dish's own HID reader, and its XUSB
+reader for an Xbox 360 vendor interface macOS has no driver for). Direct
+reads the HID reports alongside macOS, opened without seizing the device
+(seizing a game controller is not possible through public API and would
+blind GameController), and sends a pad nothing but the Switch start sequence,
+a claimed Steam Controller's own configuration and rumble, and an XUSB pad's
+configuration and rumble: rumble and the player lights of any other Direct
+pad ride GameController's controller for it when the pairing is unambiguous. Nintendo's pads are Direct by model;
 Valve's Steam Controllers only on the user's pick; any other pad is Direct
 only when GameController does not support it. A Nintendo controller
 GameController lists while Dish's reader has no lane of its model (a pad
@@ -96,7 +98,7 @@ so macOS reads it", and stays so for the connection.
 
 | | Android | Windows | Linux | macOS (this) |
 |---|---|---|---|---|
-| Rumble | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (CoreHaptics engines per handle; the 2026 Steam Controller's own haptic rumble report, re-sent every 40 ms until the host's hold ends; none for the 2015 one, which has no motors) |
+| Rumble | ✅ · ✅ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (CoreHaptics engines per handle; the 2026 Steam Controller's own haptic rumble report, re-sent every 40 ms until the host's hold ends; an XUSB pad's own rumble report on its interrupt OUT pipe, and the stop when the host's hold ends and before Dish quits; none for the 2015 one, which has no motors) |
 | Lightbar | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (`GCController.light`) |
 | Adaptive triggers | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ⚠️ · ⚠️ (the API's shapes; GameController carries them over both links) |
 | Player LEDs | ✅ · ❌ | ✅ · ⚠️ | ✅ · ⚠️ | ✅ · ✅ (DualSense, by player index) |
@@ -113,10 +115,11 @@ so macOS reads it", and stays so for the connection.
   pure machine and is sticky for a connection; a Nintendo controller
   GameController lists gets no input slot of its own while Dish reads the
   pad (R7). Direct sends nothing an Apple driver could trip on: the Switch
-  start sequence only to a pad that stays silent, and the Steam
-  Controllers' configuration and the 2026 pad's rumble only to Valve's own
-  interfaces, which no Apple driver claims. Rumble on any other Direct pad
-  rides GameController.
+  start sequence only to a pad that stays silent, the Steam Controllers'
+  configuration and the 2026 pad's rumble only to Valve's own interfaces,
+  and an XUSB pad's configuration and rumble only to a vendor-class device
+  no Apple driver claims. Rumble on any other Direct pad rides
+  GameController.
 - **Steam Controllers are read only on the user's word.** Reading one turns
   its keyboard and mouse emulation off (the 2015 pad until it reboots), so
   it is never auto-claimed, as on the desktops: Controllers offers the
@@ -128,14 +131,20 @@ so macOS reads it", and stays so for the connection.
   picked again or reconnects. No pad of either kind was attached to the Mac
   this shipped from: the decoders are pinned by the desktops' hardware-run
   vectors (2015) and SDL's structs (2026), the rest through fakes.
-- **An 8BitDo pad in X-input mode is not readable on a Mac.** In that mode
-  the Ultimate 2 (2dc8:310b) speaks the Xbox 360 protocol on a vendor-class
-  USB interface. macOS's own driver for it, `XboxGamepad.dext`, binds only
-  Microsoft's 045e:028e (and three Xbox One and Series pads) by exact
-  identity, so the 8BitDo gets no driver, no HID device and no
-  GameController controller, and neither of Dish's paths can see it. Its
-  D-input mode (2dc8:6012) is a HID gamepad both paths can read; a reader of
-  the raw USB interface is not built.
+- **An 8BitDo pad in X-input mode is read through its USB interface.** In
+  that mode the Ultimate 2 (2dc8:310b) speaks the Xbox 360 protocol on a
+  vendor-class USB interface. macOS's own driver for it, `XboxGamepad.dext`,
+  binds only Microsoft's 045e:028e (and three Xbox One and Series pads) by
+  exact identity, through a device-level personality that configures the
+  device and an interface-level one that reads it, so the 8BitDo gets no
+  driver, no HID device and no GameController controller. Dish's XUSB reader
+  does both halves in user space with IOUSBHost, which an unsandboxed app
+  needs no entitlement for: it selects the device's configuration when none
+  is selected and opens the interface for itself alone, so a pad another
+  client already holds (a third-party 360 driver, another app) is refused
+  rather than taken. Only models in the table are read, by identity and
+  interface triple, as dish-android reads them. Its D-input mode
+  (2dc8:6012) is a HID gamepad both paths can read.
 - **Mouse mode is the pad's own touchpad routed by the host**, as on
   Android: the pick is per controller, the descriptor declares `mouse` only
   when the pad has a touchpad and the host advertises mouse control, the
@@ -197,3 +206,10 @@ updates the rows above.
    battery and rumble, and a receiver's controller turned off and on. The
    2015 pad's own battery (its status packet) and the Bluetooth pads of
    both generations come after it.
+4. A run on an 8BitDo Ultimate 2 in X-input mode, wired and on its
+   adapter (`XusbLiveTests`, `DISH_LIVE_XUSB=1`): the configuration Dish
+   selects, the pipe reads, the rumble and its stop, an unplug, and an open
+   another app holds. After it: its player lights (the 360's LED report),
+   dish-android's other XUSB rows (the Ultimate 2C, the SN30 Pro and the
+   third-party 360 pads), and a refused XUSB pad on the Controllers page,
+   which today only the log shows.
