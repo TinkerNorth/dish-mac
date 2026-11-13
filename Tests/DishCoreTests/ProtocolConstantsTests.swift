@@ -139,6 +139,7 @@ final class ProtocolConstantsTests: XCTestCase {
         XCTAssertEqual(ProtocolConstants.controllerTypePlayStation, 1)
         XCTAssertEqual(ProtocolConstants.controllerTypeDualSense, 2)
         XCTAssertEqual(ProtocolConstants.controllerTypeSwitchPro, 3)
+        XCTAssertEqual(ProtocolConstants.controllerTypeDualSenseEdge, 4)
         XCTAssertEqual(ProtocolConstants.maxControllersPerConnection, 16)
     }
 

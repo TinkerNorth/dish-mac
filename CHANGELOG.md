@@ -21,6 +21,14 @@ the repos share a version number.
 
 ### Added
 
+- **The DualSense Edge is a controller type: the DualSense with four back
+  buttons.** A Satellite that speaks protocol 4 offers it in the Emulate
+  picker, last in the list; it is never picked for you, a DualSense is still
+  emulated as a DualSense. Choose it and the four back buttons a Steam
+  Controller sends reach the game as the Edge's back and Fn buttons. "What
+  carries" gains an Extra buttons row that says whether the pad sends them
+  and the chosen type renders them, and when the type does not, points at
+  the DualSense Edge. Not yet tried against a host that offers the type.
 - **The Steam Controllers' extra buttons and the Switch Pro's Capture button
   reach the host.** On a Satellite that speaks protocol 4, a controller Dish
   reads directly now sends the buttons an Xbox pad does not have: the 2015

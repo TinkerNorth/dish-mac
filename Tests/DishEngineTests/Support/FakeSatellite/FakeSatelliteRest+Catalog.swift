@@ -34,8 +34,8 @@ extension FakeSatelliteRest {
         """
     }
 
-    /// The version-2 catalog: four types, `emulates` per type, every feature
-    /// slug the contract names.
+    /// The version-2 catalog: five types in id order, the DualSense Edge
+    /// last, `emulates` per type, every feature slug the contract names.
     static let catalogJSON = """
     {"locale":"en","protocolVersion":4,"serverVersion":"1.6.0","catalogVersion":2,
      "controllerTypes":[
@@ -73,8 +73,19 @@ extension FakeSatelliteRest {
                     "motion":{"supported":true},"lightbar":{"supported":false},
                     "touchpad":{"supported":false},"triggerEffects":{"supported":false},
                     "playerLeds":{"supported":true},"mic":{"supported":false},
-                    "speaker":{"supported":false},"hapticAudio":{"supported":false}},
-        "emulates":{"sdlType":"switchpro","usb":["057e:2009"]}}],
+                    "speaker":{"supported":false},"hapticAudio":{"supported":false},
+                    "extendedButtons":{"supported":true,"buttons":["misc1"]}},
+        "emulates":{"sdlType":"switchpro","usb":["057e:2009"]}},
+       {"id":4,"slug":"dualsenseedge","name":"DualSense Edge","shortName":"DualSense Edge",
+        "description":"The DualSense with four back buttons.",
+        "image":{"href":"/api/catalog/images/dualsenseedge","etag":"\\"1.6.0\\""},
+        "features":{"rumble":{"supported":true},"analogTriggers":{"supported":true},
+                    "motion":{"supported":true},"lightbar":{"supported":true},
+                    "touchpad":{"supported":true,"modes":["ds4"]},"triggerEffects":{"supported":true},
+                    "playerLeds":{"supported":true},"mic":{"supported":true},
+                    "speaker":{"supported":true},"hapticAudio":{"supported":true},
+                    "extendedButtons":{"supported":true,"buttons":["rightPaddle1","leftPaddle1","rightPaddle2","leftPaddle2"]}},
+        "emulates":{"sdlType":"ps5","usb":["054c:0df2"]}}],
      "hostFeatures":{"mouseControl":{"supported":true,"modes":["off","ds4","mouse"]},
                      "keyboardControl":{"supported":false},
                      "rumble":{"supported":true}}}

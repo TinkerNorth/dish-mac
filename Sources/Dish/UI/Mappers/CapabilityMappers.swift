@@ -23,6 +23,7 @@ func capabilityInputs(_ slot: ControllerSlot, _ flags: ForwardingFlags) -> Capab
     inputs.padPlayerLeds = slot.capabilities.hasPlayerLeds
     inputs.padMic = padHasAudio(slot)
     inputs.padSpeaker = padHasAudio(slot)
+    inputs.padExtendedButtons = slot.capabilities.hasExtendedButtons
     inputs.linkRoutesMouse = true
     inputs.linkRoutesMic = slot.capabilities.hasMic
     inputs.linkRoutesSpeaker = slot.capabilities.hasSpeaker
@@ -59,6 +60,7 @@ private func applyTypeFacts(_ facts: TypeFeatureFacts?, to inputs: inout Capabil
     inputs.typePlayerLeds = facts.playerLeds
     inputs.typeMic = facts.mic
     inputs.typeSpeaker = facts.speaker
+    inputs.typeExtendedButtons = facts.extendedButtons
 }
 
 private func applyHostFacts(_ facts: HostProbeFacts?, to inputs: inout CapabilityInputs) {
@@ -111,6 +113,7 @@ func capabilityFeatureText(_ feature: CapFeature, words: L10n = .app) -> String 
     case .playerLeds: words.playerLeds
     case .mic: words.microphone
     case .speaker: words.speaker
+    case .extendedButtons: words.extraButtons
     }
 }
 
@@ -148,7 +151,7 @@ private func layerReason(_ layer: CapLayer, _ feature: CapFeature, typeName: Str
     switch layer {
     case .input: return words.padLacks(name)
     case .link: return linkReason(feature, name: name, route: route, words: words)
-    case .type: return words.typeLacks(typeName, name)
+    case .type: return typeReason(feature, name: name, typeName: typeName, words: words)
     case .host: return words.hostLacks(name)
     }
 }
@@ -158,7 +161,18 @@ private func layerReason(_ layer: CapLayer, _ feature: CapFeature, typeName: Str
 private func linkReason(_ feature: CapFeature, name: String, route: AudioRouteVerdict?, words: L10n) -> String {
     switch feature {
     case .mic, .speaker: audioRouteReason(route, words: words)
-    case .gamepad, .triggers, .motion, .touchpad, .mouse, .rumble, .lightbar, .triggerEffects, .playerLeds: words.macDoesNotRoute(name)
+    case .gamepad, .triggers, .motion, .touchpad, .mouse, .rumble, .lightbar, .triggerEffects, .playerLeds, .extendedButtons:
+        words.macDoesNotRoute(name)
+    }
+}
+
+/// A type without a place for the extra buttons points at the one that
+/// renders them, since the picker beside the table can switch to it.
+private func typeReason(_ feature: CapFeature, name: String, typeName: String, words: L10n) -> String {
+    switch feature {
+    case .extendedButtons: words.typeLacksExtraButtons(typeName)
+    case .gamepad, .triggers, .motion, .touchpad, .mouse, .rumble, .lightbar, .triggerEffects, .playerLeds, .mic, .speaker:
+        words.typeLacks(typeName, name)
     }
 }
 

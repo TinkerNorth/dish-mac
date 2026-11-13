@@ -74,12 +74,16 @@ package struct TypeFeatureFacts: Hashable {
     package let playerLeds: Bool
     package let mic: Bool
     package let speaker: Bool
+    /// The type renders some of the extended-buttons word (protocol 4): the
+    /// DualSense Edge's paddles, the Switch Pro's Capture.
+    package let extendedButtons: Bool
     /// The touchpad modes the type offers; empty for a pre-modes catalog.
     package let touchpadModes: [String]
 
     package init(
         motion: Bool, touchpad: Bool, rumble: Bool, lightbar: Bool,
-        triggerEffects: Bool, playerLeds: Bool, mic: Bool, speaker: Bool, touchpadModes: [String] = []
+        triggerEffects: Bool, playerLeds: Bool, mic: Bool, speaker: Bool,
+        extendedButtons: Bool = false, touchpadModes: [String] = []
     ) {
         self.motion = motion
         self.touchpad = touchpad
@@ -89,6 +93,7 @@ package struct TypeFeatureFacts: Hashable {
         self.playerLeds = playerLeds
         self.mic = mic
         self.speaker = speaker
+        self.extendedButtons = extendedButtons
         self.touchpadModes = touchpadModes
     }
 }

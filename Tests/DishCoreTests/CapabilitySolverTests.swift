@@ -19,6 +19,7 @@ final class CapabilitySolverTests: XCTestCase {
         inputs.padPlayerLeds = true
         inputs.padMic = true
         inputs.padSpeaker = true
+        inputs.padExtendedButtons = true
         inputs.linkRoutesMouse = true
         inputs.typeResolved = true
         inputs.typeMotion = true
@@ -29,6 +30,7 @@ final class CapabilitySolverTests: XCTestCase {
         inputs.typePlayerLeds = true
         inputs.typeMic = true
         inputs.typeSpeaker = true
+        inputs.typeExtendedButtons = true
         inputs.hostResolved = true
         inputs.hostMouseControl = true
         inputs.hostRumble = true
@@ -45,12 +47,33 @@ final class CapabilitySolverTests: XCTestCase {
 
     // MARK: - The shape
 
-    func testTheElevenFeaturesComeBackInTheFixedRenderOrder() {
+    func testTheTwelveFeaturesComeBackInTheFixedRenderOrder() {
         let order = solveCapabilities(everythingCarries()).map(\.feature)
         XCTAssertEqual(order, [
-            .gamepad, .triggers, .motion, .touchpad, .mouse, .rumble, .lightbar, .triggerEffects, .playerLeds, .mic, .speaker
+            .gamepad, .triggers, .motion, .touchpad, .mouse, .rumble, .lightbar, .triggerEffects, .playerLeds, .mic, .speaker,
+            .extendedButtons
         ])
         XCTAssertEqual(order, CapFeature.allCases, "a row inserted in the middle would reshuffle every table")
+    }
+
+    func testTheExtendedButtonsRowNeedsThePadAndTheTypeAndHasNoSwitchOrHostSay() throws {
+        var inputs = everythingCarries()
+        inputs.padExtendedButtons = false
+        let noPad = try XCTUnwrap(solveCapabilities(inputs).first { $0.feature == .extendedButtons })
+        XCTAssertEqual(noPad.verdict, .unavailable)
+        XCTAssertEqual(noPad.failingLayer, .input)
+        inputs.padExtendedButtons = true
+        inputs.typeExtendedButtons = false
+        let plainType = try XCTUnwrap(solveCapabilities(inputs).first { $0.feature == .extendedButtons })
+        XCTAssertEqual(plainType.verdict, .unavailable)
+        XCTAssertEqual(plainType.failingLayer, .type, "a type with nowhere to put them drops them")
+        inputs.typeExtendedButtons = true
+        inputs.hostMouseControl = false
+        inputs.hostRumble = false
+        inputs.userMotionOn = false
+        inputs.userTouchpadPick = .off
+        let edge = try XCTUnwrap(solveCapabilities(inputs).first { $0.feature == .extendedButtons })
+        XCTAssertEqual(edge.verdict, .available, "no switch and no host say")
     }
 
     func testEverythingCarryingReadsAvailableAndBlamesNobody() {

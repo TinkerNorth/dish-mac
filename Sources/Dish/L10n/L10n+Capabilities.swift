@@ -97,6 +97,10 @@ extension L10n {
         catalog.format("%@ doesn’t carry %@.", typeName, feature)
     }
 
+    func typeLacksExtraButtons(_ typeName: String) -> String {
+        catalog.format("%@ doesn’t carry Extra buttons; the DualSense Edge type renders the four back buttons.", typeName)
+    }
+
     func hostLacks(_ feature: String) -> String {
         catalog.format("The host doesn’t carry %@.", feature)
     }

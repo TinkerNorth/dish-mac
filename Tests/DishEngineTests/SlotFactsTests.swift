@@ -24,8 +24,8 @@ final class SlotFactsTests: XCTestCase {
 
     func testEveryNamedTypeIsOfferedInCatalogOrder() throws {
         let offered = try offerableTypes(in: catalog())
-        XCTAssertEqual(offered.map(\.id), [0, 1, 2, 3])
-        XCTAssertEqual(offered.map(\.label), ["Xbox", "PlayStation", "DualSense", "Switch Pro"])
+        XCTAssertEqual(offered.map(\.id), [0, 1, 2, 3, 4])
+        XCTAssertEqual(offered.map(\.label), ["Xbox", "PlayStation", "DualSense", "Switch Pro", "DualSense Edge"])
         XCTAssertEqual(offered[1].name, "DualShock 4")
         XCTAssertEqual(offered[1].description, "Motion, touchpad and light bar.")
     }
@@ -55,6 +55,22 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertEqual(try emulatedControllerType(override: nil, catalog: catalog(), family: .dualShock4), 1)
         XCTAssertEqual(try emulatedControllerType(override: nil, catalog: catalog(), family: .xbox), 0)
         XCTAssertEqual(try emulatedControllerType(override: nil, catalog: catalog(), family: .other), 0, "the first offered")
+    }
+
+    func testTheDualSenseEdgeIsOfferedLastAndNeverTheDefault() throws {
+        XCTAssertEqual(try offerableTypes(in: catalog()).last?.id, Int(ProtocolConstants.controllerTypeDualSenseEdge))
+        for family in [PadFamily.dualSense, .dualShock4, .xbox, .nintendo, .other] {
+            let picked = try emulatedControllerType(override: nil, catalog: catalog(), family: family)
+            XCTAssertNotEqual(picked, Int(ProtocolConstants.controllerTypeDualSenseEdge), "\(family) never defaults to the Edge")
+        }
+        XCTAssertEqual(try emulatedControllerType(override: 4, catalog: catalog(), family: .dualSense), 4, "only by the user's pick")
+    }
+
+    func testTheTypeFactsCarryWhichTypesRenderTheExtendedButtons() throws {
+        XCTAssertEqual(try typeFeatureFacts(in: catalog(), type: 4)?.extendedButtons, true, "the Edge's four paddles")
+        XCTAssertEqual(try typeFeatureFacts(in: catalog(), type: 3)?.extendedButtons, true, "the Switch Pro's Capture")
+        XCTAssertEqual(try typeFeatureFacts(in: catalog(), type: 2)?.extendedButtons, false)
+        XCTAssertEqual(try typeFeatureFacts(in: catalog(), type: 0)?.extendedButtons, false)
     }
 
     func testANintendoPadIsEmulatedAsTheSwitchPro() throws {
