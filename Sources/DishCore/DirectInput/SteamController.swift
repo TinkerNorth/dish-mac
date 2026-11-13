@@ -88,6 +88,8 @@ enum SteamScale {
 }
 
 enum SteamButtonMask {
+    static let rightTriggerClick: UInt32 = 0x000001
+    static let leftTriggerClick: UInt32 = 0x000002
     static let rightBumper: UInt32 = 0x000004
     static let leftBumper: UInt32 = 0x000008
     static let north: UInt32 = 0x000010
@@ -101,6 +103,8 @@ enum SteamButtonMask {
     static let menu: UInt32 = 0x001000
     static let guide: UInt32 = 0x002000
     static let escape: UInt32 = 0x004000
+    static let backLeft: UInt32 = 0x008000
+    static let backRight: UInt32 = 0x010000
     static let leftPadClicked: UInt32 = 0x020000
     static let rightPadClicked: UInt32 = 0x040000
     static let leftPadFinger: UInt32 = 0x080000
@@ -138,6 +142,31 @@ func steamButtons(_ held: UInt32, _ table: [SteamButtonBit]) -> WireButtonWord {
     var word = WireButtonWord()
     for bit in table where held & bit.mask != 0 {
         word.insert(bit.button)
+    }
+    return word
+}
+
+/// One bit of a Steam button word and the extended button it is, in SDL's
+/// names (`ProtocolConstants.extButton*`).
+struct SteamExtendedBit {
+    let mask: UInt32
+    let ext: UInt32
+}
+
+/// The grips are SDL's two Steam paddles and the full-pull trigger bits its
+/// trigger clicks. The right pad's click stays R3 while the pad is the right
+/// stick, and the left pad's click is decided with the stick's.
+let steamControllerExtendedBits = [
+    SteamExtendedBit(mask: SteamButtonMask.backLeft, ext: ProtocolConstants.extButtonLeftPaddle1),
+    SteamExtendedBit(mask: SteamButtonMask.backRight, ext: ProtocolConstants.extButtonRightPaddle1),
+    SteamExtendedBit(mask: SteamButtonMask.leftTriggerClick, ext: ProtocolConstants.extButtonLeftTriggerClick),
+    SteamExtendedBit(mask: SteamButtonMask.rightTriggerClick, ext: ProtocolConstants.extButtonRightTriggerClick)
+]
+
+func steamExtendedButtons(_ held: UInt32, _ table: [SteamExtendedBit]) -> UInt32 {
+    var word: UInt32 = 0
+    for bit in table where held & bit.mask != 0 {
+        word |= bit.ext
     }
     return word
 }
@@ -216,9 +245,18 @@ private func steamControllerState(_ packet: UnsafeBufferPointer<UInt8>, hold: in
         lx: hold.x,
         ly: hold.y,
         rx: right.x,
-        ry: right.y
+        ry: right.y,
+        extButtons: steamExtendedButtons(held, steamControllerExtendedBits) | steamLeftPadClick(held)
     )
     return .state(report, motion: steamControllerMotion(packet))
+}
+
+/// The left pad's click under a finger is the pad's own; with no finger the
+/// firmware reports it as the stick's click, which `leftThumbHeld` takes.
+private func steamLeftPadClick(_ held: UInt32) -> UInt32 {
+    let fingerOnPad = held & SteamButtonMask.leftPadFinger != 0
+    let padClicked = held & SteamButtonMask.leftPadClicked != 0
+    return fingerOnPad && padClicked ? ProtocolConstants.extButtonLeftPadClick : 0
 }
 
 /// The stick is up-positive, as the wire is.

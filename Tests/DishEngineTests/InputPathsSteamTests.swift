@@ -92,6 +92,7 @@ final class InputPathsSteamTests: XCTestCase {
         XCTAssertTrue(slot.capabilities.hasMotion)
         XCTAssertFalse(slot.capabilities.hasRumble, "the 2015 pad has no motors")
         XCTAssertTrue(slot.capabilities.hasBattery, "the Mac's stands in")
+        XCTAssertTrue(slot.capabilities.hasExtendedButtons, "the grips, the trigger clicks and the left pad's click")
         let facts = try XCTUnwrap(paths.state[Self.wired])
         XCTAssertEqual(facts.source, .direct)
         XCTAssertEqual(facts.reason, .userPicked)
@@ -158,6 +159,7 @@ final class InputPathsSteamTests: XCTestCase {
         choices.setChoice(.direct, vendorId: 0x28DE, productId: 0x1302)
         try arrive(productId: 0x1302, slotId: Self.triton, interfaceNumber: nil)
         XCTAssertEqual(host.directSlots[Self.triton]?.capabilities.hasRumble, true)
+        XCTAssertEqual(host.directSlots[Self.triton]?.capabilities.hasExtendedButtons, true, "QAM, the paddles, the clicks, the touches")
         XCTAssertEqual(paths.state[Self.triton]?.rumble, .ownReport)
     }
 

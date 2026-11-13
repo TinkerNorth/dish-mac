@@ -125,6 +125,19 @@ final class DirectModelsTests: XCTestCase {
         XCTAssertFalse(try model(0x057E, 0x2009).drivesItsOwnRumble, "a Nintendo pad's rumble rides GameController")
     }
 
+    func testTheSteamControllersAndTheSwitchProSourceTheExtendedButtons() throws {
+        let sources: [(vendor: UInt16, product: UInt16)] = [
+            (0x28DE, 0x1102), (0x28DE, 0x1142), (0x28DE, 0x1302), (0x28DE, 0x1304), (0x28DE, 0x1305), (0x057E, 0x2009)
+        ]
+        for pad in sources {
+            XCTAssertTrue(try model(pad.vendor, pad.product).hasExtendedButtons, String(pad.product, radix: 16))
+        }
+        let none: [(vendor: UInt16, product: UInt16)] = [(0x057E, 0x2019), (0x057E, 0x2017), (0x2DC8, 0x5006), (0x054C, 0x0CDA)]
+        for pad in none {
+            XCTAssertFalse(try model(pad.vendor, pad.product).hasExtendedButtons, String(pad.product, radix: 16))
+        }
+    }
+
     func testTheBluetoothSteamControllerIsLeftToMacOS() {
         XCTAssertNil(directModel(vendorId: 0x28DE, productId: 0x1303), "Dish reads no Bluetooth LE pad")
     }

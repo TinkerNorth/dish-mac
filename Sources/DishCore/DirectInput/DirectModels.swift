@@ -70,6 +70,15 @@ public struct DirectModel: Equatable, Sendable {
     public var drivesItsOwnRumble: Bool {
         decoder == .steamTriton
     }
+
+    /// The decoder fills the protocol 4 extended-buttons word: the Steam
+    /// Controllers' extras and the Switch Pro's Capture button.
+    public var hasExtendedButtons: Bool {
+        switch decoder {
+        case .switchReport(.pro), .steamController, .steamTriton: true
+        case .switchReport, .hidGamepad: false
+        }
+    }
 }
 
 public enum DirectVendor {

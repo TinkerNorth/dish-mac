@@ -21,6 +21,19 @@ the repos share a version number.
 
 ### Added
 
+- **The Steam Controllers' extra buttons and the Switch Pro's Capture button
+  reach the host.** On a Satellite that speaks protocol 4, a controller Dish
+  reads directly now sends the buttons an Xbox pad does not have: the 2015
+  Steam Controller's two grips, its full trigger pulls and a click on its
+  left trackpad while a finger rests on it (an empty-pad click stays the
+  stick's click); the 2026 Steam Controller's "..." button, its four back
+  paddles, both trackpad clicks, both trigger clicks and the touches on its
+  sticks and grips; and the Switch Pro Controller's Capture button. What the
+  host makes of them depends on the controller it emulates: today a Switch
+  Pro renders Capture, and a type with back buttons follows. A DualSense Edge
+  read through macOS shows Dish no paddles, so its back buttons stay as they
+  were. None of this has been tried on a pad yet; a Switch Pro at rest was
+  seen to hold none of these buttons.
 - **Room on the wire for a controller's extra buttons.** `[wire-coordinated]`
   Protocol 4. Dish now speaks Satellite protocol 4: on a session that settled
   on it, every controller report carries a second word for the buttons an
