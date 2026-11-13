@@ -138,6 +138,7 @@ func typeFeatureFacts(in catalog: CatalogDTO?, type: Int) -> TypeFeatureFacts? {
         playerLeds: row.features.playerLeds.supported,
         mic: row.features.mic.supported,
         speaker: row.features.speaker.supported,
+        extendedButtons: row.features.extendedButtons.supported,
         touchpadModes: row.features.touchpad.modes
     )
 }

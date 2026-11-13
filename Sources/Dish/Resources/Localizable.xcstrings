@@ -211,6 +211,41 @@
         }
       }
     },
+    "%@ doesn’t carry Extra buttons; the DualSense Edge type renders the four back buttons." : {
+      "comment" : "Capability help, the type layer of the Extra buttons row; the argument is the type's name. DualSense Edge is a product name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ nema kanal za dodatnu dugmad; tip DualSense Edge prikazuje četiri zadnja dugmeta."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ überträgt zusätzliche Tasten nicht; der Typ DualSense Edge stellt die vier Rücktasten dar."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ no transmite botones adicionales; el tipo DualSense Edge representa los cuatro botones traseros."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ ne transmet pas de boutons supplémentaires ; le type DualSense Edge rend les quatre boutons arrière."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ não transmite botões extras; o tipo DualSense Edge representa os quatro botões traseiros."
+          }
+        }
+      }
+    },
     "%@ ended the session" : {
       "comment" : "Row status line and banner title; the argument is the host's name.",
       "localizations" : {

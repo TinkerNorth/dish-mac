@@ -214,15 +214,24 @@ final class RestModelsTests: XCTestCase {
         XCTAssertEqual(catalog.protocolVersion, 4)
         XCTAssertEqual(catalog.catalogVersion, 2)
         XCTAssertEqual(catalog.serverVersion, "1.6.0")
-        XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3])
-        XCTAssertEqual(catalog.controllerTypes.map { $0.emulates?.sdlType }, ["xbox360", "ps4", "ps5", "switchpro"])
+        XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3, 4])
+        XCTAssertEqual(catalog.controllerTypes.map { $0.emulates?.sdlType }, ["xbox360", "ps4", "ps5", "switchpro", "ps5"])
+        XCTAssertEqual(catalog.controllerTypes[4].emulates?.usb, ["054c:0df2"], "the Edge is a ps5 pad with its own product id")
+        XCTAssertTrue(catalog.controllerTypes[4].features.extendedButtons.supported)
+        XCTAssertEqual(
+            catalog.controllerTypes[4].features.extendedButtons.buttons,
+            ["rightPaddle1", "leftPaddle1", "rightPaddle2", "leftPaddle2"],
+            "the slugs the Edge renders, in bit order"
+        )
+        XCTAssertEqual(catalog.controllerTypes[3].features.extendedButtons.buttons, ["misc1"])
+        XCTAssertFalse(catalog.controllerTypes[2].features.extendedButtons.supported, "absent reads as none")
         XCTAssertEqual(catalog.controllerTypes[2].emulates?.usb, ["054c:0ce6"])
         XCTAssertTrue(catalog.controllerTypes[2].features.triggerEffects.supported)
         XCTAssertTrue(catalog.controllerTypes[2].features.hapticAudio.supported)
         XCTAssertFalse(catalog.controllerTypes[1].features.playerLeds.supported)
         XCTAssertEqual(catalog.controllerTypes[1].features.touchpad.modes, ["ds4"])
         XCTAssertEqual(catalog.controllerTypes[1].features.motion.requires, "vigembus>=1.17")
-        XCTAssertEqual(catalog.controllerTypes.map(\.slug), ["xbox360", "ds4", "dualsense", "switchpro"])
+        XCTAssertEqual(catalog.controllerTypes.map(\.slug), ["xbox360", "ds4", "dualsense", "switchpro", "dualsenseedge"])
         let ds4 = catalog.controllerTypes[1]
         XCTAssertEqual(ds4.name, "DualShock 4")
         XCTAssertEqual(ds4.shortName, "PlayStation")

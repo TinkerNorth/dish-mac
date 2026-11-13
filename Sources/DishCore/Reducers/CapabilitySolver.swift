@@ -36,6 +36,7 @@ public enum CapFeature: UInt8, CaseIterable, Equatable, Sendable {
     case playerLeds
     case mic
     case speaker
+    case extendedButtons
 }
 
 public enum CapLayer: Equatable, Sendable {
@@ -72,6 +73,8 @@ public struct CapabilityInputs: Equatable, Sendable {
     public var padPlayerLeds = false
     public var padMic = false
     public var padSpeaker = false
+    /// The pad sources the protocol 4 extended-buttons word.
+    public var padExtendedButtons = false
 
     /// This client routes a touchpad as the host's mouse. Without it the link
     /// carries no mouse.
@@ -92,6 +95,8 @@ public struct CapabilityInputs: Equatable, Sendable {
     public var typePlayerLeds = false
     public var typeMic = false
     public var typeSpeaker = false
+    /// The type renders some of the extended-buttons word.
+    public var typeExtendedButtons = false
 
     /// False means Pending.
     public var hostResolved = false
@@ -181,6 +186,7 @@ func inputCarries(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
     case .playerLeds: inputs.padPlayerLeds
     case .mic: inputs.padMic
     case .speaker: inputs.padSpeaker
+    case .extendedButtons: inputs.padExtendedButtons
     }
 }
 
@@ -193,7 +199,7 @@ func linkCarries(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
     case .mouse: inputs.linkRoutesMouse
     case .mic: inputs.linkRoutesMic
     case .speaker: inputs.linkRoutesSpeaker
-    case .gamepad, .triggers, .motion, .touchpad, .rumble, .lightbar, .triggerEffects, .playerLeds: true
+    case .gamepad, .triggers, .motion, .touchpad, .rumble, .lightbar, .triggerEffects, .playerLeds, .extendedButtons: true
     }
 }
 
@@ -212,15 +218,17 @@ func typeCarries(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
     case .playerLeds: return inputs.typePlayerLeds
     case .mic: return inputs.typeMic
     case .speaker: return inputs.typeSpeaker
+    case .extendedButtons: return inputs.typeExtendedButtons
     }
 }
 
 /// The same rule as the type layer for an unread host. Audio reads the
-/// probe's live verdict, false until it lands.
+/// probe's live verdict, false until it lands. The extended buttons are the
+/// type's to render, so the host refuses none.
 func hostCarries(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
     guard inputs.hostResolved else { return true }
     switch feature {
-    case .gamepad, .triggers, .motion, .touchpad, .lightbar, .triggerEffects, .playerLeds: return true
+    case .gamepad, .triggers, .motion, .touchpad, .lightbar, .triggerEffects, .playerLeds, .extendedButtons: return true
     case .mouse: return inputs.hostMouseControl
     case .rumble: return inputs.hostRumble
     case .mic: return inputs.hostMic
@@ -229,10 +237,10 @@ func hostCarries(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
 }
 
 /// Only reached once all four layers carry the feature, so a user switch can
-/// never masquerade as unsupported.
+/// never masquerade as unsupported. The extended buttons have no switch.
 func userEnabled(_ inputs: CapabilityInputs, _ feature: CapFeature) -> Bool {
     switch feature {
-    case .gamepad, .triggers, .triggerEffects, .playerLeds: true
+    case .gamepad, .triggers, .triggerEffects, .playerLeds, .extendedButtons: true
     case .motion: inputs.userMotionOn
     case .rumble: inputs.userRumbleOn
     case .lightbar: inputs.userLightbarOn

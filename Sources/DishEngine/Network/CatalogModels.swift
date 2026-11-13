@@ -115,11 +115,15 @@ struct CatalogFeatures: Decodable, Equatable {
     var mic = CatalogFeature()
     var speaker = CatalogFeature()
     var hapticAudio = CatalogFeature()
+    /// The INPUT extended buttons the type renders (protocol 4), their slugs
+    /// in `buttons`.
+    var extendedButtons = CatalogFeature()
 
     init() {}
 
     private enum CodingKeys: String, CodingKey {
         case rumble, analogTriggers, motion, lightbar, touchpad, triggerEffects, playerLeds, mic, speaker, hapticAudio
+        case extendedButtons
     }
 
     init(from decoder: Decoder) throws {
@@ -137,28 +141,33 @@ struct CatalogFeatures: Decodable, Equatable {
         self.mic = try feature(.mic)
         self.speaker = try feature(.speaker)
         self.hapticAudio = try feature(.hapticAudio)
+        self.extendedButtons = try feature(.extendedButtons)
     }
 }
 
 /// A single `{"supported":Bool}` capability flag, with the optional
-/// `modes` a feature offers and the `requires` code behind it.
+/// `modes` a feature offers, the `buttons` an extended-buttons feature
+/// renders (their slugs in bit order) and the `requires` code behind it.
 struct CatalogFeature: Decodable, Equatable {
     var supported = false
     var modes: [String] = []
+    var buttons: [String] = []
     var requires: String?
 
-    init(supported: Bool = false, modes: [String] = [], requires: String? = nil) {
+    init(supported: Bool = false, modes: [String] = [], buttons: [String] = [], requires: String? = nil) {
         self.supported = supported
         self.modes = modes
+        self.buttons = buttons
         self.requires = requires
     }
 
-    private enum CodingKeys: String, CodingKey { case supported, modes, requires }
+    private enum CodingKeys: String, CodingKey { case supported, modes, buttons, requires }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         self.supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
         self.modes = try container.decodeIfPresent([String].self, forKey: .modes) ?? []
+        self.buttons = try container.decodeIfPresent([String].self, forKey: .buttons) ?? []
         self.requires = try nonEmpty(container.decodeIfPresent(String.self, forKey: .requires))
     }
 }

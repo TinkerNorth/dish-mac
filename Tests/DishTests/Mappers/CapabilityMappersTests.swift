@@ -30,7 +30,20 @@ final class CapabilityMappersTests: XCTestCase {
         hasLightbar: true,
         hasBattery: true,
         hasTriggerEffects: true,
-        hasPlayerLeds: true
+        hasPlayerLeds: true,
+        hasExtendedButtons: true
+    )
+
+    private let edgeFeatures = TypeFeatureFacts(
+        motion: true,
+        touchpad: true,
+        rumble: true,
+        lightbar: true,
+        triggerEffects: true,
+        playerLeds: true,
+        mic: true,
+        speaker: true,
+        extendedButtons: true
     )
 
     private func bound(_ live: LinkState = .connected) -> ConnectionSummary {
@@ -137,7 +150,7 @@ final class CapabilityMappersTests: XCTestCase {
         let table = capabilityTable(dualSense(), ForwardingFlags(lightbar: false))
         XCTAssertEqual(table.map(\.label), [
             "Gamepad", "Analog triggers", "Motion", "Touchpad", "Mouse", "Rumble", "Light bar",
-            "Adaptive triggers", "Player LEDs", "Microphone", "Speaker"
+            "Adaptive triggers", "Player LEDs", "Microphone", "Speaker", "Extra buttons"
         ])
         let gamepad = try row(.gamepad, in: table)
         XCTAssertEqual(gamepad.verdictText, "Supported")
@@ -150,6 +163,21 @@ final class CapabilityMappersTests: XCTestCase {
         let lightbar = try row(.lightbar, in: table)
         XCTAssertEqual(lightbar.verdictText, "Off")
         XCTAssertEqual(lightbar.help, "Switched off in Settings.")
+        let extras = try row(.extendedButtons, in: table)
+        XCTAssertEqual(extras.verdictText, "Not available")
+        XCTAssertEqual(extras.help, "DualSense doesn’t carry Extra buttons; the DualSense Edge type renders the four back buttons.")
+    }
+
+    func testTheEdgeTypeCarriesTheExtraButtonsAPadSources() throws {
+        let offeredWithEdge = offered + [PickableType(id: 4, slug: "dualsenseedge", name: "DualSense Edge", shortName: "", description: "")]
+        var slot = dualSense(type: 4, override: true, features: edgeFeatures)
+        slot.emulation = SlotEmulation(type: 4, isOverride: true, offered: offeredWithEdge)
+        let extras = try row(.extendedButtons, in: capabilityTable(slot, ForwardingFlags()))
+        XCTAssertEqual(extras.verdictText, "Supported")
+        XCTAssertEqual(extras.help, "Every layer carries it: the pad, this Mac, the DualSense Edge type and the host.")
+        var plainPad = slot
+        plainPad.capabilities = ControllerCapabilities(hasRumble: true)
+        XCTAssertEqual(try row(.extendedButtons, in: capabilityTable(plainPad, ForwardingFlags())).help, "The pad has no Extra buttons.")
     }
 
     func testThePickRoutesTheTouchpadToOneOfItsTwoRows() throws {

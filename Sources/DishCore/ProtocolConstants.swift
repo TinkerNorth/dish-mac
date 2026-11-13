@@ -246,6 +246,9 @@ public enum ProtocolConstants {
     public static let controllerTypePlayStation: UInt8 = 1
     public static let controllerTypeDualSense: UInt8 = 2
     public static let controllerTypeSwitchPro: UInt8 = 3
+    /// Version 4: the DualSense with the four paddles the extended-buttons
+    /// word carries. Listed last by the catalog and never a client's default.
+    public static let controllerTypeDualSenseEdge: UInt8 = 4
 
     /// A session carries at most 16 controller slots (also the enriched-ack
     /// bitmap breadth).
