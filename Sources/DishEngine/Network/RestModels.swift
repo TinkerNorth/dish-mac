@@ -265,7 +265,7 @@ struct ControllerDescriptor: Encodable, Hashable {
 
     private enum CodingKeys: String, CodingKey { case ctrlIdx, type, caps, touchpadMode }
     private enum CapsKeys: String, CodingKey {
-        case rumble, motion, analogTriggers, lightbar, triggerEffects, playerLeds, mic, speaker, hapticAudio
+        case rumble, motion, analogTriggers, lightbar, triggerEffects, playerLeds, mic, speaker, hapticAudio, extendedButtons
     }
 
     /// Every cap bit and the key it is written under, so the body always
@@ -279,7 +279,8 @@ struct ControllerDescriptor: Encodable, Hashable {
         (ProtocolConstants.capPlayerLeds, .playerLeds),
         (ProtocolConstants.capMic, .mic),
         (ProtocolConstants.capSpeaker, .speaker),
-        (ProtocolConstants.capHapticAudio, .hapticAudio)
+        (ProtocolConstants.capHapticAudio, .hapticAudio),
+        (ProtocolConstants.capExtendedButtons, .extendedButtons)
     ]
 
     func encode(to encoder: Encoder) throws {

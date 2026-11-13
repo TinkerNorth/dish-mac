@@ -182,6 +182,7 @@ final class RestModelsTests: XCTestCase {
         XCTAssertEqual(caps["motion"], true)
         XCTAssertEqual(caps["analogTriggers"], true)
         XCTAssertEqual(caps["lightbar"], false)
+        XCTAssertEqual(caps["extendedButtons"], false, "the protocol 4 claim always rides the caps object")
     }
 
     func testDualSenseDescriptorRoundTripsAppliedType() throws {
@@ -210,7 +211,7 @@ final class RestModelsTests: XCTestCase {
             CatalogDTO.self, from: Data(FakeSatelliteRest.catalogJSON.utf8)
         )
         XCTAssertEqual(catalog.locale, "en")
-        XCTAssertEqual(catalog.protocolVersion, 3)
+        XCTAssertEqual(catalog.protocolVersion, 4)
         XCTAssertEqual(catalog.catalogVersion, 2)
         XCTAssertEqual(catalog.serverVersion, "1.6.0")
         XCTAssertEqual(catalog.controllerTypes.map(\.id), [0, 1, 2, 3])

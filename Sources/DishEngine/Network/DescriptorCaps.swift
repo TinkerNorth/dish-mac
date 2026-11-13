@@ -35,7 +35,8 @@ func namedPadFamily(productCategory: String, vendorName: String?) -> PadFamily {
 /// the user's switch: a feature turned off in Settings is not advertised.
 /// Analog triggers ride every extended gamepad. The audio caps follow the
 /// pad's audio function and the controller's own switches, the speaker
-/// switch covering the haptics lanes, as on the other clients.
+/// switch covering the haptics lanes, as on the other clients. The
+/// extended-buttons claim follows the pad alone: it has no switch.
 func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingFlags) -> UInt16 {
     let claims: [(claimed: Bool, bit: UInt16)] = [
         (true, ProtocolConstants.capAnalogTriggers),
@@ -46,7 +47,8 @@ func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingF
         (capabilities.hasPlayerLeds, ProtocolConstants.capPlayerLeds),
         (capabilities.hasMic && flags.mic, ProtocolConstants.capMic),
         (capabilities.hasSpeaker && flags.speaker, ProtocolConstants.capSpeaker),
-        (capabilities.hasHapticLanes && flags.speaker, ProtocolConstants.capHapticAudio)
+        (capabilities.hasHapticLanes && flags.speaker, ProtocolConstants.capHapticAudio),
+        (capabilities.hasExtendedButtons, ProtocolConstants.capExtendedButtons)
     ]
     return claims.filter(\.claimed).reduce(UInt16(0)) { $0 | $1.bit }
 }

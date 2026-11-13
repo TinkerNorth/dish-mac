@@ -10,10 +10,19 @@ extension SatelliteClient {
 
     // MARK: - Input (hot path)
 
-    /// One `sendto` per report, on the caller's thread, no buffering.
+    /// One `sendto` per report, on the caller's thread, no buffering, in the
+    /// shape the SETTLED version decodes: 17 bytes with the extended-buttons
+    /// word on version 4 and later, 13 before.
     func sendReport(controllerIndex: Int, report: GamepadReport) {
-        sendEncrypted(msgType: ProtocolConstants.msgInput, payloadCount: ProtocolConstants.inputPayloadBytes) { out in
-            Encoders.writeInputPayload(controllerIndex: UInt8(truncatingIfNeeded: controllerIndex), report: report, into: out)
+        let settled = settledProtocolVersion
+        let payloadCount = ProtocolConstants.inputPayloadBytes(settledVersion: settled)
+        sendEncrypted(msgType: ProtocolConstants.msgInput, payloadCount: payloadCount) { out in
+            Encoders.writeInputPayload(
+                controllerIndex: UInt8(truncatingIfNeeded: controllerIndex),
+                report: report,
+                settledVersion: settled,
+                into: out
+            )
         }
     }
 

@@ -78,6 +78,7 @@ public enum WireCap: CaseIterable, Equatable, Sendable {
     case mic
     case speaker
     case hapticAudio
+    case extendedButtons
 }
 
 public func wireCapBit(_ cap: WireCap) -> UInt16 {
@@ -91,6 +92,7 @@ public func wireCapBit(_ cap: WireCap) -> UInt16 {
     case .mic: ProtocolConstants.capMic
     case .speaker: ProtocolConstants.capSpeaker
     case .hapticAudio: ProtocolConstants.capHapticAudio
+    case .extendedButtons: ProtocolConstants.capExtendedButtons
     }
 }
 

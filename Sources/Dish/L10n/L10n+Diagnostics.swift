@@ -327,6 +327,10 @@ extension L10n {
         catalog.text("Haptic audio")
     }
 
+    var extraButtons: String {
+        catalog.text("Extra buttons")
+    }
+
     // MARK: - The events
 
     func eventLinkAppeared(_ subject: String, _ state: String) -> String {

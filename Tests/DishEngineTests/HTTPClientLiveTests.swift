@@ -155,11 +155,11 @@ final class HTTPClientLiveTests: XCTestCase {
     // MARK: - Versioning (G5)
 
     func testAnOfferOutsideTheSatellitesRangeDraws409WithTheRange() async {
-        satellite.protocolRange = 4 ... 5
+        satellite.protocolRange = 5 ... 6
         let resp = await putSession()
         XCTAssertEqual(resp.httpStatus, 409)
-        XCTAssertEqual(resp.supportedProtocol, 5)
-        XCTAssertEqual(resp.supportedProtocolMin, 4)
+        XCTAssertEqual(resp.supportedProtocol, 6)
+        XCTAssertEqual(resp.supportedProtocolMin, 5)
         // Same construction `RestStamped.verdict` wires into the shell.
         let verdict = classifyRest(RestReply(
             status: resp.httpStatus, bodyParsed: resp.reachable, code: resp.code ?? ""

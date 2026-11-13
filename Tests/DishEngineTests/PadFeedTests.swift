@@ -13,8 +13,8 @@ final class PadFeedTests: XCTestCase {
 
     func testEveryRecordedValueReadsBackBitForBit() {
         let reports = [
-            GamepadReport(buttons: 0xFFFF, lt: 255, rt: 0, lx: .min, ly: .max, rx: -1, ry: 0),
-            GamepadReport(buttons: 0x8001, lt: 1, rt: 254, lx: 1, ly: -1, rx: .max, ry: .min),
+            GamepadReport(buttons: 0xFFFF, lt: 255, rt: 0, lx: .min, ly: .max, rx: -1, ry: 0, extButtons: 0xFFFF_FFFF),
+            GamepadReport(buttons: 0x8001, lt: 1, rt: 254, lx: 1, ly: -1, rx: .max, ry: .min, extButtons: 0x0000_1001),
             .released
         ]
         for report in reports {

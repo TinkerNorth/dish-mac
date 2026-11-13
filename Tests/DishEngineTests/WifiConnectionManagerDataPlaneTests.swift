@@ -87,13 +87,15 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
         // The first heartbeat fires immediately on session start.
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "uplink heartbeat must decrypt server-side")
 
-        conn.sendReport(GamepadReport(buttons: 0x1000, lt: 9, rt: 0, lx: 5, ly: -5, rx: 0, ry: 0), controllerIndex: 0)
+        conn.sendReport(GamepadReport(buttons: 0x1000, lt: 9, rt: 0, lx: 5, ly: -5, rx: 0, ry: 0, extButtons: 0x0003), controllerIndex: 0)
         let frame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
-        guard case let .input(ctrlIdx, report) = frame.detail else {
+        guard case let .input(ctrlIdx, report, extButtons) = frame.detail else {
             return XCTFail("input frame must parse as .input, got \(frame.detail)")
         }
         XCTAssertEqual(ctrlIdx, 0)
         XCTAssertEqual(report.count, 12, "XUSB report body")
+        XCTAssertEqual(frame.payload.count, 17, "a session settled at 4 carries the extended-buttons word behind the report")
+        XCTAssertEqual(extButtons, 0x0003, "the word decrypts server-side")
         XCTAssertEqual(satellite.authFailDrops, 0, "every uplink frame authenticated cleanly")
         XCTAssertEqual(satellite.unknownTokenDrops, 0)
     }

@@ -70,7 +70,7 @@ struct FakeSatellitePointerFrame: Equatable {
 struct FakeSatelliteFrame {
     enum Detail: Equatable {
         case heartbeat
-        case input(ctrlIdx: UInt8, report: Data)
+        case input(ctrlIdx: UInt8, report: Data, extButtons: UInt32)
         case motion(ctrlIdx: UInt8, gyro: [Int16], accel: [Int16], timestampDeltaUs: UInt32)
         case battery(ctrlIdx: UInt8, level: UInt8, status: UInt8)
         case touchpad(FakeSatelliteTouchpadFrame)
@@ -89,8 +89,8 @@ struct FakeSatelliteFrame {
         switch opcode {
         case FakeSatelliteOpcode.heartbeat:
             return .heartbeat
-        case FakeSatelliteOpcode.input where payload.count == 13:
-            return .input(ctrlIdx: payload[base], report: Data(payload.dropFirst()))
+        case FakeSatelliteOpcode.input where payload.count >= 13:
+            return inputFrame(payload)
         case FakeSatelliteOpcode.motion where payload.count == 17:
             let gyro = (0 ..< 3).map { Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 1 + $0 * 2)) }
             let accel = (0 ..< 3).map { Int16(bitPattern: FakeSatelliteCrypto.readLE16(payload, at: 7 + $0 * 2)) }
@@ -112,6 +112,16 @@ struct FakeSatelliteFrame {
         default:
             return .unknown
         }
+    }
+
+    /// INPUT read by length, as the satellite reads it (contract §Extended
+    /// buttons): 17 bytes or more carry the word, 13 to 16 read it as 0.
+    private static func inputFrame(_ payload: Data) -> Detail {
+        let base = payload.startIndex
+        let report = Data(payload[base + 1 ..< base + 13])
+        let carriesTheWord = payload.count >= 17
+        let extButtons = carriesTheWord ? FakeSatelliteCrypto.readLE32(payload, at: 13) : 0
+        return .input(ctrlIdx: payload[base], report: report, extButtons: extButtons)
     }
 
     private static func touchpadFrame(_ payload: Data) -> FakeSatelliteTouchpadFrame {
@@ -190,9 +200,9 @@ final class FakeSatelliteStore {
         /// Knobs.
         var forced401Code: String?
         /// The range the fake accepts (contract §Versioning); the real
-        /// satellite's is [1, 3].
+        /// satellite's is [1, 4].
         var supportedProtocolMin = 1
-        var supportedProtocol = 3
+        var supportedProtocol = 4
         /// The version the last accepted offer settled on, echoed back.
         var settledProtocolVersion = 1
         /// Every offer the range refused, in order.

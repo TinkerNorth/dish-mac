@@ -6,7 +6,7 @@ finds a Satellite on the LAN (mDNS, with the legacy UDP beacon as fallback),
 pairs with a PIN over TOFU-pinned TLS, declares its controllers to the server
 over REST, and streams their input over encrypted UDP (ChaCha20-Poly1305 under
 per-session HKDF keys), with rumble, the light bar, adaptive triggers and
-player LEDs flowing back. It offers **protocol 3** and still works with a
+player LEDs flowing back. It offers **protocol 4** and still works with a
 protocol-1 satellite; see [Protocol](#protocol).
 
 [dish-android]: https://github.com/TinkerNorth/dish-android
@@ -266,13 +266,16 @@ through the fleet's jitter window and plays on a Core Audio HAL unit.
 
 ## Protocol
 
-This client offers **protocol 3** on every pairing and session request and
+This client offers **protocol 4** on every pairing and session request and
 settles each session on what the satellite speaks: an older satellite gets a
 working session at its own version and a soft "update recommended" chip; a
 satellite whose range does not overlap this client's gets a plain word about
 which end must update. A session settled on version 2 or later streams the
 19-byte pointer frame and receives the trigger-effect and player-LED return
-paths it advertised. The client-server contract (REST surface, UDP streams,
+paths it advertised; one settled on version 4 streams the 17-byte input frame,
+the extended-buttons word (back paddles, the Steam Controller's "..." button,
+pad and trigger clicks, capacitive touches) behind the report, and a pad that
+sources those buttons says so with the `extendedButtons` cap. The client-server contract (REST surface, UDP streams,
 crypto, liveness, identity, versioning) lives in one place,
 [`satellite/docs/contract.md`][contract]; nothing here restates it, and when
 in doubt the contract wins. [`docs/contract.md`](docs/contract.md) maps each

@@ -83,7 +83,7 @@ final class SatellitePadsLiveTests: XCTestCase {
 
     private func inputFrames() -> [(ctrlIdx: UInt8, report: Data)] {
         satellite.frames.compactMap { frame in
-            guard case let .input(ctrlIdx, report) = frame.detail else { return nil }
+            guard case let .input(ctrlIdx, report, _) = frame.detail else { return nil }
             return (ctrlIdx, report)
         }
     }

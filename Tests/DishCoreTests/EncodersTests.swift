@@ -14,24 +14,41 @@ final class EncodersTests: XCTestCase {
 
     // MARK: - MSG_INPUT (0x0001)
 
-    func testInputPayloadPinsTheXusbLittleEndianLayout() {
-        let payload = Encoders.inputPayload(
-            controllerIndex: 3,
-            report: GamepadReport(buttons: 0xABCD, lt: 0x11, rt: 0x22, lx: 0x1234, ly: -2, rx: Int16.max, ry: Int16.min)
-        )
-        XCTAssertEqual(payload.count, ProtocolConstants.inputPayloadBytes)
-        XCTAssertEqual(
-            [UInt8](payload),
-            [
-                3, // ctrlIdx
-                0xCD, 0xAB, // buttons LE
-                0x11, 0x22, // triggers
-                0x34, 0x12, // lx LE
-                0xFE, 0xFF, // ly = -2
-                0xFF, 0x7F, // rx = 32767
-                0x00, 0x80 // ry = -32768
-            ]
-        )
+    private let pinnedReport = GamepadReport(
+        buttons: 0xABCD, lt: 0x11, rt: 0x22, lx: 0x1234, ly: -2, rx: Int16.max, ry: Int16.min, extButtons: 0x0000_1201
+    )
+    private let pinnedThirteenBytes: [UInt8] = [
+        3, // ctrlIdx
+        0xCD, 0xAB, // buttons LE
+        0x11, 0x22, // triggers
+        0x34, 0x12, // lx LE
+        0xFE, 0xFF, // ly = -2
+        0xFF, 0x7F, // rx = 32767
+        0x00, 0x80 // ry = -32768
+    ]
+
+    func testInputPayloadPinsTheXusbLittleEndianLayoutAndIsThirteenBytesBeforeProtocolFourWhateverTheWord() {
+        for version in 1 ... 3 {
+            let payload = Encoders.inputPayload(controllerIndex: 3, report: pinnedReport, settledVersion: version)
+            XCTAssertEqual(payload.count, ProtocolConstants.inputPayloadBytes, "protocol \(version)")
+            XCTAssertEqual([UInt8](payload), pinnedThirteenBytes, "protocol \(version)")
+        }
+    }
+
+    func testInputPayloadOnASessionSettledAtFourCarriesTheExtendedButtonsWordLittleEndianBehindTheReport() {
+        let payload = Encoders.inputPayload(controllerIndex: 3, report: pinnedReport, settledVersion: 4)
+        XCTAssertEqual(payload.count, ProtocolConstants.inputPayloadBytesV4)
+        XCTAssertEqual([UInt8](payload), pinnedThirteenBytes + [0x01, 0x12, 0x00, 0x00])
+    }
+
+    func testInputPayloadWritesTheReservedExtendedBitsAsZero() {
+        let everyBit = GamepadReport(extButtons: 0xFFFF_FFFF)
+        let payload = Encoders.inputPayload(controllerIndex: 0, report: everyBit, settledVersion: 4)
+        XCTAssertEqual([UInt8](payload.suffix(4)), [0xFF, 0x1F, 0x00, 0x00])
+    }
+
+    func testAReleasedReportHoldsNoExtendedButton() {
+        XCTAssertEqual(GamepadReport.released.extButtons, 0)
     }
 
     // MARK: - MSG_MOTION (0x000A)

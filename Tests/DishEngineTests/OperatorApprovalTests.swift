@@ -185,7 +185,7 @@ final class OperatorApprovalTests: XCTestCase {
     }
 
     func testAVersionTheSatelliteCannotSpeakEndsTheRequest() async {
-        satellite.protocolRange = 4 ... 5
+        satellite.protocolRange = 5 ... 6
         manager.pairWithClientPin(server, clientPin: "8642")
         let ended = await waitUntil { self.attempt?.phase == .versionMismatch }
         XCTAssertTrue(ended)
@@ -300,7 +300,7 @@ final class OperatorApprovalTests: XCTestCase {
     }
 
     func testAVersionMismatchRejectsThePin() async {
-        satellite.protocolRange = 4 ... 5
+        satellite.protocolRange = 5 ... 6
         manager.pairWithPin(server, pin: satellite.operatorPin)
         let rejected = await waitUntil { self.attempt?.rejection == .versionMismatch }
         XCTAssertTrue(rejected)

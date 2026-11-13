@@ -15,8 +15,10 @@ public enum ProtocolConstants {
     /// session on it or answers 409 with its own range (contract
     /// §Versioning, `settleAccepted` / `settleRejected`). Version 2 reshaped
     /// 0x000C into the POINTER frame and added the feedback return paths;
-    /// version 3 added HAPTIC_AUDIO with no frame change.
-    public static let protocolVersion = 3
+    /// version 3 added HAPTIC_AUDIO with no frame change; version 4 put the
+    /// extended-buttons word behind the INPUT report and added the
+    /// `extendedButtons` cap.
+    public static let protocolVersion = 4
 
     /// The oldest version this client still speaks end to end. A session
     /// settled on 1 streams the 16-byte TOUCHPAD frame and gets no feedback
@@ -37,6 +39,18 @@ public enum ProtocolConstants {
         settledVersion >= 2
     }
 
+    /// Whether a settled session carries the extended-buttons word behind
+    /// the INPUT report (contract §Extended buttons).
+    public static func settledSpeaksV4(_ settledVersion: Int) -> Bool {
+        settledVersion >= 4
+    }
+
+    /// The MSG_INPUT payload a settled session sends: 13 bytes before
+    /// version 4, 17 from it.
+    public static func inputPayloadBytes(settledVersion: Int) -> Int {
+        settledSpeaksV4(settledVersion) ? inputPayloadBytesV4 : inputPayloadBytes
+    }
+
     // MARK: - UDP opcodes (contract §UDP messages)
 
     // Topology-mutation opcodes 0x0004 (ADD), 0x0005 (REMOVE), 0x0006 (ACK),
@@ -45,7 +59,9 @@ public enum ProtocolConstants {
     // stray reference fails to compile. Topology mutation is REST-only, and
     // server status rides in every enriched heartbeat ack.
 
-    /// c→s: ctrlIdx(1) + GamepadReport(12, XUSB layout, LE).
+    /// c→s: ctrlIdx(1) + GamepadReport(12, XUSB layout, LE), and on a session
+    /// settled on version 4 or later the extended-buttons word (u32 LE)
+    /// behind it; the receiver tells the two shapes apart by length.
     public static let msgInput: UInt16 = 0x0001
     /// c→s: empty payload.
     public static let msgHeartbeat: UInt16 = 0x0002
@@ -103,6 +119,9 @@ public enum ProtocolConstants {
 
     /// MSG_INPUT inner payload: ctrlIdx(1) + XUSB report(12 LE).
     public static let inputPayloadBytes = 13
+    /// MSG_INPUT inner payload on a session settled on version 4 or later:
+    /// the 13 bytes above + extButtons(u32 LE).
+    public static let inputPayloadBytesV4 = 17
     /// MSG_MOTION inner payload: ctrlIdx(1) + 6 × i16 LE + u32 LE.
     public static let motionPayloadBytes = 17
     /// MSG_BATTERY inner payload: ctrlIdx(1) + level(1) + status(1).
@@ -198,6 +217,28 @@ public enum ProtocolConstants {
     /// audio function. Without the claim the host reduces the lanes to
     /// MSG_RUMBLE.
     public static let capHapticAudio: UInt16 = 0x0100
+    /// Version 4: this slot's pad sources the INPUT extended-buttons word.
+    /// A claim, not a receive gate: the host reads the word whatever the
+    /// cap says.
+    public static let capExtendedButtons: UInt16 = 0x0200
+
+    // MARK: - Extended buttons (contract §Extended buttons), in SDL's names
+
+    public static let extButtonRightPaddle1: UInt32 = 0x0001
+    public static let extButtonLeftPaddle1: UInt32 = 0x0002
+    public static let extButtonRightPaddle2: UInt32 = 0x0004
+    public static let extButtonLeftPaddle2: UInt32 = 0x0008
+    public static let extButtonMisc1: UInt32 = 0x0010
+    public static let extButtonLeftPadClick: UInt32 = 0x0020
+    public static let extButtonRightPadClick: UInt32 = 0x0040
+    public static let extButtonLeftTriggerClick: UInt32 = 0x0080
+    public static let extButtonRightTriggerClick: UInt32 = 0x0100
+    public static let extButtonLeftStickTouch: UInt32 = 0x0200
+    public static let extButtonRightStickTouch: UInt32 = 0x0400
+    public static let extButtonLeftGripTouch: UInt32 = 0x0800
+    public static let extButtonRightGripTouch: UInt32 = 0x1000
+    /// The bits above are the word; a sender writes the rest as 0.
+    public static let extButtonsKnownMask: UInt32 = 0x1FFF
 
     // MARK: - Controller types (catalog ids / descriptor `type`)
 

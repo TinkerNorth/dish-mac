@@ -23,7 +23,7 @@ extension FakeSatelliteRest {
     static func capabilitiesJSON(controllerAudio: Bool) -> String {
         let audio = controllerAudio ? "true" : "false"
         return """
-        {"protocolVersion":3,"serverVersion":"1.6.0","maxControllers":16,
+        {"protocolVersion":4,"serverVersion":"1.6.0","maxControllers":16,
          "backend":{"id":"fake","supported":true,"available":true,"errorCode":null},
          "motion":{"available":true},
          "host":{"catalog":{"supported":true},
@@ -37,7 +37,7 @@ extension FakeSatelliteRest {
     /// The version-2 catalog: four types, `emulates` per type, every feature
     /// slug the contract names.
     static let catalogJSON = """
-    {"locale":"en","protocolVersion":3,"serverVersion":"1.6.0","catalogVersion":2,
+    {"locale":"en","protocolVersion":4,"serverVersion":"1.6.0","catalogVersion":2,
      "controllerTypes":[
        {"id":0,"slug":"xbox360","name":"Xbox 360 Controller","shortName":"Xbox",
         "description":"Best compatibility.",

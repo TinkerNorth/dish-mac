@@ -167,7 +167,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         XCTAssertTrue(satellite.awaitHeartbeats(atLeast: 1), "uplink heartbeat must decrypt")
         conn.sendReport(GamepadReport(buttons: 0x0405, lt: 7, rt: 9, lx: 1000, ly: -2, rx: 3, ry: -4), controllerIndex: 0)
         let inputFrame = try XCTUnwrap(satellite.awaitFrame(opcode: FakeSatelliteOpcode.input))
-        guard case let .input(ctrlIdx, report) = inputFrame.detail else {
+        guard case let .input(ctrlIdx, report, _) = inputFrame.detail else {
             return XCTFail("input frame must parse as .input, got \(inputFrame.detail)")
         }
         XCTAssertEqual(ctrlIdx, 0)
@@ -179,7 +179,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
         conn.sendReport(GamepadReport(buttons: 0x1000, lt: 0, rt: 0, lx: 0, ly: 0, rx: 0, ry: 0), controllerIndex: 1)
         XCTAssertTrue(satellite.awaitFrameCount(opcode: FakeSatelliteOpcode.input, atLeast: 2))
         let indices = satellite.frames.compactMap { frame -> UInt8? in
-            guard case let .input(index, _) = frame.detail else { return nil }
+            guard case let .input(index, _, _) = frame.detail else { return nil }
             return index
         }
         XCTAssertEqual(indices, [0, 1], "the second pad's input rides its own index")
@@ -373,7 +373,7 @@ final class IntegrationSessionLifecycleTests: XCTestCase {
 
     func testPairTimeVersionRejectionBelowTheSatellitesFloorNamesTheApp() async {
         let id = server.id
-        satellite.protocolRange = 4 ... 5
+        satellite.protocolRange = 5 ... 6
 
         manager.pairWithPin(server, pin: satellite.operatorPin)
 

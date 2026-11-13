@@ -23,10 +23,14 @@ final class InPlaceEncodingTests: XCTestCase {
     }
 
     func testEveryPayloadWriterLaysDownTheEncodersBytes() {
-        let report = GamepadReport(buttons: 0xA55A, lt: 3, rt: 250, lx: -32768, ly: 32767, rx: -1, ry: 1234)
+        let report = GamepadReport(buttons: 0xA55A, lt: 3, rt: 250, lx: -32768, ly: 32767, rx: -1, ry: 1234, extButtons: 0x1003)
         XCTAssertEqual(
-            written(13) { Encoders.writeInputPayload(controllerIndex: 2, report: report, into: $0) },
-            Encoders.inputPayload(controllerIndex: 2, report: report)
+            written(13) { Encoders.writeInputPayload(controllerIndex: 2, report: report, settledVersion: 3, into: $0) },
+            Encoders.inputPayload(controllerIndex: 2, report: report, settledVersion: 3)
+        )
+        XCTAssertEqual(
+            written(17) { Encoders.writeInputPayload(controllerIndex: 2, report: report, settledVersion: 4, into: $0) },
+            Encoders.inputPayload(controllerIndex: 2, report: report, settledVersion: 4)
         )
         let motion = MotionSample(gyroX: -5, gyroY: 6, gyroZ: -7, accelX: 8192, accelY: -8192, accelZ: 1)
         XCTAssertEqual(

@@ -44,8 +44,8 @@ final class SessionDiagnosticsTests: XCTestCase {
     func testTheAdvertisedCapsComeBackInWireBitOrder() {
         XCTAssertEqual(advertisedCaps(0), [])
         let word = ProtocolConstants.capRumble | ProtocolConstants.capMotion | ProtocolConstants.capPlayerLeds | ProtocolConstants
-            .capHapticAudio
-        XCTAssertEqual(advertisedCaps(word), [.rumble, .motion, .playerLeds, .hapticAudio])
+            .capHapticAudio | ProtocolConstants.capExtendedButtons
+        XCTAssertEqual(advertisedCaps(word), [.rumble, .motion, .playerLeds, .hapticAudio, .extendedButtons])
         XCTAssertEqual(advertisedCaps(0xFFFF), WireCap.allCases, "every bit the wire names, nothing else")
     }
 

@@ -214,7 +214,11 @@ from an atomic word, the record the inspector and the telemetry read is
 written under a seqlock, and the report goes to the route the feed holds
 (a `SatelliteClientSink` with the connection's live client and the pad's
 controller index, or a `MoonlightPadSink`, and the switches in force, all
-resolved on the main actor and handed over through a mailbox). The client
+resolved on the main actor and handed over through a mailbox). A pad's
+extended buttons ride the same `GamepadReport` as one word (`extButtons`),
+latched and recorded with the rest of the report, and the INPUT frame is 13
+or 17 bytes by the session's settled protocol version, read once per report
+from the client's atomic word as the touchpad frame's shape is. The client
 then encodes, seals and sends from a stack buffer under its send gate, a
 compare-exchange flag held from the counter's claim to the `sendto`, so the
 session's datagrams leave in counter order; CryptoKit's sealed box is the one

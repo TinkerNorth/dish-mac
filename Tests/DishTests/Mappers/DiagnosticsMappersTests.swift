@@ -250,6 +250,7 @@ final class DiagnosticsMappersTests: XCTestCase {
         XCTAssertEqual(
             advertisedText(0xFFFF),
             "Analog triggers · Rumble · Motion · Light bar · Adaptive triggers · Player LEDs · Microphone · Speaker · Haptic audio"
+                + " · Extra buttons"
         )
         XCTAssertEqual(wireTouchpadText(.off), "off")
         XCTAssertEqual(wireTouchpadText(.mouse), "mouse")

@@ -295,6 +295,9 @@ package struct ControllerCapabilities: Hashable {
     package var hasMic = false
     package var hasSpeaker = false
     package var hasHapticLanes = false
+    /// The pad sources at least one of the protocol 4 extended buttons
+    /// (`ProtocolConstants.extButton*`): the `extendedButtons` claim.
+    package var hasExtendedButtons = false
 
     package init(
         hasMotion: Bool = false,
@@ -306,7 +309,8 @@ package struct ControllerCapabilities: Hashable {
         hasPlayerLeds: Bool = false,
         hasMic: Bool = false,
         hasSpeaker: Bool = false,
-        hasHapticLanes: Bool = false
+        hasHapticLanes: Bool = false,
+        hasExtendedButtons: Bool = false
     ) {
         self.hasMotion = hasMotion
         self.hasTouchpad = hasTouchpad
@@ -318,6 +322,7 @@ package struct ControllerCapabilities: Hashable {
         self.hasMic = hasMic
         self.hasSpeaker = hasSpeaker
         self.hasHapticLanes = hasHapticLanes
+        self.hasExtendedButtons = hasExtendedButtons
     }
 
     /// The pad's audio function folded in, once the route is known.
