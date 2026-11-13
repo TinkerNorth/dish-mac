@@ -109,7 +109,7 @@ package final class AppModel: ObservableObject {
             crashLog: crashLog,
             crashUploader: crashUploader,
             moonlight: moonlight,
-            hidPads: IOKitHidPadReader(),
+            hidPads: DirectPadReaders([IOKitHidPadReader(), XusbPadReader(bus: IOUSBHostXusbBus())]),
             hidCapture: IOKitHidReportCapture()
         )
         Self.mintMoonlightIdentity(into: moonlight, gateway: gateway)

@@ -60,7 +60,13 @@ final class DirectModelsTests: XCTestCase {
         }
         let valve = directModels.filter { $0.vendorId == DirectVendor.valve }.count
         XCTAssertEqual(valve, 5, "the 2015 pad and its dongle, the 2026 pad and its two receivers")
-        XCTAssertEqual(directModels.count, cases.count + 3 + valve, "no row beyond the three Nintendo pads, the desktops' list and Valve's")
+        let xusb = directModels.filter { $0.decoder == .xusb }.count
+        XCTAssertEqual(xusb, 1, "the Ultimate 2 in X-input mode")
+        XCTAssertEqual(
+            directModels.count,
+            cases.count + 3 + valve + xusb,
+            "no row beyond the three Nintendo pads, the desktops' list, Valve's and the XUSB pads"
+        )
     }
 
     func testTheAfterglowWirelessIsLeftOutBecauseItSpeaksTheSwitchProProtocol() {
@@ -175,5 +181,30 @@ final class DirectModelsTests: XCTestCase {
 
     func testAPadThatIsNotValvesHasNoSteamInterface() throws {
         XCTAssertFalse(try steamInterfaceCarriesController(model(0x057E, 0x2009), usagePage: 0xFF00, usage: 0x0001, interfaceNumber: 2))
+        XCTAssertFalse(try steamInterfaceCarriesController(model(0x2DC8, 0x310B), usagePage: 0xFF00, usage: 0x0001, interfaceNumber: 0))
+    }
+
+    // MARK: - The XUSB pads
+
+    func testTheUltimate2InXInputModeIsReadThroughItsXusbInterfaceBecauseMacOSCannot() throws {
+        let ultimate = try model(0x2DC8, 0x310B)
+        XCTAssertEqual(ultimate.name, "8BitDo Ultimate 2 Wireless Controller", "dish-android's and xpad's name")
+        XCTAssertEqual(ultimate.decoder, .xusb)
+        XCTAssertEqual(ultimate.rule, .whenMacOSCannot, "macOS has no driver for it, so GameController never lists it")
+        XCTAssertEqual(ultimate.family, .other)
+        XCTAssertFalse(ultimate.offersStandard, "GameController never reads it")
+        XCTAssertFalse(ultimate.gameControllerCarriesOutput)
+        XCTAssertFalse(ultimate.receiver, "xpad reads it as a wired 360 pad")
+        XCTAssertTrue(ultimate.layoutVerified, "dish-android's verified fast lane")
+    }
+
+    func testAnXusbPadDrivesItsOwnRumbleAndHasNoMotionExtrasOrTrackpads() throws {
+        let ultimate = try model(0x2DC8, 0x310B)
+        XCTAssertTrue(ultimate.drivesItsOwnRumble, "its rumble report goes out on the interface's OUT pipe")
+        XCTAssertFalse(ultimate.hasMotion)
+        XCTAssertFalse(ultimate.hasExtendedButtons, "XUSB carries no paddles and no Capture")
+        XCTAssertEqual(ultimate.trackpads, .none)
+        XCTAssertNil(steamPlan(ultimate))
+        XCTAssertEqual(hidButtonOrder(vendorId: 0x2DC8, productId: 0x310B), .western, "an XUSB report is not a HID order")
     }
 }

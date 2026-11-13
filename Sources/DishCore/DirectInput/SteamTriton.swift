@@ -349,7 +349,7 @@ public struct TritonRumble: Equatable, Sendable {
         let still = strong == 0 && weak == 0
         left = strong
         right = weak
-        endsAtMs = still ? nil : nowMs + Self.holdMs(durationMs)
+        endsAtMs = still ? nil : nowMs + directRumbleHoldMs(durationMs)
         lastSentMs = nowMs
         return tritonRumbleReport(left: left, right: right)
     }
@@ -363,10 +363,11 @@ public struct TritonRumble: Equatable, Sendable {
         lastSentMs = nowMs
         return tritonRumbleReport(left: left, right: right)
     }
+}
 
-    /// A continuous command (0) holds for the safety net, as does a longer one.
-    private static func holdMs(_ durationMs: UInt16) -> Int64 {
-        let asked = Int64(durationMs)
-        return asked == 0 ? TritonRumbleRule.maxHoldMs : min(asked, TritonRumbleRule.maxHoldMs)
-    }
+/// How long one host command runs a pad Dish drives the motors of: a
+/// continuous command (0) holds for the safety net, as does a longer one.
+func directRumbleHoldMs(_ durationMs: UInt16) -> Int64 {
+    let asked = Int64(durationMs)
+    return asked == 0 ? TritonRumbleRule.maxHoldMs : min(asked, TritonRumbleRule.maxHoldMs)
 }

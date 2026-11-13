@@ -111,6 +111,6 @@ public func steamPlan(_ model: DirectModel) -> SteamPlan? {
     switch model.decoder {
     case .steamController: SteamPlan(generation: .original, receiver: model.receiver)
     case .steamTriton: SteamPlan(generation: .triton, receiver: model.receiver)
-    case .switchReport, .hidGamepad: nil
+    case .switchReport, .hidGamepad, .xusb: nil
     }
 }

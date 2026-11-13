@@ -21,6 +21,14 @@ the repos share a version number.
 
 ### Added
 
+- **The 8BitDo Ultimate 2 Wireless works with its switch on X-input.** In
+  that mode the controller speaks the Xbox 360 protocol, which macOS has no
+  driver for, so a Mac never saw it and only D-input worked. Dish now reads
+  it directly over USB: its buttons, sticks and triggers reach the host, and
+  the host's rumble reaches its motors and stops when the game's does, and
+  when Dish quits. It has no motion sensors or extra buttons to send. If
+  another app or a driver already holds the controller, Dish leaves it
+  alone. Not yet tried on the controller itself.
 - **A Steam Controller's trackpads are yours to route.** A Steam Controller
   Dish reads directly now has a Trackpads pick on Configure binding, and its
   chip on Home: Right stick (the 2015 pad's default, its right trackpad as

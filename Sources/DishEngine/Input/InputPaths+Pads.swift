@@ -109,11 +109,17 @@ extension InputPaths {
     }
 
     /// The app is quitting: every pad Dish reads on a claim is given back
-    /// before the process ends, or the 2015 pad would stay mute.
+    /// before the process ends, or the 2015 pad would stay mute, and every
+    /// pad Dish drives the motors of is stilled, or an XUSB pad would hold
+    /// its last level.
     func releaseClaimsNow() {
-        for key in pads.keys.sorted() where readsOnClaim(key) {
+        for key in pads.keys.sorted() where readsOnClaim(key) || drivesItsOwnRumble(key) {
             pads[key]?.arrival?.lane.output?.releaseNow()
         }
+    }
+
+    private func drivesItsOwnRumble(_ key: String) -> Bool {
+        pads[key]?.arrival?.candidate.model?.drivesItsOwnRumble == true
     }
 
     // MARK: - GameController's controllers

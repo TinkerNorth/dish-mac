@@ -8,7 +8,8 @@ import XCTest
 
 /// The locks each hot thread takes, read off the production objects running
 /// in their roles: a pad publishing reports, motion and touches on the input
-/// queue, a Direct Switch Pro pad on the reader's thread, the client's
+/// queue, a Direct Switch Pro pad on the reader's thread and an XUSB pad
+/// through the XUSB reader's read loop on its queue, the client's
 /// receive loop opening rumble, light-bar and heartbeat-ack datagrams from a
 /// loopback satellite, the heartbeat, and the main actor refreshing the
 /// routing table every 100 ms; and on a run of its own, a pad bound to a
@@ -28,6 +29,7 @@ final class LockLawTests: XCTestCase {
         XCTAssertGreaterThan(run.directArrivals, 0, "the Direct pad's reports reached the satellite")
         XCTAssertGreaterThan(run.steamArrivals, 0, "the Steam Controller's reports reached the satellite")
         XCTAssertGreaterThan(run.steamTouches, 0, "and its trackpads as touch frames")
+        XCTAssertGreaterThan(run.xusbArrivals, 0, "the XUSB pad's reports reached the satellite")
         XCTAssertGreaterThan(run.feedback.rumble, 0, "rumble reached the actuators")
         XCTAssertGreaterThan(run.feedback.lightbar, 0, "the light bar reached the actuators")
         XCTAssertGreaterThan(run.tallied, 0, "the main actor read the tally")
@@ -139,6 +141,7 @@ final class LockLawTests: XCTestCase {
         let directArrivals: Int
         let steamArrivals: Int
         let steamTouches: Int
+        let xusbArrivals: Int
         let feedback: FramePathFeedback
         let tallied: UInt64
     }
@@ -149,12 +152,14 @@ final class LockLawTests: XCTestCase {
         let rig = try FramePathRig(satellitePort: satellite.port, token: satellite.token, key: satellite.key, pads: 1)
         let direct = try rig.addSwitchProLane()
         let steam = try rig.addSteamControllerLane()
+        let xusb = try XusbLawPad(rig: rig)
         drainMain()
         resetLockStats()
         let group = DispatchGroup()
         startInputProducer(rig, group: group)
         startDirectReader(direct, group: group)
         startSteamReader(steam, group: group)
+        startXusbReader(xusb, group: group)
         startFeedbackSender(satellite, controllerIndex: UInt8(rig.controllerIndices[0]), group: group)
         var tallied: UInt64 = 0
         var tick = 0
@@ -177,6 +182,7 @@ final class LockLawTests: XCTestCase {
             directArrivals: inputs(arrivals, controllerIndex: direct.controllerIndex),
             steamArrivals: inputs(arrivals, controllerIndex: steam.controllerIndex),
             steamTouches: touches(arrivals, controllerIndex: steam.controllerIndex),
+            xusbArrivals: inputs(arrivals, controllerIndex: xusb.controllerIndex),
             feedback: feedback,
             tallied: tallied
         )
@@ -214,6 +220,19 @@ final class LockLawTests: XCTestCase {
             ThreadRole.hidReader.enterThread()
             for frame in 0 ..< LockLawRun.frames {
                 steam.feed(rightPadX: Int16(truncatingIfNeeded: frame * LockLawRun.padStep), rightPadY: Int16(LockLawRun.padStep))
+                Thread.sleep(forTimeInterval: LockLawRun.frameSeconds)
+            }
+            group.leave()
+        }
+    }
+
+    /// The right stick sweeping, a report per frame, completed on the XUSB
+    /// reader's queue as IOUSBHost completes each read.
+    private func startXusbReader(_ xusb: XusbLawPad, group: DispatchGroup) {
+        group.enter()
+        startThread {
+            for frame in 0 ..< LockLawRun.frames {
+                xusb.pipe.post(XusbFixtures.report(rightStickX: Int16(truncatingIfNeeded: frame * LockLawRun.padStep)))
                 Thread.sleep(forTimeInterval: LockLawRun.frameSeconds)
             }
             group.leave()
@@ -301,6 +320,27 @@ private enum MoonlightLockLaws {
 
     static let orderMayNest: [String: Allowance] = [:]
 }
+
+/// An XUSB pad bound in the rig and read through the reader's read loop, on
+/// a queue the XUSB reader would make.
+private final class XusbLawPad: @unchecked Sendable {
+    let pipe: FakeUsbInputPipe
+    let controllerIndex: Int
+    private let reads: XusbReadLoop
+
+    @MainActor
+    init(rig: FramePathRig) throws {
+        let attached = try rig.addDirectLane(XCTUnwrap(xusbPadCandidate(XusbFixtures.ultimate2())))
+        let queue = ThreadRole.hidReader.queue(label: XusbPadReader.queueLabel, qos: .userInteractive)
+        pipe = FakeUsbInputPipe(queue: queue)
+        controllerIndex = attached.index
+        reads = XusbReadLoop(lane: attached.lane, pipe: pipe, failed: ignoreReadFailure)
+        let first = queue.sync { reads.start() }
+        XCTAssertEqual(first, kIOReturnSuccess)
+    }
+}
+
+private func ignoreReadFailure(_: String, _: IOReturn) {}
 
 /// The run's shape: at least two and a half seconds, so the heartbeat's
 /// second beat and its ack land inside it, and as long as the producers'

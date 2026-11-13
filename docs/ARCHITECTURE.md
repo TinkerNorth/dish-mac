@@ -47,7 +47,7 @@ frameworks each one may import.
 |---|---|---|---|
 | `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step, the binding draft and its apply, a pad's dead zones), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock; and under `DirectInput/` the pads Dish reads itself: the Switch report decoders, the generic HID descriptor parser and its per-report decode, the Direct model table, the input-source machine (which path a pad is forwarded from, its proof and the "Not responding?" check), the disconnect-burst rule, the player numbers, the per-model remap with its press-to-assign walk and the fixed table the reader applies, and the support capture's sequence and report | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
-| `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, Security, os, AudioToolbox, CoreAudio, AVFoundation |
+| `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, IOUSBHost, Security, os, AudioToolbox, CoreAudio, AVFoundation |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
 | `Dish` | The shell (the navigation machine and its store, the rail, the header, the pages), the SwiftUI views and kit, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three and `DishCrashUpload` | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
@@ -260,8 +260,11 @@ delivers none of its input. A gamepad GameController does not support
 30 ms, as SDL waits) and whose report descriptor the core can decode is
 read the same way. Valve's Steam Controllers (2015: 28de:1102, receiver
 1142; 2026: 1302, receivers 1304 and 1305) are read by their own decoders,
-but only once the user picks Direct (`DirectRule.optIn`). Everything else
-stays on GameController.
+but only once the user picks Direct (`DirectRule.optIn`). An 8BitDo
+Ultimate 2 in X-input mode (2dc8:310b), an Xbox 360 pad on a vendor-class
+USB interface that neither GameController nor IOHIDManager sees, is read by
+a second reader over IOUSBHost (below). Everything else stays on
+GameController.
 
 - **The reader.** `IOKitHidPadReader` owns one `IOHIDManager`, matching the
   Nintendo and Valve models by identity and every game usage, all with
@@ -347,6 +350,31 @@ stays on GameController.
   lower of it and the Mac's (`lowestBattery`) at once and on the 30 s
   heartbeat, the Mac's alone for a pad that reports none. The first second's count
   is logged once per attach as `DEVCAPS DIRECT`.
+- **An XUSB pad, through IOUSBHost.** `XusbPadReader` reads on a queue of
+  its own (`com.tinkernorth.dish.xusb`, in the HID reader's lock-law role)
+  over a bus seam. In the app `IOUSBHostXusbBus` watches the XUSB models'
+  devices by USB identity and every interface (IOUSBHostInterface matching
+  takes only the USB class specification's key combinations), selects a
+  device's first configuration when none is selected (a vendor-class device
+  arrives unconfigured: Apple's composite driver configures device classes
+  0 and 7 and the interface-association class only, and macOS's own
+  XboxGamepad.dext gives Microsoft's pads a device-level personality for
+  it), and hands over each interface. The reader opens the ones
+  `xusbPadCandidate` names (the FF/5D/01 triple and an XUSB row of the
+  model table) for itself alone, reads the first interrupt IN endpoint a
+  report at a time into a `HidPadLane` whose decoder is the core's
+  `decodeXusbReport` (`XusbReadLoop`: the completion made once, the report
+  decoded in place in the pipe's buffer, then the next read), and gives the
+  lane an `XusbOutput` on the first interrupt OUT endpoint, which writes the
+  core's rumble report on a queue of its own and the stop when the host's
+  hold ends and before Dish quits, since the pad holds a level until it is
+  sent another. From the lane on it is a Direct pad like any:
+  `whenMacOSCannot`, its GameController probe always no, the same slot,
+  feed and return paths, no motion, no extended buttons, no player lights
+  and no support capture. An interface another client holds refuses the
+  open; the paths hear the arrival and a `busy` refusal, so the pad never
+  shows, and its unplug ends it like any. `DirectPadReaders` hands the
+  paths' one reader seam to both readers.
 - **A Steam Controller's trackpads route by the slot's pick.** The Steam
   decoders hand the lane raw pad samples beside the report (`SteamPads`:
   live, x, y, click; the 2015 pads through SDL's ±15° shell rotation), and
