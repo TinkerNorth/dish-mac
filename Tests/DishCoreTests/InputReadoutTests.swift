@@ -21,6 +21,37 @@ final class InputReadoutTests: XCTestCase {
         XCTAssertEqual(pressedButtons(0xFFFF).count, 16)
     }
 
+    func testTheExtendedButtonTableIsTheProtocolFourWordInBitOrder() {
+        let protocolBits: [(ExtendedButton, UInt32)] = [
+            (.rightPaddle1, ProtocolConstants.extButtonRightPaddle1),
+            (.leftPaddle1, ProtocolConstants.extButtonLeftPaddle1),
+            (.rightPaddle2, ProtocolConstants.extButtonRightPaddle2),
+            (.leftPaddle2, ProtocolConstants.extButtonLeftPaddle2),
+            (.misc1, ProtocolConstants.extButtonMisc1),
+            (.leftPadClick, ProtocolConstants.extButtonLeftPadClick),
+            (.rightPadClick, ProtocolConstants.extButtonRightPadClick),
+            (.leftTriggerClick, ProtocolConstants.extButtonLeftTriggerClick),
+            (.rightTriggerClick, ProtocolConstants.extButtonRightTriggerClick),
+            (.leftStickTouch, ProtocolConstants.extButtonLeftStickTouch),
+            (.rightStickTouch, ProtocolConstants.extButtonRightStickTouch),
+            (.leftGripTouch, ProtocolConstants.extButtonLeftGripTouch),
+            (.rightGripTouch, ProtocolConstants.extButtonRightGripTouch)
+        ]
+        let bits = ExtendedButton.allCases.map(\.bit)
+        XCTAssertEqual(ExtendedButton.allCases, protocolBits.map(\.0))
+        XCTAssertEqual(bits, protocolBits.map(\.1))
+        XCTAssertEqual(bits, ExtendedButton.allCases.indices.map { UInt32(1) << $0 }, "one bit each, in wire order")
+        XCTAssertEqual(bits.reduce(0, |), ProtocolConstants.extButtonsKnownMask, "every bit the wire carries")
+    }
+
+    func testPressedExtendedButtonsReadTheWordInWireOrderAndSkipBitsTheWireDoesNotCarry() {
+        let beyondTheWord = ~ProtocolConstants.extButtonsKnownMask
+        let held = ProtocolConstants.extButtonMisc1 | ProtocolConstants.extButtonLeftPaddle1 | beyondTheWord
+        XCTAssertEqual(pressedExtendedButtons(0), [])
+        XCTAssertEqual(pressedExtendedButtons(held), [.leftPaddle1, .misc1])
+        XCTAssertEqual(pressedExtendedButtons(.max), ExtendedButton.allCases)
+    }
+
     func testSticksTriggersMotionAndTouchReadInHumanUnits() {
         XCTAssertEqual(InputReadout.stickFraction(16384), 0.5)
         XCTAssertEqual(InputReadout.stickFraction(-32768), -1)

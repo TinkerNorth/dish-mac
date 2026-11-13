@@ -11,9 +11,12 @@ final class InspectorMappersTests: XCTestCase {
 
     private let english = Locale(identifier: "en_US")
 
-    private func snapshot(buttons: UInt16 = 0, motion: MotionReadout? = nil, touch: TouchReadout? = nil) -> InputSnapshot {
+    private func snapshot(buttons: UInt16 = 0, extButtons: UInt32 = 0, motion: MotionReadout? = nil, touch: TouchReadout? = nil)
+        -> InputSnapshot
+    {
         InputSnapshot(
             buttons: buttons,
+            extButtons: extButtons,
             leftStick: StickSample(x: 0.5, y: -0.25),
             rightStick: .centre,
             leftTrigger: 1,
@@ -34,6 +37,30 @@ final class InspectorMappersTests: XCTestCase {
         ])
     }
 
+    func testThePressedLineNamesTheExtendedButtonsAfterTheWireButtonsInWireOrder() {
+        let paddleAndMisc = ProtocolConstants.extButtonLeftPaddle1 | ProtocolConstants.extButtonMisc1
+        let aWithPaddleAndMisc = snapshot(buttons: WireButton.faceA.bit, extButtons: paddleAndMisc)
+        XCTAssertEqual(pressedText(aWithPaddleAndMisc), "Pressed: A · Left paddle 1 · Misc 1")
+        XCTAssertEqual(pressedText(snapshot(extButtons: ProtocolConstants.extButtonRightGripTouch)), "Pressed: Right grip touch")
+        XCTAssertEqual(ExtendedButton.allCases.map { extendedButtonText($0) }, [
+            "Right paddle 1", "Left paddle 1", "Right paddle 2", "Left paddle 2", "Misc 1", "Left trackpad click", "Right trackpad click",
+            "Left trigger click", "Right trigger click", "Left stick touch", "Right stick touch", "Left grip touch", "Right grip touch"
+        ])
+    }
+
+    private func pointer(rightClick: Bool = false, wheel: Int16 = 0) -> TouchReadout {
+        TouchReadout(finger1: nil, finger2: nil, click: false, rightClick: rightClick, wheel: wheel)
+    }
+
+    func testThePointerLineShowsTheRightClickAndAWheelTurnAndHidesWithNeither() {
+        let notch = ProtocolConstants.scrollUnitsPerNotch
+        XCTAssertNil(pointerText(nil), "no touch data, no pointer line")
+        XCTAssertNil(pointerText(pointer()), "an idle pointer hides the line")
+        XCTAssertEqual(pointerText(pointer(rightClick: true)), "Right click")
+        XCTAssertEqual(pointerText(pointer(wheel: notch)), "Wheel +120")
+        XCTAssertEqual(pointerText(pointer(rightClick: true, wheel: -notch)), "Right click · Wheel -120")
+    }
+
     func testSticksTriggersAndTheRateReadInPercentAndHertz() {
         XCTAssertEqual(stickText(StickSample(x: 0.5, y: -0.25)), "X 50% · Y -25%")
         XCTAssertEqual(percentText(0.999), "100%")
@@ -48,7 +75,7 @@ final class InspectorMappersTests: XCTestCase {
         XCTAssertEqual(gyroText(motion, locale: english), "Gyro: 12 · -300 · 0 deg/s")
         XCTAssertEqual(accelText(motion, locale: english), "Accel: 0.00 · 1.00 · -0.50 g")
         XCTAssertEqual(touchText(nil), "No touch data from this controller.")
-        let touch = TouchReadout(finger1: TouchFinger(x: 0.25, y: 1), finger2: nil, click: true)
+        let touch = TouchReadout(finger1: TouchFinger(x: 0.25, y: 1), finger2: nil, click: true, rightClick: false, wheel: 0)
         XCTAssertEqual(touchText(touch), "Finger 1: 25% across, 100% down · Finger 2: lifted · Click: pressed")
     }
 
@@ -139,11 +166,13 @@ final class InspectorPageMappersTests: XCTestCase {
         XCTAssertNil(page.live)
         XCTAssertEqual(page.gyro, "No motion data from this controller.")
         XCTAssertEqual(page.touch, touchText(nil))
+        XCTAssertNil(page.pointer)
     }
 
     func testAReportReadsAsLiveLines() throws {
         let snapshot = InputSnapshot(
             buttons: 0x1000,
+            extButtons: ProtocolConstants.extButtonMisc1,
             leftStick: StickSample(x: 0.5, y: -0.25),
             rightStick: .centre,
             leftTrigger: 1,
@@ -151,10 +180,12 @@ final class InspectorPageMappersTests: XCTestCase {
             rawLeft: .centre,
             rawRight: .centre,
             motion: nil,
-            touch: nil
+            touch: TouchReadout(finger1: nil, finger2: nil, click: false, rightClick: true, wheel: 0)
         )
-        let live = try XCTUnwrap(state([full], inspection: InputInspection(slotId: "pad", snapshot: snapshot, reportsHz: 250)).live)
-        XCTAssertEqual(live.pressed, "Pressed: A")
+        let page = state([full], inspection: InputInspection(slotId: "pad", snapshot: snapshot, reportsHz: 250))
+        let live = try XCTUnwrap(page.live)
+        XCTAssertEqual(live.pressed, "Pressed: A · Misc 1")
+        XCTAssertEqual(page.pointer, "Right click", "under the touch line")
         XCTAssertEqual(live.leftStick, stickText(StickSample(x: 0.5, y: -0.25)))
         XCTAssertEqual(live.leftTrigger, TriggerReadoutState(fraction: 1, text: "100%"))
         XCTAssertEqual(live.rightTrigger, TriggerReadoutState(fraction: 0.5, text: "50%"))

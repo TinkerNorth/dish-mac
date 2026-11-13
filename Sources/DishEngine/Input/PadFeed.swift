@@ -90,7 +90,7 @@ final class PadFeed {
     /// framework surfaces no per-event timestamp), with the wheel's turn
     /// since the last sample, an event the POINTER frame carries.
     func publishTouchpad(_ sample: TouchpadSample, scrollV: Int16 = 0, nowNs: UInt64 = DispatchTime.now().uptimeNanoseconds) {
-        record.write(touch: sample)
+        record.write(touch: sample, scrollV: scrollV)
         guard let route = currentRoute(), route.flags.touchpad else { return }
         route.sink.sendTouchpad(sample: sample, eventTimeMs: UInt32(truncatingIfNeeded: nowNs / 1_000_000), scrollV: scrollV)
     }
@@ -155,6 +155,7 @@ struct LatestInput: Equatable {
     var filtered: GamepadReport?
     var motion: MotionSample?
     var touch: TouchpadSample?
+    var scrollV: Int16 = 0
     var reports: UInt64 = 0
 }
 
@@ -165,7 +166,7 @@ struct LatestInput: Equatable {
 /// counts are words of their own.
 final class PadRecord {
     private enum Slot: Int, CaseIterable {
-        case sequence, rawLow, rawHigh, filteredLow, filteredHigh, motionLow, motionHigh, touchLow, touchHigh, present
+        case sequence, rawLow, rawHigh, filteredLow, filteredHigh, motionLow, motionHigh, touchLow, touchHigh, scrollV, present
         case reports, motion
     }
 
@@ -216,10 +217,11 @@ final class PadRecord {
         word(.motion).storeRelaxed(word(.motion).loadRelaxed() &+ 1)
     }
 
-    func write(touch: TouchpadSample) {
+    func write(touch: TouchpadSample, scrollV: Int16) {
         writing {
             word(.touchLow).storeRelaxed(touch.packedLow)
             word(.touchHigh).storeRelaxed(touch.packedHigh)
+            word(.scrollV).storeRelaxed(Int64(scrollV))
             word(.present).storeRelaxed(word(.present).loadRelaxed() | Self.hasTouch)
         }
     }
@@ -260,6 +262,7 @@ final class PadRecord {
         }
         if present & Self.hasTouch != 0 {
             input.touch = TouchpadSample(packedLow: word(.touchLow).loadRelaxed(), high: word(.touchHigh).loadRelaxed())
+            input.scrollV = Int16(truncatingIfNeeded: word(.scrollV).loadRelaxed())
         }
         return input
     }

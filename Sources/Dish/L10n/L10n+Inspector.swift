@@ -105,6 +105,14 @@ extension L10n {
         catalog.text("No touch data from this controller.")
     }
 
+    var rightClick: String {
+        catalog.text("Right click")
+    }
+
+    func wheelStep(_ step: String) -> String {
+        catalog.format("Wheel %@", step)
+    }
+
     // MARK: - Stick tests
 
     var stickTests: String {
@@ -275,5 +283,59 @@ extension L10n {
 
     var buttonY: String {
         catalog.text("Y")
+    }
+
+    // MARK: - The extended buttons
+
+    var buttonRightPaddle1: String {
+        catalog.text("Right paddle 1")
+    }
+
+    var buttonLeftPaddle1: String {
+        catalog.text("Left paddle 1")
+    }
+
+    var buttonRightPaddle2: String {
+        catalog.text("Right paddle 2")
+    }
+
+    var buttonLeftPaddle2: String {
+        catalog.text("Left paddle 2")
+    }
+
+    var buttonMisc1: String {
+        catalog.text("Misc 1")
+    }
+
+    var buttonLeftPadClick: String {
+        catalog.text("Left trackpad click")
+    }
+
+    var buttonRightPadClick: String {
+        catalog.text("Right trackpad click")
+    }
+
+    var buttonLeftTriggerClick: String {
+        catalog.text("Left trigger click")
+    }
+
+    var buttonRightTriggerClick: String {
+        catalog.text("Right trigger click")
+    }
+
+    var buttonLeftStickTouch: String {
+        catalog.text("Left stick touch")
+    }
+
+    var buttonRightStickTouch: String {
+        catalog.text("Right stick touch")
+    }
+
+    var buttonLeftGripTouch: String {
+        catalog.text("Left grip touch")
+    }
+
+    var buttonRightGripTouch: String {
+        catalog.text("Right grip touch")
     }
 }

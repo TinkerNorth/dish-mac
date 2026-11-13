@@ -7,6 +7,8 @@ import Foundation
 
 // MARK: - Live input
 
+private let readoutSeparator = " · "
+
 func wireButtonText(_ button: WireButton, words: L10n = .app) -> String {
     switch button {
     case .dpadUp: words.buttonDpadUp
@@ -28,10 +30,30 @@ func wireButtonText(_ button: WireButton, words: L10n = .app) -> String {
     }
 }
 
+func extendedButtonText(_ button: ExtendedButton, words: L10n = .app) -> String {
+    switch button {
+    case .rightPaddle1: words.buttonRightPaddle1
+    case .leftPaddle1: words.buttonLeftPaddle1
+    case .rightPaddle2: words.buttonRightPaddle2
+    case .leftPaddle2: words.buttonLeftPaddle2
+    case .misc1: words.buttonMisc1
+    case .leftPadClick: words.buttonLeftPadClick
+    case .rightPadClick: words.buttonRightPadClick
+    case .leftTriggerClick: words.buttonLeftTriggerClick
+    case .rightTriggerClick: words.buttonRightTriggerClick
+    case .leftStickTouch: words.buttonLeftStickTouch
+    case .rightStickTouch: words.buttonRightStickTouch
+    case .leftGripTouch: words.buttonLeftGripTouch
+    case .rightGripTouch: words.buttonRightGripTouch
+    }
+}
+
 /// The buttons the host sees held down, in wire order, or the word for none.
 func pressedText(_ snapshot: InputSnapshot, words: L10n = .app) -> String {
-    let names = pressedButtons(snapshot.buttons).map { wireButtonText($0, words: words) }
-    return words.pressed(names.isEmpty ? words.noneWord : names.joined(separator: " · "))
+    let wire = pressedButtons(snapshot.buttons).map { wireButtonText($0, words: words) }
+    let extended = pressedExtendedButtons(snapshot.extButtons).map { extendedButtonText($0, words: words) }
+    let names = wire + extended
+    return words.pressed(names.isEmpty ? words.noneWord : names.joined(separator: readoutSeparator))
 }
 
 /// A fraction as whole percent, the sign kept.
@@ -78,6 +100,18 @@ func touchText(_ touch: TouchReadout?, words: L10n = .app) -> String {
 func fingerText(_ finger: TouchFinger?, words: L10n = .app) -> String {
     guard let finger else { return words.liftedWord }
     return words.fingerAt(percentText(finger.x, words: words), percentText(finger.y, words: words))
+}
+
+func pointerText(_ touch: TouchReadout?, words: L10n = .app) -> String? {
+    guard let touch else { return nil }
+    let rightClick = touch.rightClick ? [words.rightClick] : []
+    let wheel = touch.wheel == 0 ? [] : [words.wheelStep(signedStep(touch.wheel))]
+    let parts = rightClick + wheel
+    return parts.isEmpty ? nil : parts.joined(separator: readoutSeparator)
+}
+
+private func signedStep(_ step: Int16) -> String {
+    String(format: "%+lld", Int64(step))
 }
 
 func wholeNumber(_ value: Float, locale: Locale) -> String {
@@ -166,6 +200,7 @@ struct InspectorPageState: Equatable {
     let gyro: String
     let accel: String
     let touch: String
+    let pointer: String?
     /// The test buttons wait while a test runs.
     let stickTestsEnabled: Bool
     let stickTestStatus: String?
@@ -224,6 +259,7 @@ func inspectorPageState(
         gyro: gyroText(snapshot?.motion, locale: locale, words: words),
         accel: accelText(snapshot?.motion, locale: locale, words: words),
         touch: touchText(snapshot?.touch, words: words),
+        pointer: pointerText(snapshot?.touch, words: words),
         stickTestsEnabled: inspection.bench.phase != .running,
         stickTestStatus: stickTestText(inspection, words: words),
         benches: slot.map { inspectorBenches($0, micPermitted: micPermitted, words: words) },
