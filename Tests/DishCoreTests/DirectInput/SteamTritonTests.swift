@@ -31,13 +31,34 @@ final class SteamTritonTests: XCTestCase {
         static let l4: UInt32 = 0x0002_0000
         static let l5: UInt32 = 0x0004_0000
         static let left: UInt32 = 0x0008_0000
+        static let rightStickTouch: UInt32 = 0x0010_0000
         static let rightPadTouch: UInt32 = 0x0020_0000
         static let rightPadClick: UInt32 = 0x0040_0000
         static let rightTriggerClick: UInt32 = 0x0080_0000
+        static let leftStickTouch: UInt32 = 0x0100_0000
+        static let leftPadTouch: UInt32 = 0x0200_0000
         static let leftPadClick: UInt32 = 0x0400_0000
         static let leftTriggerClick: UInt32 = 0x0800_0000
-        static let gripTouches: UInt32 = 0x3000_0000
+        static let rightGripTouch: UInt32 = 0x1000_0000
+        static let leftGripTouch: UInt32 = 0x2000_0000
     }
+
+    /// Each extra bit and the extended button SDL names it.
+    private static let extraRows: [(bit: UInt32, ext: UInt32)] = [
+        (Button.quickAccess, ProtocolConstants.extButtonMisc1),
+        (Button.r4, ProtocolConstants.extButtonRightPaddle1),
+        (Button.l4, ProtocolConstants.extButtonLeftPaddle1),
+        (Button.r5, ProtocolConstants.extButtonRightPaddle2),
+        (Button.l5, ProtocolConstants.extButtonLeftPaddle2),
+        (Button.leftPadClick, ProtocolConstants.extButtonLeftPadClick),
+        (Button.rightPadClick, ProtocolConstants.extButtonRightPadClick),
+        (Button.leftTriggerClick, ProtocolConstants.extButtonLeftTriggerClick),
+        (Button.rightTriggerClick, ProtocolConstants.extButtonRightTriggerClick),
+        (Button.leftStickTouch, ProtocolConstants.extButtonLeftStickTouch),
+        (Button.rightStickTouch, ProtocolConstants.extButtonRightStickTouch),
+        (Button.leftGripTouch, ProtocolConstants.extButtonLeftGripTouch),
+        (Button.rightGripTouch, ProtocolConstants.extButtonRightGripTouch)
+    ]
 
     private static let stillSample = MotionSample(gyroX: 0, gyroY: 0, gyroZ: 0, accelX: 0, accelY: 0, accelZ: 0)
 
@@ -89,10 +110,32 @@ final class SteamTritonTests: XCTestCase {
         XCTAssertEqual(dpad, WireButtonWord([.dpadUp, .dpadDown, .dpadLeft, .dpadRight]).rawValue)
     }
 
-    func testTheButtonsXusbHasNoBitForStayUnmapped() throws {
-        let extras = Button.quickAccess | Button.r4 | Button.r5 | Button.l4 | Button.l5 | Button.rightPadTouch
-            | Button.rightPadClick | Button.rightTriggerClick | Button.leftPadClick | Button.leftTriggerClick | Button.gripTouches
-        XCTAssertEqual(try report(.state(extras)).buttons, 0, "no Share, paddles, pad clicks or trigger clicks on XUSB")
+    func testEachExtraBitIsItsSdlNamedExtendedButtonAndNoXusbButton() throws {
+        for row in Self.extraRows {
+            let decoded = try report(.state(row.bit))
+            XCTAssertEqual(decoded.extButtons, row.ext, "bit \(String(row.bit, radix: 16))")
+            XCTAssertEqual(decoded.buttons, 0, "bit \(String(row.bit, radix: 16)) presses no XUSB button")
+        }
+    }
+
+    func testEveryExtraRidesTheWordAtOnce() throws {
+        let everyBit = Self.extraRows.reduce(UInt32(0)) { $0 | $1.bit }
+        XCTAssertEqual(try report(.state(everyBit)).extButtons, ProtocolConstants.extButtonsKnownMask)
+    }
+
+    func testThePadTouchesAndTheMappedButtonsLeaveTheWordClear() throws {
+        let touches = Button.leftPadTouch | Button.rightPadTouch
+        XCTAssertEqual(try report(.state(touches)).extButtons, 0, "the pad touches have no slot in the word")
+        let mapped = Button.buttonA | Button.buttonB | Button.buttonX | Button.buttonY | Button.left | Button.right | Button.view
+            | Button.menu | Button.steam | Button.l3 | Button.r3 | Button.dpadUp | Button.dpadDown | Button.dpadLeft | Button.dpadRight
+        XCTAssertEqual(try report(.state(mapped)).extButtons, 0)
+    }
+
+    func testTheBleAndTimestampReportsCarryTheSameWord() throws {
+        let bits = Button.quickAccess | Button.r4 | Button.l5
+        let expected = ProtocolConstants.extButtonMisc1 | ProtocolConstants.extButtonRightPaddle1 | ProtocolConstants.extButtonLeftPaddle2
+        XCTAssertEqual(try report(.state(bits, reportId: 0x45)).extButtons, expected)
+        XCTAssertEqual(try report(.state(bits, reportId: 0x47)).extButtons, expected)
     }
 
     // MARK: - Axes

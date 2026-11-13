@@ -10,6 +10,8 @@ import XCTest
 final class SteamControllerTests: XCTestCase {
 
     private enum Button {
+        static let rightTriggerClick: UInt32 = 0x000001
+        static let leftTriggerClick: UInt32 = 0x000002
         static let rightBumper: UInt32 = 0x000004
         static let leftBumper: UInt32 = 0x000008
         static let north: UInt32 = 0x000010
@@ -21,6 +23,8 @@ final class SteamControllerTests: XCTestCase {
         static let menu: UInt32 = 0x001000
         static let guide: UInt32 = 0x002000
         static let escape: UInt32 = 0x004000
+        static let backLeft: UInt32 = 0x008000
+        static let backRight: UInt32 = 0x010000
         static let leftPadClicked: UInt32 = 0x020000
         static let rightPadClicked: UInt32 = 0x040000
         static let leftPadFinger: UInt32 = 0x080000
@@ -138,14 +142,55 @@ final class SteamControllerTests: XCTestCase {
     }
 
     func testALeftPadClickIsAStickClickWhileThePadIsIdle() throws {
-        XCTAssertEqual(try report(.state(Button.leftPadClicked)).buttons, WireButton.leftThumb.bit)
+        let idle = try report(.state(Button.leftPadClicked))
+        XCTAssertEqual(idle.buttons, WireButton.leftThumb.bit)
+        XCTAssertEqual(idle.extButtons, 0, "the stick's click alone")
+    }
+
+    func testALeftPadClickUnderAFingerIsTheLeftPadClickAndNotTheStickClick() throws {
         let onPad = try report(.state(Button.leftPadClicked | Button.leftPadFinger))
         XCTAssertEqual(onPad.buttons, 0, "a finger on the pad owns the click")
+        XCTAssertEqual(onPad.extButtons, ProtocolConstants.extButtonLeftPadClick)
     }
 
     func testTheStickAndRightPadClicksAreTheThumbButtons() throws {
         let buttons = try report(.state(Button.stickButton | Button.rightPadClicked)).buttons
         XCTAssertEqual(buttons, WireButtonWord([.leftThumb, .rightThumb]).rawValue)
+    }
+
+    func testTheRightPadClickStaysTheRightStickClickAloneWhileThePadIsTheStick() throws {
+        let clicked = try report(.state(Button.rightPadClicked | Button.rightPadFinger))
+        XCTAssertEqual(clicked.buttons, WireButton.rightThumb.bit)
+        XCTAssertEqual(clicked.extButtons, 0, "one wire field per click")
+    }
+
+    // MARK: - The extras on the extended-buttons word
+
+    func testTheGripsAreSdlsLeftAndRightPaddle() throws {
+        let leftGrip = try report(.state(Button.backLeft))
+        XCTAssertEqual(leftGrip.extButtons, ProtocolConstants.extButtonLeftPaddle1)
+        XCTAssertEqual(leftGrip.buttons, 0, "a grip presses no XUSB button")
+        XCTAssertEqual(try report(.state(Button.backRight)).extButtons, ProtocolConstants.extButtonRightPaddle1)
+    }
+
+    func testTheFullPullTriggerBitsAreTheTriggerClicks() throws {
+        XCTAssertEqual(try report(.state(Button.leftTriggerClick)).extButtons, ProtocolConstants.extButtonLeftTriggerClick)
+        XCTAssertEqual(try report(.state(Button.rightTriggerClick)).extButtons, ProtocolConstants.extButtonRightTriggerClick)
+    }
+
+    func testTheMappedButtonsLeaveTheWordClear() throws {
+        let everyMapped = Button.south | Button.east | Button.west | Button.north | Button.leftBumper | Button.rightBumper
+            | Button.menu | Button.escape | Button.guide | Button.dpadUp | Button.dpadRight | Button.stickButton | Button.rightPadClicked
+        XCTAssertEqual(try report(.state(everyMapped)).extButtons, 0)
+    }
+
+    func testEveryExtraRidesTheWordAtOnce() throws {
+        let extras = Button.backLeft | Button.backRight | Button.leftTriggerClick | Button.rightTriggerClick
+            | Button.leftPadClicked | Button.leftPadFinger
+        let expected = ProtocolConstants.extButtonLeftPaddle1 | ProtocolConstants.extButtonRightPaddle1
+            | ProtocolConstants.extButtonLeftTriggerClick | ProtocolConstants.extButtonRightTriggerClick
+            | ProtocolConstants.extButtonLeftPadClick
+        XCTAssertEqual(try report(.state(extras)).extButtons, expected)
     }
 
     // MARK: - The right pad as the right stick

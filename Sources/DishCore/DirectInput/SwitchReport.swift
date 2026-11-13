@@ -51,6 +51,8 @@ enum SwitchReportLayout {
     static let rightStick = 9
     static let triggerBit: UInt8 = 0x80
     static let n64ZrBit: UInt8 = 0x08
+    /// The Pro's Capture button in the shared byte, SDL's SWITCH_SHARE.
+    static let captureBit: UInt8 = 0x20
     static let fullTrigger: UInt8 = 255
 }
 
@@ -67,7 +69,8 @@ let switchProRightBits = [
     ButtonBit(mask: 0x40, button: .rightShoulder)
 ]
 
-/// Minus, Plus, the stick clicks and Home. Capture has no XUSB bit.
+/// Minus, Plus, the stick clicks and Home; the Pro's Capture rides the
+/// extended-buttons word.
 let switchProSharedBits = [
     ButtonBit(mask: 0x01, button: .back), ButtonBit(mask: 0x02, button: .start),
     ButtonBit(mask: 0x04, button: .rightThumb), ButtonBit(mask: 0x08, button: .leftThumb),
@@ -178,6 +181,13 @@ private func proButtons(_ report: UnsafeBufferPointer<UInt8>) -> GamepadReport {
     )
 }
 
+/// Capture as `misc1`, as SDL's gamepad layer reads SWITCH_SHARE; the SNES
+/// pad shares the button bytes and has no such button.
+private func proCapture(_ report: UnsafeBufferPointer<UInt8>) -> UInt32 {
+    let captured = report[SwitchReportLayout.sharedByte] & SwitchReportLayout.captureBit != 0
+    return captured ? ProtocolConstants.extButtonMisc1 : 0
+}
+
 private func decodeSwitchPro(_ report: UnsafeBufferPointer<UInt8>, calibration: inout SwitchStickCalibration) -> SwitchReading {
     var state = proButtons(report)
     let left = decodeSwitchStick(report, at: SwitchReportLayout.leftStick, x: &calibration.lx, y: &calibration.ly)
@@ -186,6 +196,7 @@ private func decodeSwitchPro(_ report: UnsafeBufferPointer<UInt8>, calibration: 
     state.ly = left.y
     state.rx = right.x
     state.ry = right.y
+    state.extButtons = proCapture(report)
     let motion = switchMotion(sumSwitchImuFrames(report))
     let battery = decodeSwitchBattery(report[SwitchReportLayout.batteryByte])
     return SwitchReading(report: state, motion: motion, battery: battery)

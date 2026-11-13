@@ -61,6 +61,16 @@ final class SwitchProLiveTests: XCTestCase {
         XCTAssertTrue(readsGravity, "about 1 g within \(Self.motionDeadline) s; the last of \(samples) motion samples read \(last)")
     }
 
+    /// The Capture button is bit 0x20 of the shared byte, read as `misc1`; a
+    /// pad nobody touches holds none of the extended buttons. This harness
+    /// cannot press the button, so the set bit stays with the byte fixture.
+    func testAProAtRestHoldsNoExtendedButtonOnceItStreams() throws {
+        _ = try streamingLane()
+        let reported = waitUntil(Self.motionDeadline) { processor.latestInput(Self.slotId)?.raw != nil }
+        XCTAssertTrue(reported, "a full report reached the pad's record")
+        XCTAssertEqual(processor.latestInput(Self.slotId)?.raw?.extButtons, 0)
+    }
+
     /// The reader opens the Pro, the lane is routed Direct, and its first
     /// full report has arrived.
     private func streamingLane() throws -> HidPadLane {

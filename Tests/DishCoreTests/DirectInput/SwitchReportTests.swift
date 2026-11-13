@@ -43,8 +43,26 @@ final class SwitchReportTests: XCTestCase {
         ])
     }
 
-    func testProHomeIsGuideAndCaptureHasNoWireBit() {
+    func testProHomeIsGuideAndCaptureIsMisc1OnTheExtendedWordAlone() {
         expectEachBitAlone(.pro, byte: 4, [BitCase(mask: 0x10, expected: [.guide]), BitCase(mask: 0x20, expected: [])])
+        var report = SwitchReportBytes()
+        report.bytes[4] = 0x20
+        XCTAssertEqual(report.decodeFresh(.pro)?.report.extButtons, ProtocolConstants.extButtonMisc1, "SDL's SWITCH_SHARE")
+    }
+
+    func testEveryOtherSharedBitLeavesTheProsWordClear() {
+        for mask: UInt8 in [0x01, 0x02, 0x04, 0x08, 0x10, 0x40, 0x80] {
+            var report = SwitchReportBytes()
+            report.bytes[4] = mask
+            XCTAssertEqual(report.decodeFresh(.pro)?.report.extButtons, 0, "bit \(mask)")
+        }
+    }
+
+    func testTheSnesAndN64PadsSourceNoExtendedButton() {
+        var report = SwitchReportBytes()
+        report.bytes[4] = 0x20
+        XCTAssertEqual(report.decodeFresh(.snes)?.report.extButtons, 0, "the SNES pad has no Capture button")
+        XCTAssertEqual(report.decodeFresh(.n64)?.report.extButtons, 0, "the N64's Capture is Back")
     }
 
     func testProZlAndZrAreDigitalTriggersAndPressNoButton() {

@@ -61,8 +61,11 @@ enum TritonButtonMask {
     static let buttonB: UInt32 = 0x0000_0002
     static let buttonX: UInt32 = 0x0000_0004
     static let buttonY: UInt32 = 0x0000_0008
+    static let quickAccess: UInt32 = 0x0000_0010
     static let rightStickClick: UInt32 = 0x0000_0020
     static let view: UInt32 = 0x0000_0040
+    static let r4: UInt32 = 0x0000_0080
+    static let r5: UInt32 = 0x0000_0100
     static let rightShoulder: UInt32 = 0x0000_0200
     static let dpadDown: UInt32 = 0x0000_0400
     static let dpadRight: UInt32 = 0x0000_0800
@@ -71,12 +74,21 @@ enum TritonButtonMask {
     static let menu: UInt32 = 0x0000_4000
     static let leftStickClick: UInt32 = 0x0000_8000
     static let steam: UInt32 = 0x0001_0000
+    static let l4: UInt32 = 0x0002_0000
+    static let l5: UInt32 = 0x0004_0000
     static let leftShoulder: UInt32 = 0x0008_0000
+    static let rightStickTouch: UInt32 = 0x0010_0000
+    static let rightPadClick: UInt32 = 0x0040_0000
+    static let rightTriggerClick: UInt32 = 0x0080_0000
+    static let leftStickTouch: UInt32 = 0x0100_0000
+    static let leftPadClick: UInt32 = 0x0400_0000
+    static let leftTriggerClick: UInt32 = 0x0800_0000
+    static let rightGripTouch: UInt32 = 0x1000_0000
+    static let leftGripTouch: UInt32 = 0x2000_0000
 }
 
 /// SDL's mapping: View is Start and Menu is Back (hid-steam calls the bits
-/// Start and Select). The quick-access button, the four grip paddles, the
-/// pad and trigger clicks and the touch senses have no XUSB bit.
+/// Start and Select).
 let tritonButtonBits = [
     SteamButtonBit(mask: TritonButtonMask.buttonA, button: .faceA),
     SteamButtonBit(mask: TritonButtonMask.buttonB, button: .faceB),
@@ -93,6 +105,26 @@ let tritonButtonBits = [
     SteamButtonBit(mask: TritonButtonMask.dpadDown, button: .dpadDown),
     SteamButtonBit(mask: TritonButtonMask.dpadLeft, button: .dpadLeft),
     SteamButtonBit(mask: TritonButtonMask.dpadRight, button: .dpadRight)
+]
+
+/// SDL's names for the rest: QAM is misc1, R4/L4/R5/L5 are paddle 1 to 4,
+/// the pad clicks touchpad and misc2, the trigger clicks misc3 and misc4,
+/// and the stick and grip touches its capsense inputs. The pad touches have
+/// no slot in the word.
+let tritonExtendedBits = [
+    SteamExtendedBit(mask: TritonButtonMask.quickAccess, ext: ProtocolConstants.extButtonMisc1),
+    SteamExtendedBit(mask: TritonButtonMask.r4, ext: ProtocolConstants.extButtonRightPaddle1),
+    SteamExtendedBit(mask: TritonButtonMask.l4, ext: ProtocolConstants.extButtonLeftPaddle1),
+    SteamExtendedBit(mask: TritonButtonMask.r5, ext: ProtocolConstants.extButtonRightPaddle2),
+    SteamExtendedBit(mask: TritonButtonMask.l5, ext: ProtocolConstants.extButtonLeftPaddle2),
+    SteamExtendedBit(mask: TritonButtonMask.leftPadClick, ext: ProtocolConstants.extButtonLeftPadClick),
+    SteamExtendedBit(mask: TritonButtonMask.rightPadClick, ext: ProtocolConstants.extButtonRightPadClick),
+    SteamExtendedBit(mask: TritonButtonMask.leftTriggerClick, ext: ProtocolConstants.extButtonLeftTriggerClick),
+    SteamExtendedBit(mask: TritonButtonMask.rightTriggerClick, ext: ProtocolConstants.extButtonRightTriggerClick),
+    SteamExtendedBit(mask: TritonButtonMask.leftStickTouch, ext: ProtocolConstants.extButtonLeftStickTouch),
+    SteamExtendedBit(mask: TritonButtonMask.rightStickTouch, ext: ProtocolConstants.extButtonRightStickTouch),
+    SteamExtendedBit(mask: TritonButtonMask.leftGripTouch, ext: ProtocolConstants.extButtonLeftGripTouch),
+    SteamExtendedBit(mask: TritonButtonMask.rightGripTouch, ext: ProtocolConstants.extButtonRightGripTouch)
 ]
 
 /// The pad's decode state that spans reports: the tick of the last IMU
@@ -131,7 +163,8 @@ private func tritonWord16(_ report: UnsafeBufferPointer<UInt8>, _ offset: Int) -
 /// The sticks are up-positive, as the wire is; the triggers run 0...32767.
 private func tritonState(_ report: UnsafeBufferPointer<UInt8>, carry: inout TritonCarry) -> SteamReading? {
     guard report.count >= TritonLayout.stateLength else { return nil }
-    let buttons = steamButtons(tritonWord32(report, TritonLayout.buttons), tritonButtonBits)
+    let held = tritonWord32(report, TritonLayout.buttons)
+    let buttons = steamButtons(held, tritonButtonBits)
     let state = GamepadReport(
         buttons: buttons.rawValue,
         lt: tritonTrigger(steamLe16(report, TritonLayout.leftTrigger)),
@@ -139,7 +172,8 @@ private func tritonState(_ report: UnsafeBufferPointer<UInt8>, carry: inout Trit
         lx: steamLe16(report, TritonLayout.leftStick),
         ly: steamLe16(report, TritonLayout.leftStick + 2),
         rx: steamLe16(report, TritonLayout.rightStick),
-        ry: steamLe16(report, TritonLayout.rightStick + 2)
+        ry: steamLe16(report, TritonLayout.rightStick + 2),
+        extButtons: steamExtendedButtons(held, tritonExtendedBits)
     )
     return .state(state, motion: tritonMotion(report, carry: &carry))
 }

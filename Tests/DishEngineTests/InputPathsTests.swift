@@ -138,6 +138,7 @@ final class InputPathsTests: XCTestCase {
         XCTAssertEqual(facts.rumble, .notCarried)
         let slot = try XCTUnwrap(host.directSlots["hid:1234:5678"])
         XCTAssertTrue(slot.capabilities.hasBattery, "a generic pad reports none of its own and sends the Mac's")
+        XCTAssertFalse(slot.capabilities.hasExtendedButtons, "a generic pad has none of the extras")
     }
 
     func testAPadGameControllerTakesOnASecondLookIsLeftToIt() throws {
@@ -237,6 +238,7 @@ final class InputPathsTests: XCTestCase {
         XCTAssertTrue(slot.capabilities.hasRumble)
         XCTAssertTrue(slot.capabilities.hasPlayerLeds)
         XCTAssertTrue(slot.capabilities.hasMotion, "the Pro's IMU")
+        XCTAssertTrue(slot.capabilities.hasExtendedButtons, "the Pro's Capture button")
         XCTAssertEqual(paths.state[Self.pro]?.picks, [.standard])
         XCTAssertEqual(paths.state[Self.pro]?.rumble, .carried)
 
