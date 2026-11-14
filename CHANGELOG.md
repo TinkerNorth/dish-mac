@@ -21,6 +21,15 @@ the repos share a version number.
 
 ### Added
 
+- **An Xbox Elite controller's back paddles reach the host.** On a Satellite
+  that speaks protocol 4, the four paddles of an Xbox Elite Wireless
+  Controller Series 2 read through macOS now travel as extra buttons, under
+  the names SDL gives them: P1 and P2 are the right hand's upper and lower
+  paddles, P3 and P4 the left hand's. macOS addresses the paddles only while
+  the controller is on its default profile; on any other profile they press
+  the buttons they are mapped to. An Xbox controller without paddles sends
+  what it sent before, and a DualSense Edge's back buttons still stay as they
+  were. Not yet tried with a real Elite.
 - **The controller inspector shows a controller's extra buttons.** Its live
   input now names a back paddle, the Misc 1 button (a Switch Pro
   Controller's Capture, the 2026 Steam Controller's "..."), a trackpad or

@@ -32,7 +32,9 @@ private let requiredButtons: [(KeyPath<GCExtendedGamepad, GCControllerButtonInpu
 ]
 
 /// The wire button each optional button is when the pad has it. XUSB has no
-/// Share button and no paddles, so those stay unmapped.
+/// Share button and no paddles: an Xbox Elite's paddles ride the
+/// extended-buttons word (`GameControllerInput+Paddles`), and the Share
+/// button stays unmapped.
 private let optionalButtons: [(KeyPath<GCExtendedGamepad, GCControllerButtonInput?>, WireButton)] = [
     (\.buttonOptions, .back),
     (\.buttonHome, .guide),
@@ -143,14 +145,15 @@ final class GameControllerInput: ObservableObject {
     }
 
     /// A pad with the extended profile is read through its named inputs.
-    private func attachExtended(_ controller: GCController, pad: GCExtendedGamepad) {
+    func attachExtended(_ controller: GCController, pad: GCExtendedGamepad) {
         let id = slotId(for: controller)
         let gate = admit(controller, id: id)
         let feed = processor.feed(for: id)
-        let capabilities = Self.detectCapabilities(controller, pad: pad)
+        let paddles = Self.paddleInputs(pad)
+        let capabilities = Self.detectCapabilities(controller, pad: pad, paddles: paddles)
         recordSlot(id: id, controller: controller, capabilities: capabilities, family: Self.family(of: controller))
         controller.handlerQueue = handlerQueue(for: id)
-        installReportHandler(pad: pad, gate: gate, feed: feed)
+        installReportHandler(pad: pad, paddles: paddles, gate: gate, feed: feed)
         installMotionHandler(controller: controller, gate: gate, feed: feed)
         installTouchpadHandlers(pad: pad, gate: gate, feed: feed)
         startBatteryTimer(deviceId: id, controller: controller)
@@ -181,7 +184,11 @@ final class GameControllerInput: ObservableObject {
     /// `hasBattery` is always true: a pad without its own battery still
     /// reports the host Mac's. Only the DualSense takes trigger effects and
     /// has player LEDs the framework drives by player index.
-    private static func detectCapabilities(_ controller: GCController, pad: GCExtendedGamepad) -> ControllerCapabilities {
+    private static func detectCapabilities(
+        _ controller: GCController,
+        pad: GCExtendedGamepad,
+        paddles: PaddleInputs
+    ) -> ControllerCapabilities {
         let dualSense = pad is GCDualSenseGamepad
         return ControllerCapabilities(
             hasMotion: controller.motion != nil,
@@ -190,7 +197,8 @@ final class GameControllerInput: ObservableObject {
             hasLightbar: controller.light != nil,
             hasBattery: true,
             hasTriggerEffects: dualSense,
-            hasPlayerLeds: dualSense
+            hasPlayerLeds: dualSense,
+            hasExtendedButtons: !paddles.isEmpty
         )
     }
 
@@ -220,17 +228,17 @@ final class GameControllerInput: ObservableObject {
         extendedGamepad=\(extended, privacy: .public) motion=\(capabilities.hasMotion) touchpad=\(capabilities.hasTouchpad) \
         rumble=\(capabilities.hasRumble) lightbar=\(capabilities.hasLightbar) battery=\(capabilities.hasBattery) \
         triggerEffects=\(capabilities.hasTriggerEffects) playerLeds=\(capabilities.hasPlayerLeds) \
-        \(profile, privacy: .public)
+        extendedButtons=\(capabilities.hasExtendedButtons) \(profile, privacy: .public)
         """)
     }
 
     /// GameController coalesces simultaneous changes into one call, and the
-    /// handler rebuilds the whole report from the snapshot every time.
-    /// Nonisolated, so the compiler refuses a handler that reaches for
-    /// main-actor state: it runs on the input queue.
-    private nonisolated func installReportHandler(pad: GCExtendedGamepad, gate: PadGate, feed: PadFeed) {
+    /// handler rebuilds the whole report from the snapshot every time, the
+    /// paddles found at attach included. Nonisolated, so the compiler refuses
+    /// a handler that reaches for main-actor state: it runs on the input queue.
+    private nonisolated func installReportHandler(pad: GCExtendedGamepad, paddles: PaddleInputs, gate: PadGate, feed: PadFeed) {
         pad.valueChangedHandler = { pad, _ in
-            Self.pushReport(pad: pad, gate: gate, feed: feed)
+            Self.pushReport(pad: pad, paddles: paddles, gate: gate, feed: feed)
         }
     }
 
@@ -281,12 +289,12 @@ final class GameControllerInput: ObservableObject {
     // MARK: - Hot path
 
     /// Every handler call is a change; the gate says whether it is published.
-    private nonisolated static func pushReport(pad: GCExtendedGamepad, gate: PadGate, feed: PadFeed) {
+    private nonisolated static func pushReport(pad: GCExtendedGamepad, paddles: PaddleInputs, gate: PadGate, feed: PadFeed) {
         guard gate.pass(.standard, changed: true) else {
             feed.forgetLatch()
             return
         }
-        feed.publishIfChanged(wireReport(padSample(pad)))
+        feed.publishIfChanged(wireReport(padSample(pad, paddles: paddles)))
     }
 
     /// The slot's handler queue, made on its first attach.
@@ -299,7 +307,7 @@ final class GameControllerInput: ObservableObject {
 
     /// The pad as GameController reads it, which is already the wire's
     /// orientation: both report a stick pushed up as positive y.
-    nonisolated static func padSample(_ pad: GCExtendedGamepad) -> PadSample {
+    nonisolated static func padSample(_ pad: GCExtendedGamepad, paddles: PaddleInputs = []) -> PadSample {
         PadSample(
             leftX: pad.leftThumbstick.xAxis.value,
             leftY: pad.leftThumbstick.yAxis.value,
@@ -307,7 +315,8 @@ final class GameControllerInput: ObservableObject {
             rightY: pad.rightThumbstick.yAxis.value,
             leftTrigger: pad.leftTrigger.value,
             rightTrigger: pad.rightTrigger.value,
-            pressed: heldButtons(pad)
+            pressed: heldButtons(pad),
+            extButtons: heldPaddles(paddles)
         )
     }
 

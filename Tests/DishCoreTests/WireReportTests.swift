@@ -47,6 +47,13 @@ final class WireReportTests: XCTestCase {
         XCTAssertEqual(wireReport(PadSample(pressed: [.guide])).buttons, 0x0400)
     }
 
+    func testTheExtendedButtonsASampleHoldsAreTheReportsWordBesideTheXusbButtons() {
+        let held = ProtocolConstants.extButtonRightPaddle1 | ProtocolConstants.extButtonLeftPaddle2
+        let report = wireReport(PadSample(pressed: [.faceA], extButtons: held))
+        XCTAssertEqual(report.extButtons, held)
+        XCTAssertEqual(report.buttons, WireButton.faceA.bit, "the XUSB word keeps only the XUSB buttons")
+    }
+
     func testEveryButtonSetsItsOwnBitAndTogetherTheirUnion() {
         let mapped: [(WireButton, UInt16)] = [
             (.dpadUp, 0x0001), (.dpadDown, 0x0002), (.dpadLeft, 0x0004), (.dpadRight, 0x0008),
