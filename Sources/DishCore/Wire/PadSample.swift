@@ -30,7 +30,8 @@ public struct WireButtonWord: Equatable, Sendable, ExpressibleByArrayLiteral {
 
 /// One reading of a pad in the units the controller framework reports:
 /// sticks -1...1 with y positive when the stick is pushed up, triggers
-/// 0...1, and the buttons held down. The desktops' `GamepadSnapshot`.
+/// 0...1, the buttons held down and the extended buttons held, in the
+/// protocol 4 word's bits. The desktops' `GamepadSnapshot`.
 public struct PadSample: Equatable, Sendable {
     public var leftX: Float
     public var leftY: Float
@@ -39,6 +40,7 @@ public struct PadSample: Equatable, Sendable {
     public var leftTrigger: Float
     public var rightTrigger: Float
     public var pressed: WireButtonWord
+    public var extButtons: UInt32
 
     public init(
         leftX: Float = 0,
@@ -47,7 +49,8 @@ public struct PadSample: Equatable, Sendable {
         rightY: Float = 0,
         leftTrigger: Float = 0,
         rightTrigger: Float = 0,
-        pressed: WireButtonWord = WireButtonWord()
+        pressed: WireButtonWord = WireButtonWord(),
+        extButtons: UInt32 = 0
     ) {
         self.leftX = leftX
         self.leftY = leftY
@@ -56,6 +59,7 @@ public struct PadSample: Equatable, Sendable {
         self.leftTrigger = leftTrigger
         self.rightTrigger = rightTrigger
         self.pressed = pressed
+        self.extButtons = extButtons
     }
 }
 
@@ -63,9 +67,9 @@ public struct PadSample: Equatable, Sendable {
 /// negative side, as the XUSB convention has it.
 public let wireStickMax: Float = 32767
 
-/// The XUSB report a sample becomes: the button word, the triggers and the
-/// four axes. The wire is up-positive like the framework, so Y passes
-/// through with its sign. The desktops' `mapGamepad`.
+/// The XUSB report a sample becomes: the button word, the triggers, the
+/// four axes and the extended buttons. The wire is up-positive like the
+/// framework, so Y passes through with its sign. The desktops' `mapGamepad`.
 public func wireReport(_ sample: PadSample) -> GamepadReport {
     GamepadReport(
         buttons: sample.pressed.rawValue,
@@ -74,7 +78,8 @@ public func wireReport(_ sample: PadSample) -> GamepadReport {
         lx: scaleAxis(sample.leftX, max: wireStickMax),
         ly: scaleAxis(sample.leftY, max: wireStickMax),
         rx: scaleAxis(sample.rightX, max: wireStickMax),
-        ry: scaleAxis(sample.rightY, max: wireStickMax)
+        ry: scaleAxis(sample.rightY, max: wireStickMax),
+        extButtons: sample.extButtons
     )
 }
 
