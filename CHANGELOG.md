@@ -126,8 +126,11 @@ the repos share a version number.
   to, so the lookup never found it and every launch made a new certificate
   around the same key, dated that launch. A host paired on one launch was
   shown a different certificate on the next. Dish now finds the certificate
-  by the key it belongs to. This also settles the identity test that failed
-  whenever its two loads fell in different seconds.
+  by the key it belongs to, the certificate its first launch stored. A host
+  you paired on a later launch was given one of the later certificates, so
+  if it no longer recognises Dish after this update, pair it once more;
+  from then on it stays paired. This also settles the identity test that
+  failed whenever its two loads fell in different seconds.
 - **The privacy policy says when the Mac's battery is sent.** Since a pad
   sends the lower of its battery and the Mac's, the Mac's internal battery
   level and charging state, read from IOKit's power sources, reach the
