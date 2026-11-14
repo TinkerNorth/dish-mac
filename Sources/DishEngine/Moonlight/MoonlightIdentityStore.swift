@@ -15,7 +15,6 @@ import Security
 final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureVerifier {
     static let keyTag = Data("com.tinkernorth.dish.moonlight-identity".utf8)
     static let keyLabel = "Dish Moonlight client key"
-    static let certificateLabel = "Dish Moonlight client certificate"
     static let keyBits = 2048
 
     let privateKey: SecKey
@@ -72,8 +71,8 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
     /// The stored identity, or a fresh one minted into the keychain; nil when
     /// the keychain refuses. `keychain` nil means the user's default keychains,
     /// as the app uses; a test passes its own throwaway file keychain.
-    static func loadOrCreate(keychain: SecKeychain? = nil) -> MoonlightIdentityStore? {
-        if let key = findKey(keychain: keychain), let certificate = findCertificate(keychain: keychain) {
+    static func loadOrCreate(keychain: SecKeychain? = nil, now: Date = Date()) -> MoonlightIdentityStore? {
+        if let key = findKey(keychain: keychain), let certificate = findCertificate(of: key, keychain: keychain) {
             return MoonlightIdentityStore(
                 privateKey: key,
                 certificateDER: SecCertificateCopyData(certificate) as Data,
@@ -82,9 +81,9 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
             )
         }
         guard let key = findKey(keychain: keychain) ?? createKey(keychain: keychain),
-              let der = MoonlightCertificateMint.selfSigned(privateKey: key),
+              let der = MoonlightCertificateMint.selfSigned(privateKey: key, now: now),
               let certificate = SecCertificateCreateWithData(nil, der as CFData) else { return nil }
-        var add: [CFString: Any] = [kSecValueRef: certificate, kSecAttrLabel: certificateLabel]
+        var add: [CFString: Any] = [kSecValueRef: certificate]
         if let keychain { add[kSecUseKeychain] = keychain }
         let status = SecItemAdd(add as CFDictionary, nil)
         guard status == errSecSuccess || status == errSecDuplicateItem else { return nil }
@@ -106,8 +105,10 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
         return unsafeDowncast(item, to: SecKey.self)
     }
 
-    private static func findCertificate(keychain: SecKeychain?) -> SecCertificate? {
-        var query: [CFString: Any] = [kSecClass: kSecClassCertificate, kSecAttrLabel: certificateLabel, kSecReturnRef: true]
+    private static func findCertificate(of key: SecKey, keychain: SecKeychain?) -> SecCertificate? {
+        let keyAttributes = SecKeyCopyAttributes(key) as? [String: Any]
+        guard let publicKeyHash = keyAttributes?[kSecAttrApplicationLabel as String] as? Data else { return nil }
+        var query: [CFString: Any] = [kSecClass: kSecClassCertificate, kSecAttrPublicKeyHash: publicKeyHash, kSecReturnRef: true]
         if let keychain { query[kSecMatchSearchList] = [keychain] }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let item,
