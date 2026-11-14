@@ -11,6 +11,8 @@ import XCTest
 /// identity mutual TLS can present.
 final class MoonlightIdentityStoreTests: XCTestCase {
 
+    private static let oneDay: TimeInterval = 24 * 60 * 60
+
     private var keychain: SecKeychain!
 
     override func setUpWithError() throws {
@@ -20,7 +22,8 @@ final class MoonlightIdentityStoreTests: XCTestCase {
     }
 
     func testMintedOnceAndReadBackTheSame() throws {
-        let first = try XCTUnwrap(MoonlightIdentityStore.loadOrCreate(keychain: keychain))
+        let previousLaunch = Date().addingTimeInterval(-Self.oneDay)
+        let first = try XCTUnwrap(MoonlightIdentityStore.loadOrCreate(keychain: keychain, now: previousLaunch))
         let second = try XCTUnwrap(MoonlightIdentityStore.loadOrCreate(keychain: keychain))
         XCTAssertEqual(first.certificateDER, second.certificateDER, "the same identity for every host, every launch")
         XCTAssertEqual(first.fingerprintHex, second.fingerprintHex)
