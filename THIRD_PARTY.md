@@ -62,26 +62,34 @@ not copied as code, and one protocol is ported as adapted logic (section 2c):
   Switch Pro protocol, which is why `DirectModels.swift` leaves it out. A reuse
   of constants and device facts, not SDL code; section 2d carries SDL's notice.
 - **The Steam Controllers' protocols** that `Sources/DishCore/DirectInput/`
-  decodes and writes (`SteamController.swift`, `SteamTriton.swift`,
-  `SteamPlan.swift`). For the 2015 pad (28de:1102, receiver 28de:1142): the
-  64-byte packet framing, the state packet's button bits, trigger full scale,
-  pad rotation and IMU scales, the receiver's wireless events and the quiet
-  and restore feature reports, mirrored byte for byte from the decoders of
-  dish-android and the desktop clients, which follow SDL's
-  `src/joystick/hidapi/SDL_hidapi_steam.c` and the Linux kernel's
-  `drivers/hid/hid-steam.c` (`steam_set_lizard_mode`, `steam_raw_event`);
-  the receiver's state request is SDL's. For the 2026 pad (28de:1302,
-  receivers 28de:1304 and 1305): the input report ids and layouts, the
-  battery and wireless status reports, the settings feature report (lizard
-  mode off, the IMU on), the three-second lizard refresh and the haptic
-  rumble output report with its 40 ms re-send, read from SDL's
+  decodes and writes (`SteamController.swift`, `SteamControllerBle.swift`,
+  `SteamTriton.swift`, `SteamPlan.swift`). For the 2015 pad (28de:1102,
+  receiver 28de:1142): the 64-byte packet framing, the state packet's button
+  bits, trigger full scale, pad rotation and IMU scales, the receiver's
+  wireless events and the quiet and restore feature reports, mirrored byte for
+  byte from the decoders of dish-android and the desktop clients, which follow
+  SDL's `src/joystick/hidapi/SDL_hidapi_steam.c` and the Linux kernel's
+  `drivers/hid/hid-steam.c` (`steam_set_lizard_mode`, `steam_raw_event`); the
+  receiver's state request is SDL's. For the 2015 pad over Bluetooth LE
+  (28de:1106): report 3's segment framing
+  (`WriteSegmentToSteamControllerPacketAssembler`), the state packet's type,
+  option mask and chunk order (`UpdateBLESteamControllerState`,
+  `EBLEOptionDataChunksBitmask`), the one-segment feature report
+  (`SetFeatureReport`) and the reset and sensor settings
+  (`ResetSteamController`, `SetSensorsEnabled`), from the same file, and the
+  fact that SDL reads both pads on macOS through IOHIDManager
+  (`src/hidapi/mac/hid.c`). For the 2026 pad (28de:1302, receivers 28de:1304
+  and 1305, 28de:1303 over Bluetooth LE): the input report ids and layouts,
+  the battery and wireless status reports, the settings feature report (lizard
+  mode off, the IMU on), the three-second lizard refresh and the haptic rumble
+  output report with its 40 ms re-send, read from SDL's
   `src/joystick/hidapi/SDL_hidapi_steam_triton.c` and the Valve-authored
   `src/joystick/hidapi/steam/controller_structs.h` and
   `controller_constants.h`; and the 2026 devices' HID interfaces (one unified
-  interface on the pad; a receiver's controllers on interfaces 2 to 5 beside
-  a pogo-pin interface of usage FF00:0002) from `hid-steam`. Only offsets,
-  identifiers and field meanings were used: no SDL or kernel code is here.
-  The kernel is `GPL-2.0-only`; section 2d carries SDL's notice.
+  interface on the pad; a receiver's controllers on interfaces 2 to 5 beside a
+  pogo-pin interface of usage FF00:0002) from `hid-steam`. Only offsets,
+  identifiers and field meanings were used: no SDL or kernel code is here. The
+  kernel is `GPL-2.0-only`; section 2d carries SDL's notice.
 
 ## 2a. sentry-cocoa
 

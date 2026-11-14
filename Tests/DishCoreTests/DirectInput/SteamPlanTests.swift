@@ -18,6 +18,10 @@ final class SteamPlanTests: XCTestCase {
         let puck = try XCTUnwrap(directModel(vendorId: 0x28DE, productId: 0x1304))
         XCTAssertEqual(steamPlan(wired), SteamPlan(generation: .original, receiver: false))
         XCTAssertEqual(steamPlan(puck), SteamPlan(generation: .triton, receiver: true))
+        let original = try XCTUnwrap(directModel(vendorId: 0x28DE, productId: 0x1106))
+        let triton = try XCTUnwrap(directModel(vendorId: 0x28DE, productId: 0x1303))
+        XCTAssertEqual(steamPlan(original), SteamPlan(generation: .originalOverBluetooth, receiver: false))
+        XCTAssertEqual(steamPlan(triton), SteamPlan(generation: .triton, receiver: false), "SDL's writes on Bluetooth as on its cable")
         XCTAssertNil(try steamPlan(XCTUnwrap(directModel(vendorId: 0x057E, productId: 0x2009))))
     }
 
@@ -27,6 +31,17 @@ final class SteamPlanTests: XCTestCase {
         XCTAssertEqual(plan.onConnect, features(steamConfigReports(.quiet), id: 0))
         XCTAssertEqual(plan.onRelease, features(steamConfigReports(.restore), id: 0))
         XCTAssertEqual(plan.refresh, [], "its quiet settings persist until it reboots")
+    }
+
+    func testA2015PadOverBluetoothIsQuietedAndRestoredInSegmentsOfReportThree() {
+        let plan = SteamPlan(generation: .originalOverBluetooth, receiver: false)
+        XCTAssertEqual(plan.onClaim, features(steamBleConfigReports(.quiet), id: 3))
+        XCTAssertEqual(plan.onClaim.map(\.bytes.count), [20, 20, 20, 20], "SDL's reset and its sensor enable, a segment each")
+        XCTAssertEqual(plan.onConnect, features(steamBleConfigReports(.quiet), id: 3))
+        XCTAssertEqual(plan.onRelease, features(steamBleConfigReports(.restore), id: 3))
+        XCTAssertEqual(plan.refresh, [], "its settings persist until it reboots, as on its cable")
+        XCTAssertFalse(plan.refreshesLizardMode)
+        XCTAssertFalse(plan.rumbles)
     }
 
     func testA2015ReceiverAsksItsSlotWhatItHoldsAndQuietsTheControllerThatAnswers() {

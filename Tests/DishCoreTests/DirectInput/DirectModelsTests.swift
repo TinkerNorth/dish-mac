@@ -59,7 +59,7 @@ final class DirectModelsTests: XCTestCase {
             XCTAssertEqual(hidButtonOrder(vendorId: vendorId, productId: productId), order)
         }
         let valve = directModels.filter { $0.vendorId == DirectVendor.valve }.count
-        XCTAssertEqual(valve, 5, "the 2015 pad and its dongle, the 2026 pad and its two receivers")
+        XCTAssertEqual(valve, 7, "the 2015 pad and its dongle, the 2026 pad and its two receivers, and each pad over Bluetooth")
         let xusb = directModels.filter { $0.decoder == .xusb }.count
         XCTAssertEqual(xusb, 1, "the Ultimate 2 in X-input mode")
         XCTAssertEqual(
@@ -109,8 +109,8 @@ final class DirectModelsTests: XCTestCase {
 
     func testTheSteamControllersAreOptInAndReadByTheirOwnDecoders() throws {
         let cases: [(UInt16, DirectDecoder, Bool)] = [
-            (0x1102, .steamController, false), (0x1142, .steamController, true),
-            (0x1302, .steamTriton, false), (0x1304, .steamTriton, true), (0x1305, .steamTriton, true)
+            (0x1102, .steamController, false), (0x1142, .steamController, true), (0x1106, .steamControllerBle, false),
+            (0x1302, .steamTriton, false), (0x1304, .steamTriton, true), (0x1305, .steamTriton, true), (0x1303, .steamTriton, false)
         ]
         for (productId, decoder, receiver) in cases {
             let found = try model(0x28DE, productId)
@@ -126,14 +126,17 @@ final class DirectModelsTests: XCTestCase {
     func testOnlyTheTwentyTwentySixPadDrivesItsOwnRumble() throws {
         XCTAssertFalse(try model(0x28DE, 0x1102).drivesItsOwnRumble, "the 2015 pad has trackpad voice coils, no motors")
         XCTAssertFalse(try model(0x28DE, 0x1142).drivesItsOwnRumble)
+        XCTAssertFalse(try model(0x28DE, 0x1106).drivesItsOwnRumble, "SDL has no rumble for it on any link")
         XCTAssertTrue(try model(0x28DE, 0x1302).drivesItsOwnRumble)
         XCTAssertTrue(try model(0x28DE, 0x1304).drivesItsOwnRumble)
+        XCTAssertTrue(try model(0x28DE, 0x1303).drivesItsOwnRumble, "SDL's report 0x80 on Bluetooth as on its cable")
         XCTAssertFalse(try model(0x057E, 0x2009).drivesItsOwnRumble, "a Nintendo pad's rumble rides GameController")
     }
 
     func testTheSteamControllersAndTheSwitchProSourceTheExtendedButtons() throws {
         let sources: [(vendor: UInt16, product: UInt16)] = [
-            (0x28DE, 0x1102), (0x28DE, 0x1142), (0x28DE, 0x1302), (0x28DE, 0x1304), (0x28DE, 0x1305), (0x057E, 0x2009)
+            (0x28DE, 0x1102), (0x28DE, 0x1142), (0x28DE, 0x1106), (0x28DE, 0x1302), (0x28DE, 0x1304), (0x28DE, 0x1305),
+            (0x28DE, 0x1303), (0x057E, 0x2009)
         ]
         for pad in sources {
             XCTAssertTrue(try model(pad.vendor, pad.product).hasExtendedButtons, String(pad.product, radix: 16))
@@ -144,8 +147,15 @@ final class DirectModelsTests: XCTestCase {
         }
     }
 
-    func testTheBluetoothSteamControllerIsLeftToMacOS() {
-        XCTAssertNil(directModel(vendorId: 0x28DE, productId: 0x1303), "Dish reads no Bluetooth LE pad")
+    func testEachSteamControllerOverBluetoothIsAModelOfItsOwnWithItsCablesTrackpads() throws {
+        let original = try model(0x28DE, 0x1106)
+        let triton = try model(0x28DE, 0x1303)
+        XCTAssertEqual(original.name, "Valve Steam Controller (Bluetooth)")
+        XCTAssertEqual(triton.name, "Valve Steam Controller (2026, Bluetooth)")
+        XCTAssertEqual(original.trackpads, .rightStickByDefault)
+        XCTAssertEqual(triton.trackpads, .twoPads)
+        XCTAssertFalse(original.receiver)
+        XCTAssertTrue(original.offersStandard, "handed back, it is the keyboard and mouse it came as")
     }
 
     // MARK: - Which interface carries the controller
@@ -157,6 +167,14 @@ final class DirectModelsTests: XCTestCase {
             XCTAssertFalse(steamInterfaceCarriesController(steam, usagePage: 0x01, usage: 0x06, interfaceNumber: 1), "its keyboard")
             XCTAssertFalse(steamInterfaceCarriesController(steam, usagePage: 0x01, usage: 0x02, interfaceNumber: 0), "its mouse")
             XCTAssertFalse(steamInterfaceCarriesController(steam, usagePage: nil, usage: nil, interfaceNumber: nil))
+        }
+    }
+
+    func testAPadOverBluetoothIsOneDeviceThatCarriesItsControllerWhateverComesFirstInIt() throws {
+        for productId: UInt16 in [0x1106, 0x1303] {
+            let pad = try model(0x28DE, productId)
+            XCTAssertTrue(steamInterfaceCarriesController(pad, usagePage: 0x01, usage: 0x06, interfaceNumber: nil), "its keyboard")
+            XCTAssertTrue(steamInterfaceCarriesController(pad, usagePage: nil, usage: nil, interfaceNumber: nil))
         }
     }
 
