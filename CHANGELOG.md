@@ -21,6 +21,17 @@ the repos share a version number.
 
 ### Added
 
+- **A Steam Controller paired to the Mac over Bluetooth can be read
+  directly.** Both Steam Controllers, the 2015 one and the 2026 one, now get
+  a card on the Controllers page when they are paired over Bluetooth, as
+  they already did on a cable and through their receivers. Use Direct turns
+  their keyboard and mouse off and makes them a controller, with their
+  trackpads, motion and extra buttons, and the 2026 one's rumble; macOS asks
+  for Input Monitoring first, because over Bluetooth the controller is also
+  a keyboard. Dish remembers the choice apart from the cable's. Over
+  Bluetooth the 2015 controller has no rumble and sends no battery level, so
+  the Mac's level is sent for it, as on its cable. Not yet tried on a real
+  controller over Bluetooth.
 - **An Xbox Elite controller's back paddles reach the host.** On a Satellite
   that speaks protocol 4, the four paddles of an Xbox Elite Wireless
   Controller Series 2 read through macOS now travel as extra buttons, under

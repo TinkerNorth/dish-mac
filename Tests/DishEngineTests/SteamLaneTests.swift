@@ -144,6 +144,16 @@ final class SteamLaneTests: XCTestCase {
         XCTAssertEqual(motion.get().count, 1)
     }
 
+    func testA2015PadOverBluetoothIsThereFromTheStartAndPublishesEachAssembledState() throws {
+        let pad = try lane(productId: 0x1106, interfaceNumber: nil)
+        XCTAssertTrue(pad.linked, "it is there while macOS lists it")
+        pad.gate.route(.direct)
+        feedReport(SteamLanePackets.bleState(0), to: pad)
+        feedReport(SteamLanePackets.bleState(0x80), to: pad)
+        XCTAssertEqual(reports.get(), [.released, GamepadReport(buttons: WireButton.faceA.bit)])
+        XCTAssertEqual(output.calls, [], "a state is no arrival")
+    }
+
     // MARK: - A receiver's slot
 
     func testAReceiversSlotHoldsNoPadUntilItsControllerShowsUp() throws {
@@ -210,6 +220,17 @@ final class SteamLaneTests: XCTestCase {
         feedReport(report, to: pad)
         XCTAssertEqual(reports.get(), [.released, GamepadReport(buttons: WireButton.faceB.bit)])
     }
+
+    func testA2026PadOverBluetoothPublishesItsBluetoothStateReport() throws {
+        let pad = try lane(productId: 0x1303, interfaceNumber: nil)
+        pad.gate.route(.direct)
+        var report = [UInt8](repeating: 0, count: 46)
+        report[0] = 0x45
+        feedReport(report, to: pad)
+        report[2] = 0x01
+        feedReport(report, to: pad)
+        XCTAssertEqual(reports.get(), [.released, GamepadReport(buttons: WireButton.faceA.bit)])
+    }
 }
 
 /// The 2015 pad's packets as the lane hears them: a state packet with its
@@ -222,6 +243,13 @@ private enum SteamLanePackets {
         bytes[9] = UInt8((buttons >> 8) & 0xFF)
         bytes[10] = UInt8((buttons >> 16) & 0xFF)
         return bytes
+    }
+
+    /// Over Bluetooth LE, one segment of report 3 (the packet's first and
+    /// last) carrying a state packet that names only its button chunk.
+    static func bleState(_ buttons: UInt32) -> [UInt8] {
+        let packet: [UInt8] = [0x14, 0x00, UInt8(buttons & 0xFF), UInt8((buttons >> 8) & 0xFF), UInt8((buttons >> 16) & 0xFF)]
+        return [0x03, 0xC0] + packet + [UInt8](repeating: 0, count: 18 - packet.count)
     }
 
     static func wireless(_ payload: UInt8) -> [UInt8] {

@@ -18,6 +18,8 @@ enum DirectLaneDecoder: Equatable {
     case switchReport(SwitchPadKind)
     case hidGamepad(HidGamepadLayout)
     case steamController
+    /// The 2015 Steam Controller over Bluetooth LE, its packets in segments.
+    case steamControllerBle
     case steamTriton
     /// The XUSB reader's lanes, whose reports come off a USB pipe.
     case xusb
@@ -71,7 +73,7 @@ struct HidPadCandidate: Equatable {
     var capturable: Bool {
         switch decoder {
         case .switchReport, .hidGamepad: true
-        case .steamController, .steamTriton, .xusb: false
+        case .steamController, .steamControllerBle, .steamTriton, .xusb: false
         }
     }
 
@@ -143,6 +145,7 @@ private func laneDecoder(model: DirectModel?, vendorId: UInt16, productId: UInt1
     switch model?.decoder {
     case let .switchReport(kind): .switchReport(kind)
     case .steamController: steamInterface(model, properties) ? .steamController : nil
+    case .steamControllerBle: steamInterface(model, properties) ? .steamControllerBle : nil
     case .steamTriton: steamInterface(model, properties) ? .steamTriton : nil
     case .xusb: nil
     case .hidGamepad, nil: descriptorDecoder(vendorId: vendorId, productId: productId, properties: properties)
@@ -179,6 +182,7 @@ func laneKindWord(_ decoder: DirectLaneDecoder) -> String {
     case .switchReport(.snes): "switch-snes"
     case let .hidGamepad(layout): "hid-\(layout.order)"
     case .steamController: "steam-2015"
+    case .steamControllerBle: "steam-2015-ble"
     case .steamTriton: "steam-2026"
     case .xusb: "xusb"
     }

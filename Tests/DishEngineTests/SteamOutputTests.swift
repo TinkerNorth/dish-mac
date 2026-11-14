@@ -59,6 +59,20 @@ final class SteamOutputTests: XCTestCase {
         XCTAssertEqual(writer.writes, plan.onConnect + plan.onRelease, "a second release has nothing left to give back")
     }
 
+    func testA2015PadOverBluetoothIsQuietedInSegmentsWhenClaimedAndRestoredOnReleaseWithNoRumbleBetween() {
+        let pad = output(.originalOverBluetooth)
+        let plan = SteamPlan(generation: .originalOverBluetooth, receiver: false)
+        pad.claimed()
+        pad.rumble(strong: 0xFFFF, weak: 0xFFFF, durationMs: 100)
+        pad.drain()
+        XCTAssertEqual(writer.writes, plan.onConnect)
+        XCTAssertEqual(writer.writes.map(\.reportId), [3, 3, 3, 3], "report 3, as SDL's segments go")
+        XCTAssertFalse(refreshTicker.running, "its settings hold")
+        pad.release()
+        pad.drain()
+        XCTAssertEqual(writer.writes, plan.onConnect + plan.onRelease)
+    }
+
     func testA2015ReceiverAsksItsSlotAndQuietsTheControllerThatConnects() {
         let slot = output(.original, receiver: true)
         let plan = SteamPlan(generation: .original, receiver: true)

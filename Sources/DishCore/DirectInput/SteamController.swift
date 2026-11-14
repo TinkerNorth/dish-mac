@@ -177,6 +177,39 @@ func steamLe16(_ report: UnsafeBufferPointer<UInt8>, _ offset: Int) -> Int16 {
     return Int16(bitPattern: low | high)
 }
 
+/// Three bytes as one little-endian word: the 2015 pad's buttons.
+func steamLe24(_ report: UnsafeBufferPointer<UInt8>, _ offset: Int) -> UInt32 {
+    let low = UInt32(report[offset])
+    let middle = UInt32(report[offset + 1]) << 8
+    let high = UInt32(report[offset + 2]) << 16
+    return low | middle | high
+}
+
+/// Two axes as the 2015 pad sends them: a trackpad's or the stick's.
+struct SteamAxisPair: Equatable {
+    static let zero = SteamAxisPair(x: 0, y: 0)
+
+    let x: Int16
+    let y: Int16
+}
+
+/// Three axes as the 2015 pad sends them: its accel's or its gyro's.
+struct SteamAxisTriple: Equatable {
+    static let zero = SteamAxisTriple(x: 0, y: 0, z: 0)
+
+    let x: Int16
+    let y: Int16
+    let z: Int16
+}
+
+func steamAxisPair(_ report: UnsafeBufferPointer<UInt8>, at offset: Int) -> SteamAxisPair {
+    SteamAxisPair(x: steamLe16(report, offset), y: steamLe16(report, offset + 2))
+}
+
+func steamAxisTriple(_ report: UnsafeBufferPointer<UInt8>, at offset: Int) -> SteamAxisTriple {
+    SteamAxisTriple(x: steamLe16(report, offset), y: steamLe16(report, offset + 2), z: steamLe16(report, offset + 4))
+}
+
 func steamGyroToWire(_ raw: Int32) -> Int16 {
     Int16(clamping: Int64(raw) * SteamScale.wireMax / SteamScale.gyroDivisor)
 }
@@ -221,16 +254,8 @@ private func steamControllerLink(_ packet: UnsafeBufferPointer<UInt8>) -> SteamL
     }
 }
 
-/// The three button bytes as one little-endian word.
-private func steamButtonWord(_ packet: UnsafeBufferPointer<UInt8>) -> UInt32 {
-    let low = UInt32(packet[SteamPacketLayout.buttons])
-    let middle = UInt32(packet[SteamPacketLayout.buttons + 1]) << 8
-    let high = UInt32(packet[SteamPacketLayout.buttons + 2]) << 16
-    return low | middle | high
-}
-
 private func steamControllerState(_ packet: UnsafeBufferPointer<UInt8>, hold: inout SteamStickHold) -> SteamReading {
-    let held = steamButtonWord(packet)
+    let held = steamLe24(packet, SteamPacketLayout.buttons)
     let fingerOnPad = held & SteamButtonMask.leftPadFinger != 0
     let interleaved = held & SteamButtonMask.leftPadAndStick != 0
     let axes = steamLeftAxes(fingerOnPad: fingerOnPad, interleaved: interleaved)
@@ -245,17 +270,21 @@ private func steamControllerState(_ packet: UnsafeBufferPointer<UInt8>, hold: in
         ly: hold.y,
         extButtons: steamExtendedButtons(held, steamControllerExtendedBits)
     )
-    return .state(report, motion: steamControllerMotion(packet), pads: steamPads(packet, held: held))
+    let left = steamAxisPair(packet, at: SteamPacketLayout.leftAxes)
+    let right = steamAxisPair(packet, at: SteamPacketLayout.rightPad)
+    let accel = steamAxisTriple(packet, at: SteamPacketLayout.accel)
+    let gyro = steamAxisTriple(packet, at: SteamPacketLayout.gyro)
+    return .state(report, motion: steamMotion(accel: accel, gyro: gyro), pads: steamPads(left: left, right: right, held: held))
 }
 
-/// The two pads as the router takes them. The left pad shares the left
-/// axes with the stick and is read while a finger is on it; a left-pad
-/// click with no finger is the stick's (`leftThumbHeld`), so not the pad's.
-private func steamPads(_ packet: UnsafeBufferPointer<UInt8>, held: UInt32) -> SteamPads {
+/// The two pads as the router takes them, each read while a finger is on
+/// it. On the wired link the left pad shares the left axes with the stick,
+/// and a left-pad click with no finger is the stick's (`leftThumbHeld`).
+func steamPads(left leftAxes: SteamAxisPair, right rightAxes: SteamAxisPair, held: UInt32) -> SteamPads {
     let leftFinger = held & SteamButtonMask.leftPadFinger != 0
     let rightFinger = held & SteamButtonMask.rightPadFinger != 0
-    let left = steamPad(packet, at: SteamPacketLayout.leftAxes, fingerDown: leftFinger, rotation: .leftPad)
-    let right = steamPad(packet, at: SteamPacketLayout.rightPad, fingerDown: rightFinger, rotation: .rightPad)
+    let left = steamPad(leftAxes, fingerDown: leftFinger, rotation: .leftPad)
+    let right = steamPad(rightAxes, fingerDown: rightFinger, rotation: .rightPad)
     return SteamPads(
         left: SteamPadSample(active: left.active, x: left.x, y: left.y, clicked: leftFinger && held & SteamButtonMask.leftPadClicked != 0),
         right: SteamPadSample(active: right.active, x: right.x, y: right.y, clicked: held & SteamButtonMask.rightPadClicked != 0)
@@ -271,15 +300,10 @@ private enum SteamPadRotation {
 
 /// A pad rotated back square while a finger is on it; SDL's further +1000
 /// per axis would park a stick off centre, so it is left out.
-private func steamPad(
-    _ packet: UnsafeBufferPointer<UInt8>,
-    at offset: Int,
-    fingerDown: Bool,
-    rotation: SteamPadRotation
-) -> SteamPadSample {
+private func steamPad(_ axes: SteamAxisPair, fingerDown: Bool, rotation: SteamPadRotation) -> SteamPadSample {
     guard fingerDown else { return SteamPadSample() }
-    let x = Int64(steamLe16(packet, offset))
-    let y = Int64(steamLe16(packet, offset + 2))
+    let x = Int64(axes.x)
+    let y = Int64(axes.y)
     switch rotation {
     case .rightPad:
         let rotatedX = (SteamScale.padCos * x - SteamScale.padSin * y) / SteamScale.q16
@@ -323,13 +347,13 @@ func steamTrigger(_ raw: UInt8) -> UInt8 {
 /// SDL's axes onto the wire: pitch on gyro X, yaw on gyro Z, roll on gyro
 /// Y; accel X, Z and minus Y. An all-zero block means the IMU setting never
 /// took, and publishing it would stream a dead sensor.
-private func steamControllerMotion(_ packet: UnsafeBufferPointer<UInt8>) -> MotionSample? {
-    let ax = Int32(steamLe16(packet, SteamPacketLayout.accel))
-    let ay = Int32(steamLe16(packet, SteamPacketLayout.accel + 2))
-    let az = Int32(steamLe16(packet, SteamPacketLayout.accel + 4))
-    let gx = Int32(steamLe16(packet, SteamPacketLayout.gyro))
-    let gy = Int32(steamLe16(packet, SteamPacketLayout.gyro + 2))
-    let gz = Int32(steamLe16(packet, SteamPacketLayout.gyro + 4))
+func steamMotion(accel: SteamAxisTriple, gyro: SteamAxisTriple) -> MotionSample? {
+    let ax = Int32(accel.x)
+    let ay = Int32(accel.y)
+    let az = Int32(accel.z)
+    let gx = Int32(gyro.x)
+    let gy = Int32(gyro.y)
+    let gz = Int32(gyro.z)
     let silent = (ax | ay | az | gx | gy | gz) == 0
     guard !silent else { return nil }
     return MotionSample(
@@ -357,12 +381,12 @@ public let steamFeatureReportBytes = 64
 
 /// {message id, payload length, payload}, the ids and the shortest working
 /// sequences the Linux driver uses.
-private let clearDigitalMappings: [UInt8] = [0x81, 0x00]
+let clearDigitalMappings: [UInt8] = [0x81, 0x00]
 /// Left and right trackpad mode none (the mouse goes quiet), IMU mode raw
 /// accel and raw gyro.
 private let quietSettings: [UInt8] = [0x87, 0x09, 0x07, 0x07, 0x00, 0x08, 0x07, 0x00, 0x30, 0x18, 0x00]
 private let defaultDigitalMappings: [UInt8] = [0x85, 0x00]
-private let loadDefaultSettings: [UInt8] = [0x8E, 0x00]
+let loadDefaultSettings: [UInt8] = [0x8E, 0x00]
 /// Loading the defaults leaves the right pad silent; SDL names its
 /// absolute-mouse mode back.
 private let rightPadMouse: [UInt8] = [0x87, 0x03, 0x08, 0x00, 0x00]
@@ -374,7 +398,7 @@ public func steamConfigReports(_ stage: SteamConfigStage) -> [[UInt8]] {
     steamConfigMessages(stage).map(steamFeatureReport)
 }
 
-private func steamConfigMessages(_ stage: SteamConfigStage) -> [[UInt8]] {
+func steamConfigMessages(_ stage: SteamConfigStage) -> [[UInt8]] {
     switch stage {
     case .quiet: [clearDigitalMappings, quietSettings]
     case .restore: [defaultDigitalMappings, loadDefaultSettings, rightPadMouse]

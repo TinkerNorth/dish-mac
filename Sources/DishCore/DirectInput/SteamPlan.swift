@@ -15,7 +15,10 @@ import Foundation
 public enum SteamGeneration: Equatable, Sendable {
     /// The 2015 pad: vendor packets on report id 0.
     case original
-    /// The 2026 pad: numbered reports, its settings on feature report 1.
+    /// The 2015 pad over Bluetooth LE: its packets in segments of report 3.
+    case originalOverBluetooth
+    /// The 2026 pad: numbered reports, its settings on feature report 1, on
+    /// either link.
     case triton
 }
 
@@ -64,6 +67,7 @@ public struct SteamPlan: Equatable, Sendable {
     public var onRelease: [SteamWrite] {
         switch generation {
         case .original: features(steamConfigReports(.restore))
+        case .originalOverBluetooth: features(steamBleConfigReports(.restore))
         case .triton: [SteamWrite(kind: .output, reportId: TritonReportId.hapticRumble, bytes: tritonRumbleReport(left: 0, right: 0))]
         }
     }
@@ -71,7 +75,7 @@ public struct SteamPlan: Equatable, Sendable {
     /// Sent every `TritonRumbleRule.lizardRefreshMs` while a controller is read.
     public var refresh: [SteamWrite] {
         switch generation {
-        case .original: []
+        case .original, .originalOverBluetooth: []
         case .triton: features([tritonLizardOffReport()])
         }
     }
@@ -88,6 +92,7 @@ public struct SteamPlan: Equatable, Sendable {
     private var configure: [SteamWrite] {
         switch generation {
         case .original: features(steamConfigReports(.quiet))
+        case .originalOverBluetooth: features(steamBleConfigReports(.quiet))
         case .triton: features([tritonLizardOffReport(), tritonSensorsOnReport()])
         }
     }
@@ -96,13 +101,20 @@ public struct SteamPlan: Equatable, Sendable {
     private var askSlot: [SteamWrite] {
         switch generation {
         case .original: features([steamReceiverStateRequest()])
-        case .triton: []
+        case .originalOverBluetooth, .triton: []
         }
     }
 
     private func features(_ reports: [[UInt8]]) -> [SteamWrite] {
-        let reportId = generation == .triton ? TritonReportId.controllerFeature : 0
-        return reports.map { SteamWrite(kind: .feature, reportId: reportId, bytes: $0) }
+        reports.map { SteamWrite(kind: .feature, reportId: featureReportId, bytes: $0) }
+    }
+
+    private var featureReportId: UInt8 {
+        switch generation {
+        case .original: 0
+        case .originalOverBluetooth: SteamBleLayout.reportId
+        case .triton: TritonReportId.controllerFeature
+        }
     }
 }
 
@@ -110,6 +122,7 @@ public struct SteamPlan: Equatable, Sendable {
 public func steamPlan(_ model: DirectModel) -> SteamPlan? {
     switch model.decoder {
     case .steamController: SteamPlan(generation: .original, receiver: model.receiver)
+    case .steamControllerBle: SteamPlan(generation: .originalOverBluetooth, receiver: model.receiver)
     case .steamTriton: SteamPlan(generation: .triton, receiver: model.receiver)
     case .switchReport, .hidGamepad, .xusb: nil
     }

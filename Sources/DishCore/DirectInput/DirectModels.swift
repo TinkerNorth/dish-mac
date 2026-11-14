@@ -27,6 +27,8 @@ public enum DirectDecoder: Equatable, Sendable {
     case hidGamepad(HidButtonOrder)
     /// The 2015 Steam Controller's vendor packets.
     case steamController
+    /// The 2015 Steam Controller's packets over Bluetooth LE, in segments.
+    case steamControllerBle
     /// The 2026 Steam Controller's numbered reports.
     case steamTriton
     /// An Xbox 360 pad's input reports on its XUSB vendor interface, read
@@ -63,7 +65,7 @@ public struct DirectModel: Equatable, Sendable {
 
     public var hasMotion: Bool {
         switch decoder {
-        case .switchReport(.pro), .steamController, .steamTriton: true
+        case .switchReport(.pro), .steamController, .steamControllerBle, .steamTriton: true
         case .switchReport, .hidGamepad, .xusb: false
         }
     }
@@ -74,7 +76,7 @@ public struct DirectModel: Equatable, Sendable {
     public var drivesItsOwnRumble: Bool {
         switch decoder {
         case .steamTriton, .xusb: true
-        case .switchReport, .hidGamepad, .steamController: false
+        case .switchReport, .hidGamepad, .steamController, .steamControllerBle: false
         }
     }
 
@@ -82,7 +84,7 @@ public struct DirectModel: Equatable, Sendable {
     /// Controllers' extras and the Switch Pro's Capture button.
     public var hasExtendedButtons: Bool {
         switch decoder {
-        case .switchReport(.pro), .steamController, .steamTriton: true
+        case .switchReport(.pro), .steamController, .steamControllerBle, .steamTriton: true
         case .switchReport, .hidGamepad, .xusb: false
         }
     }
@@ -92,7 +94,7 @@ public struct DirectModel: Equatable, Sendable {
     /// a real right stick.
     public var trackpads: SteamTrackpads {
         switch decoder {
-        case .steamController: .rightStickByDefault
+        case .steamController, .steamControllerBle: .rightStickByDefault
         case .steamTriton: .twoPads
         case .switchReport, .hidGamepad, .xusb: .none
         }
@@ -168,8 +170,9 @@ private func xusbModel(_ vendorId: UInt16, _ productId: UInt16, _ name: String) 
 }
 
 /// The PDP Afterglow Wireless (0e6f:0186) is left out on purpose: its USB
-/// port is charge-only and it speaks the Switch Pro protocol. So is the 2026
-/// Steam Controller over Bluetooth LE (28de:1303): Dish reads no BLE pad.
+/// port is charge-only and it speaks the Switch Pro protocol. A Steam
+/// Controller over Bluetooth LE is a model of its own, by the identity SDL
+/// gives it there.
 public let directModels: [DirectModel] = [
     nintendoModel(0x2009, "Nintendo Switch Pro Controller", .pro, offersStandard: true),
     nintendoModel(0x2019, "Nintendo N64 Online Controller", .n64, offersStandard: false),
@@ -186,7 +189,9 @@ public let directModels: [DirectModel] = [
     hidModel(DirectVendor.pdp, 0x0187, "PDP Rock Candy Wired Controller (Switch)", .nintendoSwitch),
     valveModel(0x1102, "Valve Steam Controller", .steamController, receiver: false),
     valveModel(0x1142, "Valve Steam Controller (dongle)", .steamController, receiver: true),
+    valveModel(0x1106, "Valve Steam Controller (Bluetooth)", .steamControllerBle, receiver: false),
     valveModel(0x1302, "Valve Steam Controller (2026)", .steamTriton, receiver: false),
+    valveModel(0x1303, "Valve Steam Controller (2026, Bluetooth)", .steamTriton, receiver: false),
     valveModel(0x1304, "Valve Steam Controller (2026) Puck", .steamTriton, receiver: true),
     valveModel(0x1305, "Valve Steam Controller (2026) receiver", .steamTriton, receiver: true)
 ]
@@ -201,13 +206,16 @@ private let tritonReceiverSlots = 2 ... 5
 private let tritonPogoUsage = 0x0002
 
 /// Whether one of a Valve device's HID interfaces carries a controller: the
-/// 2015 pad's vendor interface, the 2026 pad's one unified interface, and a
-/// 2026 receiver's slots, never its pogo pins. An interface whose number
-/// IOKit does not give is judged by its usage alone.
+/// 2015 pad's vendor interface, a pad's one device over Bluetooth LE (as SDL
+/// takes any Bluetooth device of the model), the 2026 pad's one unified
+/// interface, and a 2026 receiver's slots, never its pogo pins. An interface
+/// whose number IOKit does not give is judged by its usage alone.
 public func steamInterfaceCarriesController(_ model: DirectModel, usagePage: Int?, usage: Int?, interfaceNumber: Int?) -> Bool {
     switch model.decoder {
     case .steamController:
         return usagePage == steamVendorPage
+    case .steamControllerBle:
+        return true
     case .steamTriton:
         guard model.receiver else { return true }
         let pogoPins = usagePage == steamVendorPage && usage == tritonPogoUsage

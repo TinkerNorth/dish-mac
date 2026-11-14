@@ -3,6 +3,7 @@
 
 import Combine
 import DishCore
+import IOKit.hid
 import XCTest
 @testable import DishEngine
 
@@ -18,6 +19,8 @@ final class InputPathsSteamTests: XCTestCase {
     private static let triton = "hid:28de:1302"
     private static let dongle = "hid:28de:1142"
     private static let dongleSecond = "hid:28de:1142#1"
+    private static let bluetooth = "hid:28de:1106"
+    private static let tritonBluetooth = "hid:28de:1303"
 
     private var suite: String!
     private var defaults: UserDefaults!
@@ -53,12 +56,13 @@ final class InputPathsSteamTests: XCTestCase {
         slotId: String,
         interfaceNumber: Int? = 2,
         inputMonitoring: Bool = false,
+        transport: String = kIOHIDTransportUSBValue,
         output: DirectOutput? = nil,
         shows: Bool = false
     ) throws -> HidPadLane {
         let wiring = try XCTUnwrap(reader.wiring)
         let properties = DirectFixtures.valveProperties(
-            productId: productId, interfaceNumber: interfaceNumber, requiresInputMonitoring: inputMonitoring
+            productId: productId, interfaceNumber: interfaceNumber, transport: transport, requiresInputMonitoring: inputMonitoring
         )
         let lane = try DirectFixtures.lane(DirectFixtures.candidate(properties), slotId: slotId, wiring: wiring, output: output)
         paths.hidPadArrived(HidPadArrival(slotId: slotId, lane: lane, probe: GameControllerProbe { shows }))
@@ -108,6 +112,35 @@ final class InputPathsSteamTests: XCTestCase {
         try arrive(productId: 0x1102, slotId: Self.wired)
         XCTAssertEqual(reader.claims, [.claim(Self.wired)])
         XCTAssertNotNil(host.directSlots[Self.wired])
+    }
+
+    // MARK: - Over Bluetooth
+
+    func testA2015PadOverBluetoothIsOfferedOnItsOwnAndOncePickedIsReadAsOnItsCable() throws {
+        choices.setChoice(.direct, vendorId: 0x28DE, productId: 0x1102)
+        try arrive(productId: 0x1106, slotId: Self.bluetooth, interfaceNumber: nil, inputMonitoring: true, transport: bleTransport)
+        XCTAssertEqual(reader.claims, [], "its cable's pick is not its own")
+        XCTAssertEqual(paths.offers.state, [offered(Self.bluetooth, "Valve Steam Controller (Bluetooth)", asks: true)])
+        XCTAssertTrue(paths.pick(slotId: Self.bluetooth, .direct))
+        XCTAssertEqual(reader.claims, [.claim(Self.bluetooth)])
+        let slot = try XCTUnwrap(host.directSlots[Self.bluetooth])
+        XCTAssertEqual(slot.trackpads, .rightStickByDefault)
+        XCTAssertTrue(slot.capabilities.hasMotion)
+        XCTAssertFalse(slot.capabilities.hasRumble, "no motors")
+        XCTAssertTrue(slot.capabilities.hasBattery, "the Mac's stands in")
+        XCTAssertTrue(slot.capabilities.hasExtendedButtons, "the grips, the trigger clicks and the left pad's click")
+        XCTAssertEqual(storedChoices(), ["28de:1102": "direct", "28de:1106": "direct"])
+    }
+
+    func testThe2026PadOverBluetoothIsClaimedOnItsStoredPickAndDrivesItsOwnRumble() throws {
+        choices.setChoice(.direct, vendorId: 0x28DE, productId: 0x1303)
+        try arrive(productId: 0x1303, slotId: Self.tritonBluetooth, interfaceNumber: nil, inputMonitoring: true, transport: bleTransport)
+        XCTAssertEqual(reader.claims, [.claim(Self.tritonBluetooth)])
+        let slot = try XCTUnwrap(host.directSlots[Self.tritonBluetooth])
+        XCTAssertEqual(slot.name, "Valve Steam Controller (2026, Bluetooth)")
+        XCTAssertEqual(slot.trackpads, .twoPads)
+        XCTAssertTrue(slot.capabilities.hasRumble)
+        XCTAssertEqual(paths.state[Self.tritonBluetooth]?.rumble, .ownReport)
     }
 
     // MARK: - The trackpads
@@ -253,3 +286,5 @@ private enum SteamReceiverEvent {
         return bytes
     }
 }
+
+private let bleTransport = kIOHIDTransportBluetoothLowEnergyValue

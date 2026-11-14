@@ -259,8 +259,9 @@ delivers none of its input. A gamepad GameController does not support
 (`GCController.supportsHIDDevice` still no after four checks over about
 30 ms, as SDL waits) and whose report descriptor the core can decode is
 read the same way. Valve's Steam Controllers (2015: 28de:1102, receiver
-1142; 2026: 1302, receivers 1304 and 1305) are read by their own decoders,
-but only once the user picks Direct (`DirectRule.optIn`). An 8BitDo
+1142; 2026: 1302, receivers 1304 and 1305; over Bluetooth LE 1106 and 1303,
+each a model of its own) are read by their own decoders, but only once the
+user picks Direct (`DirectRule.optIn`). An 8BitDo
 Ultimate 2 in X-input mode (2dc8:310b), an Xbox 360 pad on a vendor-class
 USB interface that neither GameController nor IOHIDManager sees, is read by
 a second reader over IOUSBHost (below). Everything else stays on
@@ -279,8 +280,8 @@ GameController.
   include a keyboard, a mouse or a touchpad does: IOHIDFamily marks it
   `RequiresTCCAuthorization` and `IOHIDDeviceOpen` asks for Input Monitoring
   before it opens, which is why the 2026 Steam Controller, whose one
-  interface carries its keyboard and mouse, is opened only on the user's
-  pick. Asking blocks until the user answers (`IOHIDRequestAccess` waits on
+  interface carries its keyboard and mouse, and either pad over Bluetooth,
+  whose one device does, are opened only on the user's pick. Asking blocks until the user answers (`IOHIDRequestAccess` waits on
   TCC with no timeout), so the reader reads the standing with
   `IOHIDCheckAccess` first (`claimStep` in DishCore), opens only when no
   prompt can come of it and asks on a queue of its own, never on its
@@ -329,6 +330,20 @@ GameController.
   2015 receiver is asked with `ID_DONGLE_GET_WIRELESS_STATE`), the output
   configures a controller fresh from a boot, and a disconnect releases what
   it held before the slot hides.
+- **A Steam Controller over Bluetooth LE, as SDL reads it on macOS.** SDL's
+  macOS backend (`src/hidapi/mac/hid.c`) reads both pads through
+  IOHIDManager, not CoreBluetooth: macOS's HID-over-GATT device carries
+  Valve's reports beside the pad's keyboard and mouse, so the reader opens
+  it like the cable's, the one device being the controller (SDL takes any
+  Bluetooth device of the model). The 2026 pad's reports and writes are its
+  cable's, its state on report 0x45. The 2015 pad's input report 3 carries
+  one 18-byte segment of a packet, and `decodeSteamControllerBle` assembles
+  the segments (SDL's `WriteSegmentToSteamControllerPacketAssembler`) into a
+  buffer the lane made once and reads the state packet's chunks, those it
+  leaves out keeping what they last said, through the cable's mappings; its
+  quiet sequence is SDL's reset and sensor enable and its restore the
+  cable's, each one segment on feature report 3. Its slot ids are its own
+  (`hid:28de:1106`, `hid:28de:1303`), and so is its stored pick.
 - **One device, one lane.** IOHIDManager hands back a separate device
   reference for every matching rule a device satisfies, so a Nintendo pad,
   which matches its model rule and the game-usage rule, arrives twice and

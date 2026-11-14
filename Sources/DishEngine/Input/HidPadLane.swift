@@ -138,6 +138,7 @@ final class HidPadLane: @unchecked Sendable {
     private(set) var lastFullReportNs: UInt64?
     private var calibration = SwitchStickCalibration()
     private var steamHold = SteamStickHold()
+    private var steamBle = SteamBleCarry()
     private var steamScroll = SteamPadScroll()
     private var tritonCarry = TritonCarry()
     private var lastSeen: GamepadReport?
@@ -218,7 +219,7 @@ final class HidPadLane: @unchecked Sendable {
         tally.count(nowNs: nowNs)
         switch candidate.decoder {
         case .switchReport, .hidGamepad, .xusb: receivePad(report, nowNs: nowNs)
-        case .steamController, .steamTriton: receiveSteam(report)
+        case .steamController, .steamControllerBle, .steamTriton: receiveSteam(report)
         }
     }
 
@@ -239,7 +240,7 @@ final class HidPadLane: @unchecked Sendable {
             return decodeGamepad(layout, report)
         case .xusb:
             return gamepadReading(decodeXusbReport(report))
-        case .steamController, .steamTriton:
+        case .steamController, .steamControllerBle, .steamTriton:
             return nil
         }
     }
@@ -291,6 +292,7 @@ final class HidPadLane: @unchecked Sendable {
     private func decodeSteam(_ report: UnsafeBufferPointer<UInt8>) -> SteamReading? {
         switch candidate.decoder {
         case .steamController: decodeSteamControllerPacket(report, hold: &steamHold)
+        case .steamControllerBle: decodeSteamControllerBle(report, carry: &steamBle)
         case .steamTriton: decodeTritonReport(report, carry: &tritonCarry)
         case .switchReport, .hidGamepad, .xusb: nil
         }

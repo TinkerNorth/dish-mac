@@ -223,11 +223,12 @@ enum DirectFixtures {
         usagePage: Int = 0xFF00,
         usage: Int = 0x0001,
         interfaceNumber: Int? = nil,
+        transport: String = kIOHIDTransportUSBValue,
         requiresInputMonitoring: Bool = false
     ) -> [String: Any] {
         var properties: [String: Any] = [
             kIOHIDVendorIDKey: 0x28DE, kIOHIDProductIDKey: productId, kIOHIDProductKey: "Steam Controller",
-            kIOHIDTransportKey: kIOHIDTransportUSBValue, kIOHIDPrimaryUsagePageKey: usagePage, kIOHIDPrimaryUsageKey: usage,
+            kIOHIDTransportKey: transport, kIOHIDPrimaryUsagePageKey: usagePage, kIOHIDPrimaryUsageKey: usage,
             kIOHIDMaxInputReportSizeKey: 64
         ]
         properties[hidInterfaceNumberKey] = interfaceNumber

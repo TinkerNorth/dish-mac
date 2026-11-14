@@ -12,11 +12,12 @@
 // sequence (the USB handshake at 3 Mbit, the timeout disable, full report
 // mode and the IMU enable): macOS's driver leaves the Pro and the N64 silent. A Steam
 // Controller is opened only once the user picks Direct, since reading it
-// turns its keyboard and mouse off, and the 2026 pad's one interface
-// carries its keyboard and mouse, so macOS asks for Input Monitoring before
-// it opens: the standing is read first, and the user asked off this thread,
-// since asking blocks until they answer. A Steam Controller's writes run on
-// its own output's queue, never here.
+// turns its keyboard and mouse off, and the 2026 pad's one interface, like
+// either pad's one device over Bluetooth, carries its keyboard and mouse, so
+// macOS asks for Input Monitoring before it opens: the standing is read
+// first, and the user asked off this thread, since asking blocks until they
+// answer. A Steam Controller's writes run on its own output's queue, never
+// here.
 
 import DishCore
 import Foundation

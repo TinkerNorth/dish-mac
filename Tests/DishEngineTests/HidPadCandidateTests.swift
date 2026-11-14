@@ -105,7 +105,9 @@ final class HidPadCandidateTests: XCTestCase {
     func testTheMatchingNamesEachModelReadByIdentityAndEveryGameUsageNeverSynthetic() {
         let matching = hidPadMatching()
         let products = matching.compactMap { $0[kIOHIDProductIDKey] as? Int }
-        XCTAssertEqual(Set(products), [0x2009, 0x2019, 0x2017, 0x1102, 0x1142, 0x1302, 0x1304, 0x1305], "Nintendo's and Valve's")
+        XCTAssertEqual(
+            Set(products), [0x2009, 0x2019, 0x2017, 0x1102, 0x1142, 0x1106, 0x1302, 0x1304, 0x1305, 0x1303], "Nintendo's and Valve's"
+        )
         let usages = matching.compactMap { $0[kIOHIDDeviceUsageKey] as? Int }
         XCTAssertEqual(Set(usages), [0x04, 0x05, 0x08])
         XCTAssertTrue(matching.allSatisfy { $0[kIOHIDGCSyntheticDeviceKey] as? Bool == false })
@@ -178,8 +180,37 @@ final class HidPadCandidateTests: XCTestCase {
         XCTAssertNil(hidPadCandidate(DirectFixtures.valveProperties(productId: 0x1305, interfaceNumber: 0)))
     }
 
-    func testTheBluetoothSteamControllerIsNotRead() {
-        XCTAssertNil(hidPadCandidate(DirectFixtures.valveProperties(productId: 0x1303)))
+    /// A Steam Controller's one HID device over Bluetooth LE, its keyboard first.
+    private func bluetoothValveProperties(productId: Int) -> [String: Any] {
+        DirectFixtures.valveProperties(
+            productId: productId,
+            usagePage: 0x01,
+            usage: 0x06,
+            transport: kIOHIDTransportBluetoothLowEnergyValue,
+            requiresInputMonitoring: true
+        )
+    }
+
+    func testThe2015PadOverBluetoothIsOneDeviceReadByItsSegmentsOnceMacOSAllowsInputMonitoring() throws {
+        let pad = try DirectFixtures.candidate(bluetoothValveProperties(productId: 0x1106))
+        XCTAssertEqual(pad.decoder, .steamControllerBle)
+        XCTAssertEqual(pad.name, "Valve Steam Controller (Bluetooth)")
+        XCTAssertEqual(pad.transport, .bluetooth)
+        XCTAssertTrue(pad.needsInputMonitoring, "its keyboard and mouse share the device")
+        XCTAssertFalse(pad.receiver)
+        XCTAssertFalse(pad.capturable)
+        XCTAssertEqual(pad.steamPlan, SteamPlan(generation: .originalOverBluetooth, receiver: false))
+        XCTAssertEqual(laneKindWord(pad.decoder), "steam-2015-ble")
+        XCTAssertEqual(directSlotBase(vendorId: pad.vendorId, productId: pad.productId), "hid:28de:1106", "never its cable's 1102")
+    }
+
+    func testThe2026PadOverBluetoothIsReadAsOnItsCable() throws {
+        let pad = try DirectFixtures.candidate(bluetoothValveProperties(productId: 0x1303))
+        XCTAssertEqual(pad.decoder, .steamTriton)
+        XCTAssertEqual(pad.name, "Valve Steam Controller (2026, Bluetooth)")
+        XCTAssertTrue(pad.needsInputMonitoring)
+        XCTAssertEqual(pad.steamPlan, SteamPlan(generation: .triton, receiver: false))
+        XCTAssertEqual(directSlotBase(vendorId: pad.vendorId, productId: pad.productId), "hid:28de:1303", "never its cable's 1302")
     }
 
     func testOnlyAValveDeviceNeedsAWriterOfItsOwn() throws {
