@@ -194,6 +194,20 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         XCTAssertTrue(failures.isEmpty)
     }
 
+    func testAnOperatorRequestToAnOlderSatelliteReOffersAndGoesLiveOnceApproved() async {
+        satellite.protocolRange = 1 ... 1
+        manager.pairWithClientPin(server, clientPin: "8642")
+        let awaiting = await waitUntil { self.manager.pairingAttempts.state[self.server.id]?.phase == .awaiting }
+        XCTAssertTrue(awaiting, "the re-offered request must reach the operator: \(failures)")
+        XCTAssertEqual(satellite.rejectedOffers, [4], "only the first offer is refused")
+        XCTAssertEqual(satellite.lastClientPin, "8642", "the code on screen is the one the operator approves")
+        satellite.approveClientPin()
+        let live = await waitUntil { self.manager.get(self.server.id)?.state == .live }
+        XCTAssertTrue(live, "the approved request must open the session: \(failures)")
+        XCTAssertEqual(satellite.settledProtocolVersion, 1)
+        XCTAssertTrue(failures.isEmpty)
+    }
+
     private var pairingAsked: Bool {
         events.contains { event in
             switch event {
