@@ -17,7 +17,7 @@ the repos share a version number.
 
 ---
 
-## [Unreleased]
+## [1.3.0] - 2026-11-15
 
 ### Added
 
@@ -147,8 +147,14 @@ the repos share a version number.
   level and charging state, read from IOKit's power sources, reach the
   satellite or Moonlight host a controller is bound to whenever they are the
   lower, not only for a pad that reports no battery, as the policy said. It
-  now says what is read, from where and when it is sent, and its effective
-  date moves to 2026-11-13.
+  now says what is read, from where and when it is sent.
+- **The privacy policy names Input Monitoring.** A controller that is also a
+  keyboard or a mouse, as a Steam Controller read directly is, can only be
+  read once macOS grants Dish Input Monitoring, yet the policy said Dish
+  asked for no permission beyond those it listed. It now lists Input
+  Monitoring and what Dish reads with it, says a model's Direct pick can be
+  kept by its Bluetooth id, and says how Dish finds its Moonlight
+  certificate in the keychain. Its effective date moves to 2026-11-15.
 - **The 2026 Steam Controller's rumble and lizard-mode tests no longer race
   the clock.** The output that re-sends the pad's rumble every 40 ms and
   turns its keyboard and mouse off again every 3 s took its ticks from
@@ -810,6 +816,8 @@ Tagged, never published: its release workflow was refused before it started.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[1.3.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.0
+[1.2.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.2.1
 [1.2.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.2.0
 [1.1.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.1.0
 [1.0.2]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.0.2

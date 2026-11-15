@@ -1,6 +1,6 @@
 # Dish for macOS: Privacy Policy
 
-**Effective date:** 2026-11-13.
+**Effective date:** 2026-11-15.
 **Canonical copy:** this file, at
 [`https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md`](https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md).
 
@@ -59,7 +59,7 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 | `feature_motion_enabled`, `feature_rumble_enabled`, `feature_touchpad_enabled`, `feature_lightbar_mode` | Your forwarding switches | Deciding which controller features to forward or act on |
 | `motion_preferences`, `rumble_preferences`, `touchpad_preferences`, `touchpad_mode_preferences`, `mic_preferences`, `speaker_preferences` | Each controller's own switches and touchpad pick, by the controller's vendor and kind (no serial number) | Deciding the same per controller |
 | `deadzone:<controller>` | Each controller's stick and trigger dead zones, by the controller's vendor and kind | Applying the dead zones you set when the controller attaches |
-| `usb_path_choices` | Which input path you picked for a controller model (Standard or Direct), by its USB vendor and product id (no serial number) | Reading that model through GameController or through Dish's own HID reader the next time it connects |
+| `usb_path_choices` | Which input path you picked for a controller model (Standard or Direct), by its USB or Bluetooth vendor and product id (no serial number) | Reading that model through GameController or through Dish's own HID reader the next time it connects |
 | `joystick_remaps` | The buttons you assigned with "Check the buttons" for a controller model, by its USB vendor and product id (no serial number) | Reading that model's buttons, triggers and stick directions as you set them |
 | Nothing stored: "Help support this controller" | While its page shows, the controller's USB vendor and product id, name, maker, connection, HID report descriptor and the raw reports it sends as you press each control, held in memory | Showing you a plain-text report. Nothing leaves your Mac unless you copy it and paste it somewhere yourself; "Open a GitHub issue" opens the issue page in your browser with only a title, and the report is not attached |
 | `wifi_binding_list` | Which controller is bound to which satellite, by the controller's vendor and kind and the satellite's machine id (both already kept above), and the controller type picked for it | Binding a controller to its satellite again after a restart or a replug |
@@ -81,8 +81,9 @@ Forgetting a satellite deletes its key, its pin, its row and the bindings
 remembered for it.
 
 The Moonlight identity, an RSA key and the self-signed certificate around it,
-is minted once in the login keychain (labelled "Dish Moonlight client key" and
-"Dish Moonlight client certificate") and presented to every Moonlight host:
+is minted once in the login keychain (the key labelled "Dish Moonlight client
+key"; the certificate is filed under the name it was issued to, and Dish finds
+it again by the key it belongs to) and presented to every Moonlight host:
 it is how a host recognises a device it paired with. Forgetting a host deletes
 the host's record, its bindings and its pin on this side; the protocol has no
 unpair verb, so the host keeps its own record of this device until you remove
@@ -212,10 +213,11 @@ so treat it as sensitive before attaching it to a public issue.
 | A power-management assertion (IOKit) | Keeping the Mac awake while a bound controller is being used, or for as long as one is connected, as your keep-awake mode says; the display too only if you ask. Released when the condition ends. |
 | User notifications | One notice, the first time closing the window leaves Dish running behind the menu-bar item. macOS asks you for permission before it is shown. |
 | Host battery readout (IOKit power sources) | Reading your Mac's internal battery from macOS's list of power sources (`IOPSCopyPowerSourcesInfo`): its charge as a percentage of its capacity, and whether it is charging, full or discharging. Any other power source, such as a UPS, is skipped, and a Mac with no internal battery reads as 100 % on mains power. For a controller bound to a satellite or a Moonlight host, Dish sends the lower of the controller's own battery and the Mac's, with the charging state of the one it sends (an unknown level counts as the higher, and a tie goes to the controller); a controller that reports no battery of its own sends the Mac's. A controller that is not bound sends neither. The Mac's battery is read, and the result sent, a second after a controller shows and every 30 seconds after; in between, a controller on the Standard path reads it every 3 seconds and sends only when the charging state to send has changed, and a controller on the Direct path reads and sends it whenever its own reading changes. The controller's card shows the controller's own reading (the Mac's, for a controller on the Standard path that reports none). |
+| Input Monitoring (macOS asks) | Reading a controller that is also a keyboard or a mouse, such as a Steam Controller (the 2026 one on a cable, or either one over Bluetooth), only when you press Use Direct for it. Dish reads the controller's own reports to forward its buttons, sticks, trackpads and motion; it reads no other keyboard or mouse and records no typing. Refusing leaves the controller as it was. |
 | Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
 | `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |
 
-The app runs unsandboxed and asks for no other permission.
+The app runs unsandboxed and asks for no other permission than these.
 
 ---
 
