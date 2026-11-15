@@ -184,6 +184,39 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         XCTAssertNotNil(store.sharedKey(for: server.id))
     }
 
+    func testAConnectWithNoKeyReOffersThePairAndAsksForAPin() async {
+        satellite.protocolRange = 1 ... 1
+        manager.connect(to: server)
+        let asked = await waitUntil { self.pairingAsked }
+        XCTAssertTrue(asked, "the re-offered pair must reach the PIN step: \(failures)")
+        XCTAssertEqual(satellite.rejectedOffers, [4], "only the first offer is refused")
+        XCTAssertEqual(manager.get(server.id)?.offeredProtocolVersion, 1, "the lowered offer sticks to the connection")
+        XCTAssertTrue(failures.isEmpty)
+    }
+
+    func testAnOperatorRequestToAnOlderSatelliteReOffersAndGoesLiveOnceApproved() async {
+        satellite.protocolRange = 1 ... 1
+        manager.pairWithClientPin(server, clientPin: "8642")
+        let staged = await waitUntil { self.satellite.lastClientPin == "8642" }
+        XCTAssertTrue(staged, "the re-offered request must reach the operator with the same code: \(failures)")
+        XCTAssertEqual(satellite.rejectedOffers, [4], "only the first offer is refused")
+        XCTAssertEqual(manager.pairingAttempts.state[server.id]?.phase, .awaiting)
+        satellite.approveClientPin()
+        let live = await waitUntil { self.manager.get(self.server.id)?.state == .live }
+        XCTAssertTrue(live, "the approved request must open the session: \(failures)")
+        XCTAssertEqual(satellite.settledProtocolVersion, 1)
+        XCTAssertTrue(failures.isEmpty)
+    }
+
+    private var pairingAsked: Bool {
+        events.contains { event in
+            switch event {
+            case .pairingRequired: true
+            case .failure, .pairingFailed: false
+            }
+        }
+    }
+
     // MARK: - The probe and the hub
 
     func testTheCapabilitiesProbeIsCachedAtOpen() async throws {
