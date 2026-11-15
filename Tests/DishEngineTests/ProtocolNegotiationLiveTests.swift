@@ -197,10 +197,10 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
     func testAnOperatorRequestToAnOlderSatelliteReOffersAndGoesLiveOnceApproved() async {
         satellite.protocolRange = 1 ... 1
         manager.pairWithClientPin(server, clientPin: "8642")
-        let awaiting = await waitUntil { self.manager.pairingAttempts.state[self.server.id]?.phase == .awaiting }
-        XCTAssertTrue(awaiting, "the re-offered request must reach the operator: \(failures)")
+        let staged = await waitUntil { self.satellite.lastClientPin == "8642" }
+        XCTAssertTrue(staged, "the re-offered request must reach the operator with the same code: \(failures)")
         XCTAssertEqual(satellite.rejectedOffers, [4], "only the first offer is refused")
-        XCTAssertEqual(satellite.lastClientPin, "8642", "the code on screen is the one the operator approves")
+        XCTAssertEqual(manager.pairingAttempts.state[server.id]?.phase, .awaiting)
         satellite.approveClientPin()
         let live = await waitUntil { self.manager.get(self.server.id)?.state == .live }
         XCTAssertTrue(live, "the approved request must open the session: \(failures)")
