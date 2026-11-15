@@ -192,6 +192,20 @@ final class OperatorApprovalTests: XCTestCase {
         XCTAssertEqual(pairingFailures, [.dishUpdateRequired])
     }
 
+    func testAVersionBelowOursIsReOfferedAndTheRequestGoesOn() async {
+        satellite.protocolRange = 1 ... 1
+        manager.pairWithClientPin(server, clientPin: "8642")
+        let awaiting = await waitUntil { self.attempt?.phase == .awaiting }
+        XCTAssertTrue(awaiting, "the re-offered request must reach the operator: \(pairingFailures)")
+        XCTAssertEqual(satellite.rejectedOffers, [4], "only the first offer is refused")
+        XCTAssertEqual(satellite.lastClientPin, "8642", "the code on screen is the one the operator approves")
+        satellite.approveClientPin()
+        let live = await waitUntil { self.manager.get(self.id)?.state == .live }
+        XCTAssertTrue(live)
+        XCTAssertEqual(satellite.settledProtocolVersion, 1)
+        XCTAssertEqual(pairingFailures, [])
+    }
+
     func testAChangedIdentityAtTheSubmitEndsTheRequest() async {
         store.setCertPin(host: "127.0.0.1", fingerprintHex: String(repeating: "00", count: 32))
         manager.pairWithClientPin(server, clientPin: "1111")

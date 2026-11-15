@@ -184,6 +184,25 @@ final class ProtocolNegotiationLiveTests: XCTestCase {
         XCTAssertNotNil(store.sharedKey(for: server.id))
     }
 
+    func testAConnectWithNoKeyReOffersThePairAndAsksForAPin() async {
+        satellite.protocolRange = 1 ... 1
+        manager.connect(to: server)
+        let asked = await waitUntil { self.pairingAsked }
+        XCTAssertTrue(asked, "the re-offered pair must reach the PIN step: \(failures)")
+        XCTAssertEqual(satellite.rejectedOffers, [4], "only the first offer is refused")
+        XCTAssertEqual(manager.get(server.id)?.offeredProtocolVersion, 1, "the lowered offer sticks to the connection")
+        XCTAssertTrue(failures.isEmpty)
+    }
+
+    private var pairingAsked: Bool {
+        events.contains { event in
+            switch event {
+            case .pairingRequired: true
+            case .failure, .pairingFailed: false
+            }
+        }
+    }
+
     // MARK: - The probe and the hub
 
     func testTheCapabilitiesProbeIsCachedAtOpen() async throws {
