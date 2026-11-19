@@ -72,14 +72,21 @@ final class FakeAudioPorts: AudioPortFactory {
     private(set) var outputs: [FakeAudioOutput] = []
     private(set) var inputs: [FakeAudioInput] = []
     var refuseInput = false
+    var refuseOutput = false
+    /// Every ask, refused or not: a refusal that is not asked again shows here.
+    private(set) var outputRequests = 0
+    private(set) var inputRequests = 0
 
     func makeOutput(device: AudioObjectID, channels: Int, render: @escaping AudioRender) -> AudioOutputPort? {
+        outputRequests += 1
+        guard !refuseOutput else { return nil }
         let output = FakeAudioOutput(device: device, channels: channels, render: render)
         outputs.append(output)
         return output
     }
 
     func makeInput(device: AudioObjectID, channels: Int, capture: @escaping AudioCapture) -> AudioInputPort? {
+        inputRequests += 1
         guard !refuseInput else { return nil }
         let input = FakeAudioInput(device: device, channels: channels, capture: capture)
         inputs.append(input)

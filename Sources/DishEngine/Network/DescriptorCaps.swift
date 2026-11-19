@@ -33,11 +33,29 @@ func namedPadFamily(productCategory: String, vendorName: String?) -> PadFamily {
 /// The caps word a descriptor advertises. A cap is a promise that the
 /// matching stream or return path lands, so it needs both the hardware and
 /// the user's switch: a feature turned off in Settings is not advertised.
-/// Analog triggers ride every extended gamepad. The audio caps follow the
-/// pad's audio function and the controller's own switches, the speaker
-/// switch covering the haptics lanes, as on the other clients. The
+/// Analog triggers ride every extended gamepad. The audio caps are
+/// `audioPlan`'s, the one rule the voices follow too: the pad's audio
+/// function, the controller's own switches (the speaker switch covering the
+/// haptics lanes), the host's word that it carries the direction, and no
+/// endpoint the system refused, as on the other clients. The
 /// extended-buttons claim follows the pad alone: it has no switch.
-func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingFlags) -> UInt16 {
+func descriptorCaps(
+    _ capabilities: ControllerCapabilities,
+    _ flags: ForwardingFlags,
+    host: HostAudioVerdict,
+    playbackRefused: Bool = false,
+    captureRefused: Bool = false
+) -> UInt16 {
+    let audio = audioPlan(AudioFacts(
+        routeMic: capabilities.hasMic,
+        routeSpeaker: capabilities.hasSpeaker,
+        routeHapticLanes: capabilities.hasHapticLanes,
+        micOn: flags.mic,
+        speakerOn: flags.speaker,
+        host: host,
+        playbackRefused: playbackRefused,
+        captureRefused: captureRefused
+    ))
     let claims: [(claimed: Bool, bit: UInt16)] = [
         (true, ProtocolConstants.capAnalogTriggers),
         (capabilities.hasRumble && flags.rumble, ProtocolConstants.capRumble),
@@ -45,9 +63,9 @@ func descriptorCaps(_ capabilities: ControllerCapabilities, _ flags: ForwardingF
         (capabilities.hasLightbar && flags.lightbar, ProtocolConstants.capLightbar),
         (capabilities.hasTriggerEffects, ProtocolConstants.capTriggerEffects),
         (capabilities.hasPlayerLeds, ProtocolConstants.capPlayerLeds),
-        (capabilities.hasMic && flags.mic, ProtocolConstants.capMic),
-        (capabilities.hasSpeaker && flags.speaker, ProtocolConstants.capSpeaker),
-        (capabilities.hasHapticLanes && flags.speaker, ProtocolConstants.capHapticAudio),
+        (audio.capMic, ProtocolConstants.capMic),
+        (audio.capSpeaker, ProtocolConstants.capSpeaker),
+        (audio.capHapticAudio, ProtocolConstants.capHapticAudio),
         (capabilities.hasExtendedButtons, ProtocolConstants.capExtendedButtons)
     ]
     return claims.filter(\.claimed).reduce(UInt16(0)) { $0 | $1.bit }

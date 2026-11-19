@@ -119,7 +119,8 @@ final class ControllerAudioLiveTests: XCTestCase {
         return conn
     }
 
-    func testTheDescriptorAdvertisesTheAudioCapsTheSwitchesAllow() async throws {
+    func testTheDescriptorAdvertisesTheAudioCapsTheSwitchesAllowAndTheHostCarries() async throws {
+        satellite.controllerAudioEnabled = true
         _ = try await bindAndGoLive()
         XCTAssertEqual(claimedCaps["mic"] as? Bool, true)
         XCTAssertEqual(claimedCaps["speaker"] as? Bool, true)
@@ -127,6 +128,16 @@ final class ControllerAudioLiveTests: XCTestCase {
         manager.applyForwardingFlags(ForwardingFlags(mic: false, speaker: false), to: server.id)
         let withdrawn = await waitUntil { self.claimedCaps["mic"] as? Bool == false && self.claimedCaps["hapticAudio"] as? Bool == false }
         XCTAssertTrue(withdrawn, "a switched-off audio feature is no longer claimed")
+    }
+
+    func testWithoutTheHostsWordTheDescriptorClaimsNoAudioCap() async throws {
+        // The probe says the host carries no direction: a cap it would not feed is a promise with
+        // nothing behind it, so none rides the descriptor however the switches stand.
+        _ = try await bindAndGoLive()
+        XCTAssertEqual(claimedCaps["mic"] as? Bool, false)
+        XCTAssertEqual(claimedCaps["speaker"] as? Bool, false)
+        XCTAssertEqual(claimedCaps["hapticAudio"] as? Bool, false)
+        XCTAssertEqual(claimedCaps["rumble"] as? Bool, true, "rumble is the fallback and stays")
     }
 
     func testMicFramesReachTheSatelliteWithOneSequenceAcrossAMute() async throws {

@@ -18,13 +18,18 @@ struct SatelliteSlot: Equatable {
     /// The satellite confirmed the slot plugged. The desire can exist before
     /// the bitmap bit does, and that gap is not drift.
     var applied = false
+    /// The engine's word that the system refused the pad's output, or its
+    /// microphone, at the endpoint it has now: those caps stay off the
+    /// descriptor until the endpoint changes.
+    var playbackRefused = false
+    var captureRefused = false
 }
 
 /// A satellite connection's pads, keyed by slot id, at most
 /// `SatelliteSlots.maxPerSatellite` of them. A pad's descriptor reads the
 /// switches in force for it (its own over the connection's) and the host's
-/// word on mouse control. Pure state: the connection converges whatever an
-/// edit changed.
+/// word on mouse control and on the pad's audio. Pure state: the connection
+/// converges whatever an edit changed.
 struct SatelliteSlotTable: Equatable {
     private(set) var slots: [String: SatelliteSlot] = [:]
     /// How many times the satellite confirmed each slot plugged, this session
@@ -38,6 +43,9 @@ struct SatelliteSlotTable: Equatable {
     /// The probe's word on whether the host advertises mouse control; a host
     /// not probed grants nothing.
     var hostMouseControl = false
+    /// The probe's word on what the host carries of a pad's audio; a host
+    /// not probed carries nothing, so no audio cap rides until it has spoken.
+    var hostAudio = HostAudioVerdict.none
 
     /// The bound slots in index order.
     var boundSlotIds: [String] {
@@ -114,6 +122,11 @@ struct SatelliteSlotTable: Equatable {
         slots[slotId]?.typeOffersDs4 = offers
     }
 
+    mutating func setAudioRefusals(playback: Bool, capture: Bool, for slotId: String) {
+        slots[slotId]?.playbackRefused = playback
+        slots[slotId]?.captureRefused = capture
+    }
+
     /// False, and nothing counted, for a slot that is not bound.
     @discardableResult
     mutating func markApplied(_ slotId: String) -> Bool {
@@ -144,7 +157,13 @@ struct SatelliteSlotTable: Equatable {
         var descriptor = ControllerDescriptor()
         descriptor.ctrlIdx = slot.controllerIndex
         descriptor.type = UInt8(truncatingIfNeeded: slot.controllerType)
-        descriptor.caps = descriptorCaps(slot.capabilities, flags)
+        descriptor.caps = descriptorCaps(
+            slot.capabilities,
+            flags,
+            host: hostAudio,
+            playbackRefused: slot.playbackRefused,
+            captureRefused: slot.captureRefused
+        )
         descriptor.touchpadMode = descriptorTouchpadMode(
             slot.capabilities,
             flags,

@@ -58,6 +58,7 @@ final class AudioPipeline {
         indicator = Composer(engine.statePublisher, initial: .hidden, transform: micIndicatorState)
         observeBindings(wifi: wifi, slotPreferences: slotPreferences)
         observeClaims()
+        observeRefusals(wifi: wifi)
         observeDepartures()
     }
 
@@ -124,6 +125,22 @@ final class AudioPipeline {
                 guard let self else { return }
                 for pad in pads where bindings[pad.id] != nil {
                     hub.setCapabilities(slotId: pad.id, pad.capabilities.withAudio(routes[pad.id]?.function))
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    /// An output or a microphone the system refused withdraws the pad's caps
+    /// from its satellite's descriptor: the host streams on the strength of a
+    /// cap alone, so an endpoint the Mac cannot open is not promised. The
+    /// table ignores a word that changes nothing, so this converges.
+    private func observeRefusals(wifi: WifiConnectionManager) {
+        Publishers.CombineLatest3(engine.statePublisher, hub.$bindings, wifi.$connections)
+            .sink { states, bindings, pool in
+                for (slotId, connectionId) in bindings {
+                    guard let conn = pool[connectionId] else { continue }
+                    let state = states[slotId] ?? ControllerAudioState()
+                    conn.setAudioRefusals(playback: state.playbackRefused, capture: state.captureRefused, for: slotId)
                 }
             }
             .store(in: &cancellables)

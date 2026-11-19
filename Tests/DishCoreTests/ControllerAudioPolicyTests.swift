@@ -56,13 +56,35 @@ final class ControllerAudioPolicyTests: XCTestCase {
         XCTAssertTrue(plan.micArmed)
     }
 
-    func testTheCapsFollowTheRouteAndTheSwitchNotTheHost() {
+    func testTheCapsFollowTheHostsWordTooSoNothingIsPromisedThatWillNotPlay() {
         var facts = everything()
         facts.host = .none
         let plan = audioPlan(facts)
-        XCTAssertTrue(plan.capMic && plan.capSpeaker && plan.capHapticAudio, "a cap says what the client can do")
-        XCTAssertFalse(plan.capture || plan.speakerVoice || plan.hapticVoice, "nothing runs until the host will feed it")
+        XCTAssertFalse(
+            plan.capMic || plan.capSpeaker || plan.capHapticAudio,
+            "a cap the host would not feed is a promise with nothing behind it"
+        )
+        XCTAssertFalse(plan.capture || plan.speakerVoice || plan.hapticVoice)
         XCTAssertFalse(plan.micArmed)
+
+        facts.host = HostAudioVerdict(mic: true, speaker: true, hapticAudio: false)
+        let noLane = audioPlan(facts)
+        XCTAssertTrue(noLane.capMic && noLane.capSpeaker && noLane.speakerVoice && noLane.capture)
+        XCTAssertFalse(noLane.capHapticAudio || noLane.hapticVoice, "the lane waits for its own word")
+    }
+
+    func testARefusedOutputWithdrawsBothLanesAndARefusedInputTheMic() {
+        var output = everything()
+        output.playbackRefused = true
+        let noOutput = audioPlan(output)
+        XCTAssertFalse(noOutput.capSpeaker || noOutput.capHapticAudio || noOutput.speakerVoice || noOutput.hapticVoice)
+        XCTAssertTrue(noOutput.capMic && noOutput.capture, "the microphone is its own endpoint")
+
+        var input = everything()
+        input.captureRefused = true
+        let noInput = audioPlan(input)
+        XCTAssertFalse(noInput.capMic || noInput.capture || noInput.micArmed)
+        XCTAssertTrue(noInput.capSpeaker && noInput.capHapticAudio && noInput.speakerVoice && noInput.hapticVoice)
     }
 
     func testTheSpeakerSwitchCoversTheHapticsLanes() {
