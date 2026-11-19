@@ -17,6 +17,25 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+### Fixed
+
+- **A controller's microphone, speaker and haptics are promised to the
+  satellite only when the Mac will carry them.** The descriptor claimed each
+  audio lane from the pad's audio function and the controller's switches
+  alone, while the voices and the microphone opened only once the satellite's
+  probe had also said it carries that direction, and never for an output or a
+  microphone the system refused to open. The satellite trusts the claim: for
+  the haptics lane it sends the game's haptics as audio instead of turning
+  them into rumble, so in that gap a game's haptics went silent. The claim now
+  reads the same rule as the voices, `audioPlan`: the function, the switch,
+  the probe's word on the direction, and an endpoint the system opened. A
+  refused endpoint takes its caps off the descriptor until the pad's device
+  changes, and the satellite turns the haptics into rumble meanwhile. The
+  probe is read when a session opens, so a direction switched on reaches a
+  connected Mac at its next session, as it did for the voices before.
+
 ## [1.3.0] - 2026-11-15
 
 ### Added

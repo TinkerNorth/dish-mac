@@ -19,8 +19,11 @@ final class DescriptorCapsTests: XCTestCase {
         hasPlayerLeds: true
     )
 
+    /// A satellite whose probe carries every direction.
+    private let granting = HostAudioVerdict(mic: true, speaker: true, hapticAudio: true)
+
     func testAFullPadWithEverySwitchOnClaimsEveryActuatorButAudio() {
-        let word = descriptorCaps(everything, ForwardingFlags())
+        let word = descriptorCaps(everything, ForwardingFlags(), host: granting)
         XCTAssertEqual(
             word,
             ProtocolConstants.capAnalogTriggers | ProtocolConstants.capRumble | ProtocolConstants.capMotion
@@ -32,21 +35,21 @@ final class DescriptorCapsTests: XCTestCase {
     func testTheExtendedButtonsClaimFollowsThePadAloneWithNoSwitch() {
         let everySwitchOff = ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false, mic: false, speaker: false)
         let sources = ControllerCapabilities(hasExtendedButtons: true)
-        XCTAssertNotEqual(descriptorCaps(sources, everySwitchOff) & ProtocolConstants.capExtendedButtons, 0)
-        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags()) & ProtocolConstants.capExtendedButtons, 0)
+        XCTAssertNotEqual(descriptorCaps(sources, everySwitchOff, host: .none) & ProtocolConstants.capExtendedButtons, 0)
+        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags(), host: granting) & ProtocolConstants.capExtendedButtons, 0)
     }
 
     func testTheAudioCapsFollowTheAudioFunctionAndTheControllersSwitches() {
         let dualSense = ControllerCapabilities(hasRumble: true, hasMic: true, hasSpeaker: true, hasHapticLanes: true)
-        let on = descriptorCaps(dualSense, ForwardingFlags(mic: true, speaker: true))
+        let on = descriptorCaps(dualSense, ForwardingFlags(mic: true, speaker: true), host: granting)
         XCTAssertNotEqual(on & ProtocolConstants.capMic, 0)
         XCTAssertNotEqual(on & ProtocolConstants.capSpeaker, 0)
         XCTAssertNotEqual(on & ProtocolConstants.capHapticAudio, 0)
         XCTAssertNotEqual(on & ProtocolConstants.capRumble, 0, "rumble rides beside the lanes; the host decides which rendering")
-        let defaults = descriptorCaps(dualSense, ForwardingFlags())
+        let defaults = descriptorCaps(dualSense, ForwardingFlags(), host: granting)
         XCTAssertEqual(defaults & ProtocolConstants.capMic, 0, "the mic is off until asked")
         XCTAssertNotEqual(defaults & ProtocolConstants.capSpeaker, 0)
-        let speakerOff = descriptorCaps(dualSense, ForwardingFlags(mic: true, speaker: false))
+        let speakerOff = descriptorCaps(dualSense, ForwardingFlags(mic: true, speaker: false), host: granting)
         XCTAssertEqual(
             speakerOff & (ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio),
             0,
@@ -55,36 +58,50 @@ final class DescriptorCapsTests: XCTestCase {
         XCTAssertNotEqual(speakerOff & ProtocolConstants.capMic, 0)
         let headset = ControllerCapabilities(hasMic: true, hasSpeaker: true)
         XCTAssertEqual(
-            descriptorCaps(headset, ForwardingFlags(mic: true)) & ProtocolConstants.capHapticAudio,
+            descriptorCaps(headset, ForwardingFlags(mic: true), host: granting) & ProtocolConstants.capHapticAudio,
             0,
             "no lanes, no haptics cap"
         )
     }
 
+    func testTheAudioCapsWaitForTheHostsWordAndLeaveWithARefusedEndpoint() {
+        let dualSense = ControllerCapabilities(hasRumble: true, hasMic: true, hasSpeaker: true, hasHapticLanes: true)
+        let on = ForwardingFlags(mic: true, speaker: true)
+        let audio = ProtocolConstants.capMic | ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio
+        XCTAssertEqual(descriptorCaps(dualSense, on, host: .none) & audio, 0, "no host word, no audio cap")
+        let micAlone = HostAudioVerdict(mic: true, speaker: false, hapticAudio: false)
+        XCTAssertEqual(descriptorCaps(dualSense, on, host: micAlone) & audio, ProtocolConstants.capMic)
+        let refusedOutput = descriptorCaps(dualSense, on, host: granting, playbackRefused: true)
+        XCTAssertEqual(refusedOutput & audio, ProtocolConstants.capMic, "a refused output withdraws both lanes")
+        let refusedInput = descriptorCaps(dualSense, on, host: granting, captureRefused: true)
+        XCTAssertEqual(refusedInput & audio, ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio)
+        XCTAssertNotEqual(refusedOutput & ProtocolConstants.capRumble, 0, "rumble is the fallback and stays")
+    }
+
     func testAnalogTriggersAreAlwaysClaimed() {
-        XCTAssertEqual(descriptorCaps(.none, ForwardingFlags()), ProtocolConstants.capAnalogTriggers)
+        XCTAssertEqual(descriptorCaps(.none, ForwardingFlags(), host: .none), ProtocolConstants.capAnalogTriggers)
         XCTAssertEqual(
-            descriptorCaps(.none, ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false)),
+            descriptorCaps(.none, ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false), host: .none),
             ProtocolConstants.capAnalogTriggers
         )
     }
 
     func testASwitchedOffFeatureIsNotClaimed() {
-        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags(motion: false)) & ProtocolConstants.capMotion, 0)
-        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags(rumble: false)) & ProtocolConstants.capRumble, 0)
-        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags(lightbar: false)) & ProtocolConstants.capLightbar, 0)
+        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags(motion: false), host: granting) & ProtocolConstants.capMotion, 0)
+        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags(rumble: false), host: granting) & ProtocolConstants.capRumble, 0)
+        XCTAssertEqual(descriptorCaps(everything, ForwardingFlags(lightbar: false), host: granting) & ProtocolConstants.capLightbar, 0)
     }
 
     func testMissingHardwareIsNeverClaimedWhateverTheSwitches() {
         let padWithoutImu = ControllerCapabilities(hasRumble: true, hasLightbar: true)
-        XCTAssertEqual(descriptorCaps(padWithoutImu, ForwardingFlags()) & ProtocolConstants.capMotion, 0)
-        XCTAssertEqual(descriptorCaps(padWithoutImu, ForwardingFlags()) & ProtocolConstants.capTriggerEffects, 0)
-        XCTAssertEqual(descriptorCaps(padWithoutImu, ForwardingFlags()) & ProtocolConstants.capPlayerLeds, 0)
+        XCTAssertEqual(descriptorCaps(padWithoutImu, ForwardingFlags(), host: .none) & ProtocolConstants.capMotion, 0)
+        XCTAssertEqual(descriptorCaps(padWithoutImu, ForwardingFlags(), host: .none) & ProtocolConstants.capTriggerEffects, 0)
+        XCTAssertEqual(descriptorCaps(padWithoutImu, ForwardingFlags(), host: .none) & ProtocolConstants.capPlayerLeds, 0)
     }
 
     func testTheFeedbackCapsFollowTheHardwareAlone() {
         let dualSense = ControllerCapabilities(hasTriggerEffects: true, hasPlayerLeds: true)
-        let word = descriptorCaps(dualSense, ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false))
+        let word = descriptorCaps(dualSense, ForwardingFlags(motion: false, touchpad: false, rumble: false, lightbar: false), host: .none)
         XCTAssertNotEqual(word & ProtocolConstants.capTriggerEffects, 0)
         XCTAssertNotEqual(word & ProtocolConstants.capPlayerLeds, 0)
     }

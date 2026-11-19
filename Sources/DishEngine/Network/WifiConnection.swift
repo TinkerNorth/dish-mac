@@ -347,8 +347,11 @@ package final class WifiConnection: ObservableObject, Identifiable {
         mouseControlGranted = granted
     }
 
+    /// The probe's word reaches the pads' descriptors too: an audio cap rides
+    /// only where the host carries the direction.
     func setHostAudio(_ verdict: HostAudioVerdict) {
         hostAudio = verdict
+        editSlots { $0.hostAudio = verdict }
     }
 
     func setReconcileInFlight(_ inFlight: Bool) {

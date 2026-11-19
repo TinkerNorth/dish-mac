@@ -58,6 +58,11 @@ public struct AudioFacts: Equatable, Sendable {
     /// The system granted this app the microphone.
     public var micPermitted: Bool
     public var muted: Bool
+    /// The system refused the pad's output, or its microphone, at the
+    /// endpoint the route names now. A cap the Mac cannot honour is not
+    /// advertised until the endpoint changes.
+    public var playbackRefused: Bool
+    public var captureRefused: Bool
 
     public init(
         routeMic: Bool = false,
@@ -68,7 +73,9 @@ public struct AudioFacts: Equatable, Sendable {
         host: HostAudioVerdict = .none,
         live: Bool = false,
         micPermitted: Bool = false,
-        muted: Bool = false
+        muted: Bool = false,
+        playbackRefused: Bool = false,
+        captureRefused: Bool = false
     ) {
         self.routeMic = routeMic
         self.routeSpeaker = routeSpeaker
@@ -79,12 +86,17 @@ public struct AudioFacts: Equatable, Sendable {
         self.live = live
         self.micPermitted = micPermitted
         self.muted = muted
+        self.playbackRefused = playbackRefused
+        self.captureRefused = captureRefused
     }
 }
 
-/// What runs and what is advertised. A cap says what the CLIENT can do and
-/// will do once asked: the route and the switch, like every other cap; the
-/// host gates its own sends. A voice opens only when the host will feed it.
+/// What runs and what is advertised. A cap is a promise the host acts on
+/// alone: it opens a stream on the claim, and for the haptics lane it then
+/// never falls back to rumble. So a cap says what the client can and will
+/// carry right now: the route, the switch, the host's word that it carries
+/// the direction, and no endpoint the system refused. A voice opens when
+/// the cap stands and the session is live.
 public struct AudioPlan: Hashable, Sendable {
     public var capture: Bool
     public var speakerVoice: Bool
@@ -114,14 +126,14 @@ public struct AudioPlan: Hashable, Sendable {
 }
 
 public func audioPlan(_ facts: AudioFacts) -> AudioPlan {
-    let capMic = facts.routeMic && facts.micOn
-    let capSpeaker = facts.routeSpeaker && facts.speakerOn
-    let capHaptic = facts.routeHapticLanes && facts.speakerOn
-    let armed = facts.live && capMic && facts.host.mic && facts.micPermitted
+    let capMic = facts.routeMic && facts.micOn && facts.host.mic && !facts.captureRefused
+    let capSpeaker = facts.routeSpeaker && facts.speakerOn && facts.host.speaker && !facts.playbackRefused
+    let capHaptic = facts.routeHapticLanes && facts.speakerOn && facts.host.hapticAudio && !facts.playbackRefused
+    let armed = facts.live && capMic && facts.micPermitted
     return AudioPlan(
         capture: armed && !facts.muted,
-        speakerVoice: facts.live && capSpeaker && facts.host.speaker,
-        hapticVoice: facts.live && capHaptic && facts.host.hapticAudio,
+        speakerVoice: facts.live && capSpeaker,
+        hapticVoice: facts.live && capHaptic,
         capMic: capMic,
         capSpeaker: capSpeaker,
         capHapticAudio: capHaptic,

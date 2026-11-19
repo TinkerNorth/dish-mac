@@ -103,6 +103,13 @@ extension WifiConnection {
         editSlots { $0.hostMouseControl = available }
     }
 
+    /// The engine's word on an output or a microphone the system refused at
+    /// the pad's endpoint: its caps come off the descriptor until the
+    /// endpoint changes, and the host falls back to rumble meanwhile.
+    func setAudioRefusals(playback: Bool, capture: Bool, for slotId: String) {
+        editSlots { $0.setAudioRefusals(playback: playback, capture: capture, for: slotId) }
+    }
+
     /// The switches for a pad with none of its own.
     func setForwardingFlags(_ flags: ForwardingFlags) {
         editSlots { $0.connectionFlags = flags }

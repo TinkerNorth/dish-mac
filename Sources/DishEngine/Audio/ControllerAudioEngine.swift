@@ -44,12 +44,25 @@ package struct ControllerAudioState: Hashable {
     package var tonePlaying = false
     /// The inspector's microphone meter, while it listens.
     package var micMeter: MicLevel?
+    /// The system refused the pad's output, or its microphone, at the
+    /// endpoint the route names now; the satellite's descriptor follows.
+    package var playbackRefused = false
+    package var captureRefused = false
 
-    package init(plan: AudioPlan = .silent, micLed: MicLedState? = nil, tonePlaying: Bool = false, micMeter: MicLevel? = nil) {
+    package init(
+        plan: AudioPlan = .silent,
+        micLed: MicLedState? = nil,
+        tonePlaying: Bool = false,
+        micMeter: MicLevel? = nil,
+        playbackRefused: Bool = false,
+        captureRefused: Bool = false
+    ) {
         self.plan = plan
         self.micLed = micLed
         self.tonePlaying = tonePlaying
         self.micMeter = micMeter
+        self.playbackRefused = playbackRefused
+        self.captureRefused = captureRefused
     }
 }
 
@@ -89,27 +102,36 @@ package final class ControllerAudioEngine: StateSource<[String: ControllerAudioS
 
     private func publish() {
         setState(slots.mapValues {
-            ControllerAudioState(plan: $0.plan, micLed: $0.micLed, tonePlaying: $0.tonePlaying, micMeter: $0.micMeter)
+            ControllerAudioState(
+                plan: $0.plan,
+                micLed: $0.micLed,
+                tonePlaying: $0.tonePlaying,
+                micMeter: $0.micMeter,
+                playbackRefused: $0.playbackRefused,
+                captureRefused: $0.captureRefused
+            )
         })
     }
 
     /// The inspector's tone on the pad's speaker: false when the pad has no
     /// speaker route, or a tone is already playing.
     package func playTone(for slotId: String) -> Bool {
-        guard let slot = slots[slotId], slot.playTone(onChange: { [weak self] in self?.publish() }) else { return false }
+        guard let slot = slots[slotId] else { return false }
+        let playing = slot.playTone(onChange: { [weak self] in self?.publish() })
+        // A refused output is news even when no tone plays: the descriptor follows it.
         publish()
-        return true
+        return playing
     }
 
     /// The inspector's microphone meter, listening for `meterMs` without
     /// sending a byte: false when the pad has no microphone route or the
     /// system withholds the microphone.
     package func startMicMeter(for slotId: String) -> Bool {
-        guard let slot = slots[slotId], slot.startMicMeter(meterMs: meterMs, onChange: { [weak self] in self?.publish() }) else {
-            return false
-        }
+        guard let slot = slots[slotId] else { return false }
+        let listening = slot.startMicMeter(meterMs: meterMs, onChange: { [weak self] in self?.publish() })
+        // A refused microphone is news even when no meter listens: the descriptor follows it.
         publish()
-        return true
+        return listening
     }
 
     package func stopMicMeter(for slotId: String) {
@@ -181,12 +203,41 @@ private final class SlotAudio {
     private var input: AudioInputPort?
     private var outputChannels = 0
     private var deviceId: AudioObjectID = 0
+    /// The endpoint the system last refused an output at, and the device it
+    /// refused the microphone on; nil once a start there succeeded.
+    private var refusedOutput: RefusedEndpoint?
+    private var refusedInputDevice: AudioObjectID?
 
     init(ports: AudioPortFactory, onLamp: @escaping (String, MicLedState) -> Void) {
         self.ports = ports
         self.onLamp = onLamp
         playout = LanePlayout()
         capture = MicCapture()
+    }
+
+    /// A refusal stands while the route still names the endpoint it was
+    /// refused at: a replugged pad enumerates afresh, and a route that moved
+    /// to another width is a new attempt.
+    var playbackRefused: Bool {
+        guard let route, let refusedOutput else { return false }
+        return refusedOutput == RefusedEndpoint(device: route.device.id, channels: outputWidth(of: route))
+    }
+
+    var captureRefused: Bool {
+        guard let route, let refusedInputDevice else { return false }
+        return refusedInputDevice == route.device.id
+    }
+
+    /// The plan over the binding's facts and this slot's own refusals.
+    private func planNow() -> AudioPlan {
+        var current = facts
+        current.playbackRefused = playbackRefused
+        current.captureRefused = captureRefused
+        return audioPlan(current)
+    }
+
+    private func outputWidth(of route: PadAudioFunction) -> Int {
+        route.hasHapticLanes ? AudioWire.speakerChannels + AudioWire.hapticChannels : AudioWire.speakerChannels
     }
 
     var counters: AudioCounters {
@@ -204,7 +255,6 @@ private final class SlotAudio {
         slotId = binding.slotId
         route = binding.route
         facts = binding.facts
-        let next = audioPlan(binding.facts)
         let moved = connection !== binding.connection || controllerIndex != binding.controllerIndex
         if moved {
             releaseHandlers()
@@ -213,9 +263,11 @@ private final class SlotAudio {
             playout.restart()
             installHandlers(binding.connection)
         }
-        reconcileOutput(next)
-        reconcileInput(binding.connection, next)
-        plan = next
+        reconcileOutput(planNow())
+        reconcileInput(binding.connection, planNow())
+        // A start that failed just now stands from here: the plan this slot reports, and the
+        // caps its satellite is told, follow it at once rather than after the next binding.
+        plan = planNow()
     }
 
     func close() {
@@ -246,6 +298,7 @@ private final class SlotAudio {
         reconcileOutput(plan)
         guard output != nil else {
             tonePlaying = false
+            plan = planNow()
             return false
         }
         let cursor = ToneCursor()
@@ -292,6 +345,7 @@ private final class SlotAudio {
         }
         guard input != nil else {
             stopMicMeter()
+            plan = planNow()
             return false
         }
         let source = DispatchSource.makeTimerSource(queue: .main)
@@ -351,7 +405,7 @@ private final class SlotAudio {
             playout.clear()
             return
         }
-        let channels = route.hasHapticLanes ? AudioWire.speakerChannels + AudioWire.hapticChannels : AudioWire.speakerChannels
+        let channels = outputWidth(of: route)
         playout.setLanes(speaker: next.speakerVoice, haptic: next.hapticVoice)
         guard output == nil || channels != outputChannels || deviceId != route.device.id else { return }
         output?.stop()
@@ -361,7 +415,9 @@ private final class SlotAudio {
         output = ports.makeOutput(device: route.device.id, channels: channels) { buffer, frames in
             playout.render(into: buffer, frames: frames, channels: channels)
         }
-        if output?.start() != true { output = nil }
+        let started = output?.start() == true
+        if !started { output = nil }
+        refusedOutput = started ? nil : RefusedEndpoint(device: route.device.id, channels: channels)
     }
 
     /// The microphone captures while the plan says so, or the meter listens;
@@ -382,6 +438,14 @@ private final class SlotAudio {
         input = ports.makeInput(device: route.device.id, channels: AudioWire.micChannels) { buffer, frames in
             capture.push(buffer, frames: frames)
         }
-        if input?.start() != true { input = nil }
+        let started = input?.start() == true
+        if !started { input = nil }
+        refusedInputDevice = started ? nil : route.device.id
     }
+}
+
+/// Where an output was refused: the device and the width it was asked for.
+private struct RefusedEndpoint: Equatable {
+    let device: AudioObjectID
+    let channels: Int
 }

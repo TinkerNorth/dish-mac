@@ -146,6 +146,8 @@ final class AudioPipelineTests: XCTestCase {
 
         let desk = connection("desk")
         wifi.register(desk)
+        // The caps read the host's word too: the probe says it carries every direction.
+        desk.setHostAudio(HostAudioVerdict(mic: true, speaker: true, hapticAudio: true))
         hub.bind(slotId: "ds", connectionId: "desk", capabilities: ControllerCapabilities(hasRumble: true), family: .dualSense)
         wifi.applyForwardingFlags(ForwardingFlags(mic: true, speaker: true), to: "desk")
         XCTAssertEqual(pipeline.engine.state["ds"]?.plan.capSpeaker, true)
@@ -169,6 +171,40 @@ final class AudioPipelineTests: XCTestCase {
         input.slots = []
         XCTAssertEqual(pipeline.mutes.state, [], "a pad that left takes its mute with it")
         XCTAssertEqual(pipeline.engine.state["ds"]?.plan.capMic, false, "without the pad there is no route")
+        defaults.removePersistentDomain(forName: "dish.test")
+    }
+
+    func testARefusedOutputWithdrawsTheSpeakerAndHapticsCapsFromThePadsDescriptor() async throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: "dish.test.\(UUID().uuidString)"))
+        let store = ConnectionStore(defaults: defaults, keyStore: InMemoryKeyStore())
+        let wifi = WifiConnectionManager(store: store)
+        let hub = ConnectionHub(wifi: wifi, store: store)
+        let input = GameControllerInput()
+        let preferences = SlotPreferenceStore(defaults: defaults)
+        let ports = FakeAudioPorts()
+        let dependencies = AudioDependencies(
+            ports: ports,
+            functions: PadAudioFunctionSource(read: { [self.device] }),
+            permission: MicPermissionGate(read: { false }, ask: { completion in completion(false) })
+        )
+        let pipeline = AudioPipeline(hub: hub, wifi: wifi, input: input, slotPreferences: preferences, dependencies: dependencies)
+        pipeline.start()
+        input.slots = [pad("ds")]
+        let desk = connection("desk")
+        wifi.register(desk)
+        desk.setHostAudio(HostAudioVerdict(mic: true, speaker: true, hapticAudio: true))
+        hub.bind(slotId: "ds", connectionId: "desk", capabilities: ControllerCapabilities(hasRumble: true), family: .dualSense)
+        wifi.applyForwardingFlags(ForwardingFlags(mic: false, speaker: true), to: "desk")
+        let lanes = ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio
+        let claimed = await waitUntil { desk.descriptor(for: "ds").map { $0.caps & lanes == lanes } == true }
+        XCTAssertTrue(claimed, "with the route, the switch and the host's word the descriptor claims both lanes")
+
+        // The inspector's tone asks for the output the way a voice would; the system refuses it.
+        ports.refuseOutput = true
+        XCTAssertFalse(pipeline.engine.playTone(for: "ds"))
+        let withdrawn = await waitUntil { desk.descriptor(for: "ds").map { $0.caps & lanes == 0 } == true }
+        XCTAssertTrue(withdrawn, "a lane the Mac cannot open is no longer promised, so the satellite falls back to rumble")
+        XCTAssertEqual(pipeline.engine.state["ds"]?.playbackRefused, true)
         defaults.removePersistentDomain(forName: "dish.test")
     }
 }

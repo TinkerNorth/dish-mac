@@ -42,6 +42,29 @@ final class SatelliteSlotTableTests: XCTestCase {
         XCTAssertEqual(table.descriptor(for: "b")?.caps, ProtocolConstants.capAnalogTriggers | ProtocolConstants.capMotion)
     }
 
+    func testTheHostsAudioWordAndTheRefusalsReachEachDescriptor() {
+        let dualSense = ControllerCapabilities(hasMic: true, hasSpeaker: true, hasHapticLanes: true)
+        var table = table(["a"], capabilities: dualSense)
+        table.connectionFlags = ForwardingFlags(mic: true, speaker: true)
+        let audio = ProtocolConstants.capMic | ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio
+        XCTAssertEqual(table.descriptor(for: "a").map { $0.caps & audio }, 0, "a host not probed carries nothing")
+
+        table.hostAudio = HostAudioVerdict(mic: true, speaker: true, hapticAudio: true)
+        XCTAssertEqual(table.descriptor(for: "a").map { $0.caps & audio }, audio)
+
+        table.setAudioRefusals(playback: true, capture: false, for: "a")
+        XCTAssertEqual(
+            table.descriptor(for: "a").map { $0.caps & audio },
+            ProtocolConstants.capMic,
+            "a refused output takes both lanes off"
+        )
+        table.setAudioRefusals(playback: false, capture: true, for: "a")
+        XCTAssertEqual(
+            table.descriptor(for: "a").map { $0.caps & audio },
+            ProtocolConstants.capSpeaker | ProtocolConstants.capHapticAudio
+        )
+    }
+
     func testEachDescriptorReadsItsOwnSwitchesOverTheConnections() {
         var table = table(["a", "b"], capabilities: motion)
         table.connectionFlags = ForwardingFlags(motion: true)
