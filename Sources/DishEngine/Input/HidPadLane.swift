@@ -89,6 +89,9 @@ struct HidPadWiring {
     var captured: @Sendable (_ slotId: String, _ capture: RawCapture) -> Void = ignoreCapture
     /// A receiver's slot gained or lost its controller, posted to the main actor.
     var linkChanged: @Sendable (_ slotId: String) -> Void = ignoreLink
+    /// The Direct models the active controller data adds to the table, as
+    /// the reader starts.
+    var served = ServedDirectModels.none
 }
 
 /// A lane nobody asked to listen posts nowhere.
@@ -109,6 +112,8 @@ final class HidPadLane: @unchecked Sendable {
     let capacity: Int
     /// What the pad is sent, written off this thread: a Steam Controller's.
     let output: DirectOutput?
+    /// The last write's verdict, whoever wrote.
+    let writes: DirectWrites
     private let wiring: HidPadWiring
     /// The last battery seen, packed, for the 30 s heartbeat on the main
     /// actor: written on the reader's thread, zero while none.
@@ -151,8 +156,16 @@ final class HidPadLane: @unchecked Sendable {
     private var captureRest: HidRawState?
     private var capturePrevious = HidRawState()
 
-    init(slotId: String, candidate: HidPadCandidate, wiring: HidPadWiring, openedNs: UInt64, output: DirectOutput? = nil) {
+    init(
+        slotId: String,
+        candidate: HidPadCandidate,
+        wiring: HidPadWiring,
+        openedNs: UInt64,
+        output: DirectOutput? = nil,
+        writes: DirectWrites = DirectWrites()
+    ) {
         self.slotId = slotId
+        self.writes = writes
         self.candidate = candidate
         self.wiring = wiring
         self.output = output

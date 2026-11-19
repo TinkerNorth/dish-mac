@@ -23,6 +23,17 @@ package struct SupportCaptureFacts: Equatable {
     }
 }
 
+/// The last capture the person finished this run, for the diagnostics bundle.
+package struct FinishedCapture: Equatable {
+    package let deviceKey: String
+    package let report: String
+
+    package init(deviceKey: String, report: String) {
+        self.deviceKey = deviceKey
+        self.report = report
+    }
+}
+
 @MainActor
 final class SupportCaptureService: StateSource<SupportCaptureFacts?> {
     /// Often enough that a press shows on the page at once.
@@ -34,6 +45,8 @@ final class SupportCaptureService: StateSource<SupportCaptureFacts?> {
     private var drainTimer: InputPathTimer?
     /// Counts the captures, so a post from one that ended lands nowhere.
     private var generation = 0
+    /// Kept after its page closes; the next finished capture replaces it.
+    private(set) var lastFinished: FinishedCapture?
 
     init(capture: HidReportCapturing, scheduler: InputPathScheduler) {
         self.capture = capture
@@ -58,7 +71,8 @@ final class SupportCaptureService: StateSource<SupportCaptureFacts?> {
     /// Next and Skip; the last step stops the capture and keeps the result.
     func send(_ event: SupportCaptureEvent) {
         reduce(event)
-        guard state?.capture.phase == .finished else { return }
+        guard let facts = state, facts.capture.phase == .finished else { return }
+        lastFinished = FinishedCapture(deviceKey: facts.deviceKey, report: supportReportText(facts.capture))
         stopCapturing()
     }
 

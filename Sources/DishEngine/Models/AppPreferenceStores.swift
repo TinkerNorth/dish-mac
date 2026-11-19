@@ -16,6 +16,7 @@ struct AppPreferenceStores {
     let deadzones: DeadzonePreferenceStore
     let usbPaths: UsbPathChoiceStore
     let remaps: JoystickRemapStore
+    let controllerDb: ControllerDbPreferenceStore
 
     @MainActor
     init(defaults: UserDefaults) {
@@ -28,5 +29,6 @@ struct AppPreferenceStores {
         deadzones = DeadzonePreferenceStore(defaults: defaults)
         usbPaths = UsbPathChoiceStore(defaults: defaults)
         remaps = JoystickRemapStore(defaults: defaults)
+        controllerDb = ControllerDbPreferenceStore(defaults: defaults)
     }
 }

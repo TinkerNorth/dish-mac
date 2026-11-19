@@ -36,6 +36,8 @@ struct SettingsPageState: Equatable {
     let showsCrashReport: Bool
     let update: UpdateRowState
     let updateChecksEnabled: Bool
+    /// The controller database's standing, its switch and Check now.
+    let controllerDb: ControllerDbRowState
     let aboutLine: String
 }
 
@@ -51,7 +53,12 @@ struct UpdateRowState: Equatable {
     let offersSkip: Bool
 }
 
-func settingsPageState(facts: ShellFacts, words: L10n = .app) -> SettingsPageState {
+func settingsPageState(
+    facts: ShellFacts,
+    locale: Locale = .current,
+    timeZone: TimeZone = .current,
+    words: L10n = .app
+) -> SettingsPageState {
     let preferences = facts.preferences
     return SettingsPageState(
         theme: preferences.theme,
@@ -68,6 +75,7 @@ func settingsPageState(facts: ShellFacts, words: L10n = .app) -> SettingsPageSta
         showsCrashReport: facts.crashLogPresent,
         update: updateRow(facts.update, time: facts.updateClock, words: words),
         updateChecksEnabled: preferences.updateChecksEnabled,
+        controllerDb: controllerDbRow(facts.controllerDb, locale: locale, timeZone: timeZone, words: words),
         aboutLine: words.aboutLine(facts.update.currentVersion)
     )
 }

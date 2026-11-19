@@ -64,6 +64,11 @@ package struct SlotInputPath: Equatable {
     package var playerNumber: Int?
     package var transport: HidTransport?
     package var hardwareId: HidHardwareId?
+    /// What the pad's hardware showed at attach against its record's
+    /// `expect`, one line per expectation it broke.
+    package var expectMismatches: [String] = []
+    /// The last write Dish sent the pad itself, and IOKit's answer.
+    package var lastWrite: DirectWriteVerdict?
 
     package init(source: InputSource, reason: InputSourceReason) {
         self.source = source
@@ -169,6 +174,11 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
     var refusals: [String: ClaimRefusal] = [:]
     /// The opt-in models the Controllers page offers to read directly.
     let offers = StateSource<[DirectOffer]>(initial: [])
+    /// The controller data in force: read as each pad attaches, and handed
+    /// to the reader as the rows it adds to the table.
+    private(set) var controllerIndex: ControllerIndex
+    /// Each Direct lane's last write, taken from its mailbox on the ticks.
+    var lastWrites: [String: DirectWriteVerdict] = [:]
     var checkTimer: InputPathTimer?
     /// What the other threads' posts reach the paths through.
     let relay = PathsRelay()
@@ -180,9 +190,11 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
         reader: HidPadReading = InertHidPadReader(),
         capture: HidReportCapturing = InertHidReportCapture(),
         scheduler: InputPathScheduler = LiveInputPathScheduler(),
-        clockMs: @escaping () -> Int64 = uptimeMs
+        clockMs: @escaping () -> Int64 = uptimeMs,
+        controllerIndex: ControllerIndex = ControllerIndex(BundledControllerDb.empty, source: .bundled)
     ) {
         self.choices = choices
+        self.controllerIndex = controllerIndex
         let remaps = remaps ?? JoystickRemapStore()
         self.remaps = remaps
         buttonCheck = ButtonCheck(store: remaps)
@@ -199,8 +211,18 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
     func start(processor: GamepadInputProcessor) {
         var wiring = HidPadWiring(processor: processor, notify: makeNotify(), battery: makeBatteryPost(), captured: makeCapturePost())
         wiring.linkChanged = makeLinkPost()
+        wiring.served = ServedDirectModels(index: controllerIndex)
         let events = HidPadEvents(arrived: makeArrivalPost(), removed: makeRemovalPost(), refused: makeRefusalPost())
         reader.start(wiring: wiring, events: events)
+    }
+
+    /// New controller data: the reader classifies the next arrivals against
+    /// it, and a pad already attached keeps its record until it attaches
+    /// again (section 6.5).
+    func useControllerIndex(_ index: ControllerIndex) {
+        guard index != controllerIndex else { return }
+        controllerIndex = index
+        reader.useServedModels(ServedDirectModels(index: index))
     }
 
     /// A gate for a pad's hot path that posts its events here.

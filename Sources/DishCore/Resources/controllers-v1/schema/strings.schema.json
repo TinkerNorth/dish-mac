@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dish.tinkernorth.com/controllers/v1/schema/strings.schema.json",
+  "title": "Dish controller database strings, one locale",
+  "type": "object",
+  "propertyNames": { "pattern": "^(controller\\.[a-z0-9]+(-[a-z0-9]+)*\\.(name|hint)|family\\.[a-zA-Z0-9]+\\.name|mapping\\.[a-zA-Z0-9]+\\.name|issue\\.[a-z0-9]+(-[a-z0-9]+)*\\.(title|body))$" },
+  "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 400 }
+}

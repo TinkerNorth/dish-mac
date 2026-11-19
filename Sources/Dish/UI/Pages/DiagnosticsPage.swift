@@ -18,7 +18,7 @@ struct DiagnosticsPage: View {
     private let words = L10n.app
 
     private var state: DiagnosticsPageState {
-        diagnosticsPageState(facts: model.shellFacts)
+        diagnosticsPageState(facts: model.shellFacts, mail: model.diagnosticsMailFacts)
     }
 
     var body: some View {
@@ -28,6 +28,8 @@ struct DiagnosticsPage: View {
                     .font(DishFont.detail)
                     .foregroundColor(DishTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
+                DiagnosticsMailSection(mail: state.mail)
+                cardsSection(words.controllerDatabase, .cards([state.controllerDb]))
                 cardsSection(words.hosts, state.hosts)
                 cardsSection(words.controllers, state.pads)
                 if let others = state.otherDevices {
@@ -112,61 +114,5 @@ struct DiagnosticsPage: View {
     private func copyEvents() {
         pasteboard.copy(diagnosticsTranscript(facts: model.shellFacts))
         copied = true
-    }
-}
-
-/// One card: a headline with its dot and chip, then one fact per line with
-/// the key in a fixed left column so every card lines up.
-private struct DiagnosticsCard: View {
-
-    let state: DiagnosticsCardState
-    let inspectLabel: String
-    let inspect: (String) -> Void
-
-    private static let keyColumn: CGFloat = 150
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
-                if let dot = state.dot {
-                    StatusDot(color: dot)
-                }
-                Text(state.title)
-                    .font(DishFont.body)
-                    .foregroundColor(DishTheme.onSurface)
-                Spacer()
-                if let chip = state.chip {
-                    Text(chip)
-                        .font(DishFont.monoChip)
-                        .foregroundColor(DishTheme.muted)
-                }
-                if let slotId = state.inspects {
-                    Button(inspectLabel) { inspect(slotId) }
-                        .buttonStyle(DishOutlinedButtonStyle())
-                }
-            }
-            ForEach(state.lines) { line in
-                factLine(line)
-            }
-        }
-        .padding(12)
-        .background(DishTheme.surface)
-        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DishTheme.cardStroke, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-    }
-
-    private func factLine(_ line: FactLine) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text(line.key)
-                .font(DishFont.caption)
-                .foregroundColor(DishTheme.muted)
-                .frame(width: Self.keyColumn, alignment: .leading)
-            Text(line.value)
-                .font(DishFont.mono)
-                .foregroundColor(DishTheme.onSurface)
-                .textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
     }
 }

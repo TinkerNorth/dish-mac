@@ -33,6 +33,7 @@ struct InspectorPage: View {
                 stickTestsSection
                 rumbleSection
                 audioSection
+                InspectorOutcomesSection(slotId: slotId, state: state.outcomes)
             }
             .padding(DishSpace.page)
         }

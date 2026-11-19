@@ -1,6 +1,6 @@
 # Dish for macOS: Privacy Policy
 
-**Effective date:** 2026-11-15.
+**Effective date:** 2026-11-19.
 **Canonical copy:** this file, at
 [`https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md`](https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md).
 
@@ -21,11 +21,15 @@ describing another.
   from your Mac, over your own network, to the satellite you paired with. It
   does not stream to any TinkerNorth-operated server. TinkerNorth does not
   operate a server for Dish at all.
-- **Nothing leaves your network except the update check and, with its
+- **Nothing leaves your network except the two update checks and, with its
   switch on, a crash report.** With "Check for updates automatically" on
   (the default), the app fetches one small file from github.com at startup
   and every few hours to learn the newest version; it carries nothing about
-  you, and section 2.3 lists what GitHub sees. With "Share crash reports" on
+  you, and section 2.3 lists what GitHub sees. With "Check for controller
+  updates automatically" on (the default), it fetches a small manifest from
+  dish.tinkernorth.com ten seconds after launch and every six hours, and the
+  newer controller list only when there is one (section 2.4). A diagnostics
+  file reaches us only if you mail it yourself (section 2.5). With "Share crash reports" on
   (the default), an official release build that crashes sends one anonymous
   report to Sentry; section 3 says exactly what it holds, and the switch
   stops the very next one. There is no analytics SDK, no telemetry, no
@@ -67,6 +71,8 @@ Preferences are stored with `UserDefaults` in the app's preferences domain
 | `background_run_enabled`, `background_notice_shown` | Whether closing the window keeps Dish running, and whether the one-time notice about it was shown | The close-to-background rule |
 | `keep_awake_mode`, `keep_awake_timeout_minutes`, `keep_awake_display` | Your keep-awake mode, its stillness window and whether the display is held too | Deciding when to hold a power-management assertion |
 | `updates_check_enabled`, `updates_skipped_version`, `updates_last_check_utc_ms` | Whether automatic update checks run, a version you chose to skip, and when the last check completed | The update check and its schedule |
+| `controller_db_check_enabled`, `controller_db_last_check_utc_ms`, `controller_db_last_check_result`, `controller_db_manifest_etag` | Whether the controller database is checked automatically, when the last check ran and how it ended, and the manifest's ETag the website gave | The controller database check and its schedule (section 2.4) |
+| `~/Library/Application Support/Dish/controllers-v1/` (files, not preferences) | The newest controller list the website published, its text in each language and its manifest, once one newer than the app's own was downloaded | Recognising controllers released after this version of the app |
 | `crashlytics_collection_enabled` | Whether *Share crash reports* is on (the fleet's key name) | Deciding whether a crash report may be sent (section 3) |
 | `ui_rail_collapsed`, `onboarding_welcome_completed`, `local_network_primed` | Whether the window's rail is collapsed, whether the welcome was finished or skipped, and whether the Local Network prompt was explained once | Drawing the window as you left it and showing the welcome and the explanation only once |
 | `moonlight_host_list` | The remembered Moonlight hosts: name, address, HTTP and HTTPS ports, the id the host answers with, the app picked for it, the controller type picked for it, and whether it ever accepted this device | Pairing with and starting sessions on Moonlight hosts you added or paired with |
@@ -131,14 +137,89 @@ scheduled checks; the manual button fetches only when pressed. The time of the
 last completed check and a version you chose to skip stay in your preferences
 (section 2.1).
 
-**A crash report** is the one thing that reaches us, through Sentry, and
-only if you leave "Share crash reports" on. Section 3 describes it.
+**The controller database check** goes to `dish.tinkernorth.com`, the
+TinkerNorth website; section 2.4 describes it.
 
-There is no TinkerNorth server for this app to talk to.
+**A crash report** reaches us through Sentry only if you leave "Share crash
+reports" on; section 3 describes it. **A diagnostics file** reaches us only
+if you mail it yourself; section 2.5 describes it.
+
+Beyond the website's static files there is no TinkerNorth server for this
+app to talk to.
 
 The only other way this app causes a request to a TinkerNorth or third-party
 address is if you click a link, which hands the URL to your default browser and
 is then between you and that site.
+
+### 2.4 Controller database updates
+
+Dish ships with a list of the controllers it recognises: their USB and
+Bluetooth ids, how each one talks, and the known issues its Diagnostics card
+shows. So that a newly supported controller does not wait for an app
+release, the app checks for a newer list. About ten seconds after launch,
+and then every six hours while it runs, it fetches a small manifest from
+`https://dish.tinkernorth.com/controllers/v1/` that names the newest
+version. Only when that version is newer than the one the app has does it
+fetch the rest: the controller list and its text in each language. These
+files are data, never code. The app checks each one's size and SHA-256
+checksum against the manifest before using it, and keeps the copy it has
+when anything does not match. A downloaded list is kept under
+`~/Library/Application Support/Dish/controllers-v1/` (section 2.1).
+
+`dish.tinkernorth.com` is an Amazon S3 bucket behind Amazon CloudFront,
+operated for TinkerNorth by Amazon Web Services. The requests carry no
+identifier, no cookie and no query, and use the system's default user agent;
+the manifest request repeats the ETag the website last gave, so an unchanged
+manifest is answered with "not modified". What the host's access logs can
+see is what any web server sees: the IP address the request came from, and
+the time. We use those logs as we use the rest of the website's: for
+capacity planning and abuse detection only.
+
+*Check for controller updates automatically* in Settings, on by default,
+turns the check off. With it off, no request for the controller list leaves
+your Mac, and the app keeps using the copy it has. *Check now* runs one
+check when you press it, and sends nothing while the switch is off. Every
+build of Dish for macOS makes this check; there is no store build.
+
+### 2.5 Diagnostics by email
+
+When something does not work, you can send us a diagnostics file from the
+app's Diagnostics page. Nothing happens unless you start it. *Email
+diagnostics* writes one file, `dish-diagnostics-dish-mac-<date>-<time>.json`,
+to a temporary folder and hands it to your own mail app, in a new message
+addressed to `support@tinkernorth.com` with the page's summary in the body.
+Nothing is sent until you press Send in your mail app, and you can read the
+file or remove it first. The message then travels like any email you send,
+through your own mail provider. When no mail app takes it, or when you press
+*Save diagnostics*, the file is saved where you pick instead and goes
+nowhere.
+
+The file holds:
+
+- the app's version and build;
+- your Mac's model identifier (such as `Mac14,2`), its macOS version and its
+  processor architecture;
+- which controller database version the app uses, where it came from, and
+  when the last check ran and how it ended;
+- for each attached controller, its identity and hardware facts: the USB or
+  Bluetooth ids, the product and maker names the controller reports, how it
+  is connected, how Dish reads it, the controller database record it matched,
+  what its hardware showed at attach against that record, and the last report
+  Dish sent it with the answer macOS gave;
+- the results of the tests you ran on a controller in the inspector and
+  confirmed, such as whether you felt the rumble;
+- the hosts you use, as "Host 1", "Host 2", with their kind, version,
+  protocol, link state and which audio lanes they granted, never their names
+  or addresses;
+- the app's flight recorder, the lines Diagnostics shows, with every host
+  named by its alias;
+- only if you ran "Help support this controller" this session, that
+  controller's report as the page showed it: its ids, names, connection, HID
+  report descriptor and the reports it sent as you pressed each control.
+
+It never holds pairing keys, pairing secrets, certificate fingerprints, IP
+addresses, Wi-Fi names, the names you gave your hosts or devices, or anything
+from a controller's microphone or speaker.
 
 ---
 
@@ -231,6 +312,10 @@ The app runs unsandboxed and asks for no other permission than these.
   chip on its card or the one in the header; muted sends no audio at all.
 - **Switch off automatic update checks** in Settings; nothing then leaves
   your network until you press "Check for updates" yourself.
+- **Switch off "Check for controller updates automatically"** in Settings;
+  no request for the controller list then leaves your Mac, and deleting
+  `~/Library/Application Support/Dish/controllers-v1/` returns the app to
+  the list it shipped with.
 - **Switch off "Share crash reports"** in Settings; the SDK closes at once
   and the next crash writes only the local log.
 - **Discard a crash log** from the "Crash report" row in Settings, or delete
@@ -250,8 +335,10 @@ information from anyone, and no account exists.
 ## 7. International transfers
 
 The update check reaches GitHub's servers, wherever GitHub serves the file
-from, and carries no personal data beyond the IP address every web request
-has. Everything else stays on your own network.
+from, and the controller database check reaches Amazon CloudFront, wherever
+it serves the website from; neither carries personal data beyond the IP
+address every web request has. A diagnostics file you mail travels through
+your own mail provider. Everything else stays on your own network.
 
 ## 8. Changes to this policy
 

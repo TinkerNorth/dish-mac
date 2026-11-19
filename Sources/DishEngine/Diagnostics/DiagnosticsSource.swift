@@ -50,6 +50,15 @@ package struct PadDiagnostics: Equatable, Identifiable {
     package let hardwareId: HidHardwareId?
     /// Standard or Direct, why, and a Direct pad's report rate.
     package let inputPath: SlotInputPath?
+    /// The controller data's record for the pad's identity; nil when none
+    /// matched or the identity is unknown.
+    package var record: ControllerRecord?
+    /// The pad's transport, the Direct path's or the census device's.
+    package var transport: ControllerTransport?
+    /// The census device under the pad, for its product and manufacturer.
+    package var device: HidDeviceFacts?
+    /// The record's issues that apply to this Mac and this transport.
+    package var issues: [ControllerIssue] = []
 
     package var id: String {
         slot.id
@@ -77,6 +86,10 @@ package struct DiagnosticsSnapshot: Equatable {
     package var pads: [PadDiagnostics] = []
     /// Every HID game device on the Mac, GameController's and the rest.
     package var inputDevices: [HidDeviceFacts] = []
+    /// The controller data in force and its last check.
+    package var controllerDb = ControllerDbStatus()
+    /// The data's words, for the names and issues the cards show.
+    package var controllerStrings = ControllerStrings(tables: [:])
 
     package init(hosts: [HostDiagnostics] = [], pads: [PadDiagnostics] = [], inputDevices: [HidDeviceFacts] = []) {
         self.hosts = hosts
@@ -102,6 +115,9 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     private var audio: (String) -> PadAudioDiagnostics? = { _ in nil }
     private var backgroundInput: () -> Bool = { false }
     private var inputPath: (String) -> SlotInputPath? = { _ in nil }
+    private var controllerIndex: () -> ControllerIndex = { ControllerIndex(BundledControllerDb.empty, source: .bundled) }
+    private var controllerDb: () -> ControllerDbStatus = { ControllerDbStatus() }
+    private let issueHost: IssueHost
     private var onTick: () -> Void = {}
     private var timer: DispatchSourceTimer?
 
@@ -109,8 +125,10 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         wifi: WifiConnectionManager,
         hub: ConnectionHub,
         moonlight: MoonlightConnectionManager? = nil,
-        census: HidCensusReading = IOKitHidCensus()
+        census: HidCensusReading = IOKitHidCensus(),
+        issueHost: IssueHost = IssueHost(model: "", osMajor: 0)
     ) {
+        self.issueHost = issueHost
         self.wifi = wifi
         self.hub = hub
         self.moonlight = moonlight
@@ -138,6 +156,12 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     func useInputPaths(_ provider: @escaping (String) -> SlotInputPath?, tick: @escaping () -> Void) {
         inputPath = provider
         onTick = tick
+    }
+
+    /// The controller data in force and its status, set once the owner has them.
+    func useControllerData(index: @escaping () -> ControllerIndex, status: @escaping () -> ControllerDbStatus) {
+        controllerIndex = index
+        controllerDb = status
     }
 
     override package func start() {
@@ -182,9 +206,10 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         }
         let inBackground = backgroundInput()
         let devices = census.devices()
+        let index = controllerIndex()
         let pads = slots().map { slot in
             let path = inputPath(slot.id)
-            return PadDiagnostics(
+            let pad = PadDiagnostics(
                 slot: slot,
                 wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap { slotWireFacts(of: $0, slotId: slot.id) },
                 audio: audio(slot.id),
@@ -192,8 +217,12 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
                 hardwareId: path?.hardwareId ?? hardwareId(forPadNamed: slot.name, in: devices),
                 inputPath: path
             )
+            return withRecord(pad, index: index, devices: devices, host: issueHost)
         }
-        return DiagnosticsSnapshot(hosts: hosts, pads: pads, inputDevices: devices)
+        var snapshot = DiagnosticsSnapshot(hosts: hosts, pads: pads, inputDevices: devices)
+        snapshot.controllerDb = controllerDb()
+        snapshot.controllerStrings = index.strings
+        return snapshot
     }
 
     /// A Moonlight host's session, read off its connection when one exists
@@ -204,4 +233,20 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         guard let connection = moonlight.get(summary.id) else { return .resting(info: info) }
         return .read(connection, info: info)
     }
+}
+
+/// The pad with its census device, its transport, the data's record for its
+/// identity and the record's issues that apply here.
+func withRecord(_ pad: PadDiagnostics, index: ControllerIndex, devices: [HidDeviceFacts], host: IssueHost) -> PadDiagnostics {
+    var known = pad
+    let device = pad.hardwareId.flatMap { id in devices.first { $0.hardwareId == id } }
+    let transport = controllerTransport(pad.inputPath?.transport ?? device?.transport)
+    known.device = device
+    known.transport = transport
+    guard let id = pad.hardwareId else { return known }
+    let vendorId = UInt16(clamping: id.vendorId)
+    let productId = UInt16(clamping: id.productId)
+    known.record = index.record(vendorId: vendorId, productId: productId, transport: transport)
+    known.issues = known.record.map { issuesApplying($0.issues, transport: transport, host: host) } ?? []
+    return known
 }

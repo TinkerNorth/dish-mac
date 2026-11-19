@@ -209,10 +209,16 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
         guard let candidate = xusbPadCandidate(arrival.properties) else { return }
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
-        let pad = XusbArrivingPad(registryId: arrival.registryId, slotId: slotId, candidate: candidate, wiring: wiring)
+        let pad = XusbArrivingPad(
+            registryId: arrival.registryId,
+            slotId: slotId,
+            candidate: candidate,
+            wiring: wiring,
+            writes: DirectWrites()
+        )
         blockingRegion("xusb.open")
         switch Result(catching: { try arrival.port.open(queue: queue) }) {
-        case let .success(interface): read(pad, interface)
+        case let .success(interface): read(pad.seeing(interface), interface)
         case let .failure(error): refuse(pad, status: ioReturn(of: error))
         }
     }
@@ -220,7 +226,7 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     /// The reads start before the paths hear of the pad: its lane keeps the
     /// first reports as the baseline until it is forwarded.
     private func read(_ pad: XusbArrivingPad, _ interface: XusbOpenInterface) {
-        let output = interface.output.map { XusbOutput(slotId: pad.slotId, pipe: $0, quitBoundMs: quitBoundMs) }
+        let output = interface.output.map { XusbOutput(slotId: pad.slotId, pipe: $0, quitBoundMs: quitBoundMs, writes: pad.writes) }
         let lane = pad.lane(output: output)
         let reads = XusbReadLoop(lane: lane, pipe: interface.input) { [weak self] slotId, status in
             self?.readFailed(slotId, status)
@@ -269,9 +275,19 @@ private struct XusbArrivingPad {
     let slotId: String
     let candidate: HidPadCandidate
     let wiring: HidPadWiring
+    let writes: DirectWrites
+
+    /// What the open interface shows of the pad's endpoints: the IN pipe it
+    /// reads, and an OUT pipe or none.
+    func seeing(_ interface: XusbOpenInterface) -> XusbArrivingPad {
+        var seen = candidate
+        seen.observedEndpoints = ObservedEndpoints(input: true, output: interface.output != nil)
+        return XusbArrivingPad(registryId: registryId, slotId: slotId, candidate: seen, wiring: wiring, writes: writes)
+    }
 
     func lane(output: DirectOutput?) -> HidPadLane {
-        HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: DispatchTime.now().uptimeNanoseconds, output: output)
+        let openedNs = DispatchTime.now().uptimeNanoseconds
+        return HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: openedNs, output: output, writes: writes)
     }
 }
 

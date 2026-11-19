@@ -44,12 +44,18 @@ extension AppModel {
 
     /// The paths over the stores they keep, and the Direct reader and the
     /// support capture the app hands in (neither opens anything otherwise).
-    static func inputPaths(_ prefs: AppPreferenceStores, reader: HidPadReading?, capture: HidReportCapturing?) -> InputPaths {
+    static func inputPaths(
+        _ prefs: AppPreferenceStores,
+        reader: HidPadReading?,
+        capture: HidReportCapturing?,
+        index: ControllerIndex
+    ) -> InputPaths {
         InputPaths(
             choices: prefs.usbPaths,
             remaps: prefs.remaps,
             reader: reader ?? InertHidPadReader(),
-            capture: capture ?? InertHidReportCapture()
+            capture: capture ?? InertHidReportCapture(),
+            controllerIndex: index
         )
     }
 

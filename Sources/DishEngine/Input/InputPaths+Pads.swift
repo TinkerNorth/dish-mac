@@ -83,6 +83,7 @@ extension InputPaths {
         pads.removeValue(forKey: slotId)
         rawRates.removeValue(forKey: slotId)
         rawHz.removeValue(forKey: slotId)
+        lastWrites.removeValue(forKey: slotId)
         refusals.removeValue(forKey: slotId)
         host?.hideDirectSlot(slotId)
         buttonCheck.laneGone(slotId: slotId)
@@ -269,6 +270,7 @@ extension InputPaths {
             guard let lane = pad.arrival?.lane else { continue }
             let count = lane.tally.snapshot().reports
             rawHz[key] = rawRates[key, default: InputRateTracker()].sample(count: count, nowUs: nowUs)
+            if let write = lane.writes.take() { lastWrites[key] = write }
         }
         publishFacts()
     }

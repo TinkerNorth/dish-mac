@@ -14,6 +14,8 @@ import XCTest
 final class ResourceBundleLaunchTests: XCTestCase {
 
     private static let resolverPath = "Sources/Dish/L10n/ResourceBundle.swift"
+    /// DishCore's own resolver, for the controller database it ships.
+    private static let coreResolverPath = "Sources/DishCore/ControllerDb/BundledControllerDb.swift"
     private static let bundleScriptPath = "bundle.sh"
     private static let smokeScriptPath = "scripts/launch-smoke.sh"
     private static let smokeStep = "run: scripts/launch-smoke.sh Dish.app"
@@ -21,7 +23,7 @@ final class ResourceBundleLaunchTests: XCTestCase {
 
     func testOnlyTheResolverAsksSwiftPMForTheModuleBundle() throws {
         let offenders = try RepoFiles.swiftFiles(under: "Sources")
-            .filter { $0 != Self.resolverPath }
+            .filter { $0 != Self.resolverPath && $0 != Self.coreResolverPath }
             .flatMap { path in try RepoFiles.offendingLines(in: path, where: Self.namesTheModuleBundle) }
         XCTAssertEqual(offenders, [], "read the app's resources through ResourceBundle.dish, never Bundle.module")
     }
@@ -33,6 +35,20 @@ final class ResourceBundleLaunchTests: XCTestCase {
             resolver.contains("inside(Bundle.main.resourceURL) ?? .module"),
             "the app's own resources first, SwiftPM's accessor last"
         )
+    }
+
+    func testTheCoreResolverLooksInTheAppsResourcesFirst() throws {
+        let resolver = try RepoFiles.read(Self.coreResolverPath)
+        XCTAssertTrue(resolver.contains("public static let name = \"Dish_DishCore.bundle\""))
+        XCTAssertTrue(
+            resolver.contains("inside(Bundle.main.resourceURL) ?? .module"),
+            "the app's own resources first, SwiftPM's accessor last"
+        )
+    }
+
+    func testTheBundleScriptShipsTheCoreBundleWhereItsResolverLooks() throws {
+        let script = try RepoFiles.read(Self.bundleScriptPath)
+        XCTAssertTrue(script.contains("cp -R \"$CORE_BUNDLE\" \"$APP/Contents/Resources/Dish_DishCore.bundle\""))
     }
 
     func testTheBundleScriptShipsTheBundleWhereTheResolverLooks() throws {
@@ -68,6 +84,6 @@ final class ResourceBundleLaunchTests: XCTestCase {
     }
 
     private static func namesTheModuleBundle(_ line: String) -> Bool {
-        line.contains("Bundle.module") || line.contains("bundle: .module")
+        line.contains("Bundle.module") || line.contains("bundle: .module") || line.contains("?? .module")
     }
 }

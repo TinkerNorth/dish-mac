@@ -326,6 +326,8 @@ func recentEvents(_ events: [DiagnosticsEvent], limit: Int = 30) -> [Diagnostics
 /// for none, the game devices GameController leaves out, and the flight
 /// recorder's newest lines.
 struct DiagnosticsPageState: Equatable {
+    /// The controller data in force and its last check.
+    let controllerDb: DiagnosticsCardState
     let hosts: DiagnosticsCards
     let pads: DiagnosticsCards
     /// Nil while GameController claims every game device.
@@ -334,6 +336,8 @@ struct DiagnosticsPageState: Equatable {
     let events: [DiagnosticsEventLine]
     /// Copy waits until the recorder holds a line.
     let canCopy: Bool
+    /// The mail Email diagnostics opens; empty until the page is whole.
+    var mail = DiagnosticsMailState(recipient: "", subject: "", body: "")
 }
 
 enum DiagnosticsCards: Equatable {
@@ -362,22 +366,35 @@ struct DiagnosticsEventLine: Equatable, Identifiable {
 
 func diagnosticsPageState(
     facts: ShellFacts,
+    mail: DiagnosticsMailFacts = DiagnosticsMailFacts(version: "", model: ""),
     locale: Locale = .current,
     timeZone: TimeZone = .current,
     words: L10n = .app
 ) -> DiagnosticsPageState {
     let hosts = facts.diagnostics.hosts.map { hostCard($0, locale: locale, words: words) }
-    let pads = facts.diagnostics.pads.map { padCard($0, words: words) }
+    let strings = facts.diagnostics.controllerStrings
+    let pads = facts.diagnostics.pads.map { padCard($0, strings: strings, locale: locale, timeZone: timeZone, words: words) }
     let events = recentEvents(facts.diagnosticsEvents).map { event in
         DiagnosticsEventLine(id: event.id, text: eventLine(event, locale: locale, timeZone: timeZone, words: words))
     }
-    return DiagnosticsPageState(
+    let controllerDb = DiagnosticsCardState(
+        id: "controller-db",
+        title: words.controllerDatabase,
+        dot: nil,
+        chip: nil,
+        lines: controllerDbLines(facts.controllerDb, locale: locale, timeZone: timeZone, words: words),
+        inspects: nil
+    )
+    var page = DiagnosticsPageState(
+        controllerDb: controllerDb,
         hosts: hosts.isEmpty ? .empty(words.noSatellitesYet) : .cards(hosts),
         pads: pads.isEmpty ? .empty(words.noControllersConnected) : .cards(pads),
         otherDevices: otherInputDevicesState(facts.diagnostics.inputDevices, words: words),
         events: events,
         canCopy: !facts.diagnosticsEvents.isEmpty
     )
+    page.mail = diagnosticsMail(page, facts: mail, words: words)
+    return page
 }
 
 func hostCard(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> DiagnosticsCardState {
@@ -391,15 +408,23 @@ func hostCard(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = 
     )
 }
 
-/// A generic pad whose layout is guessed says so in the chip.
-func padCard(_ pad: PadDiagnostics, words: L10n = .app) -> DiagnosticsCardState {
-    let chip = pad.inputPath?.layoutGuessed == true ? words.layoutGuessed : nil
+/// A generic pad whose layout is guessed says so in the chip; any other
+/// pad wears its record's verification, and a pad with no record none.
+func padCard(
+    _ pad: PadDiagnostics,
+    strings: ControllerStrings = ControllerStrings(tables: [:]),
+    locale: Locale = .current,
+    timeZone: TimeZone = .current,
+    words: L10n = .app
+) -> DiagnosticsCardState {
+    let guessed = pad.inputPath?.layoutGuessed == true
+    let chip = guessed ? words.layoutGuessed : pad.record.map { verificationChip($0.verification, words: words) }
     return DiagnosticsCardState(
         id: pad.id,
         title: pad.slot.name,
         dot: nil,
         chip: chip,
-        lines: padLines(pad, words: words),
+        lines: padLines(pad, words: words) + recordLines(pad, strings: strings, locale: locale, timeZone: timeZone, words: words),
         inspects: pad.slot.id
     )
 }

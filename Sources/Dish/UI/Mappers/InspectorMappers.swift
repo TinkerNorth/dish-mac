@@ -208,6 +208,8 @@ struct InspectorPageState: Equatable {
     let benches: InspectorBenchState?
     /// The pad's input path and its "Not responding?" check.
     var path: PadPathState?
+    /// "Did it work?" after the test the pad ran last, and the answers.
+    var outcomes = OutcomesState(question: nil, answers: [], hint: nil)
 }
 
 struct LiveInputState: Equatable {
@@ -263,7 +265,13 @@ func inspectorPageState(
         stickTestsEnabled: inspection.bench.phase != .running,
         stickTestStatus: stickTestText(inspection, words: words),
         benches: slot.map { inspectorBenches($0, micPermitted: micPermitted, words: words) },
-        path: padPathState(facts.inputPaths[slotId], words: words)
+        path: padPathState(facts.inputPaths[slotId], words: words),
+        outcomes: outcomesState(
+            slotId: slotId,
+            outcomes: facts.outcomes,
+            stickTestRunning: inspection.bench.phase == .running,
+            words: words
+        )
     )
 }
 

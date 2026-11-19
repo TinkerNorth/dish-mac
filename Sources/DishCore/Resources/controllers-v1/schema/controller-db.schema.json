@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://dish.tinkernorth.com/controllers/v1/schema/controller-db.schema.json",
+  "title": "Dish controller database, schema 1",
+  "type": "object",
+  "required": ["schema", "dbVersion", "records"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": 1 },
+    "dbVersion": { "type": "integer", "minimum": 1 },
+    "records": { "type": "array", "items": { "$ref": "#/$defs/record" } }
+  },
+  "$defs": {
+    "id": { "type": "string", "pattern": "^[a-z0-9]+(-[a-z0-9]+)*$" },
+    "usbId": { "type": "string", "pattern": "^[0-9a-f]{4}:[0-9a-f]{4}$" },
+    "family": { "enum": ["xinput360", "xinput360Wireless", "xboxOneGip", "dualshock4", "dualsense", "switchProUsb", "switchN64Usb", "stadia", "hid", "steamController", "steamTriton", "steamControllerBle"] },
+    "mapping": { "enum": ["western", "switch", "eightbitdo", "playstationClassic"] },
+    "initKind": { "enum": ["none", "xboxOnePowerOn", "xboxOneS", "switchProHandshake", "steamQuiet", "steamTritonQuiet"] },
+    "route": { "enum": ["interruptOut", "setReport", null] },
+    "directRule": { "enum": ["auto", "optIn", "whenOsCannot"] },
+    "verificationState": { "enum": ["verified", "imported", "crowd", "guessed", "flagged"] },
+    "transport": { "enum": ["usb", "bluetooth"] },
+    "direct": {
+      "type": "object", "required": ["rule"], "additionalProperties": false,
+      "properties": { "rule": { "$ref": "#/$defs/directRule" } }
+    },
+    "record": {
+      "type": "object",
+      "required": ["schema", "id", "requires", "identity", "input", "output", "expect", "support"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": { "const": 1 },
+        "id": { "$ref": "#/$defs/id" },
+        "requires": {
+          "type": "object", "required": ["families", "ops"], "additionalProperties": false,
+          "properties": {
+            "families": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/family" } },
+            "ops": { "type": "array", "items": { "type": "string", "pattern": "^[a-zA-Z0-9]+$" } }
+          }
+        },
+        "identity": {
+          "type": "object", "required": ["usb", "bluetooth"], "additionalProperties": false,
+          "properties": {
+            "usb": { "type": "array", "items": { "$ref": "#/$defs/usbId" } },
+            "bluetooth": { "type": "array", "items": { "$ref": "#/$defs/usbId" } },
+            "siblings": { "type": "array", "items": { "$ref": "#/$defs/id" } }
+          }
+        },
+        "input": {
+          "type": "object", "required": ["protocol", "direct", "capabilities"], "additionalProperties": false,
+          "properties": {
+            "protocol": {
+              "type": "object", "required": ["ref", "streamsUnprompted"], "additionalProperties": false,
+              "properties": { "ref": { "$ref": "#/$defs/family" }, "streamsUnprompted": { "type": "boolean" } }
+            },
+            "mapping": { "$ref": "#/$defs/mapping" },
+            "direct": { "$ref": "#/$defs/direct" },
+            "capabilities": {
+              "type": "object", "required": ["motion", "touchpad", "trackpads", "battery", "extendedButtons"], "additionalProperties": false,
+              "properties": {
+                "motion": { "type": "boolean" }, "touchpad": { "type": "boolean" },
+                "trackpads": { "type": "integer", "minimum": 0, "maximum": 2 },
+                "battery": { "type": "boolean" }, "extendedButtons": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "output": {
+          "type": "object", "required": ["route", "init", "capabilities"], "additionalProperties": false,
+          "properties": {
+            "route": { "$ref": "#/$defs/route" },
+            "init": { "type": "object", "required": ["kind"], "additionalProperties": false, "properties": { "kind": { "$ref": "#/$defs/initKind" } } },
+            "capabilities": {
+              "type": "object", "required": ["rumble", "triggerRumble", "lightbar", "playerLeds", "micLed", "triggerEffects"], "additionalProperties": false,
+              "properties": {
+                "rumble": { "type": "boolean" }, "triggerRumble": { "type": "boolean" }, "lightbar": { "type": "boolean" },
+                "playerLeds": { "type": "boolean" }, "micLed": { "type": "boolean" }, "triggerEffects": { "type": "boolean" }
+              }
+            }
+          }
+        },
+        "audio": {
+          "type": "object", "required": ["function", "match"], "additionalProperties": false,
+          "properties": {
+            "function": { "const": "uac" },
+            "match": { "type": "object", "required": ["by"], "additionalProperties": false, "properties": { "by": { "const": "productString" } } },
+            "playback": {
+              "type": "object", "required": ["channels"], "additionalProperties": false,
+              "properties": {
+                "channels": { "type": "integer", "minimum": 1, "maximum": 8 },
+                "speaker": { "type": "array", "items": { "type": "integer", "minimum": 1 } },
+                "haptics": { "type": "array", "items": { "type": "integer", "minimum": 1 } }
+              }
+            },
+            "capture": { "type": "object", "required": ["mic"], "additionalProperties": false, "properties": { "mic": { "type": "boolean" } } }
+          }
+        },
+        "expect": {
+          "type": "object", "required": ["endpoints"], "additionalProperties": false,
+          "properties": {
+            "endpoints": {
+              "type": "object", "required": ["in", "out"], "additionalProperties": false,
+              "properties": { "in": { "type": "boolean" }, "out": { "type": ["boolean", "null"] } }
+            }
+          }
+        },
+        "platforms": {
+          "type": "object", "additionalProperties": false,
+          "properties": {
+            "android": { "$ref": "#/$defs/platformOverride" }, "mac": { "$ref": "#/$defs/platformOverride" },
+            "windows": { "$ref": "#/$defs/platformOverride" }, "linux": { "$ref": "#/$defs/platformOverride" },
+            "ios": { "$ref": "#/$defs/platformOverride" }
+          }
+        },
+        "support": {
+          "type": "object", "required": ["verification", "issues", "sources"], "additionalProperties": false,
+          "properties": {
+            "verification": {
+              "type": "object", "required": ["state", "transport"], "additionalProperties": false,
+              "properties": { "state": { "$ref": "#/$defs/verificationState" }, "transport": { "$ref": "#/$defs/transport" } }
+            },
+            "issues": { "type": "array", "items": { "$ref": "#/$defs/issue" } },
+            "sources": { "type": "array", "items": { "type": "string", "maxLength": 80 } }
+          }
+        }
+      }
+    },
+    "platformOverride": {
+      "type": "object", "additionalProperties": false,
+      "properties": { "direct": { "$ref": "#/$defs/direct" } }
+    },
+    "issue": {
+      "type": "object", "required": ["id", "transport", "lane", "status", "since", "reports"], "additionalProperties": false,
+      "properties": {
+        "id": { "$ref": "#/$defs/id" },
+        "device": { "type": "string", "maxLength": 40 },
+        "os": { "type": "object", "additionalProperties": { "type": ["integer", "string"] } },
+        "transport": { "$ref": "#/$defs/transport" },
+        "lane": { "enum": ["input", "output.rumble", "output.lightbar", "output.playerLeds", "output.micLed", "output.triggerEffects", "audio.speaker", "audio.haptics", "audio.mic"] },
+        "status": { "enum": ["open", "fixed", "wontfix"] },
+        "since": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+        "reports": { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

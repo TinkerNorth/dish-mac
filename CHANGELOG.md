@@ -17,6 +17,63 @@ the repos share a version number.
 
 ---
 
+## [1.4.0] - 2026-11-19
+
+### Added
+
+- **The controller database, bundled and kept current.** The fleet's one
+  list of controllers (dish-website's `/controllers/v1/`, dbVersion 1, 272
+  records) ships inside the app, byte for byte with its manifest, and is read
+  by one decoder into immutable records and an index from `vid:pid` to
+  record; a file of another schema is refused, a record that does not decode
+  is left out alone, unknown fields are ignored. Ten seconds after launch and
+  every six hours, Dish asks `dish.tinkernorth.com` for the manifest with
+  `If-None-Match`; a newer version is downloaded, each file checked against
+  the manifest's SHA-256 and size, parsed, and swapped into
+  `~/Library/Application Support/Dish/controllers-v1/` whole. A failure at
+  any step keeps the data in force. Settings has "Check for controller
+  updates automatically" (on by default; off, nothing is sent) and "Check
+  now", with the version in force and the last check's time and result.
+- **The Mac's Direct table is checked against the data.** A test walks every
+  row of the Direct model table and requires a record of the same identity
+  whose family is the row's decoder (and, for a HID pad, whose button order
+  is the row's), and the other way round for every family the table reads
+  whole; the Joy-Cons, their charging grip and the PDP Afterglow are named
+  as identities the Mac declines.
+- **Served rows reach the Direct path.** Where the HID reader classifies a pad
+  by its USB identity, it reads the table first and the active data after
+  it, so a newer list can teach it a pad of a family it already decodes. A
+  served row still waits for GameController's answer as today, and a record
+  that needs a family or an operation this build lacks is inert: its name
+  and issues show, nothing else applies. The XUSB reader keeps to its table.
+- **Diagnostics at every level.** A controller's Diagnostics card shows its
+  record's id and name, the record's standing as its chip (Verified, Layout
+  guessed, Flagged), the issues the data lists for this transport on this
+  Mac, and for a Direct pad its hardware check (what IOKit showed at attach
+  against the record's `expect`) and its last write (the report, the route,
+  the time and IOKit's answer). Diagnostics shows the bundled version, the
+  version in force and the last check.
+- **"Did it work?" after each inspector test.** The rumble bench, the test
+  tone, the microphone meter and the drift and range tests each ask once
+  they have run; the answers, twenty a controller, are kept for the run and
+  carried in the diagnostics file.
+- **Diagnostics by email.** "Email diagnostics" writes
+  `dish-diagnostics-dish-mac-<yyyyMMdd-HHmmss>.json` (`dish-diagnostics.v1`)
+  and opens a message to `support@tinkernorth.com` in your own mail app, with
+  the page's summary as its body; nothing is sent until you press Send.
+  "Save diagnostics" saves the file where you pick, and is what happens when
+  no mail app takes the message. The file holds the app, the Mac's model and
+  macOS, the data's standing, each controller's record, path, hardware,
+  hardware check, last write and answers, the last support capture on the
+  controller it was taken of, the hosts as "Host 1", "Host 2" and the flight
+  recorder with every host named by its alias; never a pairing key,
+  fingerprint, address, Wi-Fi name or host name.
+
+### Changed
+
+- **The privacy policy** gains "Controller database updates" and
+  "Diagnostics by email", effective 2026-11-19.
+
 ## [1.3.1] - 2026-11-19
 
 ### Fixed
@@ -837,6 +894,7 @@ Tagged, never published: its release workflow was refused before it started.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[1.4.0]: https://github.com/TinkerNorth/dish-mac/compare/1.3.1...1.4.0
 [1.3.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.1
 [1.3.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.0
 [1.2.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.2.1

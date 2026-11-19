@@ -196,6 +196,31 @@ public let directModels: [DirectModel] = [
     valveModel(0x1305, "Valve Steam Controller (2026) receiver", .steamTriton, receiver: true)
 ]
 
+/// An identity the Mac leaves to macOS on purpose, whatever the controller
+/// database says of it: served data never makes one Direct.
+public struct DeclinedDirectIdentity: Equatable, Sendable {
+    public let vendorId: UInt16
+    public let productId: UInt16
+
+    public init(vendorId: UInt16, productId: UInt16) {
+        self.vendorId = vendorId
+        self.productId = productId
+    }
+}
+
+/// The Joy-Cons and their charging grip stay with macOS, and the PDP
+/// Afterglow Wireless's USB port is charge-only.
+public let declinedDirectIdentities: [DeclinedDirectIdentity] = [
+    DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x2006),
+    DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x2007),
+    DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x200E),
+    DeclinedDirectIdentity(vendorId: DirectVendor.pdp, productId: 0x0186)
+]
+
+public func directIdentityDeclined(vendorId: UInt16, productId: UInt16) -> Bool {
+    declinedDirectIdentities.contains(DeclinedDirectIdentity(vendorId: vendorId, productId: productId))
+}
+
 /// The 2015 pad's controller interfaces are its vendor-defined ones; its
 /// keyboard and mouse ride their own.
 private let steamVendorPage = 0xFF00

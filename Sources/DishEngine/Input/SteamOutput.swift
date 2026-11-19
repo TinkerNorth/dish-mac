@@ -64,6 +64,8 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
     private let slotId: String
     private let plan: SteamPlan
     private let writer: HidReportWriting
+    /// Each write's verdict, for the pad's "Last write" row.
+    private let writes: DirectWrites
     private let queue: DispatchQueue
     /// Read only on the queue.
     private let clockMs: () -> Int64
@@ -82,11 +84,13 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
         writer: HidReportWriting,
         clockMs: @escaping () -> Int64 = uptimeMs,
         refreshTicker: QueueTicker = DispatchTicker(),
-        rumbleTicker: QueueTicker = DispatchTicker()
+        rumbleTicker: QueueTicker = DispatchTicker(),
+        writes: DirectWrites = DirectWrites()
     ) {
         self.slotId = slotId
         self.plan = plan
         self.writer = writer
+        self.writes = writes
         self.clockMs = clockMs
         self.refreshTicker = refreshTicker
         self.rumbleTicker = rumbleTicker
@@ -222,6 +226,7 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
             status = writer.write(write)
             attempt += 1
         }
+        writes.record(route: .setReport, reportId: write.reportId, status: status)
         guard status != kIOReturnSuccess else { return }
         Self.log.error("STEAM write id=\(self.slotId, privacy: .public) report=\(write.reportId) status=\(status)")
     }
@@ -233,6 +238,7 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
     /// An output report is never retried: the next re-send heals a dropped one.
     private func sendOutput(_ write: SteamWrite) {
         let status = writer.write(write)
+        writes.record(route: .setReport, reportId: write.reportId, status: status)
         guard status != kIOReturnSuccess else { return }
         Self.log.error("STEAM output id=\(self.slotId, privacy: .public) report=\(write.reportId) status=\(status)")
     }

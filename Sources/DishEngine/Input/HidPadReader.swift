@@ -85,6 +85,14 @@ protocol HidPadReading: AnyObject, Sendable {
     func claim(slotId: String)
     /// Gives an opt-in pad back as it came; it stays open for a later claim.
     func unclaim(slotId: String)
+    /// The active controller data changed: a pad that arrives from now on
+    /// is classified against it.
+    func useServedModels(_ served: ServedDirectModels)
+}
+
+extension HidPadReading {
+    /// A reader that takes no served row hears the change and does nothing.
+    func useServedModels(_: ServedDirectModels) {}
 }
 
 /// Reads nothing: the composition root's default outside the app.
@@ -134,6 +142,8 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     private let accessQueue = DispatchQueue(label: "com.tinkernorth.dish.hid.access", qos: .userInitiated)
     private var wiring: HidPadWiring?
     private var events: HidPadEvents?
+    /// What the data adds to the table, read as each device arrives.
+    private var served = ServedDirectModels.none
 
     init() {}
 
@@ -157,17 +167,22 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         perform { [self] in unclaimOnThread(slotId) }
     }
 
+    func useServedModels(_ served: ServedDirectModels) {
+        perform { [self] in self.served = served }
+    }
+
     /// The thread's whole life: the manager scheduled on its run loop, then
     /// the run loop until the process ends.
     private func run(wiring: HidPadWiring, events: HidPadEvents) {
         ThreadRole.hidReader.enterThread()
         self.wiring = wiring
         self.events = events
+        served = wiring.served
         guard let runLoop = CFRunLoopGetCurrent() else { return }
         runLoopBox.set(runLoop)
         let manager = IOHIDManagerCreate(kCFAllocatorDefault, IOOptionBits(kIOHIDOptionsTypeNone))
         let context = Unmanaged.passUnretained(self).toOpaque()
-        IOHIDManagerSetDeviceMatchingMultiple(manager, hidPadMatching() as CFArray)
+        IOHIDManagerSetDeviceMatchingMultiple(manager, hidPadMatching(served: wiring.served) as CFArray)
         IOHIDManagerRegisterDeviceMatchingCallback(manager, hidPadMatched, context)
         IOHIDManagerRegisterDeviceRemovalCallback(manager, hidPadRemoved, context)
         IOHIDManagerScheduleWithRunLoop(manager, runLoop, CFRunLoopMode.defaultMode.rawValue)
@@ -208,12 +223,14 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     fileprivate func matched(_ device: IOHIDDevice) {
         let registryId = Self.registryId(of: device)
         guard !entries.knows(registryId), let wiring, let events else { return }
-        guard let candidate = hidPadCandidate(Self.properties(of: device)) else { return }
+        guard let candidate = hidPadCandidate(Self.properties(of: device), served: served) else { return }
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
-        let output = candidate.steamPlan.map { SteamOutput(slotId: slotId, plan: $0, writer: IOKitReportWriter(device: device)) }
+        let writes = DirectWrites()
+        let writer = IOKitReportWriter(device: device)
+        let output = candidate.steamPlan.map { SteamOutput(slotId: slotId, plan: $0, writer: writer, writes: writes) }
         let openedNs = DispatchTime.now().uptimeNanoseconds
-        let lane = HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: openedNs, output: output)
+        let lane = HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: openedNs, output: output, writes: writes)
         let waitsForAClaim = candidate.model?.rule == .optIn
         guard waitsForAClaim || open(device, lane: lane) else { return }
         entries.file(registryId, Entry(device: device, lane: lane))
@@ -316,6 +333,7 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
         let reportId = CFIndex(switchStartReportId(step))
         blockingRegion("direct.setReport")
         let status = IOHIDDeviceSetReport(entry.device, kIOHIDReportTypeOutput, reportId, &packet, packet.count)
+        entry.lane.writes.record(route: .setReport, reportId: UInt8(truncatingIfNeeded: reportId), status: status)
         let slotId = entry.lane.slotId
         let stepName = String(describing: step)
         Self.log.info("DIRECT start id=\(slotId, privacy: .public) step=\(stepName, privacy: .public) status=\(status)")

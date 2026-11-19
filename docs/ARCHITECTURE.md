@@ -493,6 +493,31 @@ GameController.
   flaps and nothing is read twice; only a reconnect or the user's pick
   ("Use Direct", now that a lane decodes it) moves it.
 
+## The controller database
+
+The fleet's list of controllers (dish-website `docs/controller-db.md`) ships
+in DishCore's resources under `controllers-v1/`, byte for byte with its
+manifest, and is read through `CoreResourceBundle`, which asks the app's
+`Contents/Resources` first as `ResourceBundle` does. `decodeControllerDatabase`
+turns `controllers.json` into immutable `ControllerRecord`s (the
+`platforms.mac` rule applied), `ControllerStrings` holds the words with `en`
+as the fallback, and `ControllerIndex` maps `vid:pid` to record. The check's
+decisions are pure (`controllerDbGate`, `manifestStep`, `installStep`);
+`ControllerDbSource` (a `StateSource<ControllerDbStatus>` with the index as a
+second source) performs them over the `ControllerDbGateway`
+(`ControllerDbHTTPClient` in the app), keeps the download in
+`ControllerDbCache` (a `Repository` swapped whole), and is switched by
+`ControllerDbPreferenceStore`. The index reaches `InputPaths`, which hands
+`ServedDirectModels` to the HID reader (the table first, the data after it)
+and checks each Direct pad's hardware against its record's `expect`, and
+`DiagnosticsSource`, which matches every pad to its record and its issues.
+Each Direct lane carries a `DirectWrites` mailbox its writers post the last
+write's verdict into; the paths take it on the Diagnostics tick.
+`PadOutcomesStore` keeps the answers to "Did it work?", and
+`diagnosticsBundleFacts` folds what the page renders into the core's
+`dish-diagnostics.v1` builder, whose file the app hands to the person's mail
+app through `DiagnosticsMailer`.
+
 ## Several pads on one satellite
 
 A satellite session carries up to four pads (`SatelliteSlots.maxPerSatellite`

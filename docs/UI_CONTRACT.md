@@ -369,6 +369,19 @@ on screen (`buttonCheck`) and the support capture on screen
   a GitHub issue" through `openURL` (dish-mac's new-issue page with the
   title filled in; the user pastes the body). Nothing is sent from the app.
 
+## Diagnostics and the inspector
+
+Diagnostics opens with Email diagnostics and Save diagnostics: the model
+writes the bundle (`writeDiagnosticsBundle`) and the scene's
+`diagnosticsMailer` value hands it to `NSSharingService(named:
+.composeEmail)` with the mail `diagnosticsMail` words, or to a save panel.
+A controller database card shows the bundled version, the version in force
+and the last check; a pad's card adds its record, the record's chip, its
+issues, and for a Direct pad its hardware check and last write
+(`recordLines`). The inspector ends with "Did it work?" (`outcomesState`,
+`answerTestOutcome`). Settings' controller database section words the switch
+and Check now as the privacy policy does.
+
 ## The setup walk
 
 Set up Dish ([`SetupPage`](../Sources/Dish/UI/Pages/SetupPage.swift),

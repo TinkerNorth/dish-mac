@@ -35,6 +35,8 @@ package struct HidDeviceFacts: Equatable, Identifiable {
     package let transport: HidTransport
     /// `GCController.supportsHIDDevice`: the framework will vend a controller for it.
     package let claimedByGameController: Bool
+    /// IOKit's manufacturer string; empty when the device names none.
+    package var manufacturer = ""
 
     package init(id: UInt64, name: String, hardwareId: HidHardwareId, transport: HidTransport, claimedByGameController: Bool) {
         self.id = id
@@ -63,7 +65,7 @@ func hidCensusMatching() -> [[String: Any]] {
 /// The properties the census reads off a device.
 let hidCensusPropertyKeys = [
     kIOHIDProductKey, kIOHIDVendorIDKey, kIOHIDProductIDKey, kIOHIDTransportKey, kIOHIDPrimaryUsagePageKey,
-    kIOHIDPrimaryUsageKey, kIOHIDDeviceUsagePairsKey, kIOHIDGCSyntheticDeviceKey
+    kIOHIDPrimaryUsageKey, kIOHIDDeviceUsagePairsKey, kIOHIDGCSyntheticDeviceKey, kIOHIDManufacturerKey
 ]
 
 /// One device's facts from its properties: nil for a synthetic device and
@@ -76,13 +78,15 @@ func hidDeviceFacts(id: UInt64, properties: [String: Any], claimed: Bool) -> Hid
         vendorId: properties[kIOHIDVendorIDKey] as? Int ?? 0,
         productId: properties[kIOHIDProductIDKey] as? Int ?? 0
     )
-    return HidDeviceFacts(
+    var facts = HidDeviceFacts(
         id: id,
         name: properties[kIOHIDProductKey] as? String ?? "",
         hardwareId: hardwareId,
         transport: hidTransport(properties[kIOHIDTransportKey] as? String),
         claimedByGameController: claimed
     )
+    facts.manufacturer = properties[kIOHIDManufacturerKey] as? String ?? ""
+    return facts
 }
 
 /// Every usage a device declares: its usage pairs and its primary usage.
