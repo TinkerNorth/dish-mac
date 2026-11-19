@@ -101,7 +101,7 @@ final class DiagnosticsBundleTests: XCTestCase {
         let outcome = try XCTUnwrap((pad["outcomes"] as? [[String: Any]])?.first)
         XCTAssertEqual(outcome["test"] as? String, "rumble.strong")
         XCTAssertEqual(outcome["result"] as? String, "worked")
-        XCTAssertEqual(pad["capture"] as? String, "VID:PID 054c:0ce6")
+        XCTAssertEqual(pad["capture"] as? [String: String], ["format": "support-capture-text", "text": "VID:PID 054c:0ce6"])
     }
 
     func testAPadWithNoRecordOrCaptureSaysNullForBoth() throws {

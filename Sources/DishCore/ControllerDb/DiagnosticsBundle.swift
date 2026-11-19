@@ -227,7 +227,7 @@ private func bundleController(_ pad: BundlePadFacts) -> BundleFile.Controller {
         lastFeedback: nil,
         lastWrite: pad.lastWrite.map(bundleWrite),
         outcomes: pad.outcomes.map { BundleFile.Outcome(test: $0.test.rawValue, result: $0.result.rawValue, atMs: $0.atMs) },
-        capture: pad.capture
+        capture: pad.capture.map { BundleFile.Capture(format: BundleFile.Capture.supportCaptureText, text: $0) }
     )
 }
 
@@ -325,6 +325,14 @@ struct BundleFile: Encodable {
         let atMs: Int64
     }
 
+    /// The contract's capture object; the Mac's format is its Help-support text.
+    struct Capture: Encodable {
+        static let supportCaptureText = "support-capture-text"
+
+        let format: String
+        let text: String
+    }
+
     struct Feedback: Encodable {
         let kind: String
         let atMs: Int64
@@ -341,7 +349,7 @@ struct BundleFile: Encodable {
         let lastFeedback: Feedback?
         let lastWrite: Write?
         let outcomes: [Outcome]
-        let capture: String?
+        let capture: Capture?
 
         private enum CodingKeys: String, CodingKey {
             case record, verification, transport, path, hardware, expectMismatch, lastFeedback, lastWrite, outcomes, capture

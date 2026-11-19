@@ -55,32 +55,38 @@ final class ControllerDiagnosticsTests: XCTestCase {
     private let mac = IssueHost(model: "Mac14,2", osMajor: 26)
 
     func testAnIssueOnAnotherDeviceDoesNotApplyHere() {
-        let thor = ControllerIssue(id: "thor", device: "AYN Thor", os: ["android": 15], transport: .usb)
+        let thor = ControllerIssue(id: "thor", device: "AYN Thor", os: ["android": 15], transport: .usb, status: "open")
         XCTAssertEqual(issuesApplying([thor], transport: .usb, host: mac), [])
     }
 
     func testAnIssueWithNoDeviceOnThePadsTransportApplies() {
-        let anywhere = ControllerIssue(id: "usb", transport: .usb)
+        let anywhere = ControllerIssue(id: "usb", transport: .usb, status: "open")
         XCTAssertEqual(issuesApplying([anywhere], transport: .usb, host: mac), [anywhere])
         XCTAssertEqual(issuesApplying([anywhere], transport: .bluetooth, host: mac), [], "another transport")
         XCTAssertEqual(issuesApplying([anywhere], transport: nil, host: mac), [], "a transport the pad does not say")
     }
 
     func testAnIssueOnEveryTransportAppliesWhateverThePadsIs() {
-        let every = ControllerIssue(id: "all")
+        let every = ControllerIssue(id: "all", status: "open")
         XCTAssertEqual(issuesApplying([every], transport: .bluetooth, host: mac), [every])
         XCTAssertEqual(issuesApplying([every], transport: nil, host: mac), [every])
     }
 
     func testAnIssueOnThisMacAppliesAndOnlyOnThisMacOS() {
-        let here = ControllerIssue(id: "here", device: "Mac14,2", os: ["macos": 26])
+        let here = ControllerIssue(id: "here", device: "Mac14,2", os: ["macos": 26], status: "open")
         XCTAssertEqual(issuesApplying([here], transport: .usb, host: mac), [here])
         XCTAssertEqual(issuesApplying([here], transport: .usb, host: IssueHost(model: "Mac14,2", osMajor: 27)), [])
         XCTAssertEqual(issuesApplying([here], transport: .usb, host: IssueHost(model: "Mac15,1", osMajor: 26)), [])
     }
 
     func testAnIssueNamingOnlyAnotherPlatformsOSDoesNotApplyHere() {
-        XCTAssertEqual(issuesApplying([ControllerIssue(id: "a", os: ["android": 15])], transport: .usb, host: mac), [])
+        XCTAssertEqual(issuesApplying([ControllerIssue(id: "a", os: ["android": 15], status: "open")], transport: .usb, host: mac), [])
+    }
+
+    func testAnIssueShowsOnlyWhileItIsOpen() {
+        let closed = ControllerIssue(id: "fixed", status: "fixed")
+        let unstated = ControllerIssue(id: "unstated")
+        XCTAssertEqual(issuesApplying([closed, unstated], transport: .usb, host: mac), [])
     }
 
     // MARK: - The last write
@@ -123,7 +129,7 @@ final class ControllerDiagnosticsTests: XCTestCase {
     func testTheTestIdsAreTheBundlesWords() {
         XCTAssertEqual(
             InspectorTest.allCases.map(\.rawValue),
-            ["rumble.weak", "rumble.strong", "rumble.both", "tone", "mic", "stick.drift", "stick.range"]
+            ["rumble.weak", "rumble.strong", "rumble.both", "tone.play", "mic.level", "stick.drift", "stick.range"]
         )
         XCTAssertEqual(OutcomeResult.allCases.map(\.rawValue), ["worked", "didNotWork"])
     }

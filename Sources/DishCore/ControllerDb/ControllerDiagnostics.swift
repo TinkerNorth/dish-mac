@@ -49,14 +49,19 @@ public struct IssueHost: Equatable, Sendable {
     }
 }
 
-/// An issue applies when its transport is the pad's or any, its device is
-/// this Mac or none, and its `os` names this macOS or nothing.
+/// The `status` of an issue that is still shown.
+public let openIssueStatus = "open"
+
+/// An issue applies while it is open, when its transport is the pad's or
+/// any, its device is this Mac or none, and its `os` names this macOS or
+/// nothing.
 public func issuesApplying(_ issues: [ControllerIssue], transport: ControllerTransport?, host: IssueHost) -> [ControllerIssue] {
     issues.filter { issue in
+        let open = issue.status == openIssueStatus
         let transportFits = issue.transport == nil || issue.transport == transport
         let deviceFits = issue.device.map { $0 == host.model } ?? true
         let osFits = issue.os.isEmpty || issue.os[macOSIssueKey] == host.osMajor
-        return transportFits && deviceFits && osFits
+        return open && transportFits && deviceFits && osFits
     }
 }
 
@@ -113,8 +118,8 @@ public enum InspectorTest: String, CaseIterable, Equatable, Sendable {
     case rumbleWeak = "rumble.weak"
     case rumbleStrong = "rumble.strong"
     case rumbleBoth = "rumble.both"
-    case tone
-    case microphone = "mic"
+    case tone = "tone.play"
+    case microphone = "mic.level"
     case stickDrift = "stick.drift"
     case stickRange = "stick.range"
 }
