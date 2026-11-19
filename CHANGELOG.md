@@ -32,7 +32,9 @@ the repos share a version number.
   reads the same rule as the voices, `audioPlan`: the function, the switch,
   the probe's word on the direction, and an endpoint the system opened. A
   refused endpoint takes its caps off the descriptor until the pad's device
-  changes, and the satellite turns the haptics into rumble meanwhile. The
+  changes, and the satellite turns the haptics into rumble meanwhile. A
+  session's end withdraws the probe's word from every descriptor, so the next
+  session's opening request promises no audio until its own probe answers. The
   probe is read when a session opens, so a direction switched on reaches a
   connected Mac at its next session, as it did for the voices before.
 

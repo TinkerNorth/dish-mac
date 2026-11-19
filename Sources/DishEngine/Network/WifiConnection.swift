@@ -329,6 +329,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
         reconcileInFlight = false
         pendingIndices = []
         slotTable.clearApplied()
+        slotTable.hostAudio = .none
         mouseControlGranted = false
         hostAudio = .none
         hooks = SessionHooks()
