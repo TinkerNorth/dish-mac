@@ -32,10 +32,11 @@ func xusbDeviceIdentities() -> [[String: Int]] {
     }
 }
 
-/// The interface properties the reader decides on.
-private let xusbInterfaceKeys = [
+/// The interface properties the reader decides on, and the release it
+/// reports.
+let xusbInterfaceKeys = [
     UsbInterfaceKey.vendorId, UsbInterfaceKey.productId, UsbInterfaceKey.interfaceClass,
-    UsbInterfaceKey.interfaceSubclass, UsbInterfaceKey.interfaceProtocol
+    UsbInterfaceKey.interfaceSubclass, UsbInterfaceKey.interfaceProtocol, UsbInterfaceKey.deviceRelease
 ]
 
 final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
@@ -84,23 +85,31 @@ final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
     }
 
     fileprivate func devicesMatched(_ iterator: io_iterator_t) {
-        for service in drain(iterator) {
+        for service in drainIterator(iterator) {
             configureIfNeeded(service)
             IOObjectRelease(service)
         }
     }
 
+    /// Each interface arrives with its device's interfaces, read off the
+    /// IORegistry for the diagnostics file.
     fileprivate func interfacesMatched(_ iterator: io_iterator_t) {
-        for service in drain(iterator) {
+        for service in drainIterator(iterator) {
             let properties = registryProperties(service, keys: xusbInterfaceKeys)
             let port = IOUSBHostXusbPort(service)
-            events?.arrived(XusbInterfaceArrival(registryId: registryId(of: service), properties: properties, port: port))
+            let arrival = XusbInterfaceArrival(
+                registryId: registryId(of: service),
+                properties: properties,
+                port: port,
+                deviceInterfaces: usbInterfaceEntries(above: service)
+            )
+            events?.arrived(arrival)
             IOObjectRelease(service)
         }
     }
 
     fileprivate func interfacesTerminated(_ iterator: io_iterator_t) {
-        for service in drain(iterator) {
+        for service in drainIterator(iterator) {
             events?.removed(registryId(of: service))
             IOObjectRelease(service)
         }
@@ -128,21 +137,6 @@ private func matching(_ className: String, _ keys: [String: Int]) -> CFDictionar
     let dictionary = IOServiceMatching(className) as NSMutableDictionary
     dictionary.addEntries(from: keys)
     return dictionary
-}
-
-private func drain(_ iterator: io_iterator_t) -> [io_service_t] {
-    Array(sequence(state: iterator) { iterator in
-        let service = IOIteratorNext(iterator)
-        return service == 0 ? nil : service
-    })
-}
-
-private func registryValue(_ service: io_service_t, _ key: String) -> Any? {
-    IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
-}
-
-private func registryProperties(_ service: io_service_t, keys: [String]) -> [String: Any] {
-    Dictionary(uniqueKeysWithValues: keys.compactMap { key in registryValue(service, key).map { (key, $0) } })
 }
 
 /// The identity every notification about one service shares.
@@ -197,17 +191,19 @@ final class IOUSBHostXusbPort: XusbPort {
 final class IOUSBHostXusbInterface: XusbOpenInterface {
     let input: UsbInputPipe
     let output: UsbOutputPipe?
+    let endpoints: BundleEndpoints
     private let interface: IOUSBHostInterface
     private let inputPipe: IOUSBHostInputPipe
 
     init(_ interface: IOUSBHostInterface) throws {
-        guard let endpoints = xusbEndpoints(interfaceEndpoints(interface)) else {
+        guard let pair = xusbEndpoints(interfaceEndpoints(interface)) else {
             throw NSError(domain: IOUSBHostErrorDomain, code: Int(kIOReturnNotFound))
         }
-        let inputPipe = try IOUSBHostInputPipe(interface, endpoints.input)
+        let inputPipe = try IOUSBHostInputPipe(interface, pair.input)
         self.inputPipe = inputPipe
         input = inputPipe
-        output = try endpoints.output.map { try IOUSBHostOutputPipe(interface, $0) }
+        output = try pair.output.map { try IOUSBHostOutputPipe(interface, $0) }
+        endpoints = BundleEndpoints(input: pair.input.address, output: pair.output?.address)
         self.interface = interface
     }
 

@@ -59,8 +59,61 @@ struct BundleFile: Encodable {
     struct Hardware: Encodable {
         let vid: String
         let pid: String
+        let bcdDevice: String?
         let product: String?
         let manufacturer: String?
+        let interfaces: [Interface]?
+        let endpoints: Endpoints?
+        let descriptorSha256: String?
+
+        private enum CodingKeys: String, CodingKey {
+            case vid, pid, bcdDevice, product, manufacturer, interfaces, endpoints, descriptorSha256, firmware
+        }
+
+        /// Every key the contract shows is written, null where IOKit gave
+        /// nothing; IOKit names no firmware for a pad, so that one always is.
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(vid, forKey: .vid)
+            try container.encode(pid, forKey: .pid)
+            try container.encode(bcdDevice, forKey: .bcdDevice)
+            try container.encode(product, forKey: .product)
+            try container.encode(manufacturer, forKey: .manufacturer)
+            try container.encode(interfaces, forKey: .interfaces)
+            try container.encode(endpoints, forKey: .endpoints)
+            try container.encode(descriptorSha256, forKey: .descriptorSha256)
+            try container.encodeNil(forKey: .firmware)
+        }
+    }
+
+    struct Interface: Encodable {
+        let number: Int
+        let interfaceClass: String
+        let subclass: String
+        let interfaceProtocol: String
+
+        private enum CodingKeys: String, CodingKey {
+            case number, interfaceClass = "class", subclass, interfaceProtocol = "protocol"
+        }
+    }
+
+    struct Endpoints: Encodable {
+        let input: String
+        let output: String?
+
+        private enum CodingKeys: String, CodingKey { case input = "in", output = "out" }
+
+        /// An OUT endpoint the interface lacks is null.
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(input, forKey: .input)
+            try container.encode(output, forKey: .output)
+        }
+    }
+
+    struct Audio: Encodable {
+        let channels: Int
+        let refused: Bool
     }
 
     struct Write: Encodable {
@@ -98,6 +151,8 @@ struct BundleFile: Encodable {
         let path: String
         let hardware: Hardware?
         let expectMismatch: [String]
+        let rateHz: Int?
+        let audio: Audio?
         let lastFeedback: Feedback?
         let lastWrite: Write?
         let outcomes: [Outcome]
@@ -107,12 +162,13 @@ struct BundleFile: Encodable {
         let bluetooth: BundlePadPathsFile.Bluetooth?
 
         private enum CodingKeys: String, CodingKey {
-            case record, verification, transport, path, hardware, expectMismatch, lastFeedback, lastWrite, outcomes, capture
-            case input, output, bluetooth
+            case record, verification, transport, path, hardware, expectMismatch, probe, rateHz, audio, lastFeedback, lastWrite
+            case outcomes, capture, input, output, bluetooth
         }
 
-        /// `record` and `capture` are written as null when there is none, as
-        /// the contract shows them.
+        /// `record`, `capture`, `rateHz` and `audio` are written as null when
+        /// there is none, as the contract shows them. `probe` is always null:
+        /// the Mac's gate is GameController's answer, not a decode probe.
         func encode(to encoder: Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(record, forKey: .record)
@@ -121,6 +177,9 @@ struct BundleFile: Encodable {
             try container.encode(path, forKey: .path)
             try container.encodeIfPresent(hardware, forKey: .hardware)
             try container.encode(expectMismatch, forKey: .expectMismatch)
+            try container.encodeNil(forKey: .probe)
+            try container.encode(rateHz, forKey: .rateHz)
+            try container.encode(audio, forKey: .audio)
             try container.encodeIfPresent(lastFeedback, forKey: .lastFeedback)
             try container.encodeIfPresent(lastWrite, forKey: .lastWrite)
             try container.encode(outcomes, forKey: .outcomes)

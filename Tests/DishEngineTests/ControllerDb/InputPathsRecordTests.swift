@@ -81,6 +81,13 @@ final class InputPathsRecordTests: XCTestCase {
         XCTAssertEqual(paths.state["hid:057e:2019"]?.expectMismatches, ["endpoints.out: expected true, found false"])
     }
 
+    func testADirectPadsFactsCarryWhatIOKitSaidOfItsHardware() throws {
+        let paths = try paths()
+        let lane = try arriveN64(paths, outputReportSize: 64)
+        XCTAssertNotNil(paths.state["hid:057e:2019"]?.hardware)
+        XCTAssertEqual(paths.state["hid:057e:2019"]?.hardware, lane.candidate.detail)
+    }
+
     func testAPadThatMeetsItsRecordHasNoMismatch() throws {
         let paths = try paths()
         _ = try arriveN64(paths, outputReportSize: 64)

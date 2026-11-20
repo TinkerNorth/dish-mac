@@ -15,17 +15,32 @@ final class DiagnosticsBundleTests: XCTestCase {
         static let otherHost = "living-room.local"
     }
 
+    /// A DualSense on USB as IOKit and the registry describe it.
+    private static func dualSenseHardware() -> BundleHardwareFacts {
+        var hardware = BundleHardwareFacts(vendorId: 0x054C, productId: 0x0CE6, product: "Wireless Controller", manufacturer: "Sony")
+        hardware.bcdDevice = 0x0107
+        hardware.interfaces = [
+            BundleUsbInterface(number: 0, interfaceClass: 0x01, subclass: 0x01, interfaceProtocol: 0x00),
+            BundleUsbInterface(number: 3, interfaceClass: 0x03, subclass: 0x00, interfaceProtocol: 0x00)
+        ]
+        hardware.endpoints = BundleEndpoints(input: 0x84, output: 0x03)
+        hardware.descriptorSha256 = descriptorSha256
+        return hardware
+    }
+
     private func fixture() -> DiagnosticsBundleFacts {
         let record = ControllerRecord(id: "sony-dualsense", familyId: "dualsense", verification: .verified)
         let pad = BundlePadFacts(
             record: record,
             transport: .usb,
             path: .direct,
-            hardware: BundleHardwareFacts(vendorId: 0x054C, productId: 0x0CE6, product: "Wireless Controller", manufacturer: "Sony"),
+            hardware: Self.dualSenseHardware(),
             expectMismatches: ["endpoints.out: expected true, found false"],
             lastWrite: DirectWriteVerdict(route: .setReport, reportId: 2, status: Int32(bitPattern: 0xE000_02ED), atMs: 1_763_586_000_100),
             outcomes: [TestOutcome(test: .rumbleStrong, result: .worked, atMs: 1_763_585_990_000)],
-            capture: "VID:PID 054c:0ce6"
+            capture: "VID:PID 054c:0ce6",
+            input: BundlePadInput(frames: 1000, rateHz: 250, last: nil),
+            audio: BundleAudio(channels: 4, refused: false)
         )
         let hosts = [
             BundleHostFacts(
@@ -60,6 +75,8 @@ final class DiagnosticsBundleTests: XCTestCase {
         )
     }
 
+    private static let descriptorSha256 = "5f2c0d3c8bb7f1d36ee86c1e4b4e9a3a2e7b1f0d9c8a7b6e5d4c3b2a19087f6e"
+
     private func object() throws -> [String: Any] {
         try XCTUnwrap(JSONSerialization.jsonObject(with: diagnosticsBundleJSON(fixture())) as? [String: Any])
     }
@@ -88,10 +105,11 @@ final class DiagnosticsBundleTests: XCTestCase {
         XCTAssertEqual(pad["verification"] as? String, "verified")
         XCTAssertEqual(pad["transport"] as? String, "usb")
         XCTAssertEqual(pad["path"] as? String, "direct")
-        XCTAssertEqual(
-            pad["hardware"] as? [String: String],
-            ["vid": "054c", "pid": "0ce6", "product": "Wireless Controller", "manufacturer": "Sony"]
-        )
+        let hardware = try XCTUnwrap(pad["hardware"] as? [String: Any])
+        XCTAssertEqual(hardware["vid"] as? String, "054c")
+        XCTAssertEqual(hardware["pid"] as? String, "0ce6")
+        XCTAssertEqual(hardware["product"] as? String, "Wireless Controller")
+        XCTAssertEqual(hardware["manufacturer"] as? String, "Sony")
         XCTAssertEqual(pad["expectMismatch"] as? [String], ["endpoints.out: expected true, found false"])
         let write = try XCTUnwrap(pad["lastWrite"] as? [String: Any])
         XCTAssertEqual(write["route"] as? String, "setReport")
@@ -111,6 +129,73 @@ final class DiagnosticsBundleTests: XCTestCase {
         XCTAssertTrue(bare["capture"] is NSNull)
         XCTAssertEqual(bare["path"] as? String, "gameController")
         XCTAssertNil(bare["hardware"])
+    }
+
+    func testThePadsHardwareCarriesItsVersionInterfacesEndpointsAndDescriptorFingerprint() throws {
+        let pad = try XCTUnwrap(try (object()["controllers"] as? [[String: Any]])?.first)
+        let hardware = try XCTUnwrap(pad["hardware"] as? [String: Any])
+        XCTAssertEqual(hardware["bcdDevice"] as? String, "0107", "four hex digits, as vid and pid")
+        XCTAssertEqual(hardware["interfaces"] as? [[String: AnyHashable]], [
+            ["number": 0, "class": "01", "subclass": "01", "protocol": "00"],
+            ["number": 3, "class": "03", "subclass": "00", "protocol": "00"]
+        ])
+        XCTAssertEqual(hardware["endpoints"] as? [String: String], ["in": "84", "out": "03"])
+        XCTAssertEqual(hardware["descriptorSha256"] as? String, Self.descriptorSha256)
+        XCTAssertTrue(hardware["firmware"] is NSNull, "IOKit names no firmware for a pad")
+    }
+
+    func testHardwareIOKitDidNotGiveIsNull() throws {
+        let facts = DiagnosticsBundleFacts(
+            createdAtMs: 0,
+            app: fixture().app,
+            device: fixture().device,
+            controllerDb: ControllerDbStatus(),
+            pads: [BundlePadFacts(
+                record: nil,
+                transport: .bluetooth,
+                path: .gameController,
+                hardware: BundleHardwareFacts(vendorId: 0x045E, productId: 0x0B13, product: nil, manufacturer: nil)
+            )],
+            hosts: [],
+            log: []
+        )
+        let file = try XCTUnwrap(JSONSerialization.jsonObject(with: diagnosticsBundleJSON(facts)) as? [String: Any])
+        let hardware = try XCTUnwrap(((file["controllers"] as? [[String: Any]])?.first)?["hardware"] as? [String: Any])
+        for key in ["bcdDevice", "product", "manufacturer", "interfaces", "endpoints", "descriptorSha256", "firmware"] {
+            XCTAssertTrue(hardware[key] is NSNull, key)
+        }
+    }
+
+    func testAnOutPipeTheInterfaceLacksIsNull() throws {
+        var hardware = BundleHardwareFacts(vendorId: 0x2DC8, productId: 0x310B, product: nil, manufacturer: nil)
+        hardware.endpoints = BundleEndpoints(input: 0x81, output: nil)
+        let facts = DiagnosticsBundleFacts(
+            createdAtMs: 0,
+            app: fixture().app,
+            device: fixture().device,
+            controllerDb: ControllerDbStatus(),
+            pads: [BundlePadFacts(record: nil, transport: .usb, path: .direct, hardware: hardware)],
+            hosts: [],
+            log: []
+        )
+        let file = try XCTUnwrap(JSONSerialization.jsonObject(with: diagnosticsBundleJSON(facts)) as? [String: Any])
+        let hardwareFile = try XCTUnwrap(((file["controllers"] as? [[String: Any]])?.first)?["hardware"] as? [String: Any])
+        let endpoints = try XCTUnwrap(hardwareFile["endpoints"] as? [String: Any])
+        XCTAssertEqual(endpoints["in"] as? String, "81")
+        XCTAssertTrue(endpoints["out"] is NSNull)
+    }
+
+    func testThePadCarriesItsRateItsAudioFunctionAndNoProbe() throws {
+        let pad = try XCTUnwrap(try (object()["controllers"] as? [[String: Any]])?.first)
+        XCTAssertEqual(pad["rateHz"] as? Int, 250, "the rate the reports the app counts measured")
+        XCTAssertEqual(pad["audio"] as? [String: AnyHashable], ["channels": 4, "refused": false])
+        XCTAssertTrue(pad["probe"] is NSNull, "the Mac's gate is GameController's answer, not a decode probe")
+    }
+
+    func testAPadWithNoFeedOrAudioFunctionSaysNullForBoth() throws {
+        let bare = try XCTUnwrap(try (object()["controllers"] as? [[String: Any]])?.last)
+        XCTAssertTrue(bare["rateHz"] is NSNull)
+        XCTAssertTrue(bare["audio"] is NSNull)
     }
 
     func testHostsAreAliasesInOrderWithWhatTheyAreButNotWhoTheyAre() throws {

@@ -110,6 +110,14 @@ the repos share a version number.
   by name, and none when twins on different links share the name. A report's
   `device.usbHost` is true when IOKit lists a service of class
   `AppleUSBHostController`, false when it lists none, null with no answer.
+- **A controller's hardware, as IOKit gives it.** Each controller's
+  `hardware` carries `bcdDevice` (`kIOHIDVersionNumberKey`), the SHA-256 of
+  its report descriptor, its USB device's interfaces from the IORegistry's
+  `IOUSBHostInterface` entries, and an XUSB pad's endpoints from the pipes
+  Dish opened; the controller carries `rateHz` and its USB audio function's
+  channels and refusal. `firmware` and `probe` are null, with the reasons in
+  `Tests/PARITY.md`, as are a HID pad's endpoints, which only a client
+  holding the interface could read. Nothing is opened to read them.
 
 ### Changed
 

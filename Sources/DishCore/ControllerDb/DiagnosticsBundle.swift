@@ -38,17 +38,65 @@ public struct BundleDeviceFacts: Equatable, Sendable {
     }
 }
 
+/// One interface of a pad's USB device, as the IORegistry lists it.
+public struct BundleUsbInterface: Equatable, Sendable {
+    public let number: Int
+    public let interfaceClass: UInt8
+    public let subclass: UInt8
+    public let interfaceProtocol: UInt8
+
+    public init(number: Int, interfaceClass: UInt8, subclass: UInt8, interfaceProtocol: UInt8) {
+        self.number = number
+        self.interfaceClass = interfaceClass
+        self.subclass = subclass
+        self.interfaceProtocol = interfaceProtocol
+    }
+}
+
+/// The addresses of the endpoints Dish opened itself; an OUT endpoint the
+/// interface lacks is nil.
+public struct BundleEndpoints: Equatable, Sendable {
+    public let input: UInt8
+    public let output: UInt8?
+
+    public init(input: UInt8, output: UInt8?) {
+        self.input = input
+        self.output = output
+    }
+}
+
 public struct BundleHardwareFacts: Equatable, Sendable {
     public let vendorId: UInt16
     public let productId: UInt16
     public let product: String?
     public let manufacturer: String?
+    /// `kIOHIDVersionNumberKey`, a USB pad's `bcdDevice`; nil when IOKit gives none.
+    public var bcdDevice: UInt16?
+    /// The USB device's interfaces; nil off USB, or when the IORegistry has
+    /// no USB device above the pad.
+    public var interfaces: [BundleUsbInterface]?
+    /// Nil where IOKit does not say: only a pad Dish opens itself names them.
+    public var endpoints: BundleEndpoints?
+    /// SHA-256 of the HID report descriptor, lowercase hex.
+    public var descriptorSha256: String?
 
     public init(vendorId: UInt16, productId: UInt16, product: String?, manufacturer: String?) {
         self.vendorId = vendorId
         self.productId = productId
         self.product = product
         self.manufacturer = manufacturer
+    }
+}
+
+/// The pad's own USB audio function: the playback channels Core Audio
+/// lists, and whether macOS refused an endpoint of it.
+public struct BundleAudio: Equatable, Sendable {
+    public let channels: Int
+    public let refused: Bool
+
+    public init(channels: Int, refused: Bool) {
+        self.channels = channels
+        self.refused = refused
     }
 }
 
@@ -74,6 +122,8 @@ public struct BundlePadFacts: Equatable, Sendable {
     public let input: BundlePadInput?
     /// What came out, lane by lane.
     public let output: BundlePadOutput?
+    /// Nil while no audio function is routed to the pad.
+    public let audio: BundleAudio?
 
     public init(
         record: ControllerRecord?,
@@ -86,7 +136,8 @@ public struct BundlePadFacts: Equatable, Sendable {
         outcomes: [TestOutcome] = [],
         capture: String? = nil,
         input: BundlePadInput? = nil,
-        output: BundlePadOutput? = nil
+        output: BundlePadOutput? = nil,
+        audio: BundleAudio? = nil
     ) {
         self.record = record
         self.transport = transport
@@ -99,6 +150,7 @@ public struct BundlePadFacts: Equatable, Sendable {
         self.capture = capture
         self.input = input
         self.output = output
+        self.audio = audio
     }
 }
 
@@ -279,6 +331,8 @@ private func bundleController(_ pad: BundlePadFacts) -> BundleFile.Controller {
         path: pad.path.rawValue,
         hardware: pad.hardware.map(bundleHardware),
         expectMismatch: pad.expectMismatches,
+        rateHz: pad.input?.rateHz,
+        audio: pad.audio.map { BundleFile.Audio(channels: $0.channels, refused: $0.refused) },
         lastFeedback: nil,
         lastWrite: write,
         outcomes: pad.outcomes.map { BundleFile.Outcome(test: $0.test.rawValue, result: $0.result.rawValue, atMs: $0.atMs) },
@@ -291,11 +345,34 @@ private func bundleController(_ pad: BundlePadFacts) -> BundleFile.Controller {
 
 private func bundleHardware(_ hardware: BundleHardwareFacts) -> BundleFile.Hardware {
     BundleFile.Hardware(
-        vid: String(format: "%04x", UInt32(hardware.vendorId)),
-        pid: String(format: "%04x", UInt32(hardware.productId)),
+        vid: hexWord(hardware.vendorId),
+        pid: hexWord(hardware.productId),
+        bcdDevice: hardware.bcdDevice.map(hexWord),
         product: hardware.product,
-        manufacturer: hardware.manufacturer
+        manufacturer: hardware.manufacturer,
+        interfaces: hardware.interfaces?.map(bundleInterface),
+        endpoints: hardware.endpoints.map { BundleFile.Endpoints(input: hexByte($0.input), output: $0.output.map(hexByte)) },
+        descriptorSha256: hardware.descriptorSha256
     )
+}
+
+private func bundleInterface(_ interface: BundleUsbInterface) -> BundleFile.Interface {
+    BundleFile.Interface(
+        number: interface.number,
+        interfaceClass: hexByte(interface.interfaceClass),
+        subclass: hexByte(interface.subclass),
+        interfaceProtocol: hexByte(interface.interfaceProtocol)
+    )
+}
+
+/// "0ce6": a USB id or release, four lowercase hex digits.
+private func hexWord(_ value: UInt16) -> String {
+    String(format: "%04x", UInt32(value))
+}
+
+/// "84": a class code or an endpoint address, two lowercase hex digits.
+private func hexByte(_ value: UInt8) -> String {
+    String(format: "%02x", UInt32(value))
 }
 
 private func bundleWrite(_ write: DirectWriteVerdict) -> BundleFile.Write {

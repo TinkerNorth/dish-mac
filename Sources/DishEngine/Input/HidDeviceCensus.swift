@@ -39,6 +39,8 @@ package struct HidDeviceFacts: Equatable, Identifiable {
     package let claimedByGameController: Bool
     /// IOKit's manufacturer string; empty when the device names none.
     package var manufacturer = ""
+    /// What IOKit says of its hardware beyond its ids, read once per device.
+    package var detail = HidHardwareDetail()
 
     package init(id: UInt64, name: String, hardwareId: HidHardwareId, transport: HidTransport, claimedByGameController: Bool) {
         self.id = id
@@ -146,6 +148,12 @@ func transport(forPadNamed name: String, in devices: [HidDeviceFacts]) -> HidTra
     agreed(carriers(ofPadNamed: name, in: devices).map(\.transport))
 }
 
+/// What IOKit says of a GameController pad's hardware, from the devices
+/// matched to it by name.
+func hardwareDetail(forPadNamed name: String, in devices: [HidDeviceFacts]) -> HidHardwareDetail? {
+    agreed(carriers(ofPadNamed: name, in: devices).map(\.detail))
+}
+
 // MARK: - The seam
 
 /// The Mac's HID game devices. Tests hand in a fake; the IOKit one watches
@@ -171,6 +179,9 @@ final class IOKitHidCensus: HidCensusReading {
     /// `supportsHIDDevice` "is not cheap, be sure to cache the result"
     /// (GCController.h): each device's answer is kept while it stays.
     private var claims: [UInt64: Bool] = [:]
+    /// The hardware detail, read once per device: its version, descriptor
+    /// and USB interfaces do not change while it stays.
+    private var details: [UInt64: HidHardwareDetail] = [:]
 
     /// Nothing is created until `start`, so a default argument may build one.
     nonisolated init() {}
@@ -196,6 +207,7 @@ final class IOKitHidCensus: HidCensusReading {
         IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
         self.manager = nil
         claims = [:]
+        details = [:]
         Unmanaged.passUnretained(self).release()
     }
 
@@ -204,6 +216,7 @@ final class IOKitHidCensus: HidCensusReading {
         let facts = present.compactMap(facts(of:))
         let ids = Set(facts.map(\.id))
         claims = claims.filter { ids.contains($0.key) }
+        details = details.filter { ids.contains($0.key) }
         return facts.sorted { ($0.name, $0.id) < ($1.name, $1.id) }
     }
 
@@ -216,7 +229,16 @@ final class IOKitHidCensus: HidCensusReading {
         let properties = Dictionary(uniqueKeysWithValues: hidCensusPropertyKeys.compactMap { key in
             IOHIDDeviceGetProperty(device, key as CFString).map { (key, $0 as Any) }
         })
-        return hidDeviceFacts(id: id, properties: properties, claimed: claim(device, id: id))
+        guard var facts = hidDeviceFacts(id: id, properties: properties, claimed: claim(device, id: id)) else { return nil }
+        facts.detail = detail(of: device, id: id, transport: facts.transport)
+        return facts
+    }
+
+    private func detail(of device: IOHIDDevice, id: UInt64, transport: HidTransport) -> HidHardwareDetail {
+        if let known = details[id] { return known }
+        let fresh = hidDeviceDetail(device, transport: transport)
+        details[id] = fresh
+        return fresh
     }
 
     private func claim(_ device: IOHIDDevice, id: UInt64) -> Bool {

@@ -231,6 +231,7 @@ extension InputPaths {
         facts.rumble = carriage(of: key).rumble
         facts.transport = candidate.transport
         facts.hardwareId = candidate.hardwareId
+        facts.hardware = candidate.detail
         facts.expectMismatches = attachMismatches(candidate, index: controllerIndex)
         facts.lastWrite = lastWrites[key]
         return facts
@@ -244,6 +245,7 @@ extension InputPaths {
         facts?.keepsDisconnecting = bursts.noticed.contains(id)
         facts?.transport = pad.arrival?.candidate.transport
         facts?.hardwareId = pad.arrival?.candidate.hardwareId
+        facts?.hardware = pad.arrival?.candidate.detail
         return facts
     }
 }

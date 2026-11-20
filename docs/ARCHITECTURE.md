@@ -530,6 +530,21 @@ slots, the apply answers `SlotApplyStore` keeps, the ack, the RTT window and
 the client's `WireTally`; `PadFeedback` keeps each pad's `FeedbackTally`.
 Both tallies are relaxed counters the hot path bumps and never reads.
 
+What the file says of a pad's hardware is read off IOKit without opening
+anything (`Input/HidHardwareDetail.swift`, `Input/UsbRegistry.swift`): the
+version (`kIOHIDVersionNumberKey`) and the SHA-256 of the report descriptor
+(`kIOHIDReportDescriptorKey`) from the HID device's own properties, and, for a
+pad on USB, the interfaces of the `IOUSBHostDevice` found at most three
+parents up the service plane, each `IOUSBHostInterface` child by its number
+and class triple. IOUSBHost hands a device's descriptors only to a client with
+an exclusive session, which macOS's drivers hold for a pad, so the
+registry's published fields are what is read. The census reads it once per
+device, the HID reader as it attaches a Direct pad (USB only, on its own
+thread), the XUSB bus as an interface arrives, and the XUSB reader adds the
+addresses of the pipes it opened. The IOKit classes read for the file are
+`IOHIDDevice` (properties), `IOUSBHostDevice` and `IOUSBHostInterface`
+(registry entries) and `AppleUSBHostController` (counted for `usbHost`).
+
 ## Several pads on one satellite
 
 A satellite session carries up to four pads (`SatelliteSlots.maxPerSatellite`

@@ -223,10 +223,15 @@ The file holds:
 - which controller database version the app uses, where it came from, and
   when the last check ran and how it ended;
 - for each attached controller, its identity and hardware facts: the USB or
-  Bluetooth ids, the product and maker names the controller reports, how it
-  is connected, how Dish reads it, the controller database record it matched,
+  Bluetooth ids, the product and maker names the controller reports, its
+  version number, a fingerprint (SHA-256) of its HID report descriptor, on
+  USB its interfaces' numbers and classes as macOS's registry lists them (and
+  the endpoint addresses of a controller Dish opens itself), its USB audio
+  function's channel count and whether macOS refused it, how it is
+  connected, how Dish reads it, the controller database record it matched,
   what its hardware showed at attach against that record, and the last report
-  Dish sent it with the answer macOS gave;
+  Dish sent it with the answer macOS gave; none of it identifies the unit,
+  and its serial number is never read;
 - for each attached controller, how much went in and came out as counts:
   the reports it sent and its rate, the last report Dish forwarded (its
   buttons, sticks and triggers at that instant, not a recording), and for

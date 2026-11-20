@@ -152,7 +152,8 @@ extension BundlePadFacts {
             outcomes: outcomes,
             capture: capture,
             input: reading.flatMap(bundlePadInput),
-            output: bundlePadOutput(pad, counts: reading?.output ?? PadOutputCounts())
+            output: bundlePadOutput(pad, counts: reading?.output ?? PadOutputCounts()),
+            audio: audio
         )
     }
 }
@@ -197,14 +198,7 @@ func linkWord(_ state: LinkState) -> String {
 }
 
 func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: FinishedCapture?) -> BundlePadFacts {
-    let hardware = pad.hardwareId.map { id in
-        BundleHardwareFacts(
-            vendorId: UInt16(clamping: id.vendorId),
-            productId: UInt16(clamping: id.productId),
-            product: pad.device.map(\.name) ?? pad.slot.name,
-            manufacturer: pad.device.flatMap { $0.manufacturer.isEmpty ? nil : $0.manufacturer }
-        )
-    }
+    let hardware = pad.hardwareId.map { bundleHardwareFacts($0, pad: pad) }
     let direct = pad.inputPath?.source == .direct
     return BundlePadFacts(
         record: pad.record,
@@ -215,8 +209,35 @@ func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: Finis
         expectMismatches: pad.inputPath?.expectMismatches ?? [],
         lastWrite: pad.inputPath?.lastWrite,
         outcomes: outcomes.answers[pad.slot.id] ?? [],
-        capture: capture.flatMap { captured(pad, by: $0) ? $0.report : nil }
+        capture: capture.flatMap { captured(pad, by: $0) ? $0.report : nil },
+        audio: bundleAudio(pad.audio)
     )
+}
+
+/// The pad's ids, names and what IOKit said of its hardware.
+func bundleHardwareFacts(_ id: HidHardwareId, pad: PadDiagnostics) -> BundleHardwareFacts {
+    let detail = pad.hardwareDetail
+    var hardware = BundleHardwareFacts(
+        vendorId: UInt16(clamping: id.vendorId),
+        productId: UInt16(clamping: id.productId),
+        product: pad.device.map(\.name) ?? pad.slot.name,
+        manufacturer: pad.device.flatMap { $0.manufacturer.isEmpty ? nil : $0.manufacturer }
+    )
+    hardware.bcdDevice = detail?.versionNumber.map { UInt16(clamping: $0) }
+    hardware.interfaces = detail?.interfaces
+    hardware.endpoints = detail?.endpoints
+    hardware.descriptorSha256 = detail?.descriptorSha256
+    return hardware
+}
+
+/// The pad's own USB audio function as Core Audio lists it: its playback
+/// channels, and whether macOS refused either endpoint. Nil while no
+/// function is routed to the pad.
+func bundleAudio(_ audio: PadAudioDiagnostics?) -> BundleAudio? {
+    guard let function = audio?.route?.function else { return nil }
+    let playbackRefused = audio?.state?.playbackRefused ?? false
+    let captureRefused = audio?.state?.captureRefused ?? false
+    return BundleAudio(channels: function.device.outputChannels, refused: playbackRefused || captureRefused)
 }
 
 /// The link IOKit named for a Bluetooth pad; nil for any other transport.

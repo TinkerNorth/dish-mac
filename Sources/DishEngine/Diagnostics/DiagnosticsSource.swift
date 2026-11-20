@@ -59,6 +59,9 @@ package struct PadDiagnostics: Equatable, Identifiable {
     package var hidTransport: HidTransport?
     /// The census device under the pad, for its product and manufacturer.
     package var device: HidDeviceFacts?
+    /// What IOKit said of its hardware: the Direct interface's, else what
+    /// the devices matched to it by name agree on.
+    package var hardwareDetail: HidHardwareDetail?
     /// The record's issues that apply to this Mac and this transport.
     package var issues: [ControllerIssue] = []
 
@@ -253,6 +256,7 @@ func withRecord(_ pad: PadDiagnostics, index: ControllerIndex, devices: [HidDevi
     known.device = device
     known.hidTransport = hidTransport
     known.transport = transport
+    known.hardwareDetail = pad.inputPath?.hardware ?? hardwareDetail(forPadNamed: pad.slot.name, in: devices)
     guard let id = pad.hardwareId else { return known }
     let vendorId = UInt16(clamping: id.vendorId)
     let productId = UInt16(clamping: id.productId)

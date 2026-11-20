@@ -135,6 +135,20 @@ final class HidPadCandidateTests: XCTestCase {
         XCTAssertEqual(windowMs, 30, "about 30 ms, as SDL waits")
     }
 
+    func testACandidateCarriesItsVersionAndItsDescriptorsFingerprint() throws {
+        var properties = DirectFixtures.gamepadProperties()
+        properties[kIOHIDVersionNumberKey] = 0x0210
+        let candidate = try DirectFixtures.candidate(properties)
+        XCTAssertEqual(candidate.detail.versionNumber, 0x0210)
+        XCTAssertEqual(candidate.detail.descriptorSha256, sha256Hex(Data(DirectFixtures.gamepadDescriptor)))
+        XCTAssertNil(candidate.detail.interfaces, "the reader reads the IORegistry as it opens the device")
+    }
+
+    func testTheReaderAsksIOKitForTheVersion() {
+        XCTAssertTrue(hidPadPropertyKeys.contains(kIOHIDVersionNumberKey))
+        XCTAssertTrue(hidPadPropertyKeys.contains(kIOHIDReportDescriptorKey))
+    }
+
     func testTheTransportWordsInADevcapsLine() {
         XCTAssertEqual(transportWord(.usb), "usb")
         XCTAssertEqual(transportWord(.bluetooth(.classic)), "bluetooth")

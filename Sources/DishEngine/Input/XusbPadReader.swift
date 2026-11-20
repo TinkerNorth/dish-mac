@@ -39,6 +39,8 @@ protocol XusbOpenInterface: AnyObject {
     var input: UsbInputPipe { get }
     /// Nil for an interface with nowhere to send rumble.
     var output: UsbOutputPipe? { get }
+    /// The addresses of the two pipes.
+    var endpoints: BundleEndpoints { get }
     /// Stops the reads and gives the interface back.
     func close()
 }
@@ -57,6 +59,9 @@ struct XusbInterfaceArrival {
     /// its own class, subclass and protocol.
     let properties: [String: Any]
     let port: XusbPort
+    /// Each of its device's interfaces' properties; nil when the IORegistry
+    /// showed no device above it.
+    var deviceInterfaces: [[String: Any]]?
 }
 
 /// What the bus tells the reader, on the reader's queue.
@@ -71,13 +76,16 @@ protocol XusbBus: AnyObject {
     func start(queue: DispatchQueue, events: XusbBusEvents)
 }
 
-/// The IORegistry keys an interface's identity and triple are read under.
+/// The IORegistry keys an interface's identity, number, triple and release
+/// are read under (the SDK's `IOUSBHostFamilyDefinitions.h` matching keys).
 enum UsbInterfaceKey {
     static let vendorId = "idVendor"
     static let productId = "idProduct"
+    static let interfaceNumber = "bInterfaceNumber"
     static let interfaceClass = "bInterfaceClass"
     static let interfaceSubclass = "bInterfaceSubClass"
     static let interfaceProtocol = "bInterfaceProtocol"
+    static let deviceRelease = "bcdDevice"
 }
 
 /// The interface the reader reads, or nil: any interface whose triple is not
@@ -92,7 +100,7 @@ func xusbPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
     let vendorId = UInt16(clamping: properties[UsbInterfaceKey.vendorId] as? Int ?? 0)
     let productId = UInt16(clamping: properties[UsbInterfaceKey.productId] as? Int ?? 0)
     guard xusb, let model = directModel(vendorId: vendorId, productId: productId), model.decoder == .xusb else { return nil }
-    return HidPadCandidate(
+    var candidate = HidPadCandidate(
         vendorId: vendorId,
         productId: productId,
         product: "",
@@ -101,6 +109,8 @@ func xusbPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
         decoder: .xusb,
         reportCapacity: HidPadLimits.minimumReportCapacity
     )
+    candidate.detail.versionNumber = properties[UsbInterfaceKey.deviceRelease] as? Int
+    return candidate
 }
 
 extension GameControllerProbe {
@@ -206,7 +216,8 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     /// of it either way, read or refused.
     private func arrived(_ arrival: XusbInterfaceArrival) {
         guard !entries.knows(arrival.registryId), let wiring else { return }
-        guard let candidate = xusbPadCandidate(arrival.properties) else { return }
+        guard let classified = xusbPadCandidate(arrival.properties) else { return }
+        let candidate = classified.with(interfaces: arrival.deviceInterfaces)
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
         let pad = XusbArrivingPad(
@@ -278,10 +289,11 @@ private struct XusbArrivingPad {
     let writes: DirectWrites
 
     /// What the open interface shows of the pad's endpoints: the IN pipe it
-    /// reads, and an OUT pipe or none.
+    /// reads, and an OUT pipe or none, and their addresses.
     func seeing(_ interface: XusbOpenInterface) -> XusbArrivingPad {
         var seen = candidate
         seen.observedEndpoints = ObservedEndpoints(input: true, output: interface.output != nil)
+        seen.detail.endpoints = interface.endpoints
         return XusbArrivingPad(registryId: registryId, slotId: slotId, candidate: seen, wiring: wiring, writes: writes)
     }
 

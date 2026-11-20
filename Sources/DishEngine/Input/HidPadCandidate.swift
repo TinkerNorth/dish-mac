@@ -43,6 +43,8 @@ struct HidPadCandidate: Equatable {
     /// What the device showed of its report paths as it arrived, for the
     /// record's expect check; IOHID shows report sizes, not endpoints.
     var observedEndpoints = ObservedEndpoints(input: nil, output: nil)
+    /// What IOKit said of the hardware as it arrived.
+    var detail = HidHardwareDetail()
 
     /// The model's name, else the device's own, else its USB identity.
     var name: String {
@@ -104,7 +106,8 @@ let hidRequiresInputMonitoringKey = "RequiresTCCAuthorization"
 let hidPadPropertyKeys = [
     kIOHIDProductKey, kIOHIDVendorIDKey, kIOHIDProductIDKey, kIOHIDTransportKey, kIOHIDPrimaryUsagePageKey,
     kIOHIDPrimaryUsageKey, kIOHIDDeviceUsagePairsKey, kIOHIDGCSyntheticDeviceKey, kIOHIDMaxInputReportSizeKey,
-    kIOHIDReportDescriptorKey, hidInterfaceNumberKey, hidRequiresInputMonitoringKey, kIOHIDMaxOutputReportSizeKey
+    kIOHIDReportDescriptorKey, hidInterfaceNumberKey, hidRequiresInputMonitoringKey, kIOHIDMaxOutputReportSizeKey,
+    kIOHIDVersionNumberKey
 ]
 
 /// The manager's matching: each model read by its USB identity (every
@@ -142,6 +145,7 @@ func hidPadCandidate(_ properties: [String: Any], served: ServedDirectModels = .
     )
     candidate.needsInputMonitoring = properties[hidRequiresInputMonitoringKey] as? Bool == true
     candidate.observedEndpoints = observedReportPaths(properties)
+    candidate.detail = hidHardwareDetail(properties)
     return candidate
 }
 

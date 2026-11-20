@@ -131,6 +131,24 @@ final class XusbPadReaderTests: XCTestCase {
         XCTAssertFalse(facts.capturable, "the support capture reads HID reports, and this pad sends none")
     }
 
+    func testAnXusbPadCarriesItsVersionItsDevicesInterfacesAndTheEndpointsItOpened() throws {
+        let input = bridge()
+        var properties = XusbFixtures.ultimate2()
+        properties[UsbInterfaceKey.deviceRelease] = 0x0114
+        bus.plug(1, properties, port: FakeXusbPort(), interfaces: XusbFixtures.interfaces)
+        drainMain()
+        scheduler.advance(ms: 100)
+        let hardware = try XCTUnwrap(input.paths.facts(forSlot: Self.slotId)?.hardware)
+        XCTAssertEqual(hardware.versionNumber, 0x0114, "the interface's bcdDevice")
+        XCTAssertEqual(hardware.interfaces?.map(\.number), [0, 1, 2, 3])
+        XCTAssertEqual(hardware.endpoints, BundleEndpoints(input: 0x81, output: 0x02), "the pipes Dish opened")
+        XCTAssertNil(hardware.descriptorSha256, "an XUSB interface has no HID report descriptor")
+    }
+
+    func testTheBusReadsTheVersionWithTheIdentity() {
+        XCTAssertTrue(xusbInterfaceKeys.contains(UsbInterfaceKey.deviceRelease))
+    }
+
     func testTwoIdenticalPadsTakeTheirOwnSlots() {
         let input = bridge()
         plug(registryId: 1, port: FakeXusbPort())

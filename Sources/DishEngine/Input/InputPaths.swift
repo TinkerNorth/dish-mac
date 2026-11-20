@@ -69,6 +69,8 @@ package struct SlotInputPath: Equatable {
     package var expectMismatches: [String] = []
     /// The last write Dish sent the pad itself, and IOKit's answer.
     package var lastWrite: DirectWriteVerdict?
+    /// What IOKit said of the hardware of the interface Dish reads.
+    package var hardware: HidHardwareDetail?
 
     package init(source: InputSource, reason: InputSourceReason) {
         self.source = source

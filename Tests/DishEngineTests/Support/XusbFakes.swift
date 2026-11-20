@@ -37,10 +37,19 @@ enum XusbFixtures {
 
     /// One interface of the Ultimate 2 in X-input mode, as the IORegistry
     /// gives its identity and triple: protocol 0x01 is the pad's input.
-    static func ultimate2(interfaceProtocol: Int = 0x01, productId: Int = 0x310B) -> [String: Any] {
+    static func ultimate2(interfaceProtocol: Int = 0x01, productId: Int = 0x310B, vendorId: Int = 0x2DC8) -> [String: Any] {
         [
-            UsbInterfaceKey.vendorId: 0x2DC8, UsbInterfaceKey.productId: productId, UsbInterfaceKey.interfaceClass: 0xFF,
+            UsbInterfaceKey.vendorId: vendorId, UsbInterfaceKey.productId: productId, UsbInterfaceKey.interfaceClass: 0xFF,
             UsbInterfaceKey.interfaceSubclass: 0x5D, UsbInterfaceKey.interfaceProtocol: interfaceProtocol
+        ]
+    }
+
+    /// A wired 360 pad's four interfaces as its device's IORegistry entries
+    /// list them: the pad, the headset, the two others XUSB defines.
+    static let interfaces: [[String: Any]] = [(3, 0xFD, 0x13), (0, 0x5D, 0x01), (1, 0x5D, 0x03), (2, 0x5D, 0x02)].map { triple in
+        [
+            UsbInterfaceKey.interfaceNumber: triple.0, UsbInterfaceKey.interfaceClass: 0xFF,
+            UsbInterfaceKey.interfaceSubclass: triple.1, UsbInterfaceKey.interfaceProtocol: triple.2
         ]
     }
 }
@@ -163,6 +172,8 @@ final class FakeUsbOutputPipe: UsbOutputPipe, @unchecked Sendable {
 final class FakeXusbInterface: XusbOpenInterface, @unchecked Sendable {
     let fakeInput: FakeUsbInputPipe
     let fakeOutput = FakeUsbOutputPipe()
+    /// The Ultimate 2's: IN on 0x81, OUT on 0x02.
+    let endpoints = BundleEndpoints(input: 0x81, output: 0x02)
     private let closedBox = LockedBox(false)
 
     init(queue: DispatchQueue, refusingReads: Bool) {
@@ -231,9 +242,10 @@ final class FakeXusbBus: XusbBus, @unchecked Sendable {
         startBox.get() != nil
     }
 
-    func plug(_ registryId: UInt64, _ properties: [String: Any], port: XusbPort) {
+    func plug(_ registryId: UInt64, _ properties: [String: Any], port: XusbPort, interfaces: [[String: Any]]? = nil) {
         guard let start = startBox.get() else { return }
-        start.queue.sync { start.events.arrived(XusbInterfaceArrival(registryId: registryId, properties: properties, port: port)) }
+        let arrival = XusbInterfaceArrival(registryId: registryId, properties: properties, port: port, deviceInterfaces: interfaces)
+        start.queue.sync { start.events.arrived(arrival) }
     }
 
     func unplug(_ registryId: UInt64) {

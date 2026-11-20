@@ -45,10 +45,7 @@ func usbHostControllerCount() -> Int? {
     let status = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching(usbHostControllerClass), &iterator)
     guard status == KERN_SUCCESS else { return nil }
     defer { IOObjectRelease(iterator) }
-    let services = Array(sequence(state: iterator) { iterator -> io_service_t? in
-        let service = IOIteratorNext(iterator)
-        return service == 0 ? nil : service
-    })
+    let services = drainIterator(iterator)
     for service in services {
         IOObjectRelease(service)
     }

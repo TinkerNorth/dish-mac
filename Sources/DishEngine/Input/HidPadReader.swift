@@ -223,7 +223,9 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     fileprivate func matched(_ device: IOHIDDevice) {
         let registryId = Self.registryId(of: device)
         guard !entries.knows(registryId), let wiring, let events else { return }
-        guard let candidate = hidPadCandidate(Self.properties(of: device), served: served) else { return }
+        guard let classified = hidPadCandidate(Self.properties(of: device), served: served) else { return }
+        let service = IOHIDDeviceGetService(device)
+        let candidate = classified.with(interfaces: usbInterfaceEntries(ofHidService: service, transport: classified.transport))
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
         let writes = DirectWrites()
