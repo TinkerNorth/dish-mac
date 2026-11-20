@@ -2399,6 +2399,41 @@
         }
       }
     },
+    "A question" : {
+      "comment" : "Report category: the person asks rather than reports.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pitanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Frage"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una pregunta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une question"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma pergunta"
+          }
+        }
+      }
+    },
     "A session carries four controllers at most, and %@ already has four. Unbind one to make room." : {
       "comment" : "Banner body; the argument is the host's name.",
       "localizations" : {
@@ -3449,6 +3484,41 @@
         }
       }
     },
+    "Ask a question" : {
+      "comment" : "Diagnostics button: opens the report page on a question.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Postavite pitanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Frage stellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hacer una pregunta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poser une question"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fazer uma pergunta"
+          }
+        }
+      }
+    },
     "Asked %@ to close the app it is running." : {
       "comment" : "Banner: the dish asked the host to close its app.",
       "localizations" : {
@@ -3480,6 +3550,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pedimos a %@ que feche o app em execução."
+          }
+        }
+      }
+    },
+    "Asking each connected host for its own view of this connection…" : {
+      "comment" : "The report page while the hosts are asked.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pitam svaki povezani host za njegov pogled na ovu vezu…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeder verbundene Host wird nach seiner Sicht auf diese Verbindung gefragt…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preguntando a cada host conectado por su propia vista de esta conexión…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque hôte connecté est interrogé sur sa propre vue de cette connexion…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perguntando a cada host conectado sua própria visão desta conexão…"
           }
         }
       }
@@ -6074,6 +6179,41 @@
         }
       }
     },
+    "Connection or latency" : {
+      "comment" : "Report category: the link to the host drops or lags.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veza ili kašnjenje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung oder Latenz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conexión o latencia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion ou latence"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conexão ou latência"
+          }
+        }
+      }
+    },
     "Connections" : {
       "comment" : "Title of the Connections page. Maps to Android `title_connections`.",
       "localizations" : {
@@ -6105,6 +6245,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conexões"
+          }
+        }
+      }
+    },
+    "Contact support" : {
+      "comment" : "Diagnostics: the page Report a problem and Ask a question open.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontaktirajte podršku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support kontaktieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contactar con soporte"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contacter l’assistance"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falar com o suporte"
+          }
+        }
+      }
+    },
+    "Continue in Mail" : {
+      "comment" : "The report page button: opens the person's mail app with the report.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nastavite u Mailu"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mail fortfahren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar en Mail"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer dans Mail"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar no Mail"
           }
         }
       }
@@ -6350,6 +6560,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inspetor de controle"
+          }
+        }
+      }
+    },
+    "Controller not recognised" : {
+      "comment" : "Report category: Dish does not see or read the controller.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroler nije prepoznat"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller wird nicht erkannt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mando no se reconoce"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manette non reconnue"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controle não reconhecido"
           }
         }
       }
@@ -7824,41 +8069,6 @@
         }
       }
     },
-    "Dish diagnostics: Dish for macOS %@ on %@" : {
-      "comment" : "The diagnostics mail's subject: the app's version, then the Mac's model.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dish dijagnostika: Dish za macOS %@ na %@"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Dish-Diagnose: Dish für macOS %@ auf %@"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnóstico de Dish: Dish para macOS %@ en %@"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnostics Dish : Dish pour macOS %@ sur %@"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnóstico do Dish: Dish para macOS %@ em %@"
-          }
-        }
-      }
-    },
     "Dish does not treat these as controllers." : {
       "comment" : "Diagnostics: the note under Other input devices. From Android `diagnostics_ignored_inputs_header`.",
       "localizations" : {
@@ -8734,6 +8944,41 @@
         }
       }
     },
+    "Each controller's identity and record, and how much went in and came out of it" : {
+      "comment" : "What the file holds: each controller, as counts, never a stream.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identitet i zapis svakog kontrolera, te koliko je ulaza i izlaza prošlo kroz njega"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kennung und Eintrag jedes Controllers, und wie viel hinein- und herausging"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La identidad y el registro de cada mando, y cuánto entró y salió de él"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’identité et la fiche de chaque manette, et ce qui y est entré et en est sorti"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A identidade e o registro de cada controle, e quanto entrou e saiu dele"
+          }
+        }
+      }
+    },
     "Each host's session, each controller down to the wire, and a log of what changed." : {
       "comment" : "Diagnostics intro and the Settings row detail.",
       "localizations" : {
@@ -8765,6 +9010,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A sessão de cada host, cada controle até a conexão e um registro do que mudou."
+          }
+        }
+      }
+    },
+    "Each host's version and session, under an alias, and what the host says of this connection" : {
+      "comment" : "What the file holds: each host from both ends, named only by an alias.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verziju i sesiju svakog hosta, pod pseudonimom, i šta host kaže o ovoj vezi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version und Sitzung jedes Hosts unter einem Alias, und was der Host über diese Verbindung sagt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La versión y la sesión de cada host, bajo un alias, y lo que el host dice de esta conexión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La version et la session de chaque hôte, sous un alias, et ce que l’hôte dit de cette connexion"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A versão e a sessão de cada host, sob um apelido, e o que o host diz desta conexão"
           }
         }
       }
@@ -8870,41 +9150,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ambas"
-          }
-        }
-      }
-    },
-    "Email diagnostics" : {
-      "comment" : "Diagnostics button: opens the person's mail app with the diagnostics file attached.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Pošalji dijagnostiku e-poštom"
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Diagnose per E-Mail senden"
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enviar diagnóstico por correo"
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Envoyer les diagnostics par e-mail"
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Enviar diagnóstico por e-mail"
           }
         }
       }
@@ -10834,6 +11079,41 @@
         }
       }
     },
+    "Hide file" : {
+      "comment" : "The report page button: hides the file preview.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sakrij datoteku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei ausblenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar el archivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masquer le fichier"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar arquivo"
+          }
+        }
+      }
+    },
     "Holding the binding so you can reconnect. Re-plug to keep configuring, or close this screen." : {
       "comment" : "The setup walk: holding the binding.",
       "localizations" : {
@@ -11705,6 +11985,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ele encaminha a entrada pela sua rede local até o ajudante gratuito Satellite."
+          }
+        }
+      }
+    },
+    "It never holds pairing keys, fingerprints, IP addresses, Wi-Fi names or host names." : {
+      "comment" : "The report page: what the file never holds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nikad ne sadrži ključeve uparivanja, otiske, IP adrese, nazive Wi-Fi mreža ni imena hostova."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie enthält nie Kopplungsschlüssel, Fingerabdrücke, IP-Adressen, WLAN- oder Host-Namen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca contiene claves de emparejamiento, huellas, direcciones IP, nombres de Wi-Fi ni de hosts."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il ne contient jamais de clés d’appairage, d’empreintes, d’adresses IP, de noms de Wi-Fi ni d’hôtes."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca contém chaves de pareamento, impressões digitais, endereços IP, nomes de Wi-Fi ou de hosts."
           }
         }
       }
@@ -15384,6 +15699,41 @@
         }
       }
     },
+    "No rumble or feedback" : {
+      "comment" : "Report category: vibration, lights or triggers do not respond.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema vibracije ni povratne reakcije"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Rumble oder Feedback"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin vibración ni respuesta háptica"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de vibration ni de retour"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem vibração ou resposta"
+          }
+        }
+      }
+    },
     "No satellites found" : {
       "comment" : "Connections: the FOUND list's title once a sweep heard nothing.",
       "localizations" : {
@@ -15730,6 +16080,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não é um controle: não reconhecido pelo GameController"
+          }
+        }
+      }
+    },
+    "Not about a controller" : {
+      "comment" : "The controller picker's choice for a report about no controller.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne odnosi se na kontroler"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Betrifft keinen Controller"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No es sobre un mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne concerne pas une manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não é sobre um controle"
           }
         }
       }
@@ -18569,6 +18954,41 @@
         }
       }
     },
+    "Preview file" : {
+      "comment" : "The report page button: shows the diagnostics file's JSON.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pregledaj datoteku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei ansehen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver el archivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu du fichier"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver arquivo"
+          }
+        }
+      }
+    },
     "Privacy policy" : {
       "comment" : "About link title.",
       "localizations" : {
@@ -19580,6 +20000,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O relatório %@ via %@ foi enviado às %@"
+          }
+        }
+      }
+    },
+    "Report a problem" : {
+      "comment" : "Diagnostics button: opens the report page on a problem.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prijavite problem"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Problem melden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informar de un problema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signaler un problème"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relatar um problema"
           }
         }
       }
@@ -21684,6 +22139,41 @@
         }
       }
     },
+    "Something else" : {
+      "comment" : "Report category: none of the others.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nešto drugo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etwas anderes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otra cosa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autre chose"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outra coisa"
+          }
+        }
+      }
+    },
     "Speaker" : {
       "comment" : "Capability row.",
       "localizations" : {
@@ -23189,6 +23679,41 @@
         }
       }
     },
+    "The controller it concerns" : {
+      "comment" : "The report page: the label over the controller picker.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroler o kojem se radi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der betroffene Controller"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mando afectado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La manette concernée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O controle em questão"
+          }
+        }
+      }
+    },
     "The controller sent nothing during the test." : {
       "comment" : "Inspector result.",
       "localizations" : {
@@ -23255,6 +23780,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O download não passou na verificação"
+          }
+        }
+      }
+    },
+    "The event log, and the capture of the controller you picked if you took one" : {
+      "comment" : "What the file holds: the flight recorder and the Help-support capture.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dnevnik događaja i snimak odabranog kontrolera, ako ste ga napravili"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Ereignisprotokoll und die Aufnahme des gewählten Controllers, falls du eine gemacht hast"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El registro de eventos y la captura del mando elegido, si hiciste una"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le journal des événements, et la capture de la manette choisie si vous en avez fait une"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O registro de eventos e a captura do controle escolhido, se você fez uma"
+          }
+        }
+      }
+    },
+    "The file will hold" : {
+      "comment" : "The report page: the header over what the diagnostics file holds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datoteka će sadržavati"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Datei enthält"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo contendrá"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier contiendra"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arquivo vai conter"
           }
         }
       }
@@ -23885,6 +24480,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tema"
+          }
+        }
+      }
+    },
+    "This Mac's model, macOS version, battery, temperature state and Wi-Fi signal strength" : {
+      "comment" : "What the file holds: the Mac's facts and conditions, never a network name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model ovog Maca, verziju macOS-a, bateriju, stanje temperature i jačinu Wi-Fi signala"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modell dieses Macs, macOS-Version, Akku, Temperaturzustand und WLAN-Signalstärke"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El modelo de este Mac, la versión de macOS, la batería, el estado térmico y la intensidad de la señal Wi-Fi"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le modèle de ce Mac, la version de macOS, la batterie, l’état thermique et la force du signal Wi-Fi"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O modelo deste Mac, a versão do macOS, a bateria, o estado térmico e a intensidade do sinal Wi-Fi"
           }
         }
       }
@@ -25779,6 +26409,41 @@
         }
       }
     },
+    "What happened, and what did you expect?" : {
+      "comment" : "The report page: the label over the person's own words.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Šta se desilo i šta ste očekivali?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was ist passiert, und was hast du erwartet?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Qué pasó y qué esperabas?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Que s’est-il passé, et qu’attendiez-vous ?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O que aconteceu e o que você esperava?"
+          }
+        }
+      }
+    },
     "What is Dish?" : {
       "comment" : "Help & FAQ: what is dish.",
       "localizations" : {
@@ -25845,6 +26510,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O que é o Satellite?"
+          }
+        }
+      }
+    },
+    "What it is about" : {
+      "comment" : "The report page: the label over the category picker.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O čemu se radi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Worum es geht"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De qué se trata"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De quoi il s’agit"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobre o que é"
           }
         }
       }
@@ -26689,6 +27389,41 @@
         }
       }
     },
+    "Your mail app opens with your words first, then this Mac's summary, and the file attached." : {
+      "comment" : "The report page's intro: what the mail holds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaša aplikacija za e-poštu otvara se s vašim riječima na početku, zatim sažetkom ovog Maca i priloženom datotekom."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Mail-App öffnet sich mit deinen Worten zuerst, dann der Zusammenfassung dieses Macs und der angehängten Datei."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu app de correo se abre con tus palabras primero, después el resumen de este Mac y el archivo adjunto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre app de messagerie s’ouvre avec vos mots en premier, puis le résumé de ce Mac et le fichier joint."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu app de e-mail abre com suas palavras primeiro, depois o resumo deste Mac e o arquivo anexado."
+          }
+        }
+      }
+    },
     "Your pick" : {
       "comment" : "Diagnostics: the path is the one the user picked.",
       "localizations" : {
@@ -26720,6 +27455,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sua escolha"
+          }
+        }
+      }
+    },
+    "Your words and the category you picked" : {
+      "comment" : "What the file holds: the report.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaše riječi i kategoriju koju ste odabrali"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Worte und die gewählte Kategorie"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus palabras y la categoría que elegiste"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos mots et la catégorie choisie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suas palavras e a categoria escolhida"
           }
         }
       }

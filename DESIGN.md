@@ -122,6 +122,8 @@ The window's sizes and the rail's are the desktops' (`AppShell.qml`,
 | `DishSize.welcomeColumn` | 460 | The welcome's text column, the desktops' width |
 | `DishSize.welcomeMark` | 64 | The mark on the welcome's first page |
 | `DishSize.helpColumn` | 640 | Help & FAQ's reading column, the desktops' width |
+| `DishSize.reportTextHeight` | 96 | The report's "What happened" field |
+| `DishSize.reportPreviewHeight` | 280 | The report's file preview, scrolled within itself |
 
 ## Spacing (`DishSpace`)
 

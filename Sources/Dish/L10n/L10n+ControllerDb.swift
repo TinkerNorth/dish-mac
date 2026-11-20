@@ -137,20 +137,12 @@ extension L10n {
 
     // MARK: - Diagnostics by email
 
-    var emailDiagnostics: String {
-        catalog.text("Email diagnostics")
-    }
-
     var saveDiagnostics: String {
         catalog.text("Save diagnostics")
     }
 
     var emailDiagnosticsDetail: String {
         paragraph(catalog.text("Your mail app opens with the file attached."), catalog.text("Nothing is sent until you press Send."))
-    }
-
-    func diagnosticsMailSubject(_ version: String, _ model: String) -> String {
-        catalog.format("Dish diagnostics: Dish for macOS %@ on %@", version, model)
     }
 
     var diagnosticsAttachmentSentence: String {

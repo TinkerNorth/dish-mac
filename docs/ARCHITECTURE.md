@@ -47,7 +47,7 @@ frameworks each one may import.
 |---|---|---|---|
 | `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step, the binding draft and its apply, a pad's dead zones), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock; and under `DirectInput/` the pads Dish reads itself: the Switch report decoders, the generic HID descriptor parser and its per-report decode, the Direct model table, the input-source machine (which path a pad is forwarded from, its proof and the "Not responding?" check), the disconnect-burst rule, the player numbers, the per-model remap with its press-to-assign walk and the fixed table the reader applies, and the support capture's sequence and report | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
-| `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, IOUSBHost, Security, os, AudioToolbox, CoreAudio, AVFoundation |
+| `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, IOUSBHost, Security, os, AudioToolbox, CoreAudio, AVFoundation, CoreWLAN |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
 | `Dish` | The shell (the navigation machine and its store, the rail, the header, the pages), the SwiftUI views and kit, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three and `DishCrashUpload` | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
@@ -516,7 +516,17 @@ write's verdict into; the paths take it on the Diagnostics tick.
 `PadOutcomesStore` keeps the answers to "Did it work?", and
 `diagnosticsBundleFacts` folds what the page renders into the core's
 `dish-diagnostics.v1` builder, whose file the app hands to the person's mail
-app through `DiagnosticsMailer`.
+app through `DiagnosticsMailer`. A support report adds the second cut:
+`ReportPreparationSource` (a `StateSource` of an `AsyncState`) asks every
+live satellite whose probe names 2.3.0 or later for its own view through
+`WifiConnectionManager.connectionSnapshots` (the `HTTPClient` gateway,
+two seconds; the core's `satelliteAnswersDiagnostics` and
+`hostSnapshotVerdict` decide) and reads the Mac's conditions through the
+`DeviceConditionsReading` gateway (IOKit power sources, `ProcessInfo`,
+CoreWLAN without the network's name); `sessionFacts` reads each session's
+slots, the apply answers `SlotApplyStore` keeps, the ack, the RTT window and
+the client's `WireTally`; `PadFeedback` keeps each pad's `FeedbackTally`.
+Both tallies are relaxed counters the hot path bumps and never reads.
 
 ## Several pads on one satellite
 

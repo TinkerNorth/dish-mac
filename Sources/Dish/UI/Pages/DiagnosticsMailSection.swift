@@ -1,17 +1,18 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import DishEngine
 import SwiftUI
 
-/// Email diagnostics and Save diagnostics: the bundle written by the model,
-/// handed to the person's own mail app, or saved where they pick when no
-/// mail app takes it.
+/// Report a problem, Ask a question and Save diagnostics: the first two
+/// open the report page, which hands the file to the person's own mail app;
+/// the third saves the file where they pick.
 struct DiagnosticsMailSection: View {
 
     @EnvironmentObject var model: AppModel
+    @EnvironmentObject var navigation: NavigationStore
     @Environment(\.diagnosticsMailer) private var mailer
-    let mail: DiagnosticsMailState
     @State private var failed = false
 
     private let words = L10n.app
@@ -19,7 +20,9 @@ struct DiagnosticsMailSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                Button(words.emailDiagnostics, action: email)
+                Button(words.reportAProblem, action: reportAProblem)
+                    .buttonStyle(DishOutlinedButtonStyle())
+                Button(words.askAQuestion, action: askAQuestion)
                     .buttonStyle(DishOutlinedButtonStyle())
                 Button(words.saveDiagnostics, action: save)
                     .buttonStyle(DishOutlinedButtonStyle())
@@ -37,10 +40,12 @@ struct DiagnosticsMailSection: View {
         }
     }
 
-    private func email() {
-        guard let file = model.writeDiagnosticsBundle() else { return failed = true }
-        failed = false
-        if !mailer.compose(mail, file) { mailer.save(file) }
+    private func reportAProblem() {
+        navigation.send(.push(.supportReport(category: .other)))
+    }
+
+    private func askAQuestion() {
+        navigation.send(.push(.supportReport(category: .question)))
     }
 
     private func save() {

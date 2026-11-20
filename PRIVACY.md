@@ -1,6 +1,6 @@
 # Dish for macOS: Privacy Policy
 
-**Effective date:** 2026-11-19.
+**Effective date:** 2026-11-20.
 **Canonical copy:** this file, at
 [`https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md`](https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md).
 
@@ -107,6 +107,7 @@ app keeps no other log file.
 | Pairing and the control plane: HTTPS on port 9443 to the satellite you chose | Your `deviceId`, your Mac's name as shown in System Settings (the satellite lists paired devices by it), the PIN you typed or the app generated, the controller type and features you bound, and a proof of possession of the pairing key | The satellite |
 | Streaming: encrypted UDP on port 9876 to the satellite you chose | Controller input (buttons, sticks, triggers), and, when the switches are on and the pad has them, motion samples, touchpad positions and the battery level of the pad or of your Mac; with that controller's mic switch on and not muted, the sound its own microphone hears, as 20 ms Opus frames | The satellite |
 | Return paths over the same UDP channel | Rumble, light-bar, adaptive-trigger, player-LED and mic-lamp commands from the satellite to the pad, and the host's voice chat and haptics audio for the pad's own speaker and actuators | Your Mac |
+| A support report's question to each connected satellite: HTTPS on port 9443, `GET /api/connections/{id}/diagnostics`, only as the report page opens and only to a Satellite of 2.3.0 or later | Your `deviceId` and the proof of the pairing key, as every control-plane request; the satellite answers with its view of this connection (section 2.5), which stays on your Mac unless you mail it | The satellite |
 | Moonlight discovery: a Bonjour browse for `_nvstream._tcp` | Nothing of yours is sent; the app reads the hosts' announcements | Your local network |
 | Moonlight pairing: HTTP on port 47989 and HTTPS on port 47984 to the host you chose | Your `moonlight_uniqueid`, the device name the protocol fixes (`roth`), the app's certificate, and a salt and challenges derived from the PIN the app showed you; the PIN itself never crosses the wire | The Moonlight host |
 | Moonlight sessions: HTTPS on port 47984 (mutual TLS with the app's certificate), RTSP on the port the host names (48010 by default) and encrypted UDP to the host's control port | The app to start, a key minted per session, the controller type and features each pad is plugged in as, and then controller input (buttons, sticks, triggers), and, when the switches are on and the pad has them, motion samples, touchpad positions and the battery level of the pad or of your Mac | The Moonlight host |
@@ -183,16 +184,36 @@ build of Dish for macOS makes this check; there is no store build.
 
 ### 2.5 Diagnostics by email
 
-When something does not work, you can send us a diagnostics file from the
-app's Diagnostics page. Nothing happens unless you start it. *Email
-diagnostics* writes one file, `dish-diagnostics-dish-mac-<date>-<time>.json`,
-to a temporary folder and hands it to your own mail app, in a new message
-addressed to `support@tinkernorth.com` with the page's summary in the body.
-Nothing is sent until you press Send in your mail app, and you can read the
-file or remove it first. The message then travels like any email you send,
-through your own mail provider. When no mail app takes it, or when you press
-*Save diagnostics*, the file is saved where you pick instead and goes
-nowhere.
+When something does not work, you can write to us from the app's
+Diagnostics page. Nothing happens unless you start it. *Report a problem*
+and *Ask a question* open one page where you pick what it is about, write
+what happened in your own words, and pick the controller it concerns. The
+page lists what the file will hold, and *Preview file* shows you the file
+itself before anything moves. *Continue in Mail* writes one file,
+`dish-diagnostics-dish-mac-<date>-<time>.json`, to a temporary folder and
+hands it to your own mail app, in a new message addressed to
+`support@tinkernorth.com` with your words first and the page's summary
+after them. Nothing is sent until you press Send in your mail app, and you
+can read the file or remove it first. The message then travels like any
+email you send, through your own mail provider. When no mail app takes it,
+the file is saved where you pick instead. *Save diagnostics* saves a file
+without your words, without a host's own view and without your Mac's
+conditions, where you pick, and it goes nowhere.
+
+Opening the report page asks each host Dish is connected to right now, on
+your own network and over the same encrypted, paired connection Dish
+already uses, for its own view of that connection; nothing goes to
+TinkerNorth or anyone else at that moment. A Satellite of version 2.3.0 or
+later answers with what it sees of this Mac's session: its own version and
+platform, its virtual controller backends, each controller Dish asked for
+as it applied it, how many reports went each way, which audio lanes it
+grants, its controller database version and its own log lines for this
+connection, with its machine name, other devices and every secret already
+removed by Satellite and named only "this connection". An older Satellite
+is not asked; the file carries what Dish already learned from it when it
+connected (its version, protocol, backends and audio switches) instead. A
+Moonlight host is not asked; the file carries its app version, never its
+name.
 
 The file holds:
 
@@ -206,20 +227,40 @@ The file holds:
   is connected, how Dish reads it, the controller database record it matched,
   what its hardware showed at attach against that record, and the last report
   Dish sent it with the answer macOS gave;
+- for each attached controller, how much went in and came out as counts:
+  the reports it sent and its rate, the last report Dish forwarded (its
+  buttons, sticks and triggers at that instant, not a recording), and for
+  rumble, the light bar, the player lights and the trigger effects how many
+  commands reached it, the newest one and when; whether its speaker and
+  haptics voices were open, and for a Bluetooth controller that macOS reads
+  it as HID, never its Bluetooth address;
 - the results of the tests you ran on a controller in the inspector and
   confirmed, such as whether you felt the rumble;
 - the hosts you use, as "Host 1", "Host 2", with their kind, version,
   protocol, link state and which audio lanes they granted, never their names
-  or addresses;
+  or addresses; for a host with a session, Dish's own view of it (each
+  controller as asked and as applied, the last heartbeat's facts, the round
+  trip, how many messages of each kind went each way); and, in a report,
+  what the host said of the connection as described above, with any name of
+  a host replaced by its alias;
+- only in a report: what you wrote, the category you picked and the
+  controller you picked, by its database record or the name it reports;
+  your Mac's battery level and whether it is charging, its thermal state,
+  whether Low Power Mode is on, and the Wi-Fi band, signal strength and link
+  rate, read once through macOS's CoreWLAN, never the network's name or the
+  access point's address;
 - the app's flight recorder, the lines Diagnostics shows, with every host
   named by its alias;
 - only if you ran "Help support this controller" this session, that
   controller's report as the page showed it: its ids, names, connection, HID
-  report descriptor and the reports it sent as you pressed each control.
+  report descriptor and the reports it sent as you pressed each control; in
+  a report, only when it is the controller you picked.
 
 It never holds pairing keys, pairing secrets, certificate fingerprints, IP
 addresses, Wi-Fi names, the names you gave your hosts or devices, or anything
-from a controller's microphone or speaker.
+from a controller's microphone or speaker. Your own words are only what you
+typed; Dish adds nothing to them and sends them nowhere but into the message
+your mail app opens.
 
 ---
 
@@ -296,6 +337,7 @@ so treat it as sensitive before attaching it to a public issue.
 | Host battery readout (IOKit power sources) | Reading your Mac's internal battery from macOS's list of power sources (`IOPSCopyPowerSourcesInfo`): its charge as a percentage of its capacity, and whether it is charging, full or discharging. Any other power source, such as a UPS, is skipped, and a Mac with no internal battery reads as 100 % on mains power. For a controller bound to a satellite or a Moonlight host, Dish sends the lower of the controller's own battery and the Mac's, with the charging state of the one it sends (an unknown level counts as the higher, and a tie goes to the controller); a controller that reports no battery of its own sends the Mac's. A controller that is not bound sends neither. The Mac's battery is read, and the result sent, a second after a controller shows and every 30 seconds after; in between, a controller on the Standard path reads it every 3 seconds and sends only when the charging state to send has changed, and a controller on the Direct path reads and sends it whenever its own reading changes. The controller's card shows the controller's own reading (the Mac's, for a controller on the Standard path that reports none). |
 | Input Monitoring (macOS asks) | Reading a controller that is also a keyboard or a mouse, such as a Steam Controller (the 2026 one on a cable, or either one over Bluetooth), only when you press Use Direct for it. Dish reads the controller's own reports to forward its buttons, sticks, trackpads and motion; it reads no other keyboard or mouse and records no typing. Refusing leaves the controller as it was. |
 | Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
+| Wi-Fi link readout (CoreWLAN) | Only as a report opens: the current Wi-Fi interface's band, signal strength (RSSI) and transmit rate, for the file you choose to mail. Dish never reads the network's name or the access point's address, so macOS's location permission is never asked. |
 | `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |
 
 The app runs unsandboxed and asks for no other permission than these.

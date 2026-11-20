@@ -18,7 +18,7 @@ struct DiagnosticsPage: View {
     private let words = L10n.app
 
     private var state: DiagnosticsPageState {
-        diagnosticsPageState(facts: model.shellFacts, mail: model.diagnosticsMailFacts)
+        diagnosticsPageState(facts: model.shellFacts)
     }
 
     var body: some View {
@@ -28,7 +28,7 @@ struct DiagnosticsPage: View {
                     .font(DishFont.detail)
                     .foregroundColor(DishTheme.muted)
                     .fixedSize(horizontal: false, vertical: true)
-                DiagnosticsMailSection(mail: state.mail)
+                DiagnosticsMailSection()
                 cardsSection(words.controllerDatabase, .cards([state.controllerDb]))
                 cardsSection(words.hosts, state.hosts)
                 cardsSection(words.controllers, state.pads)

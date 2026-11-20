@@ -336,8 +336,6 @@ struct DiagnosticsPageState: Equatable {
     let events: [DiagnosticsEventLine]
     /// Copy waits until the recorder holds a line.
     let canCopy: Bool
-    /// The mail Email diagnostics opens; empty until the page is whole.
-    var mail = DiagnosticsMailState(recipient: "", subject: "", body: "")
 }
 
 enum DiagnosticsCards: Equatable {
@@ -366,7 +364,6 @@ struct DiagnosticsEventLine: Equatable, Identifiable {
 
 func diagnosticsPageState(
     facts: ShellFacts,
-    mail: DiagnosticsMailFacts = DiagnosticsMailFacts(version: "", model: ""),
     locale: Locale = .current,
     timeZone: TimeZone = .current,
     words: L10n = .app
@@ -385,7 +382,7 @@ func diagnosticsPageState(
         lines: controllerDbLines(facts.controllerDb, locale: locale, timeZone: timeZone, words: words),
         inspects: nil
     )
-    var page = DiagnosticsPageState(
+    return DiagnosticsPageState(
         controllerDb: controllerDb,
         hosts: hosts.isEmpty ? .empty(words.noSatellitesYet) : .cards(hosts),
         pads: pads.isEmpty ? .empty(words.noControllersConnected) : .cards(pads),
@@ -393,8 +390,6 @@ func diagnosticsPageState(
         events: events,
         canCopy: !facts.diagnosticsEvents.isEmpty
     )
-    page.mail = diagnosticsMail(page, facts: mail, words: words)
-    return page
 }
 
 func hostCard(_ host: HostDiagnostics, locale: Locale = .current, words: L10n = .app) -> DiagnosticsCardState {

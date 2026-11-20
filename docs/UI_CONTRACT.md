@@ -51,7 +51,9 @@ help), Check the buttons (`Page.checkButtons(slotId:)`, pushed from a
 generic Direct pad's card) and Help support this controller
 (`Page.helpSupport(deviceKey:)`, pushed from a Direct pad's card, a check's
 finding, the inspector or a Diagnostics "Other input devices" card; both
-live on Controllers when shown from outside).
+live on Controllers when shown from outside), and Contact support
+(`Page.supportReport(category:)`, pushed from Diagnostics by Report a
+problem or Ask a question; it lives on Settings).
 
 ### The welcome
 
@@ -371,10 +373,20 @@ on screen (`buttonCheck`) and the support capture on screen
 
 ## Diagnostics and the inspector
 
-Diagnostics opens with Email diagnostics and Save diagnostics: the model
-writes the bundle (`writeDiagnosticsBundle`) and the scene's
-`diagnosticsMailer` value hands it to `NSSharingService(named:
-.composeEmail)` with the mail `diagnosticsMail` words, or to a save panel.
+Diagnostics opens with Report a problem, Ask a question and Save
+diagnostics. The first two push Contact support
+([`SupportReportPage`](../Sources/Dish/UI/Pages/SupportReportPage.swift),
+[`SupportReportMappers.swift`](../Sources/Dish/UI/Mappers/SupportReportMappers.swift))
+on a category: `pageAppeared(.supportReport)` watches the Diagnostics
+source and prepares the report (`ShellFacts.reportPreparation`: each live
+host asked, the Mac's conditions read); the page keeps a
+`SupportReportForm` (the category, the words, the controller, suggested
+until picked) and draws `supportReportPageState`. Preview file shows
+`supportReportPreview`; Continue in Mail, held while the hosts are asked,
+writes `writeSupportReport` and hands it with `supportReportMail` (the words
+first) to the scene's `diagnosticsMailer` value, `NSSharingService(named:
+.composeEmail)`, or to a save panel. Save diagnostics writes
+`writeDiagnosticsBundle`, with no report, to a save panel.
 A controller database card shows the bundled version, the version in force
 and the last check; a pad's card adds its record, the record's chip, its
 issues, and for a Direct pad its hardware check and last write

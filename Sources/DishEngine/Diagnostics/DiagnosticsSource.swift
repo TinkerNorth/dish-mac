@@ -120,6 +120,9 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     private let issueHost: IssueHost
     private var onTick: () -> Void = {}
     private var timer: DispatchSourceTimer?
+    /// The pages watching: Diagnostics and the report it opens may overlap
+    /// as one replaces the other, so the source stops with the last.
+    private var watchers = 0
 
     init(
         wifi: WifiConnectionManager,
@@ -166,6 +169,7 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
 
     override package func start() {
         MainActor.assumeIsolated {
+            watchers += 1
             census.start { [weak self] in self?.refresh() }
             refresh()
             arm()
@@ -174,6 +178,8 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
 
     override package func stop() {
         MainActor.assumeIsolated {
+            watchers = max(0, watchers - 1)
+            guard watchers == 0 else { return }
             timer?.cancel()
             timer = nil
             census.stop()

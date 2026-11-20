@@ -31,14 +31,39 @@ package extension AppModel {
     }
 
     /// The bundle written to a fresh temporary folder under its contract
-    /// name, for the mail app to attach; nil when the disk refused it.
+    /// name, for the save panel; nil when the disk refused it.
     func writeDiagnosticsBundle() -> URL? {
         let atMs = wallClockMs()
+        return writeBundle(diagnosticsBundleData(atMs: atMs), atMs: atMs)
+    }
+
+    /// The report's bundle as of now: the person's words, each host's own
+    /// view as the preparation gathered it, and the Mac's conditions.
+    func supportReportData(_ draft: SupportReportDraft, atMs: Int64) -> Data {
+        diagnostics.refresh()
+        var inputs = bundleInputs(atMs: atMs)
+        inputs.report = draft
+        inputs.preparation = reportPreparation.state.data
+        return diagnosticsBundleJSON(diagnosticsBundleFacts(inputs))
+    }
+
+    /// The report's file for the person to read before anything moves.
+    func supportReportPreview(_ draft: SupportReportDraft) -> String {
+        String(bytes: supportReportData(draft, atMs: wallClockMs()), encoding: .utf8) ?? ""
+    }
+
+    /// The report's file under its contract name, for the mail app.
+    func writeSupportReport(_ draft: SupportReportDraft) -> URL? {
+        let atMs = wallClockMs()
+        return writeBundle(supportReportData(draft, atMs: atMs), atMs: atMs)
+    }
+
+    private func writeBundle(_ data: Data, atMs: Int64) -> URL? {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("dish-diagnostics-\(UUID().uuidString)")
         let file = folder.appendingPathComponent(diagnosticsBundleFileName(app: BundleIdentity.appName, atMs: atMs))
         let made = (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil
         guard made else { return nil }
-        let written = (try? diagnosticsBundleData(atMs: atMs).write(to: file, options: .atomic)) != nil
+        let written = (try? data.write(to: file, options: .atomic)) != nil
         return written ? file : nil
     }
 
@@ -95,16 +120,32 @@ extension AppModel {
     }
 
     func bundleInputs(atMs: Int64) -> DiagnosticsBundleInputs {
-        DiagnosticsBundleInputs(
+        let snapshot = diagnostics.state
+        var inputs = DiagnosticsBundleInputs(
             createdAtMs: atMs,
             app: BundleAppFacts(name: BundleIdentity.appName, version: appVersion, build: appVersion, flavor: BundleIdentity.flavor),
             machine: machine,
-            snapshot: diagnostics.state,
+            snapshot: snapshot,
             events: diagnosticsLog.state,
             outcomes: outcomes.state,
             capture: input.paths.support.lastFinished,
             hostVersions: wifi.capabilities.mapValues(\.serverVersion)
         )
+        let records = padRecords(snapshot.pads)
+        let hostIds = snapshot.hosts.map(\.id)
+        inputs.sessions = keyed(hostIds) { [wifi] id in wifi.sessionFacts(id, records: records) }
+        inputs.capabilities = keyed(hostIds, wifi.capabilitiesFacts)
+        inputs.padReadings = Dictionary(uniqueKeysWithValues: snapshot.pads.map { ($0.slot.id, padPathReading($0)) })
+        return inputs
+    }
+
+    /// The pad's feed as its record holds it, its rate as the telemetry or
+    /// the Direct reader measured it, and its feedback so far.
+    private func padPathReading(_ pad: PadDiagnostics) -> PadPathReading {
+        let slotId = pad.slot.id
+        let latest = input.processor.latestInput(slotId).map { LatestInputFacts(frames: $0.reports, last: $0.filtered) }
+        let rate = shellFacts.telemetry.pads[slotId]?.reportHz ?? pad.inputPath?.rawReportHz
+        return PadPathReading(latest: latest, rateHz: rate, output: input.feedback.outputCounts(slotId: slotId))
     }
 
     /// The index follows the data in force into the Direct path and
@@ -124,4 +165,9 @@ extension AppModel {
             .sink { [weak self] outcomes in self?.shellFacts.outcomes = outcomes }
             .store(in: &cancellables)
     }
+}
+
+/// Each value `read` has, under its id; an id it has none for is left out.
+func keyed<Value>(_ ids: [String], _ read: (String) -> Value?) -> [String: Value] {
+    Dictionary(uniqueKeysWithValues: ids.compactMap { id in read(id).map { (id, $0) } })
 }

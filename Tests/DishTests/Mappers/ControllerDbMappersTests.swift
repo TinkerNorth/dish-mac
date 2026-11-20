@@ -7,7 +7,7 @@ import XCTest
 @testable import Dish
 
 /// The controller data's words: the standing in Settings and Diagnostics,
-/// a pad's record on its card, the mail, and "Did it work?".
+/// a pad's record on its card, the summary, and "Did it work?".
 final class ControllerDbMappersTests: XCTestCase {
 
     private let english = Locale(identifier: "en_US")
@@ -147,22 +147,15 @@ final class ControllerDbMappersTests: XCTestCase {
         XCTAssertNil(padCard(pad(direct: false, record: false)).chip)
     }
 
-    // MARK: - The mail
+    // MARK: - The summary
 
-    func testTheMailGoesToSupportWithTheContractsSubjectAndTheSummary() throws {
+    func testTheSummaryIsThePagesCardsAsText() throws {
         var facts = ShellFacts()
         facts.diagnostics = DiagnosticsSnapshot(pads: [pad(direct: false)])
-        let page = try diagnosticsPageState(
-            facts: facts,
-            mail: DiagnosticsMailFacts(version: "1.4.0", model: "Mac14,2"),
-            locale: english,
-            timeZone: utc()
-        )
-        XCTAssertEqual(page.mail.recipient, "support@tinkernorth.com")
-        XCTAssertEqual(page.mail.subject, "Dish diagnostics: Dish for macOS 1.4.0 on Mac14,2")
-        XCTAssertTrue(page.mail.body.hasPrefix("Controller database\nController database\n  Bundled version: 0"))
-        XCTAssertTrue(page.mail.body.contains("DualSense\n  Connection:"))
-        XCTAssertTrue(page.mail.body.hasSuffix("\n\n" + words.diagnosticsAttachmentSentence))
+        let page = try diagnosticsPageState(facts: facts, locale: english, timeZone: utc())
+        let summary = diagnosticsSummaryText(page)
+        XCTAssertTrue(summary.hasPrefix("Controller database\nController database\n  Bundled version: 0"))
+        XCTAssertTrue(summary.contains("DualSense\n  Connection:"))
     }
 
     func testAnEmptySectionSaysWhyInTheSummary() throws {

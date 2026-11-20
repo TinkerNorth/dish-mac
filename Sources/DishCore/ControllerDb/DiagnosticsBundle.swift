@@ -68,6 +68,10 @@ public struct BundlePadFacts: Equatable, Sendable {
     public let outcomes: [TestOutcome]
     /// The support capture's text, for the one pad the person captured.
     public let capture: String?
+    /// What went in; nil where the pad has no feed yet.
+    public let input: BundlePadInput?
+    /// What came out, lane by lane.
+    public let output: BundlePadOutput?
 
     public init(
         record: ControllerRecord?,
@@ -77,7 +81,9 @@ public struct BundlePadFacts: Equatable, Sendable {
         expectMismatches: [String] = [],
         lastWrite: DirectWriteVerdict? = nil,
         outcomes: [TestOutcome] = [],
-        capture: String? = nil
+        capture: String? = nil,
+        input: BundlePadInput? = nil,
+        output: BundlePadOutput? = nil
     ) {
         self.record = record
         self.transport = transport
@@ -87,6 +93,8 @@ public struct BundlePadFacts: Equatable, Sendable {
         self.lastWrite = lastWrite
         self.outcomes = outcomes
         self.capture = capture
+        self.input = input
+        self.output = output
     }
 }
 
@@ -103,14 +111,30 @@ public struct BundleHostFacts: Equatable, Sendable {
     public let protocolVersion: Int?
     public let link: String
     public let grants: HostAudioVerdict?
+    /// The client's own view of the session; nil while there is none.
+    public let session: BundleSessionFacts?
+    /// What the host said of itself; nil when the file was written without
+    /// asking (Save diagnostics).
+    public let snapshot: BundleHostSnapshot?
 
-    public init(names: [String], kind: BundleHostKind, version: String?, protocolVersion: Int?, link: String, grants: HostAudioVerdict?) {
+    public init(
+        names: [String],
+        kind: BundleHostKind,
+        version: String?,
+        protocolVersion: Int?,
+        link: String,
+        grants: HostAudioVerdict?,
+        session: BundleSessionFacts? = nil,
+        snapshot: BundleHostSnapshot? = nil
+    ) {
         self.names = names
         self.kind = kind
         self.version = version
         self.protocolVersion = protocolVersion
         self.link = link
         self.grants = grants
+        self.session = session
+        self.snapshot = snapshot
     }
 }
 
@@ -134,6 +158,10 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
     public let pads: [BundlePadFacts]
     public let hosts: [BundleHostFacts]
     public let log: [BundleLogFacts]
+    /// The person's own words, when the file goes with a report.
+    public let report: SupportReport?
+    /// Nil when the file was written without reading them.
+    public let conditions: BundleDeviceConditions?
 
     public init(
         createdAtMs: Int64,
@@ -142,7 +170,9 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
         controllerDb: ControllerDbStatus,
         pads: [BundlePadFacts],
         hosts: [BundleHostFacts],
-        log: [BundleLogFacts]
+        log: [BundleLogFacts],
+        report: SupportReport? = nil,
+        conditions: BundleDeviceConditions? = nil
     ) {
         self.createdAtMs = createdAtMs
         self.app = app
@@ -151,6 +181,8 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
         self.pads = pads
         self.hosts = hosts
         self.log = log
+        self.report = report
+        self.conditions = conditions
     }
 }
 
@@ -181,11 +213,28 @@ func diagnosticsBundle(_ facts: DiagnosticsBundleFacts) -> BundleFile {
         bundle: DiagnosticsBundleFormat.version,
         createdAt: isoTimestamp(facts.createdAtMs),
         app: BundleFile.App(name: facts.app.name, version: facts.app.version, build: facts.app.build, flavor: facts.app.flavor),
-        device: BundleFile.Device(model: facts.device.model, os: facts.device.os, arch: facts.device.arch),
+        device: bundleDevice(facts.device, conditions: facts.conditions),
         controllerDb: bundleControllerDb(facts.controllerDb),
         controllers: facts.pads.map(bundleController),
-        hosts: facts.hosts.enumerated().map { bundleHost($1, alias: hostAlias($0)) },
-        log: facts.log.map { BundleFile.Log(atMs: $0.atMs, tag: $0.tag, message: scrub($0.message, aliases)) }
+        hosts: facts.hosts.enumerated().map { bundleHost($1, alias: hostAlias($0), aliases: aliases) },
+        log: facts.log.map { BundleFile.Log(atMs: $0.atMs, tag: $0.tag, message: scrub($0.message, aliases)) },
+        report: facts.report.map(supportReportFile)
+    )
+}
+
+private func bundleDevice(_ device: BundleDeviceFacts, conditions: BundleDeviceConditions?) -> BundleFile.Device {
+    BundleFile.Device(
+        model: device.model,
+        os: device.os,
+        arch: device.arch,
+        conditions: conditions.map { read in
+            BundleFile.Conditions(
+                battery: read.battery.map { BatteryFile(level: $0.level, charging: $0.charging) },
+                thermal: read.thermal?.rawValue,
+                powerSave: read.powerSave,
+                wifi: read.wifi.map { WifiFile(band: $0.band, rssiDbm: $0.rssiDbm, linkSpeedMbps: $0.linkSpeedMbps) }
+            )
+        }
     )
 }
 
@@ -217,7 +266,8 @@ private func bundleControllerDb(_ status: ControllerDbStatus) -> BundleFile.Cont
 }
 
 private func bundleController(_ pad: BundlePadFacts) -> BundleFile.Controller {
-    BundleFile.Controller(
+    let write = pad.lastWrite.map(bundleWrite)
+    return BundleFile.Controller(
         record: pad.record?.id,
         verification: pad.record?.verification.rawValue,
         transport: pad.transport?.rawValue,
@@ -225,9 +275,12 @@ private func bundleController(_ pad: BundlePadFacts) -> BundleFile.Controller {
         hardware: pad.hardware.map(bundleHardware),
         expectMismatch: pad.expectMismatches,
         lastFeedback: nil,
-        lastWrite: pad.lastWrite.map(bundleWrite),
+        lastWrite: write,
         outcomes: pad.outcomes.map { BundleFile.Outcome(test: $0.test.rawValue, result: $0.result.rawValue, atMs: $0.atMs) },
-        capture: pad.capture.map { BundleFile.Capture(format: BundleFile.Capture.supportCaptureText, text: $0) }
+        capture: pad.capture.map { BundleFile.Capture(format: BundleFile.Capture.supportCaptureText, text: $0) },
+        input: pad.input.map(bundleInput),
+        output: pad.output.map { bundleOutput($0, write: write) },
+        bluetooth: bundleBluetooth(pad.transport).map(bundleBluetoothFile)
     )
 }
 
@@ -250,14 +303,20 @@ private func bundleWrite(_ write: DirectWriteVerdict) -> BundleFile.Write {
     )
 }
 
-private func bundleHost(_ host: BundleHostFacts, alias: String) -> BundleFile.Host {
+/// The host's own document is scrubbed like a log line: a host that names
+/// itself, or another, is aliased here too.
+private func bundleHost(_ host: BundleHostFacts, alias: String, aliases: [HostAliasing]) -> BundleFile.Host {
     BundleFile.Host(
         alias: alias,
         kind: host.kind.rawValue,
         version: host.version,
         protocolVersion: host.protocolVersion,
         link: host.link,
-        grants: host.grants.map { BundleFile.Grants(mic: $0.mic, speaker: $0.speaker, hapticAudio: $0.hapticAudio) }
+        grants: host.grants.map { BundleFile.Grants(mic: $0.mic, speaker: $0.speaker, hapticAudio: $0.hapticAudio) },
+        session: host.session.map(bundleSession),
+        snapshot: host.snapshot.map { taken in
+            BundleFile.Snapshot(document: taken.snapshot?.mappingStrings { scrub($0, aliases) }, error: taken.error?.rawValue)
+        }
     )
 }
 
@@ -278,131 +337,4 @@ public func diagnosticsBundleFileName(app: String, atMs: Int64) -> String {
     formatter.dateFormat = "yyyyMMdd-HHmmss"
     let stamp = formatter.string(from: Date(timeIntervalSince1970: Double(atMs) / 1000))
     return "dish-diagnostics-\(app)-\(stamp).json"
-}
-
-// MARK: - The encoded shape
-
-struct BundleFile: Encodable {
-    struct App: Encodable {
-        let name: String
-        let version: String
-        let build: String
-        let flavor: String
-    }
-
-    struct Device: Encodable {
-        let model: String
-        let os: String
-        let arch: String
-    }
-
-    struct ControllerDb: Encodable {
-        let bundledVersion: Int
-        let activeVersion: Int
-        let source: String
-        let lastCheckAt: String?
-        let lastCheckResult: String?
-    }
-
-    struct Hardware: Encodable {
-        let vid: String
-        let pid: String
-        let product: String?
-        let manufacturer: String?
-    }
-
-    struct Write: Encodable {
-        let route: String
-        let reportId: String
-        let ok: Bool
-        let err: String?
-        let atMs: Int64
-    }
-
-    struct Outcome: Encodable {
-        let test: String
-        let result: String
-        let atMs: Int64
-    }
-
-    /// The contract's capture object; the Mac's format is its Help-support text.
-    struct Capture: Encodable {
-        static let supportCaptureText = "support-capture-text"
-
-        let format: String
-        let text: String
-    }
-
-    struct Feedback: Encodable {
-        let kind: String
-        let atMs: Int64
-        let count: Int
-    }
-
-    struct Controller: Encodable {
-        let record: String?
-        let verification: String?
-        let transport: String?
-        let path: String
-        let hardware: Hardware?
-        let expectMismatch: [String]
-        let lastFeedback: Feedback?
-        let lastWrite: Write?
-        let outcomes: [Outcome]
-        let capture: Capture?
-
-        private enum CodingKeys: String, CodingKey {
-            case record, verification, transport, path, hardware, expectMismatch, lastFeedback, lastWrite, outcomes, capture
-        }
-
-        /// `record` and `capture` are written as null when there is none, as
-        /// the contract shows them.
-        func encode(to encoder: Encoder) throws {
-            var container = encoder.container(keyedBy: CodingKeys.self)
-            try container.encode(record, forKey: .record)
-            try container.encodeIfPresent(verification, forKey: .verification)
-            try container.encodeIfPresent(transport, forKey: .transport)
-            try container.encode(path, forKey: .path)
-            try container.encodeIfPresent(hardware, forKey: .hardware)
-            try container.encode(expectMismatch, forKey: .expectMismatch)
-            try container.encodeIfPresent(lastFeedback, forKey: .lastFeedback)
-            try container.encodeIfPresent(lastWrite, forKey: .lastWrite)
-            try container.encode(outcomes, forKey: .outcomes)
-            try container.encode(capture, forKey: .capture)
-        }
-    }
-
-    struct Grants: Encodable {
-        let mic: Bool
-        let speaker: Bool
-        let hapticAudio: Bool
-    }
-
-    struct Host: Encodable {
-        let alias: String
-        let kind: String
-        let version: String?
-        let protocolVersion: Int?
-        let link: String
-        let grants: Grants?
-
-        private enum CodingKeys: String, CodingKey {
-            case alias, kind, version, protocolVersion = "protocol", link, grants
-        }
-    }
-
-    struct Log: Encodable {
-        let atMs: Int64
-        let tag: String
-        let message: String
-    }
-
-    let bundle: Int
-    let createdAt: String
-    let app: App
-    let device: Device
-    let controllerDb: ControllerDb
-    let controllers: [Controller]
-    let hosts: [Host]
-    let log: [Log]
 }

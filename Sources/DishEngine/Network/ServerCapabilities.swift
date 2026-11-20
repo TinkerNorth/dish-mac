@@ -24,6 +24,9 @@ struct ServerCapabilitiesDTO: Decodable, Equatable {
     var controllerAudioPresent = false
     /// Some listed backend is available and builds audio personas.
     var anyBackendAudio = false
+    /// The `backends` array as the satellite listed it, for the bundle's
+    /// stand-in when the host cannot speak for itself.
+    var backendRows: JSONValue?
     /// Client-side: a body arrived.
     var reachable = false
 
@@ -57,6 +60,7 @@ struct ServerCapabilitiesDTO: Decodable, Equatable {
         self.controllerAudioPresent = audio != nil
         let backends = (try? container.decodeIfPresent([BackendRow].self, forKey: .backends)) ?? []
         self.anyBackendAudio = backends.contains { ($0.available ?? false) && ($0.audio ?? false) }
+        self.backendRows = try? container.decodeIfPresent(JSONValue.self, forKey: .backends)
     }
 
     /// What the host will carry of the pad's audio, folded as the fleet
@@ -134,4 +138,18 @@ struct ServerControllerAudio: Decodable, Equatable {
         self.speaker = try container.decodeIfPresent(Bool.self, forKey: .speaker) ?? false
         self.hapticAudio = try container.decodeIfPresent(Bool.self, forKey: .hapticAudio) ?? false
     }
+}
+
+/// What the probe and the catalog said, as the bundle's stand-in reads it.
+func satelliteCapabilitiesFacts(_ probe: ServerCapabilitiesDTO, catalog: CatalogDTO?) -> SatelliteCapabilitiesFacts {
+    let audio = probe.controllerAudio
+    return SatelliteCapabilitiesFacts(
+        serverVersion: probe.serverVersion,
+        protocolVersion: probe.protocolVersion,
+        backends: probe.backendRows,
+        controllerAudio: probe.controllerAudioPresent
+            ? HostAudioBlock(enabled: audio.enabled, mic: audio.mic, speaker: audio.speaker, hapticAudio: audio.hapticAudio)
+            : nil,
+        catalogVersion: catalog?.catalogVersion
+    )
 }

@@ -50,6 +50,8 @@ package final class AppModel: ObservableObject {
     package let controllerDbPreferences: ControllerDbPreferenceStore
     /// "Did it work?" after each inspector test.
     package let outcomes = PadOutcomesStore()
+    /// A support report's preparation: each live host asked, the Mac read.
+    let reportPreparation: ReportPreparationSource
     /// The Mac's model and macOS, for the issue match and the bundle.
     let machine: HostMachine
     let appVersion: String
@@ -120,7 +122,8 @@ package final class AppModel: ObservableObject {
             hidPads: DirectPadReaders([IOKitHidPadReader(), XusbPadReader(bus: IOUSBHostXusbBus())]),
             hidCapture: IOKitHidReportCapture(),
             controllerDbGateway: Self.controllerDbClient(),
-            controllerDbCache: .live()
+            controllerDbCache: .live(),
+            deviceConditions: .live
         )
         Self.mintMoonlightIdentity(into: moonlight, gateway: gateway)
     }
@@ -158,7 +161,8 @@ package final class AppModel: ObservableObject {
         approvalPolling: WifiConnectionManager.ApprovalPolling = .standard,
         controllerDbGateway: ControllerDbGateway? = nil,
         controllerDbCache: ControllerDbCache? = nil,
-        machine: HostMachine = .current()
+        machine: HostMachine = .current(),
+        deviceConditions: DeviceConditionsReading = .none
     ) {
         let wifi = WifiConnectionManager(store: store, approvalPolling: approvalPolling, discovery: discovery)
         let moonlight = moonlight ?? Self.defaultMoonlight(defaults: defaults, store: store)
@@ -170,6 +174,7 @@ package final class AppModel: ObservableObject {
         self.controllerDb = controllerDb
         controllerDbPreferences = prefs.controllerDb
         self.machine = machine
+        reportPreparation = ReportPreparationSource(snapshots: { await wifi.connectionSnapshots() }, conditions: deviceConditions)
         self.appVersion = appVersion
         self.store = store
         self.wifi = wifi

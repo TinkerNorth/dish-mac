@@ -86,6 +86,7 @@ struct ShellView: View {
         case .help: HelpPage().shellPage()
         case let .checkButtons(slotId): CheckButtonsPage(slotId: slotId).shellPage()
         case let .helpSupport(deviceKey): HelpSupportPage(deviceKey: deviceKey).shellPage()
+        case let .supportReport(category): SupportReportPage(category: category).shellPage()
         }
     }
 

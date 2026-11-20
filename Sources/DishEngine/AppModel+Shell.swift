@@ -3,6 +3,7 @@
 
 import Combine
 import DishCore
+import DishKernel
 import Foundation
 
 /// The facts the window's shell and its pages draw beyond the slot list:
@@ -49,6 +50,8 @@ package struct ShellFacts: Equatable {
     package var controllerDb = ControllerDbStatus()
     /// "Did it work?": the question waiting per pad and the answers.
     package var outcomes = PadOutcomes()
+    /// The report being prepared: each live host asked, the Mac's conditions read.
+    package var reportPreparation = ReportPreparationState.idle
 
     package init(wake: WakeState = WakeState(), update: UpdateStatus = UpdateStatus(), crashLogPresent: Bool = false) {
         self.wake = wake

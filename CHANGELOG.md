@@ -57,7 +57,7 @@ the repos share a version number.
   tone, the microphone meter and the drift and range tests each ask once
   they have run; the answers, twenty a controller, are kept for the run and
   carried in the diagnostics file.
-- **Diagnostics by email.** "Email diagnostics" writes
+- **Diagnostics by email.** The report (below) writes
   `dish-diagnostics-dish-mac-<yyyyMMdd-HHmmss>.json` (`dish-diagnostics.v1`)
   and opens a message to `support@tinkernorth.com` in your own mail app, with
   the page's summary as its body; nothing is sent until you press Send.
@@ -69,10 +69,49 @@ the repos share a version number.
   recorder with every host named by its alias; never a pairing key,
   fingerprint, address, Wi-Fi name or host name.
 
+- **Report a problem and Ask a question.** Email diagnostics gives way to
+  two buttons on Diagnostics that open one page: what it is about (not
+  recognised, no rumble or feedback, connection or latency, controller
+  audio, something else, a question), "What happened, and what did you
+  expect?", the controller it concerns (the first attached pad is
+  suggested; its Help-support capture rides along as `capture`), what the
+  file will hold, "Preview file" with the JSON itself, what it never holds,
+  and "Continue in Mail". The person's words go first in the mail and into
+  the file as `report`; the subject is `Dish support: <category> · Dish for
+  macOS <version> on <model>`, the prefix English in every language so the
+  mailbox can filter on it. Every word is in all six languages.
+- **Each host from both ends.** Opening the report asks every live
+  satellite whose probe names 2.3.0 or later for its own view of the
+  connection (`GET /api/connections/{id}/diagnostics`, the session's proof,
+  two seconds), and embeds it under `hosts[i].snapshot`. An older satellite
+  is not asked and gets the `satellite-capabilities` stand-in from what its
+  probe and catalog said, with `snapshotError` `olderSatellite`;
+  `unknownConnection`, `unauthorized`, `badReply`, `timeout` and `offline`
+  carry the stand-in too, and a refusal never touches the pairing. Every
+  string and key of a host's document names hosts by their aliases. A
+  Moonlight host carries `moonlight-serverinfo`: its app version, never its
+  name. Beside it, `hosts[i].session` is the Mac's own
+  view: each slot as asked and as the satellite answered (type, backend,
+  result, touchpad mode), the last heartbeat ack, the round trip, and every
+  message kind counted each way.
+- **Every controller path, input and output.** Each controller in the file
+  carries `input` (frames, rate, the last report published), `output` lane
+  by lane (count, newest value and time, rumble's target and the last
+  Direct write, the speaker and haptics voices from the audio plan), and
+  `bluetooth` (HID, never an address); a lane the Mac cannot count is null.
+- **The Mac's conditions.** A report's file carries the battery and
+  whether it charges, the thermal state, Low Power Mode, and the Wi-Fi
+  band, signal and rate through CoreWLAN, never the network's name.
+
 ### Changed
 
 - **The privacy policy** gains "Controller database updates" and
-  "Diagnostics by email", effective 2026-11-19.
+  "Diagnostics by email", with the report, a host's own view of the
+  connection and the Mac's conditions, effective 2026-11-20.
+- **Hot path: two relaxed counters.** Each satellite datagram sent and each
+  one opened bumps one relaxed counter of its kind (`WireTally`), and each
+  feedback command posted to a pad bumps one and stores its newest value and
+  time (`FeedbackTally`); nothing on either path reads them.
 
 ## [1.3.1] - 2026-11-19
 

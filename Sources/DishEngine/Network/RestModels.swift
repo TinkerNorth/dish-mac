@@ -23,6 +23,9 @@ struct ControllerApplyDto: Decodable, Equatable {
     var appliedType = Int(ProtocolConstants.controllerTypeXbox)
     var motionSinkSupportedForType = false
     var motionBackendOk = false
+    /// The backend that materialised the pad; nil when the slot is not
+    /// plugged or the satellite predates the field.
+    var backend: String?
 
     var ok: Bool {
         resultCode == .ok
@@ -36,7 +39,7 @@ struct ControllerApplyDto: Decodable, Equatable {
 
     init() {}
 
-    private enum CodingKeys: String, CodingKey { case ctrlIdx, result, appliedType, motion }
+    private enum CodingKeys: String, CodingKey { case ctrlIdx, result, appliedType, motion, backend }
     private struct MotionDto: Decodable {
         var sinkSupportedForType: Bool?
         var backendOk: Bool?
@@ -52,6 +55,7 @@ struct ControllerApplyDto: Decodable, Equatable {
         let motion = try container.decodeIfPresent(MotionDto.self, forKey: .motion)
         self.motionSinkSupportedForType = motion?.sinkSupportedForType ?? false
         self.motionBackendOk = motion?.backendOk ?? false
+        self.backend = try container.decodeIfPresent(String.self, forKey: .backend)
     }
 }
 

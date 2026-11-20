@@ -145,19 +145,11 @@ func issueText(_ issue: ControllerIssue, strings: ControllerStrings, words: L10n
 // MARK: - The mail
 
 /// The mail the person's own app opens: to support, the subject the
-/// contract names, the page's summary and the one sentence on the file.
+/// contract names, and the body the report page writes.
 struct DiagnosticsMailState: Equatable {
     let recipient: String
     let subject: String
     let body: String
-}
-
-func diagnosticsMail(_ page: DiagnosticsPageState, facts: DiagnosticsMailFacts, words: L10n = .app) -> DiagnosticsMailState {
-    DiagnosticsMailState(
-        recipient: DiagnosticsBundleFormat.recipient,
-        subject: words.diagnosticsMailSubject(facts.version, facts.model),
-        body: diagnosticsSummaryText(page, words: words) + "\n\n" + words.diagnosticsAttachmentSentence
-    )
 }
 
 /// The page's cards as plain text: each card's title, then its lines.

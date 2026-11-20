@@ -151,6 +151,31 @@ final class FakeSatellite {
         set { store.with { $0.answerPinWithPending = newValue } }
     }
 
+    /// The document `GET /api/connections/{id}/diagnostics` answers; nil
+    /// answers 404, as a satellite older than 2.3.0 does.
+    var connectionDiagnostics: String? {
+        get { store.with { $0.connectionDiagnostics } }
+        set { store.with { $0.connectionDiagnostics = newValue } }
+    }
+
+    /// The version the capabilities probe names; 2.3.0 and later have the
+    /// diagnostics route.
+    var serverVersion: String {
+        get { store.with { $0.serverVersion } }
+        set { store.with { $0.serverVersion = newValue } }
+    }
+
+    /// The diagnostics route holds its answer forever.
+    var stallConnectionDiagnostics: Bool {
+        get { store.with { $0.stallConnectionDiagnostics } }
+        set { store.with { $0.stallConnectionDiagnostics = newValue } }
+    }
+
+    /// The connection ids the diagnostics route was asked for, in order.
+    var diagnosticsGets: [String] {
+        store.with { $0.diagnosticsGets }
+    }
+
     /// Force the next authed REST calls to 401 with this machine code
     /// ("NOT_PAIRED" / "BAD_PROOF"); nil restores normal auth.
     var forced401Code: String? {

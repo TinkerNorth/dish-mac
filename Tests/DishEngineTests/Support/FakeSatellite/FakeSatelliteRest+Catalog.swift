@@ -20,10 +20,10 @@ extension FakeSatelliteRest {
     static let catalogETag = "\"1.6.0+en\""
 
     /// The probe; the `controllerAudio` block grants everything or nothing.
-    static func capabilitiesJSON(controllerAudio: Bool) -> String {
+    static func capabilitiesJSON(controllerAudio: Bool, serverVersion: String = "1.6.0") -> String {
         let audio = controllerAudio ? "true" : "false"
         return """
-        {"protocolVersion":4,"serverVersion":"1.6.0","maxControllers":16,
+        {"protocolVersion":4,"serverVersion":"\(serverVersion)","maxControllers":16,
          "backend":{"id":"fake","supported":true,"available":true,"errorCode":null},
          "motion":{"available":true},
          "host":{"catalog":{"supported":true},
