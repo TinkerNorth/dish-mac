@@ -102,6 +102,14 @@ the repos share a version number.
 - **The Mac's conditions.** A report's file carries the battery and
   whether it charges, the thermal state, Low Power Mode, and the Wi-Fi
   band, signal and rate through CoreWLAN, never the network's name.
+- **The Bluetooth link and the USB host, measured.** A Bluetooth pad's
+  `bluetooth.transportLayer` is the link IOKit's transport word names
+  (`Bluetooth` is `classic`, `BluetoothLowEnergy` and the spaced form hidapi
+  meets are `le`, any other word null), kept in the census's transport value;
+  a GameController pad takes the transport of the HID devices matched to it
+  by name, and none when twins on different links share the name. A report's
+  `device.usbHost` is true when IOKit lists a service of class
+  `AppleUSBHostController`, false when it lists none, null with no answer.
 
 ### Changed
 

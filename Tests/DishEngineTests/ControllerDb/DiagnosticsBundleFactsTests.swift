@@ -209,6 +209,42 @@ final class DiagnosticsBundleFactsTests: XCTestCase {
         XCTAssertEqual(mac.issues, [], "the Thor's issue is not this Mac's")
     }
 
+    func testAGameControllerPadTakesTheBluetoothLinkOfTheDeviceItIsMatchedTo() throws {
+        let ids = HidHardwareId(vendorId: 0x045E, productId: 0x0B13)
+        let pad = PadDiagnostics(slot: ControllerSlot(id: "gc", name: "Xbox Wireless Controller"), wire: nil, hardwareId: ids)
+        let device = HidDeviceFacts(
+            id: 1,
+            name: "Xbox Wireless Controller",
+            hardwareId: ids,
+            transport: .bluetooth(.le),
+            claimedByGameController: true
+        )
+        let known = try withRecord(pad, index: bundledIndex(), devices: [device], host: IssueHost(model: "Mac14,2", osMajor: 26))
+        XCTAssertEqual(known.hidTransport, .bluetooth(.le))
+        XCTAssertEqual(known.transport, .bluetooth)
+        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).bluetoothLayer, .le)
+    }
+
+    func testADirectPadTakesTheLinkOfTheInterfaceItReads() throws {
+        var path = SlotInputPath(source: .direct, reason: .macOSCannotRead)
+        path.transport = .bluetooth(.classic)
+        path.hardwareId = HidHardwareId(vendorId: 0x28DE, productId: 0x1106)
+        let pad = PadDiagnostics(
+            slot: ControllerSlot(id: "hid:28de:1106", name: "Steam"),
+            wire: nil,
+            hardwareId: path.hardwareId,
+            inputPath: path
+        )
+        let known = try withRecord(pad, index: bundledIndex(), devices: [], host: IssueHost(model: "Mac14,2", osMajor: 26))
+        XCTAssertEqual(known.hidTransport, .bluetooth(.classic))
+        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).bluetoothLayer, .classic)
+    }
+
+    func testAPadOffBluetoothHasNoLink() throws {
+        let known = try withRecord(directPad(), index: bundledIndex(), devices: [], host: IssueHost(model: "Mac14,2", osMajor: 26))
+        XCTAssertNil(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).bluetoothLayer)
+    }
+
     func testAPadWithNoIdentityHasNoRecord() throws {
         let pad = PadDiagnostics(slot: ControllerSlot(id: "gc", name: "Mystery"), wire: nil)
         let known = try withRecord(pad, index: bundledIndex(), devices: [], host: IssueHost(model: "Mac14,2", osMajor: 26))

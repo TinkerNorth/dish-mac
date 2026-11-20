@@ -55,6 +55,8 @@ package struct PadDiagnostics: Equatable, Identifiable {
     package var record: ControllerRecord?
     /// The pad's transport, the Direct path's or the census device's.
     package var transport: ControllerTransport?
+    /// The same in IOKit's words, with the Bluetooth link.
+    package var hidTransport: HidTransport?
     /// The census device under the pad, for its product and manufacturer.
     package var device: HidDeviceFacts?
     /// The record's issues that apply to this Mac and this transport.
@@ -246,8 +248,10 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
 func withRecord(_ pad: PadDiagnostics, index: ControllerIndex, devices: [HidDeviceFacts], host: IssueHost) -> PadDiagnostics {
     var known = pad
     let device = pad.hardwareId.flatMap { id in devices.first { $0.hardwareId == id } }
-    let transport = controllerTransport(pad.inputPath?.transport ?? device?.transport)
+    let hidTransport = pad.inputPath?.transport ?? transport(forPadNamed: pad.slot.name, in: devices)
+    let transport = controllerTransport(hidTransport)
     known.device = device
+    known.hidTransport = hidTransport
     known.transport = transport
     guard let id = pad.hardwareId else { return known }
     let vendorId = UInt16(clamping: id.vendorId)

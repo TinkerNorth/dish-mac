@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 import GameController
 import IOKit.hid
@@ -19,7 +20,8 @@ package struct HidHardwareId: Hashable {
 /// How a HID device reaches the Mac, from IOKit's `Transport` property.
 package enum HidTransport: Equatable {
     case usb
-    case bluetooth
+    /// The link is nil for a Bluetooth word the SDK does not name.
+    case bluetooth(BluetoothTransportLayer?)
     /// A transport IOKit names that is neither (SPI, I2C, Virtual), in IOKit's own word.
     case other(String)
     /// The device names none.
@@ -105,17 +107,43 @@ private func hidUsage(_ properties: [String: Any], pageKey: String, usageKey: St
 func hidTransport(_ word: String?) -> HidTransport {
     guard let word, !word.isEmpty else { return .unknown }
     if word == kIOHIDTransportUSBValue { return .usb }
-    if word.hasPrefix(kIOHIDTransportBluetoothValue) { return .bluetooth }
+    if word.hasPrefix(kIOHIDTransportBluetoothValue) { return .bluetooth(bluetoothLayers[word]) }
     return .other(word)
+}
+
+/// IOKit's Bluetooth words and the link each names: the SDK's "Bluetooth"
+/// (HID over L2CAP) and "BluetoothLowEnergy" (HID over GATT), and the spaced
+/// "Bluetooth Low Energy" hidapi's `mac/hid.c` also matches. Any other
+/// Bluetooth word names no link.
+private let bluetoothLayers: [String: BluetoothTransportLayer] = [
+    kIOHIDTransportBluetoothValue: .classic,
+    kIOHIDTransportBluetoothLowEnergyValue: .le,
+    "Bluetooth Low Energy": .le
+]
+
+/// The devices GameController claims under the pad's name.
+func carriers(ofPadNamed name: String, in devices: [HidDeviceFacts]) -> [HidDeviceFacts] {
+    let wanted = name.trimmingCharacters(in: .whitespaces).lowercased()
+    return devices.filter { $0.claimedByGameController && $0.name.trimmingCharacters(in: .whitespaces).lowercased() == wanted }
+}
+
+/// What every device carrying a pad's name agrees on: nil when none carries
+/// it, or two that do differ, since which of them is the pad is unknown.
+func agreed<Value: Equatable>(_ values: [Value]) -> Value? {
+    guard let first = values.first, values.allSatisfy({ $0 == first }) else { return nil }
+    return first
 }
 
 /// The ids of the one device GameController claims under the pad's name;
 /// nil when no device, or devices with different ids, carry it.
 func hardwareId(forPadNamed name: String, in devices: [HidDeviceFacts]) -> HidHardwareId? {
-    let wanted = name.trimmingCharacters(in: .whitespaces).lowercased()
-    let carriers = devices.filter { $0.claimedByGameController && $0.name.trimmingCharacters(in: .whitespaces).lowercased() == wanted }
-    let ids = Set(carriers.map(\.hardwareId))
-    return ids.count == 1 ? ids.first : nil
+    agreed(carriers(ofPadNamed: name, in: devices).map(\.hardwareId))
+}
+
+/// A GameController pad's transport, its link included, is the one of the
+/// devices matched to it by name.
+func transport(forPadNamed name: String, in devices: [HidDeviceFacts]) -> HidTransport? {
+    agreed(carriers(ofPadNamed: name, in: devices).map(\.transport))
 }
 
 // MARK: - The seam

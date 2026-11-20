@@ -41,6 +41,7 @@ final class DiagnosticsReportBundleTests: XCTestCase {
     private static let pad = BundlePadFacts(
         record: ControllerRecord(id: "sony-dualsense", familyId: "dualsense", verification: .verified),
         transport: .bluetooth,
+        bluetoothLayer: .classic,
         path: .gameController,
         hardware: nil,
         lastWrite: DirectWriteVerdict(route: .interruptOut, reportId: 2, status: 0, atMs: 5),
@@ -97,7 +98,8 @@ final class DiagnosticsReportBundleTests: XCTestCase {
             battery: BundleBattery(level: 81, charging: false),
             thermal: .fair,
             powerSave: false,
-            wifi: BundleWifi(band: "5", rssiDbm: -54, linkSpeedMbps: 867)
+            wifi: BundleWifi(band: "5", rssiDbm: -54, linkSpeedMbps: 867),
+            usbHost: true
         )
         return try object(facts(report: report, conditions: conditions, asked: true))
     }
@@ -136,7 +138,7 @@ final class DiagnosticsReportBundleTests: XCTestCase {
         XCTAssertEqual(device["thermal"] as? String, "fair")
         XCTAssertEqual(device["powerSave"] as? Bool, false)
         XCTAssertEqual(device["wifi"] as? [String: AnyHashable], ["band": "5", "rssiDbm": -54, "linkSpeedMbps": 867])
-        XCTAssertNil(device["usbHost"], "a Mac is always a USB host; the field is the phones'")
+        XCTAssertEqual(device["usbHost"] as? Bool, true, "measured: macOS lists a USB host controller")
     }
 
     func testAMacWithoutABatteryOrALinkSaysNull() throws {
@@ -145,6 +147,13 @@ final class DiagnosticsReportBundleTests: XCTestCase {
         let device = try XCTUnwrap(file["device"] as? [String: Any])
         XCTAssertTrue(device["battery"] is NSNull)
         XCTAssertTrue(device["wifi"] is NSNull)
+        XCTAssertTrue(device["usbHost"] is NSNull, "no answer from IOKit is not an answer")
+    }
+
+    func testAMacThatListsNoUsbHostControllerSaysFalse() throws {
+        let conditions = BundleDeviceConditions(battery: nil, thermal: .nominal, powerSave: false, wifi: nil, usbHost: false)
+        let device = try XCTUnwrap(try object(facts(report: nil, conditions: conditions, asked: false))["device"] as? [String: Any])
+        XCTAssertEqual(device["usbHost"] as? Bool, false)
     }
 
     func testConditionsNotReadAreNotWritten() throws {
@@ -267,10 +276,10 @@ final class DiagnosticsReportBundleTests: XCTestCase {
         XCTAssertEqual((output["haptics"] as? [String: Any])?["voice"] as? String, "closed")
     }
 
-    func testABluetoothPadNamesItsProfileAndNoAddress() throws {
+    func testABluetoothPadNamesItsProfileItsLinkAndNoAddress() throws {
         let bluetooth = try XCTUnwrap(try controller()["bluetooth"] as? [String: Any])
         XCTAssertEqual(bluetooth["profile"] as? String, "hid")
-        XCTAssertTrue(bluetooth["transportLayer"] is NSNull)
+        XCTAssertEqual(bluetooth["transportLayer"] as? String, "classic")
         XCTAssertEqual(Set(bluetooth.keys), ["profile", "transportLayer"])
     }
 

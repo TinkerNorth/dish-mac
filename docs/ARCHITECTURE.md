@@ -523,7 +523,9 @@ live satellite whose probe names 2.3.0 or later for its own view through
 two seconds; the core's `satelliteAnswersDiagnostics` and
 `hostSnapshotVerdict` decide) and reads the Mac's conditions through the
 `DeviceConditionsReading` gateway (IOKit power sources, `ProcessInfo`,
-CoreWLAN without the network's name); `sessionFacts` reads each session's
+CoreWLAN without the network's name, and IOKit's count of
+`AppleUSBHostController` services for `usbHost`, decided by the core's
+`usbHost(controllerCount:)`); `sessionFacts` reads each session's
 slots, the apply answers `SlotApplyStore` keeps, the ack, the RTT window and
 the client's `WireTally`; `PadFeedback` keeps each pad's `FeedbackTally`.
 Both tallies are relaxed counters the hot path bumps and never reads.
@@ -579,7 +581,12 @@ devices macOS 14 and later synthesise), is never opened, and is scheduled on
 the main run loop only while the Diagnostics page shows, re-read on its 1 Hz
 tick and on every match and removal. It reports each device's name, ids,
 transport and `GCController.supportsHIDDevice` (cached per device, as
-GameController.h asks); a test hands `DiagnosticsSource` a fake.
+GameController.h asks); a test hands `DiagnosticsSource` a fake. The
+transport is IOKit's `Transport` word with the Bluetooth link kept in it:
+`Bluetooth` is classic HID, `BluetoothLowEnergy` and the spaced `Bluetooth
+Low Energy` are HID over GATT. A GameController pad takes the transport the
+devices matched to it by name agree on (`transport(forPadNamed:)`, the same
+carriers `hardwareId(forPadNamed:)` reads).
 
 ## How to add a feature
 

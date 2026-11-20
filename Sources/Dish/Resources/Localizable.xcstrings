@@ -24484,37 +24484,37 @@
         }
       }
     },
-    "This Mac's model, macOS version, battery, temperature state and Wi-Fi signal strength" : {
+    "This Mac's model, macOS version, battery, temperature state, Wi-Fi signal strength and whether it has a USB host controller" : {
       "comment" : "What the file holds: the Mac's facts and conditions, never a network name.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Model ovog Maca, verziju macOS-a, bateriju, stanje temperature i jačinu Wi-Fi signala"
+            "value" : "Model ovog Maca, verziju macOS-a, bateriju, stanje temperature, jačinu Wi-Fi signala i ima li USB host kontroler"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Modell dieses Macs, macOS-Version, Akku, Temperaturzustand und WLAN-Signalstärke"
+            "value" : "Modell dieses Macs, macOS-Version, Akku, Temperaturzustand, WLAN-Signalstärke und ob er einen USB-Host-Controller hat"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El modelo de este Mac, la versión de macOS, la batería, el estado térmico y la intensidad de la señal Wi-Fi"
+            "value" : "El modelo de este Mac, la versión de macOS, la batería, el estado térmico, la intensidad de la señal Wi-Fi y si tiene un controlador host USB"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le modèle de ce Mac, la version de macOS, la batterie, l’état thermique et la force du signal Wi-Fi"
+            "value" : "Le modèle de ce Mac, la version de macOS, la batterie, l’état thermique, la force du signal Wi-Fi et s’il a un contrôleur hôte USB"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "O modelo deste Mac, a versão do macOS, a bateria, o estado térmico e a intensidade do sinal Wi-Fi"
+            "value" : "O modelo deste Mac, a versão do macOS, a bateria, o estado térmico, a intensidade do sinal Wi-Fi e se ele tem um controlador host USB"
           }
         }
       }

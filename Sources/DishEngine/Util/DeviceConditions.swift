@@ -3,12 +3,14 @@
 //
 // The Mac's conditions that explain latency and feedback complaints, read
 // once when a support report is made: the battery, the thermal state, Low
-// Power Mode and the Wi-Fi link's band, signal and rate. CoreWLAN's network
-// name and BSSID are never read.
+// Power Mode, the Wi-Fi link's band, signal and rate, and whether macOS
+// lists a USB host controller. CoreWLAN's network name and BSSID are never
+// read.
 
 import CoreWLAN
 import DishCore
 import Foundation
+import IOKit
 
 /// A gateway: one blocking read, on the caller's queue.
 package struct DeviceConditionsReading {
@@ -27,8 +29,30 @@ private func liveDeviceConditions() -> BundleDeviceConditions {
         battery: HostBattery.snapshot().flatMap(bundleBattery),
         thermal: bundleThermal(rawValue: process.thermalState.rawValue),
         powerSave: process.isLowPowerModeEnabled,
-        wifi: liveWifi()
+        wifi: liveWifi(),
+        usbHost: usbHost(controllerCount: usbHostControllerCount())
     )
+}
+
+/// The class every Mac xHCI controller derives from (`AppleUSBXHCI` and
+/// its subclasses): three on the Apple silicon Mac this was measured on.
+let usbHostControllerClass = "AppleUSBHostController"
+
+/// The USB host controllers IOKit lists; nil when it gave no answer. A
+/// virtual machine without a USB controller lists none.
+func usbHostControllerCount() -> Int? {
+    var iterator: io_iterator_t = 0
+    let status = IOServiceGetMatchingServices(kIOMainPortDefault, IOServiceMatching(usbHostControllerClass), &iterator)
+    guard status == KERN_SUCCESS else { return nil }
+    defer { IOObjectRelease(iterator) }
+    let services = Array(sequence(state: iterator) { iterator -> io_service_t? in
+        let service = IOIteratorNext(iterator)
+        return service == 0 ? nil : service
+    })
+    for service in services {
+        IOObjectRelease(service)
+    }
+    return services.count
 }
 
 /// A battery with no usable capacity yet says nothing.

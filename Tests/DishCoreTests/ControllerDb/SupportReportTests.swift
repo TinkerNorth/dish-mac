@@ -54,6 +54,19 @@ final class SupportReportTests: XCTestCase {
         XCTAssertEqual(bundleWifi(bandGHz: nil, rssiDbm: -70, transmitRateMbps: 0)?.linkSpeedMbps, nil)
     }
 
+    func testAMacThatListsAUsbHostControllerIsAUsbHost() {
+        XCTAssertEqual(usbHost(controllerCount: 3), true)
+        XCTAssertEqual(usbHost(controllerCount: 1), true)
+    }
+
+    func testAMacThatListsNoUsbHostControllerIsNotOne() {
+        XCTAssertEqual(usbHost(controllerCount: 0), false, "a virtual machine without a USB controller")
+    }
+
+    func testNoAnswerFromIOKitIsNotKnown() {
+        XCTAssertNil(usbHost(controllerCount: nil))
+    }
+
     func testAZeroSignalIsNoLink() {
         XCTAssertNil(bundleWifi(bandGHz: "2.4", rssiDbm: 0, transmitRateMbps: 144))
     }

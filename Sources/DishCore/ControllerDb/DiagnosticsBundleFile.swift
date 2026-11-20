@@ -22,7 +22,7 @@ struct BundleFile: Encodable {
         let arch: String
         let conditions: Conditions?
 
-        private enum CodingKeys: String, CodingKey { case model, os, arch, battery, thermal, powerSave, wifi }
+        private enum CodingKeys: String, CodingKey { case model, os, arch, battery, thermal, powerSave, wifi, usbHost }
 
         /// The conditions sit beside the model, each null where this Mac does
         /// not have it; none of them when they were not read.
@@ -36,6 +36,7 @@ struct BundleFile: Encodable {
             try container.encode(conditions.thermal, forKey: .thermal)
             try container.encode(conditions.powerSave, forKey: .powerSave)
             try container.encode(conditions.wifi, forKey: .wifi)
+            try container.encode(conditions.usbHost, forKey: .usbHost)
         }
     }
 
@@ -44,6 +45,7 @@ struct BundleFile: Encodable {
         let thermal: String?
         let powerSave: Bool?
         let wifi: WifiFile?
+        let usbHost: Bool?
     }
 
     struct ControllerDb: Encodable {

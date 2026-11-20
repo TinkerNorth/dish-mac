@@ -101,6 +101,12 @@ public func bundleWifi(bandGHz: String?, rssiDbm: Int, transmitRateMbps: Double)
     return BundleWifi(band: bandGHz, rssiDbm: rssiDbm, linkSpeedMbps: rate)
 }
 
+/// The contract's `usbHost`, measured: a count of the USB host controllers
+/// the operating system lists, nil where it gave no answer.
+public func usbHost(controllerCount: Int?) -> Bool? {
+    controllerCount.map { $0 > 0 }
+}
+
 public struct BundleDeviceConditions: Equatable, Sendable {
     /// Nil on a Mac without a battery.
     public let battery: BundleBattery?
@@ -108,12 +114,15 @@ public struct BundleDeviceConditions: Equatable, Sendable {
     public let powerSave: Bool?
     /// Nil when Wi-Fi is off or not associated.
     public let wifi: BundleWifi?
+    /// Whether macOS lists a USB host controller; nil without an answer.
+    public let usbHost: Bool?
 
-    public init(battery: BundleBattery?, thermal: BundleThermal?, powerSave: Bool?, wifi: BundleWifi?) {
+    public init(battery: BundleBattery?, thermal: BundleThermal?, powerSave: Bool?, wifi: BundleWifi?, usbHost: Bool? = nil) {
         self.battery = battery
         self.thermal = thermal
         self.powerSave = powerSave
         self.wifi = wifi
+        self.usbHost = usbHost
     }
 
     /// Nothing read: what a composition root outside the app has.

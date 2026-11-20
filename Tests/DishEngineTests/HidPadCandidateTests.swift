@@ -137,7 +137,7 @@ final class HidPadCandidateTests: XCTestCase {
 
     func testTheTransportWordsInADevcapsLine() {
         XCTAssertEqual(transportWord(.usb), "usb")
-        XCTAssertEqual(transportWord(.bluetooth), "bluetooth")
+        XCTAssertEqual(transportWord(.bluetooth(.classic)), "bluetooth")
         XCTAssertEqual(transportWord(.other("SPI")), "SPI")
         XCTAssertEqual(transportWord(.unknown), "unknown")
     }
@@ -195,7 +195,7 @@ final class HidPadCandidateTests: XCTestCase {
         let pad = try DirectFixtures.candidate(bluetoothValveProperties(productId: 0x1106))
         XCTAssertEqual(pad.decoder, .steamControllerBle)
         XCTAssertEqual(pad.name, "Valve Steam Controller (Bluetooth)")
-        XCTAssertEqual(pad.transport, .bluetooth)
+        XCTAssertEqual(pad.transport, .bluetooth(.le), "IOKit's word names the LE link")
         XCTAssertTrue(pad.needsInputMonitoring, "its keyboard and mouse share the device")
         XCTAssertFalse(pad.receiver)
         XCTAssertFalse(pad.capturable)

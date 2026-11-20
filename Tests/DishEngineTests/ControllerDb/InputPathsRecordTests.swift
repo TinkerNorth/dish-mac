@@ -109,7 +109,7 @@ final class InputPathsRecordTests: XCTestCase {
 
     func testEachTransportHasItsDataWord() {
         XCTAssertEqual(controllerTransport(.usb), .usb)
-        XCTAssertEqual(controllerTransport(.bluetooth), .bluetooth)
+        XCTAssertEqual(controllerTransport(.bluetooth(.classic)), .bluetooth)
         XCTAssertNil(controllerTransport(.other("SPI")))
         XCTAssertNil(controllerTransport(.unknown))
         XCTAssertNil(controllerTransport(nil))

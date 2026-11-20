@@ -233,7 +233,8 @@ The file holds:
   rumble, the light bar, the player lights and the trigger effects how many
   commands reached it, the newest one and when; whether its speaker and
   haptics voices were open, and for a Bluetooth controller that macOS reads
-  it as HID, never its Bluetooth address;
+  it as HID and whether over classic Bluetooth or Bluetooth Low Energy, as
+  macOS names the link, never its Bluetooth address;
 - the results of the tests you ran on a controller in the inspector and
   confirmed, such as whether you felt the rumble;
 - the hosts you use, as "Host 1", "Host 2", with their kind, version,
@@ -246,9 +247,10 @@ The file holds:
 - only in a report: what you wrote, the category you picked and the
   controller you picked, by its database record or the name it reports;
   your Mac's battery level and whether it is charging, its thermal state,
-  whether Low Power Mode is on, and the Wi-Fi band, signal strength and link
+  whether Low Power Mode is on, the Wi-Fi band, signal strength and link
   rate, read once through macOS's CoreWLAN, never the network's name or the
-  access point's address;
+  access point's address, and whether macOS lists a USB host controller, as
+  a yes or a no;
 - the app's flight recorder, the lines Diagnostics shows, with every host
   named by its alias;
 - only if you ran "Help support this controller" this session, that
@@ -338,6 +340,7 @@ so treat it as sensitive before attaching it to a public issue.
 | Input Monitoring (macOS asks) | Reading a controller that is also a keyboard or a mouse, such as a Steam Controller (the 2026 one on a cable, or either one over Bluetooth), only when you press Use Direct for it. Dish reads the controller's own reports to forward its buttons, sticks, trackpads and motion; it reads no other keyboard or mouse and records no typing. Refusing leaves the controller as it was. |
 | Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
 | Wi-Fi link readout (CoreWLAN) | Only as a report opens: the current Wi-Fi interface's band, signal strength (RSSI) and transmit rate, for the file you choose to mail. Dish never reads the network's name or the access point's address, so macOS's location permission is never asked. |
+| USB host controller count (IOKit registry) | Only as a report opens: whether macOS lists a USB host controller, counted in the IORegistry and written to the file you choose to mail as a yes or a no. Nothing is opened. |
 | `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |
 
 The app runs unsandboxed and asks for no other permission than these.

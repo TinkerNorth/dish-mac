@@ -25,12 +25,18 @@ final class BundlePadPathsTests: XCTestCase {
         XCTAssertNil(bundleVoice(open: false, refused: false, routed: false, frames: 0).device)
     }
 
-    func testABluetoothPadIsReadThroughHidAndItsLayerIsNotKnown() {
-        XCTAssertEqual(bundleBluetooth(.bluetooth), BundleBluetooth(profile: "hid", transportLayer: nil))
+    func testABluetoothPadIsReadThroughHidOverTheLinkIOKitNamed() {
+        XCTAssertEqual(bundleBluetooth(.bluetooth, layer: .classic), BundleBluetooth(profile: "hid", transportLayer: "classic"))
+        XCTAssertEqual(bundleBluetooth(.bluetooth, layer: .le), BundleBluetooth(profile: "hid", transportLayer: "le"))
+    }
+
+    func testABluetoothPadWhoseLinkIOKitDidNotNameSaysNull() {
+        XCTAssertEqual(bundleBluetooth(.bluetooth, layer: nil), BundleBluetooth(profile: "hid", transportLayer: nil))
     }
 
     func testAPadOffBluetoothHasNoBluetoothFacts() {
-        XCTAssertNil(bundleBluetooth(.usb))
-        XCTAssertNil(bundleBluetooth(nil))
+        XCTAssertNil(bundleBluetooth(.usb, layer: nil))
+        XCTAssertNil(bundleBluetooth(.usb, layer: .le), "a layer on a USB pad is not a Bluetooth link")
+        XCTAssertNil(bundleBluetooth(nil, layer: nil))
     }
 }

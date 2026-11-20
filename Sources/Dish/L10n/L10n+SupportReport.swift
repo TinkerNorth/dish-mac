@@ -71,7 +71,9 @@ extension L10n {
     }
 
     var holdsThisMac: String {
-        catalog.text("This Mac's model, macOS version, battery, temperature state and Wi-Fi signal strength")
+        catalog.text(
+            "This Mac's model, macOS version, battery, temperature state, Wi-Fi signal strength and whether it has a USB host controller"
+        )
     }
 
     var holdsControllers: String {

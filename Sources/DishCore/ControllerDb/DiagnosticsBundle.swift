@@ -61,6 +61,8 @@ public enum BundlePadPath: String, Equatable, Sendable {
 public struct BundlePadFacts: Equatable, Sendable {
     public let record: ControllerRecord?
     public let transport: ControllerTransport?
+    /// The Bluetooth link IOKit named; nil off Bluetooth or when it named none.
+    public let bluetoothLayer: BluetoothTransportLayer?
     public let path: BundlePadPath
     public let hardware: BundleHardwareFacts?
     public let expectMismatches: [String]
@@ -76,6 +78,7 @@ public struct BundlePadFacts: Equatable, Sendable {
     public init(
         record: ControllerRecord?,
         transport: ControllerTransport?,
+        bluetoothLayer: BluetoothTransportLayer? = nil,
         path: BundlePadPath,
         hardware: BundleHardwareFacts?,
         expectMismatches: [String] = [],
@@ -87,6 +90,7 @@ public struct BundlePadFacts: Equatable, Sendable {
     ) {
         self.record = record
         self.transport = transport
+        self.bluetoothLayer = bluetoothLayer
         self.path = path
         self.hardware = hardware
         self.expectMismatches = expectMismatches
@@ -232,7 +236,8 @@ private func bundleDevice(_ device: BundleDeviceFacts, conditions: BundleDeviceC
                 battery: read.battery.map { BatteryFile(level: $0.level, charging: $0.charging) },
                 thermal: read.thermal?.rawValue,
                 powerSave: read.powerSave,
-                wifi: read.wifi.map { WifiFile(band: $0.band, rssiDbm: $0.rssiDbm, linkSpeedMbps: $0.linkSpeedMbps) }
+                wifi: read.wifi.map { WifiFile(band: $0.band, rssiDbm: $0.rssiDbm, linkSpeedMbps: $0.linkSpeedMbps) },
+                usbHost: read.usbHost
             )
         }
     )
@@ -280,7 +285,7 @@ private func bundleController(_ pad: BundlePadFacts) -> BundleFile.Controller {
         capture: pad.capture.map { BundleFile.Capture(format: BundleFile.Capture.supportCaptureText, text: $0) },
         input: pad.input.map(bundleInput),
         output: pad.output.map { bundleOutput($0, write: write) },
-        bluetooth: bundleBluetooth(pad.transport).map(bundleBluetoothFile)
+        bluetooth: bundleBluetooth(pad.transport, layer: pad.bluetoothLayer).map(bundleBluetoothFile)
     )
 }
 

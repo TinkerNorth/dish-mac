@@ -144,6 +144,7 @@ extension BundlePadFacts {
         BundlePadFacts(
             record: record,
             transport: transport,
+            bluetoothLayer: bluetoothLayer,
             path: path,
             hardware: hardware,
             expectMismatches: expectMismatches,
@@ -208,6 +209,7 @@ func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: Finis
     return BundlePadFacts(
         record: pad.record,
         transport: pad.transport,
+        bluetoothLayer: bluetoothLayer(of: pad.hidTransport),
         path: direct ? .direct : .gameController,
         hardware: hardware,
         expectMismatches: pad.inputPath?.expectMismatches ?? [],
@@ -215,6 +217,12 @@ func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: Finis
         outcomes: outcomes.answers[pad.slot.id] ?? [],
         capture: capture.flatMap { captured(pad, by: $0) ? $0.report : nil }
     )
+}
+
+/// The link IOKit named for a Bluetooth pad; nil for any other transport.
+func bluetoothLayer(of transport: HidTransport?) -> BluetoothTransportLayer? {
+    guard case let .bluetooth(layer) = transport else { return nil }
+    return layer
 }
 
 /// The capture belongs to the pad its key names: by USB identity, or by the

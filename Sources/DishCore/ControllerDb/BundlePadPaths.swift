@@ -143,8 +143,16 @@ public struct BundlePadOutput: Equatable, Sendable {
     }
 }
 
+/// The radio link a Bluetooth pad's HID runs over, in the contract's words.
+public enum BluetoothTransportLayer: String, Equatable, Sendable {
+    /// HID over L2CAP, the HID profile (service 0x1124).
+    case classic
+    /// HID over GATT (service 0x1812).
+    case le
+}
+
 /// What the Mac knows of a Bluetooth pad's link: macOS reads every one
-/// through its HID stack, and does not say whether it is classic or LE.
+/// through its HID stack, and IOKit's transport word names the layer.
 public struct BundleBluetooth: Equatable, Sendable {
     public let profile: String
     public let transportLayer: String?
@@ -156,9 +164,9 @@ public struct BundleBluetooth: Equatable, Sendable {
 }
 
 /// Nil for a pad that is not on Bluetooth, or whose transport is unknown.
-public func bundleBluetooth(_ transport: ControllerTransport?) -> BundleBluetooth? {
+public func bundleBluetooth(_ transport: ControllerTransport?, layer: BluetoothTransportLayer?) -> BundleBluetooth? {
     guard transport == .bluetooth else { return nil }
-    return BundleBluetooth(profile: "hid", transportLayer: nil)
+    return BundleBluetooth(profile: "hid", transportLayer: layer?.rawValue)
 }
 
 // MARK: - The encoded shape
