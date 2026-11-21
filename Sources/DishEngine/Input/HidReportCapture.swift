@@ -254,7 +254,7 @@ final class HidCaptureSession: @unchecked Sendable {
 
     fileprivate func matched(_ candidate: IOHIDDevice) {
         let properties = Self.properties(of: candidate)
-        let usbDevice = usbDeviceEntry(ofHidService: IOHIDDeviceGetService(candidate), properties: properties)
+        let usbDevice = usbDeviceFields(ofHidService: IOHIDDeviceGetService(candidate), properties: properties)
         guard device == nil, let facts = supportDevice(properties, target: target, usbDevice: usbDevice) else { return }
         let status = IOHIDDeviceOpen(candidate, IOOptionBits(kIOHIDOptionsTypeNone))
         guard status == kIOReturnSuccess else {
@@ -285,9 +285,9 @@ final class HidCaptureSession: @unchecked Sendable {
     }
 
     /// The USB device's descriptor fields, for a device on USB.
-    private func usbDeviceEntry(ofHidService service: io_service_t, properties: [String: Any]) -> [String: Any]? {
+    private func usbDeviceFields(ofHidService service: io_service_t, properties: [String: Any]) -> [String: Any]? {
         guard looksForUsbDevice(hidTransport(properties[kIOHIDTransportKey] as? String)) else { return nil }
-        return DishEngine.usbDeviceEntry(above: service, keys: supportUsbDeviceKeys)
+        return usbDeviceEntry(above: service, keys: supportUsbDeviceKeys)
     }
 
     private func closeDevice() {

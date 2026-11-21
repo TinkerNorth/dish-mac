@@ -267,9 +267,13 @@ The file holds:
   also as the page showed them; in a report, only when it is the controller
   you picked.
 
-It never holds pairing keys, pairing secrets, certificate fingerprints, IP
-addresses, Wi-Fi names, the names you gave your hosts or devices, or anything
-from a controller's microphone or speaker. Your own words are only what you
+Every fact about your Mac and your controllers is read from macOS on this
+Mac, and only this file carries any of them away: reading them sends
+nothing anywhere, and Dish opens no controller to read them, beyond the one
+you chose to capture with "Help support this controller". It never holds pairing keys, pairing
+secrets, certificate fingerprints, IP addresses, Wi-Fi names, the names you
+gave your hosts or devices, a controller's serial number, or anything from a
+controller's microphone or speaker. Your own words are only what you
 typed; Dish adds nothing to them and sends them nowhere but into the message
 your mail app opens.
 
@@ -349,7 +353,7 @@ so treat it as sensitive before attaching it to a public issue.
 | Input Monitoring (macOS asks) | Reading a controller that is also a keyboard or a mouse, such as a Steam Controller (the 2026 one on a cable, or either one over Bluetooth), only when you press Use Direct for it. Dish reads the controller's own reports to forward its buttons, sticks, trackpads and motion; it reads no other keyboard or mouse and records no typing. Refusing leaves the controller as it was. |
 | Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
 | Wi-Fi link readout (CoreWLAN) | Only as a report opens: the current Wi-Fi interface's band, signal strength (RSSI) and transmit rate, for the file you choose to mail. Dish never reads the network's name or the access point's address, so macOS's location permission is never asked. |
-| USB host controller count (IOKit registry) | Only as a report opens: whether macOS lists a USB host controller, counted in the IORegistry and written to the file you choose to mail as a yes or a no. Nothing is opened. |
+| USB and HID device facts (IOKit registry) | For the diagnostics file only: as a report opens, whether macOS lists a USB host controller, counted in the IORegistry and written as a yes or a no; and each attached controller's version number, report descriptor fingerprint and USB interfaces as the IORegistry lists them, read as the controller attaches or as the Diagnostics page shows it. Nothing is opened to read them, and nothing leaves the Mac until you send the file. |
 | `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |
 
 The app runs unsandboxed and asks for no other permission than these.
