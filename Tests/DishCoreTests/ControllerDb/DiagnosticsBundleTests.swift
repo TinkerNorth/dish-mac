@@ -71,18 +71,17 @@ final class DiagnosticsBundleTests: XCTestCase {
             ),
             pads: [pad, BundlePadFacts(record: nil, transport: nil, path: .gameController, hardware: nil)],
             hosts: hosts,
-            log: log,
-            supportCaptureText: "VID:PID 054c:0ce6"
+            log: log
         )
     }
 
     private static let capture = BundleCapture(
-        device: "Transport: USB\nVendorID: 054c",
         product: "Wireless Controller",
         manufacturer: "Sony",
         interfaceNumber: 3,
         reportDescriptor: [0x05, 0x01, 0x09, 0x05],
-        restReports: [RestReport(atMs: 1_763_585_990_000, bytes: [0x01, 0x80]), RestReport(atMs: 1_763_585_990_004, bytes: [0x01, 0x80])]
+        restReports: [],
+        guided: "VID:PID 054c:0ce6"
     )
 
     private static let descriptorSha256 = "5f2c0d3c8bb7f1d36ee86c1e4b4e9a3a2e7b1f0d9c8a7b6e5d4c3b2a19087f6e"

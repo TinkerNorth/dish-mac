@@ -259,14 +259,12 @@ The file holds:
 - the app's flight recorder, the lines Diagnostics shows, with every host
   named by its alias;
 - only if you ran "Help support this controller" this session, that
-  controller's capture: its ids, names, connection and the facts macOS
-  lists for it (its version, report sizes and report interval, and on USB
-  its device's class and descriptor fields, never its serial number), its
-  HID report descriptor and on USB its configuration descriptors, the first
-  twenty reports it sent while at rest with
-  when each arrived, and the reports it sent as you pressed each control,
-  also as the page showed them; in a report, only when it is the controller
-  you picked.
+  controller's capture: its ids, names and connection, on USB its device
+  and configuration descriptors (which describe the model, never its serial
+  number), its HID report descriptor, the first twenty reports it sent while
+  at rest with when each arrived, and the reports it sent as you pressed
+  each control, also as the page showed them; in a report, only when it is
+  the controller you picked.
 
 Every fact about your Mac and your controllers is read from macOS on this
 Mac, and only this file carries any of them away: reading them sends

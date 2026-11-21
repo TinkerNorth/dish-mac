@@ -130,20 +130,22 @@ struct BundleFile: Encodable {
         let atMs: Int64
     }
 
-    /// `usb-descriptors-v1`: the Mac's report descriptor is the operating
-    /// system's copy (`kIOHIDReportDescriptorKey`), and `configuration` is
-    /// null where IOKit hands no configuration descriptor over.
+    /// `usb-descriptors-v1`: `device` and `configuration` the USB
+    /// descriptors as hex, null where IOKit hands none over; the report
+    /// descriptor the operating system's copy (`kIOHIDReportDescriptorKey`);
+    /// `guided` only when the person ran the guided capture.
     struct Capture: Encodable {
         static let format = "usb-descriptors-v1"
 
-        let device: String
+        let device: String?
         let configuration: String?
         let strings: Strings
+        let guided: Guided?
         let hidReportDescriptors: [ReportDescriptor]
         let restReports: [Report]
 
         private enum CodingKeys: String, CodingKey {
-            case format, device, configuration, strings, hidReportDescriptors, restReports
+            case format, device, configuration, strings, guided, hidReportDescriptors, restReports
         }
 
         func encode(to encoder: Encoder) throws {
@@ -152,9 +154,15 @@ struct BundleFile: Encodable {
             try container.encode(device, forKey: .device)
             try container.encode(configuration, forKey: .configuration)
             try container.encode(strings, forKey: .strings)
+            try container.encodeIfPresent(guided, forKey: .guided)
             try container.encode(hidReportDescriptors, forKey: .hidReportDescriptors)
             try container.encode(restReports, forKey: .restReports)
         }
+    }
+
+    /// The guided capture as the Mac formats it for an issue.
+    struct Guided: Encodable {
+        let text: String
     }
 
     /// The device's strings as text; never its serial number.
@@ -194,19 +202,6 @@ struct BundleFile: Encodable {
     struct Report: Encodable {
         let atMs: Int64
         let hex: String
-    }
-
-    /// The Mac's own additions: its guided capture's text, whose steps
-    /// `usb-descriptors-v1` has no place for.
-    struct Extra: Encodable {
-        let supportCapture: TextCapture
-    }
-
-    struct TextCapture: Encodable {
-        static let format = "support-capture-text"
-
-        let format: String
-        let text: String
     }
 
     struct Feedback: Encodable {
@@ -318,5 +313,4 @@ struct BundleFile: Encodable {
     let hosts: [Host]
     let log: [Log]
     let report: SupportReportFile?
-    let extra: Extra?
 }

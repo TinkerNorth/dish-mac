@@ -50,14 +50,6 @@ func usbDeviceListing(above entry: io_registry_entry_t) -> UsbDeviceListing? {
     return UsbDeviceListing(registryId: registryId, interfaces: usbInterfaceEntries(of: device))
 }
 
-/// The USB device's own entry at or above `entry`, read under `keys`.
-func usbDeviceEntry(above entry: io_registry_entry_t, keys: [String]) -> [String: Any]? {
-    IOObjectRetain(entry)
-    guard let device = usbDeviceSearch(entry, levelsLeft: usbDeviceSearchLevels) else { return nil }
-    defer { IOObjectRelease(device) }
-    return registryProperties(device, keys: keys)
-}
-
 /// Takes `entry`'s reference: the entry itself when it is a USB device,
 /// else its parent's search, one level fewer.
 private func usbDeviceSearch(_ entry: io_registry_entry_t, levelsLeft: Int) -> io_registry_entry_t? {

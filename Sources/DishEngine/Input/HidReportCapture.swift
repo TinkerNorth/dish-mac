@@ -52,72 +52,13 @@ final class InertHidReportCapture: HidReportCapturing {
 
 // MARK: - Which device
 
-/// How a fact of the device is written.
-enum SupportFactFormat {
-    case text
-    /// Four lowercase hex digits: an id, a release, a usage.
-    case word
-    /// Two lowercase hex digits: a class code.
-    case byte
-    case decimal
-}
-
-/// One property IOKit gives of a captured device, and how it is written.
-struct SupportFactKey {
-    let key: String
-    let format: SupportFactFormat
-}
-
-/// The HID device's own properties the capture describes it by, in order.
-let supportHidFactKeys = [
-    SupportFactKey(key: kIOHIDTransportKey, format: .text), SupportFactKey(key: kIOHIDVendorIDKey, format: .word),
-    SupportFactKey(key: kIOHIDVendorIDSourceKey, format: .decimal), SupportFactKey(key: kIOHIDProductIDKey, format: .word),
-    SupportFactKey(key: kIOHIDVersionNumberKey, format: .word), SupportFactKey(key: kIOHIDCountryCodeKey, format: .decimal),
-    SupportFactKey(key: kIOHIDPrimaryUsagePageKey, format: .word), SupportFactKey(key: kIOHIDPrimaryUsageKey, format: .word),
-    SupportFactKey(key: kIOHIDMaxInputReportSizeKey, format: .decimal), SupportFactKey(key: kIOHIDMaxOutputReportSizeKey, format: .decimal),
-    SupportFactKey(key: kIOHIDMaxFeatureReportSizeKey, format: .decimal), SupportFactKey(key: kIOHIDReportIntervalKey, format: .decimal)
-]
-
-/// The USB device's descriptor fields the IORegistry publishes, in the
-/// descriptor's order; never `iSerialNumber` or the serial string.
-let supportUsbDeviceFactKeys = [
-    SupportFactKey(key: "bcdUSB", format: .word), SupportFactKey(key: "bDeviceClass", format: .byte),
-    SupportFactKey(key: "bDeviceSubClass", format: .byte), SupportFactKey(key: "bDeviceProtocol", format: .byte),
-    SupportFactKey(key: "bMaxPacketSize0", format: .decimal), SupportFactKey(key: "bNumConfigurations", format: .decimal),
-    SupportFactKey(key: "kUSBCurrentConfiguration", format: .decimal), SupportFactKey(key: "iManufacturer", format: .decimal),
-    SupportFactKey(key: "iProduct", format: .decimal), SupportFactKey(key: "USBSpeed", format: .decimal)
-]
-
-/// The keys the USB device's entry is read under.
-let supportUsbDeviceKeys = supportUsbDeviceFactKeys.map(\.key)
-
 /// The properties a capture reads off a device as it opens it: its names,
-/// its descriptor and interface, and the facts it is described by.
+/// its ids and transport, its descriptor and interface. Never its serial
+/// number.
 let supportPropertyKeys = [
-    kIOHIDProductKey, kIOHIDManufacturerKey, kIOHIDReportDescriptorKey, kIOHIDGCSyntheticDeviceKey, hidInterfaceNumberKey
-] + supportHidFactKeys.map(\.key)
-
-/// IOKit's facts of a captured device in a fixed order: the HID device's
-/// own properties, then, on USB, its device's descriptor fields.
-func supportDeviceFacts(hid: [String: Any], usbDevice: [String: Any]?) -> [SupportDeviceFact] {
-    let own = supportHidFactKeys.compactMap { supportFact($0, in: hid) }
-    let usb = usbDevice.map { entry in supportUsbDeviceFactKeys.compactMap { supportFact($0, in: entry) } } ?? []
-    return own + usb
-}
-
-private func supportFact(_ key: SupportFactKey, in properties: [String: Any]) -> SupportDeviceFact? {
-    guard let value = properties[key.key] else { return nil }
-    return supportFactText(value, key.format).map { SupportDeviceFact(key: key.key, value: $0) }
-}
-
-private func supportFactText(_ value: Any, _ format: SupportFactFormat) -> String? {
-    switch format {
-    case .text: value as? String
-    case .word: (value as? Int).map { String(format: "%04x", $0) }
-    case .byte: (value as? Int).map { String(format: "%02x", $0) }
-    case .decimal: (value as? Int).map(String.init)
-    }
-}
+    kIOHIDProductKey, kIOHIDManufacturerKey, kIOHIDVendorIDKey, kIOHIDProductIDKey, kIOHIDTransportKey,
+    kIOHIDReportDescriptorKey, kIOHIDMaxInputReportSizeKey, kIOHIDGCSyntheticDeviceKey, hidInterfaceNumberKey
+]
 
 /// A USB identity is matched by IOKit; a name is matched among the game
 /// usages and picked by the product string.
@@ -131,9 +72,8 @@ func supportMatching(_ target: SupportTarget) -> [[String: Any]] {
 }
 
 /// The device's facts when it is the one the target names; nil for a
-/// synthetic device and for another product. `usbDevice` is its USB
-/// device's IORegistry entry, nil off USB.
-func supportDevice(_ properties: [String: Any], target: SupportTarget, usbDevice: [String: Any]? = nil) -> SupportDevice? {
+/// synthetic device and for another product.
+func supportDevice(_ properties: [String: Any], target: SupportTarget) -> SupportDevice? {
     let synthetic = properties[kIOHIDGCSyntheticDeviceKey] as? Bool == true
     guard !synthetic else { return nil }
     let device = SupportDevice(
@@ -143,8 +83,7 @@ func supportDevice(_ properties: [String: Any], target: SupportTarget, usbDevice
         manufacturer: properties[kIOHIDManufacturerKey] as? String ?? "",
         transport: properties[kIOHIDTransportKey] as? String ?? "",
         descriptor: (properties[kIOHIDReportDescriptorKey] as? Data).map { [UInt8]($0) } ?? [],
-        interfaceNumber: properties[hidInterfaceNumberKey] as? Int,
-        facts: supportDeviceFacts(hid: properties, usbDevice: usbDevice)
+        interfaceNumber: properties[hidInterfaceNumberKey] as? Int
     )
     return names(target, device) ? device : nil
 }
@@ -253,9 +192,7 @@ final class HidCaptureSession: @unchecked Sendable {
     // MARK: - On the session's thread
 
     fileprivate func matched(_ candidate: IOHIDDevice) {
-        let properties = Self.properties(of: candidate)
-        let usbDevice = usbDeviceFields(ofHidService: IOHIDDeviceGetService(candidate), properties: properties)
-        guard device == nil, let facts = supportDevice(properties, target: target, usbDevice: usbDevice) else { return }
+        guard device == nil, let facts = supportDevice(Self.properties(of: candidate), target: target) else { return }
         let status = IOHIDDeviceOpen(candidate, IOOptionBits(kIOHIDOptionsTypeNone))
         guard status == kIOReturnSuccess else {
             Self.log.error("CAPTURE open failed vidpid=\(facts.hardwareKey, privacy: .public) status=\(status)")
@@ -282,12 +219,6 @@ final class HidCaptureSession: @unchecked Sendable {
     /// One report, copied into the ring with its arrival: no allocation.
     fileprivate func received(_ report: UnsafeMutablePointer<UInt8>, length: Int) {
         ring.write(UnsafeBufferPointer(start: report, count: min(length, capacity)), uptimeNs: DispatchTime.now().uptimeNanoseconds)
-    }
-
-    /// The USB device's descriptor fields, for a device on USB.
-    private func usbDeviceFields(ofHidService service: io_service_t, properties: [String: Any]) -> [String: Any]? {
-        guard looksForUsbDevice(hidTransport(properties[kIOHIDTransportKey] as? String)) else { return nil }
-        return usbDeviceEntry(above: service, keys: supportUsbDeviceKeys)
     }
 
     private func closeDevice() {

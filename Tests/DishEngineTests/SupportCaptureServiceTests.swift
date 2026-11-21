@@ -166,6 +166,7 @@ final class SupportCaptureServiceTests: XCTestCase {
         XCTAssertEqual(finished.capture?.restReports.count, 2)
         XCTAssertEqual(finished.capture?.product, "Pad")
         XCTAssertEqual(finished.report.hasPrefix("Controller support capture"), true, "the text for an issue stays")
+        XCTAssertEqual(finished.capture?.guided, finished.report, "and rides the capture as its guided text")
     }
 
     func testAPostFromACaptureThatEndedLandsNowhere() throws {
@@ -204,43 +205,15 @@ final class SupportCaptureServiceTests: XCTestCase {
         XCTAssertNil(supportDevice(synthetic, target: .named("Pad")), "never the device macOS synthesises")
     }
 
-    func testTheDeviceIsDescribedByIOKitsOwnKeysInAFixedOrderAndNeverItsSerialNumber() {
-        let hid: [String: Any] = [
-            kIOHIDTransportKey: "USB", kIOHIDVendorIDKey: 0x054C, kIOHIDProductIDKey: 0x0CE6, kIOHIDVersionNumberKey: 0x0100,
-            kIOHIDPrimaryUsagePageKey: 0x01, kIOHIDPrimaryUsageKey: 0x05, kIOHIDMaxInputReportSizeKey: 64,
-            kIOHIDReportIntervalKey: 4000, kIOHIDSerialNumberKey: "SERIAL-HID"
-        ]
-        let usb: [String: Any] = [
-            "bcdUSB": 0x0200, "bDeviceClass": 0, "bMaxPacketSize0": 64, "iManufacturer": 1, "iProduct": 2,
-            "iSerialNumber": 3, "kUSBSerialNumberString": "SERIAL-USB", "USB Serial Number": "SERIAL-USB"
-        ]
-        let facts = supportDeviceFacts(hid: hid, usbDevice: usb)
-        XCTAssertEqual(facts.map(\.key), [
-            "Transport", "VendorID", "ProductID", "VersionNumber", "PrimaryUsagePage", "PrimaryUsage", "MaxInputReportSize",
-            "ReportInterval", "bcdUSB", "bDeviceClass", "bMaxPacketSize0", "iManufacturer", "iProduct"
-        ])
-        XCTAssertEqual(facts.map(\.value), ["USB", "054c", "0ce6", "0100", "0001", "0005", "64", "4000", "0200", "00", "64", "1", "2"])
-        let text = facts.map(\.value).joined()
-        XCTAssertFalse(text.contains("SERIAL"))
-    }
-
-    func testABluetoothDeviceIsDescribedByItsHidPropertiesAlone() {
-        let hid: [String: Any] = [kIOHIDTransportKey: "Bluetooth", kIOHIDVendorIDKey: 0x054C, kIOHIDVendorIDSourceKey: 2]
-        XCTAssertEqual(supportDeviceFacts(hid: hid, usbDevice: nil).map(\.key), ["Transport", "VendorID", "VendorIDSource"])
-    }
-
-    func testTheDeviceReadForTheCaptureCarriesItsInterfaceAndItsFacts() {
+    func testTheDeviceReadForTheCaptureCarriesItsInterfaceAndNeverItsSerialNumber() {
         let properties: [String: Any] = [
             kIOHIDVendorIDKey: 0x1234, kIOHIDProductIDKey: 0x5678, kIOHIDProductKey: "Pad", kIOHIDTransportKey: "USB",
             hidInterfaceNumberKey: 2
         ]
-        let read = supportDevice(properties, target: .usb(vendorId: 0x1234, productId: 0x5678), usbDevice: ["bcdUSB": 0x0110])
+        let read = supportDevice(properties, target: .usb(vendorId: 0x1234, productId: 0x5678))
         XCTAssertEqual(read?.interfaceNumber, 2)
-        XCTAssertEqual(read?.facts.last, SupportDeviceFact(key: "bcdUSB", value: "0110"))
         XCTAssertTrue(supportPropertyKeys.contains(hidInterfaceNumberKey))
         XCTAssertFalse(supportPropertyKeys.contains(kIOHIDSerialNumberKey), "the serial number is never read")
-        XCTAssertFalse(supportUsbDeviceKeys.contains("iSerialNumber"))
-        XCTAssertFalse(supportUsbDeviceKeys.contains("kUSBSerialNumberString"))
     }
 
     func testEachPropertyIsAskedForOnce() {

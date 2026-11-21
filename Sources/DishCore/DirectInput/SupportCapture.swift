@@ -81,17 +81,6 @@ private func parseUsbKey(_ key: String) -> (vendorId: UInt16, productId: UInt16)
     return (vendorId, productId)
 }
 
-/// One fact IOKit gives of a captured device, under IOKit's own key.
-public struct SupportDeviceFact: Equatable, Sendable {
-    public let key: String
-    public let value: String
-
-    public init(key: String, value: String) {
-        self.key = key
-        self.value = value
-    }
-}
-
 /// What the capture read off the device as it opened it.
 public struct SupportDevice: Equatable, Sendable {
     public let vendorId: UInt16
@@ -103,8 +92,6 @@ public struct SupportDevice: Equatable, Sendable {
     public let descriptor: [UInt8]
     /// The HID interface's number; nil where IOKit gives none.
     public let interfaceNumber: Int?
-    /// IOKit's facts of the device, in a fixed order; never its serial number.
-    public let facts: [SupportDeviceFact]
 
     public init(
         vendorId: UInt16,
@@ -113,8 +100,7 @@ public struct SupportDevice: Equatable, Sendable {
         manufacturer: String,
         transport: String,
         descriptor: [UInt8],
-        interfaceNumber: Int? = nil,
-        facts: [SupportDeviceFact] = []
+        interfaceNumber: Int? = nil
     ) {
         self.vendorId = vendorId
         self.productId = productId
@@ -123,7 +109,6 @@ public struct SupportDevice: Equatable, Sendable {
         self.transport = transport
         self.descriptor = descriptor
         self.interfaceNumber = interfaceNumber
-        self.facts = facts
     }
 
     public var hardwareKey: String {
@@ -307,18 +292,19 @@ private func stepLines(_ record: SupportStepRecord) -> [String] {
     return ["\(record.step.reportName):"] + reports.map { SupportReportLayout.indent + hexBytes($0) }
 }
 
-/// The capture in `usb-descriptors-v1`'s terms: IOKit's facts of the device
-/// as text, its strings, its own report descriptor and the reports at rest;
-/// nil before the device was found.
+/// The capture in `usb-descriptors-v1`'s terms: its strings, the system's
+/// report descriptor, the reports at rest and the guided text; nil before
+/// the device was found. The USB descriptors are added from the pad's USB
+/// device.
 public func bundleCapture(_ state: SupportCaptureState) -> BundleCapture? {
     guard let device = state.device else { return nil }
     return BundleCapture(
-        device: device.facts.map { "\($0.key): \($0.value)" }.joined(separator: "\n"),
         product: device.product.isEmpty ? nil : device.product,
         manufacturer: device.manufacturer.isEmpty ? nil : device.manufacturer,
         interfaceNumber: device.interfaceNumber,
         reportDescriptor: device.descriptor,
-        restReports: state.rest
+        restReports: state.rest,
+        guided: supportReportText(state)
     )
 }
 

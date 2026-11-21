@@ -104,8 +104,6 @@ public struct BundleAudio: Equatable, Sendable {
 
 /// A Help-support capture in `usb-descriptors-v1`'s terms.
 public struct BundleCapture: Equatable, Sendable {
-    /// IOKit's facts of the device as text, one per line.
-    public let device: String
     public let product: String?
     public let manufacturer: String?
     /// The HID interface the descriptor is the device's own for; nil where
@@ -114,38 +112,47 @@ public struct BundleCapture: Equatable, Sendable {
     /// `kIOHIDReportDescriptorKey`: the operating system's copy.
     public let reportDescriptor: [UInt8]
     public let restReports: [RestReport]
+    /// The guided capture as the Mac formats it for an issue; nil when none
+    /// ran.
+    public let guided: String?
+    /// The 18-byte device descriptor; nil off USB and where IOKit hands none
+    /// over.
+    public let device: [UInt8]?
     /// Each configuration descriptor in index order, as the bus delivered
-    /// them; nil where IOKit hands none over.
+    /// them; nil off USB and where IOKit hands none over.
     public let configuration: [[UInt8]]?
 
     public init(
-        device: String,
         product: String?,
         manufacturer: String?,
         interfaceNumber: Int?,
         reportDescriptor: [UInt8],
         restReports: [RestReport],
+        guided: String?,
+        device: [UInt8]? = nil,
         configuration: [[UInt8]]? = nil
     ) {
-        self.device = device
         self.product = product
         self.manufacturer = manufacturer
         self.interfaceNumber = interfaceNumber
         self.reportDescriptor = reportDescriptor
         self.restReports = restReports
+        self.guided = guided
+        self.device = device
         self.configuration = configuration
     }
 
-    /// The capture with its device's configuration descriptors.
-    public func with(configuration descriptors: [[UInt8]]?) -> BundleCapture {
+    /// The capture with its pad's USB device and configuration descriptors.
+    public func with(usbDevice descriptor: [UInt8]?, configurations: [[UInt8]]?) -> BundleCapture {
         BundleCapture(
-            device: device,
             product: product,
             manufacturer: manufacturer,
             interfaceNumber: interfaceNumber,
             reportDescriptor: reportDescriptor,
             restReports: restReports,
-            configuration: descriptors
+            guided: guided,
+            device: descriptor,
+            configuration: configurations
         )
     }
 }
@@ -268,8 +275,6 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
     public let report: SupportReport?
     /// Nil when the file was written without reading them.
     public let conditions: BundleDeviceConditions?
-    /// The guided capture's text, when its capture rides a pad of the file.
-    public let supportCaptureText: String?
 
     public init(
         createdAtMs: Int64,
@@ -280,8 +285,7 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
         hosts: [BundleHostFacts],
         log: [BundleLogFacts],
         report: SupportReport? = nil,
-        conditions: BundleDeviceConditions? = nil,
-        supportCaptureText: String? = nil
+        conditions: BundleDeviceConditions? = nil
     ) {
         self.createdAtMs = createdAtMs
         self.app = app
@@ -292,7 +296,6 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
         self.log = log
         self.report = report
         self.conditions = conditions
-        self.supportCaptureText = supportCaptureText
     }
 }
 
@@ -328,10 +331,7 @@ func diagnosticsBundle(_ facts: DiagnosticsBundleFacts) -> BundleFile {
         controllers: facts.pads.map(bundleController),
         hosts: facts.hosts.enumerated().map { bundleHost($1, alias: hostAlias($0), aliases: aliases) },
         log: facts.log.map { BundleFile.Log(atMs: $0.atMs, tag: $0.tag, message: scrub($0.message, aliases)) },
-        report: facts.report.map(supportReportFile),
-        extra: facts.supportCaptureText.map { text in
-            BundleFile.Extra(supportCapture: BundleFile.TextCapture(format: BundleFile.TextCapture.format, text: text))
-        }
+        report: facts.report.map(supportReportFile)
     )
 }
 
@@ -407,9 +407,10 @@ private func bundleCaptureFile(_ capture: BundleCapture) -> BundleFile.Capture {
         source: BundleFile.ReportDescriptor.fromTheOperatingSystem
     )
     return BundleFile.Capture(
-        device: capture.device,
+        device: capture.device.map(contiguousHex),
         configuration: capture.configuration.map { contiguousHex(Array($0.joined())) },
         strings: BundleFile.Strings(manufacturer: capture.manufacturer, product: capture.product),
+        guided: capture.guided.map(BundleFile.Guided.init),
         hidReportDescriptors: capture.reportDescriptor.isEmpty ? [] : [descriptor],
         restReports: capture.restReports.map { BundleFile.Report(atMs: $0.atMs, hex: contiguousHex($0.bytes)) }
     )

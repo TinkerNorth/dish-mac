@@ -130,15 +130,13 @@ the repos share a version number.
   audio function's channels and refusal. `firmware` and `probe` are null,
   with the reasons in `Tests/PARITY.md`. Nothing opens the pad to read them.
 - **The support capture rides the file as `usb-descriptors-v1`.** The pad's
-  last Help-support capture carries `device` (IOKit's own properties as
-  text, and on USB its device's descriptor fields, never the serial number),
-  `strings`, its HID report descriptor with `source` `os` (IOKit's copy)
-  and its interface number, `configuration` (every configuration descriptor
-  as hex), and `restReports`: its first twenty reports, repeats included,
-  with when each arrived, taken as the person moves on from "At rest". The
-  guided steps' reports have no place in
-  that format, so the text capture rides beside it in
-  `extra.supportCapture` as `support-capture-text`.
+  last Help-support capture carries `device` and `configuration` (its USB
+  device and configuration descriptors as hex), `strings` (the manufacturer
+  and product as text, never the serial number), `guided` (the guided
+  capture's text, each step's reports), its HID report descriptor with
+  `source` `os` (IOKit's copy) and its interface number, and `restReports`:
+  its first twenty reports, repeats included, with when each arrived, taken
+  as the person moves on from "At rest".
 
 ### Changed
 

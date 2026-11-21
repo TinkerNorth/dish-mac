@@ -126,22 +126,20 @@ final class DiagnosticsBundleFactsTests: XCTestCase {
     }
 
     private static let taken = BundleCapture(
-        device: "Transport: USB",
         product: "Pad",
         manufacturer: nil,
         interfaceNumber: 0,
         reportDescriptor: [0x05, 0x01],
-        restReports: []
+        restReports: [],
+        guided: "R"
     )
 
     func testTheCaptureRidesThePadItWasTakenOfByIdentityOrByName() {
         let byIdentity = diagnosticsBundleFacts(inputs(capture: FinishedCapture(deviceKey: "054c:0ce6", report: "R", capture: Self.taken)))
         XCTAssertEqual(byIdentity.pads.map(\.capture), [Self.taken, nil])
-        XCTAssertEqual(byIdentity.supportCaptureText, "R", "the guided steps ride beside it")
         let named = FinishedCapture(deviceKey: "named:Xbox Wireless Controller", report: "N", capture: Self.taken)
         let byName = diagnosticsBundleFacts(inputs(capture: named))
         XCTAssertEqual(byName.pads.map(\.capture), [nil, Self.taken])
-        XCTAssertEqual(byName.supportCaptureText, "N")
     }
 
     func testTheCaptureCarriesTheConfigurationDescriptorsOfThePadsUsbDevice() throws {
@@ -159,13 +157,13 @@ final class DiagnosticsBundleFactsTests: XCTestCase {
             hostVersions: snapshot.hostVersions
         )
         let capture = try XCTUnwrap(diagnosticsBundleFacts(snapshot).pads.first?.capture)
+        XCTAssertEqual(capture.device, [0x12, 0x01], "its device descriptor")
         XCTAssertEqual(capture.configuration, [[0x09, 0x02]])
     }
 
     func testACaptureOfNoPadInTheFileRidesNowhere() {
         let elsewhere = diagnosticsBundleFacts(inputs(capture: FinishedCapture(deviceKey: "1234:5678", report: "X", capture: Self.taken)))
         XCTAssertEqual(elsewhere.pads.map(\.capture), [nil, nil])
-        XCTAssertNil(elsewhere.supportCaptureText)
     }
 
     func testHostsCarryWhatTheyAreAndTheirVersions() {

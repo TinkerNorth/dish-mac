@@ -103,16 +103,17 @@ final class SupportCaptureTests: XCTestCase {
             manufacturer: "",
             transport: "USB",
             descriptor: [0x05, 0x01],
-            interfaceNumber: 0,
-            facts: [SupportDeviceFact(key: "Transport", value: "USB"), SupportDeviceFact(key: "VendorID", value: "057e")]
+            interfaceNumber: 0
         )
     }
 
-    func testTheCaptureCarriesTheDevicesFactsItsStringsItsDescriptorAndTheRest() throws {
+    func testTheCaptureCarriesItsStringsItsDescriptorTheRestAndTheGuidedText() throws {
         let found = reduceSupportCapture(SupportCaptureState(), .deviceFound(described))
         let state = reduceSupportCapture(found, .restTaken(rest))
         let capture = try XCTUnwrap(bundleCapture(state))
-        XCTAssertEqual(capture.device, "Transport: USB\nVendorID: 057e")
+        XCTAssertNil(capture.device, "the USB descriptors are the Mac's to add, from the pad's USB device")
+        XCTAssertNil(capture.configuration)
+        XCTAssertEqual(capture.guided, supportReportText(state), "the guided capture as the Mac formats it for an issue")
         XCTAssertEqual(capture.product, "N64 Controller")
         XCTAssertNil(capture.manufacturer, "a name the device does not give is no string")
         XCTAssertEqual(capture.interfaceNumber, 0)
