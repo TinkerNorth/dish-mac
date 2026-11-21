@@ -270,6 +270,7 @@ extension ConnectionHub {
     private func releaseSlot(_ slotId: String, from connectionId: String) {
         wifi.get(connectionId)?.detachSlot(slotId)
         wifi.motionStatus.clear(SlotKey(connectionId: connectionId, slotId: slotId))
+        wifi.applyAnswers.clear(SlotKey(connectionId: connectionId, slotId: slotId))
     }
 
     /// The user let the pad go: the binding and its memory both end.

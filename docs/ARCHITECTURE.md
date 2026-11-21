@@ -47,7 +47,7 @@ frameworks each one may import.
 |---|---|---|---|
 | `DishCore` | The pure protocol core: wire codecs, HKDF and AEAD, the protocol constants, the policy reducers (reconcile, backoff, close-notify, TOFU verdicts, the latency window, REST outcomes, the operator-approval verdicts and the approval poll's next step, the binding draft and its apply, a pad's dead zones), and under `Moonlight/` the Moonlight host protocol's pure half: the wire formats and the control seal, the PIN pairing, the host's XML replies and the RTSP text, and the session's rules: controller numbers, what a pad's arrival declares, the pad table the hot path reads (frames, the click's replay, touches, motion, battery), the session reducer and the telemetry conversions; under `Moonlight/Enet/` the ENet client the control stream rides on, a pure state machine with an injected clock; and under `DirectInput/` the pads Dish reads itself: the Switch report decoders, the generic HID descriptor parser and its per-report decode, the Direct model table, the input-source machine (which path a pad is forwarded from, its proof and the "Not responding?" check), the disconnect-burst rule, the player numbers, the per-model remap with its press-to-assign walk and the fixed table the reader applies, and the support capture's sequence and report | nothing | Foundation, CryptoKit |
 | `DishKernel` | The dataflow primitives (below) | nothing | Foundation, Combine |
-| `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, IOUSBHost, Security, os, AudioToolbox, CoreAudio, AVFoundation |
+| `DishEngine` | Everything that does IO or owns state: discovery (one `BonjourScan` behind the satellite and Moonlight browsers), pairing, the REST control plane, the UDP data plane, the stores, the GameController bridge, the hot-path routers, under `Moonlight/` the host side's edges (the keychain identity, one-connection HTTP with mutual TLS, the pinning gateway, the host store, the one-connection-per-message RTSP handshake, the UDP control socket and media pinger, the control session that seals input onto the ENet link, the connection object that holds a host's pads and live session, the feedback router, and the host manager that probes, pairs, converges the bindings onto one session per host and forgets), the hub whose rows carry satellites and Moonlight hosts alike, and `AppModel`, the one composition root, which folds the bindings into what each host is asked to carry | `DishCore`, `DishKernel` | Foundation, Combine, CryptoKit, Darwin, Network, dnssd, SystemConfiguration, GameController, CoreHaptics, IOKit, IOUSBHost, Security, os, AudioToolbox, CoreAudio, AVFoundation, CoreWLAN |
 | `DishCrashUpload` | The Sentry SDK behind the Share crash reports switch, armed only by a build that carries an address; the one third-party import in the tree, kept out of the engine, which sees only the `CrashUploader` seam | `DishEngine`, `DishCore`, `Sentry` | Foundation, Sentry |
 | `Dish` | The shell (the navigation machine and its store, the rail, the header, the pages), the SwiftUI views and kit, the theme, the localized words, the notification queue, and the AppKit lifecycle glue | all three and `DishCrashUpload` | Foundation, Combine, SwiftUI, AppKit, UserNotifications |
 
@@ -268,7 +268,9 @@ a second reader over IOUSBHost (below). Everything else stays on
 GameController.
 
 - **The reader.** `IOKitHidPadReader` owns one `IOHIDManager`, matching the
-  Nintendo and Valve models by identity and every game usage, all with
+  Nintendo and Valve models by identity, every device of those two vendors
+  (so a row the data serves later meets its pad at the next attach: the
+  matching is set once, as the reader starts) and every game usage, all with
   `GCSyntheticDevice` false, scheduled on the run loop of a thread of its own
   (`com.tinkernorth.dish.hid`), never the main one. Each candidate
   (`hidPadCandidate`, decided from the device's properties alone) is opened
@@ -367,8 +369,10 @@ GameController.
   is logged once per attach as `DEVCAPS DIRECT`.
 - **An XUSB pad, through IOUSBHost.** `XusbPadReader` reads on a queue of
   its own (`com.tinkernorth.dish.xusb`, in the HID reader's lock-law role)
-  over a bus seam. In the app `IOUSBHostXusbBus` watches the XUSB models'
-  devices by USB identity and every interface (IOUSBHostInterface matching
+  over a bus seam. In the app `IOUSBHostXusbBus` watches every USB device,
+  asking the reader as each arrives whether it reads its model by the data
+  in force then (`xusbReads`: the table's XUSB rows and the data's `auto`
+  Xbox 360 rows), and every interface (IOUSBHostInterface matching
   takes only the USB class specification's key combinations), selects a
   device's first configuration when none is selected (a vendor-class device
   arrives unconfigured: Apple's composite driver configures device classes
@@ -376,7 +380,8 @@ GameController.
   XboxGamepad.dext gives Microsoft's pads a device-level personality for
   it), and hands over each interface. The reader opens the ones
   `xusbPadCandidate` names (the FF/5D/01 triple and an XUSB row of the
-  model table) for itself alone, reads the first interrupt IN endpoint a
+  model table or of the data in force as the interface arrives) for itself
+  alone, reads the first interrupt IN endpoint a
   report at a time into a `HidPadLane` whose decoder is the core's
   `decodeXusbReport` (`XusbReadLoop`: the completion made once, the report
   decoded in place in the pipe's buffer, then the next read), and gives the
@@ -461,9 +466,17 @@ GameController.
   `HidReportRing` of 64 preallocated 128-byte slots (a repeat of the last
   report is not written), so the hot path builds nothing; the service drains
   the ring every 100 ms on its own timer, not a view's. The descriptor
-  (`kIOHIDReportDescriptorKey`), product, manufacturer and transport are
-  read once as the device opens. The result is text on the page: nothing is
-  sent, and the issue link opens with only its title filled in.
+  (`kIOHIDReportDescriptorKey`, the operating system's copy), product,
+  manufacturer, transport and interface number are read once as the device
+  opens; never its serial number. Beside the ring's slots, its first twenty
+  reports are kept whole, repeats included, each stamped with its uptime on
+  arrival; the service takes them as the person moves on from "At rest" and
+  places them on the wall clock (`restReports` in the core). The result is
+  text on the page, and the same capture in `usb-descriptors-v1`'s terms
+  (`bundleCapture`, the text as its `guided`) for the diagnostics file,
+  where it takes the device and configuration descriptors of the pad's USB
+  device that Diagnostics read: nothing is sent, and the issue link opens
+  with only its title filled in.
 - **R7: a Nintendo controller GameController lists is a carrier.** A
   `GCController` whose product category names a Direct-by-model pad ("Switch
   Pro Controller", "Switch N64 Controller", the SNES pad's) gets no input slot
@@ -492,6 +505,66 @@ GameController.
   the carrier keeps publishing, the lane publishes nothing), so nothing
   flaps and nothing is read twice; only a reconnect or the user's pick
   ("Use Direct", now that a lane decodes it) moves it.
+
+## The controller database
+
+The fleet's list of controllers (dish-website `docs/controller-db.md`) ships
+in DishCore's resources under `controllers-v1/`, byte for byte with its
+manifest, and is read through `CoreResourceBundle`, which asks the app's
+`Contents/Resources` first as `ResourceBundle` does. `decodeControllerDatabase`
+turns `controllers.json` into immutable `ControllerRecord`s (the
+`platforms.mac` rule applied), `ControllerStrings` holds the words with `en`
+as the fallback, and `ControllerIndex` maps `vid:pid` to record. The check's
+decisions are pure (`controllerDbGate`, `manifestStep`, `installStep`);
+`ControllerDbSource` (a `StateSource<ControllerDbStatus>` with the index as a
+second source) performs them over the `ControllerDbGateway`
+(`ControllerDbHTTPClient` in the app), keeps the download in
+`ControllerDbCache` (a `Repository` swapped whole), and is switched by
+`ControllerDbPreferenceStore`. The index reaches `InputPaths`, which hands
+`ServedDirectModels` to both readers (the table first, the data after it,
+read as each pad attaches)
+and checks each Direct pad's hardware against its record's `expect`, and
+`DiagnosticsSource`, which matches every pad to its record and its issues.
+Each Direct lane carries a `DirectWrites` mailbox its writers post the last
+write's verdict into; the paths take it on the Diagnostics tick.
+`PadOutcomesStore` keeps the answers to "Did it work?", and
+`diagnosticsBundleFacts` folds what the page renders into the core's
+`dish-diagnostics.v1` builder, whose file the app hands to the person's mail
+app through `DiagnosticsMailer`. A support report adds the second cut:
+`ReportPreparationSource` (a `StateSource` of an `AsyncState`) asks every
+live satellite whose probe names 2.3.0 or later for its own view through
+`WifiConnectionManager.connectionSnapshots` (the `HTTPClient` gateway,
+two seconds; the core's `satelliteAnswersDiagnostics` and
+`hostSnapshotVerdict` decide) and reads the Mac's conditions through the
+`DeviceConditionsReading` gateway (IOKit power sources, `ProcessInfo`,
+CoreWLAN without the network's name, and IOKit's count of
+`AppleUSBHostController` services for `usbHost`, decided by the core's
+`usbHost(controllerCount:)`); `sessionFacts` reads each session's
+slots, the apply answers `SlotApplyStore` keeps, the ack, the RTT window and
+the client's `WireTally`; `PadFeedback` keeps each pad's `FeedbackTally`.
+Both tallies are relaxed counters the hot path bumps and never reads.
+
+What the file says of a pad's hardware is read off IOKit without opening
+the pad (`Input/HidHardwareDetail.swift`, `Input/UsbRegistry.swift`,
+`Input/UsbDescriptors.swift`): the version (`kIOHIDVersionNumberKey`) and the
+interface number from the HID device's own properties, and, for a pad on
+USB, the `IOUSBHostDevice` found at most three parents up the service plane:
+its entry's id and each `IOUSBHostInterface` child by its number and class
+triple. The census reads that once per device, the HID reader as it attaches
+a Direct pad (USB only, on its own thread), the XUSB bus as an interface
+arrives, and the XUSB reader adds the addresses of the pipes it opened.
+`DiagnosticsSource` then reads each USB device's raw descriptors once, on the
+main actor, through the `UsbDescriptorReading` seam: the device descriptor
+rebuilt from the `IOUSBHostDevice`'s registry fields and every configuration
+descriptor through IOUSBLib's device interface, which hands them over as
+received from the bus without the device being opened (IOUSBHost's own
+objects need an exclusive session, which macOS's drivers hold for a pad).
+Their SHA-256 is `descriptorSha256`, a HID pad's interrupt endpoints come
+from the configuration in force, and the configurations ride the capture.
+The IOKit classes read for the file are `IOHIDDevice` (properties),
+`IOUSBHostDevice` and `IOUSBHostInterface` (registry entries),
+`IOUSBDeviceInterface100` (IOUSBLib, never opened) and
+`AppleUSBHostController` (counted for `usbHost`).
 
 ## Several pads on one satellite
 
@@ -544,7 +617,12 @@ devices macOS 14 and later synthesise), is never opened, and is scheduled on
 the main run loop only while the Diagnostics page shows, re-read on its 1 Hz
 tick and on every match and removal. It reports each device's name, ids,
 transport and `GCController.supportsHIDDevice` (cached per device, as
-GameController.h asks); a test hands `DiagnosticsSource` a fake.
+GameController.h asks); a test hands `DiagnosticsSource` a fake. The
+transport is IOKit's `Transport` word with the Bluetooth link kept in it:
+`Bluetooth` is classic HID, `BluetoothLowEnergy` and the spaced `Bluetooth
+Low Energy` are HID over GATT. A GameController pad takes the transport the
+devices matched to it by name agree on (`transport(forPadNamed:)`, the same
+carriers `hardwareId(forPadNamed:)` reads).
 
 ## How to add a feature
 

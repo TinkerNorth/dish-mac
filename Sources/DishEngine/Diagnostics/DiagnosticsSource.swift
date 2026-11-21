@@ -50,6 +50,23 @@ package struct PadDiagnostics: Equatable, Identifiable {
     package let hardwareId: HidHardwareId?
     /// Standard or Direct, why, and a Direct pad's report rate.
     package let inputPath: SlotInputPath?
+    /// The controller data's record for the pad's identity; nil when none
+    /// matched or the identity is unknown.
+    package var record: ControllerRecord?
+    /// The pad's transport, the Direct path's or the census device's.
+    package var transport: ControllerTransport?
+    /// The same in IOKit's words, with the Bluetooth link.
+    package var hidTransport: HidTransport?
+    /// The census device under the pad, for its product and manufacturer.
+    package var device: HidDeviceFacts?
+    /// What IOKit said of its hardware: the Direct interface's, else what
+    /// the devices matched to it by name agree on.
+    package var hardwareDetail: HidHardwareDetail?
+    /// Its USB device's raw descriptors, read without opening it; nil off
+    /// USB and where IOKit hands none over.
+    package var usbDescriptors: UsbRawDescriptors?
+    /// The record's issues that apply to this Mac and this transport.
+    package var issues: [ControllerIssue] = []
 
     package var id: String {
         slot.id
@@ -77,6 +94,10 @@ package struct DiagnosticsSnapshot: Equatable {
     package var pads: [PadDiagnostics] = []
     /// Every HID game device on the Mac, GameController's and the rest.
     package var inputDevices: [HidDeviceFacts] = []
+    /// The controller data in force and its last check.
+    package var controllerDb = ControllerDbStatus()
+    /// The data's words, for the names and issues the cards show.
+    package var controllerStrings = ControllerStrings(tables: [:])
 
     package init(hosts: [HostDiagnostics] = [], pads: [PadDiagnostics] = [], inputDevices: [HidDeviceFacts] = []) {
         self.hosts = hosts
@@ -102,15 +123,30 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     private var audio: (String) -> PadAudioDiagnostics? = { _ in nil }
     private var backgroundInput: () -> Bool = { false }
     private var inputPath: (String) -> SlotInputPath? = { _ in nil }
+    private var controllerIndex: () -> ControllerIndex = { ControllerIndex(BundledControllerDb.empty, source: .bundled) }
+    private var controllerDb: () -> ControllerDbStatus = { ControllerDbStatus() }
+    private let issueHost: IssueHost
     private var onTick: () -> Void = {}
     private var timer: DispatchSourceTimer?
+    /// The pages watching: Diagnostics and the report it opens may overlap
+    /// as one replaces the other, so the source stops with the last.
+    private var watchers = 0
+
+    private let descriptors: UsbDescriptorReading
+    /// Each USB device's raw descriptors, read once: they do not change
+    /// while the device stays, and a new attach is a new entry.
+    private var readDescriptors: [UInt64: ReadDescriptors] = [:]
 
     init(
         wifi: WifiConnectionManager,
         hub: ConnectionHub,
         moonlight: MoonlightConnectionManager? = nil,
-        census: HidCensusReading = IOKitHidCensus()
+        census: HidCensusReading = IOKitHidCensus(),
+        issueHost: IssueHost = IssueHost(model: "", osMajor: 0),
+        descriptors: UsbDescriptorReading = IOKitUsbDescriptorReader()
     ) {
+        self.descriptors = descriptors
+        self.issueHost = issueHost
         self.wifi = wifi
         self.hub = hub
         self.moonlight = moonlight
@@ -140,8 +176,15 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         onTick = tick
     }
 
+    /// The controller data in force and its status, set once the owner has them.
+    func useControllerData(index: @escaping () -> ControllerIndex, status: @escaping () -> ControllerDbStatus) {
+        controllerIndex = index
+        controllerDb = status
+    }
+
     override package func start() {
         MainActor.assumeIsolated {
+            watchers += 1
             census.start { [weak self] in self?.refresh() }
             refresh()
             arm()
@@ -150,6 +193,8 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
 
     override package func stop() {
         MainActor.assumeIsolated {
+            watchers = max(0, watchers - 1)
+            guard watchers == 0 else { return }
             timer?.cancel()
             timer = nil
             census.stop()
@@ -182,9 +227,10 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         }
         let inBackground = backgroundInput()
         let devices = census.devices()
+        let index = controllerIndex()
         let pads = slots().map { slot in
             let path = inputPath(slot.id)
-            return PadDiagnostics(
+            let pad = PadDiagnostics(
                 slot: slot,
                 wire: slot.boundConnectionId.flatMap { wifi.get($0) }.flatMap { slotWireFacts(of: $0, slotId: slot.id) },
                 audio: audio(slot.id),
@@ -192,8 +238,46 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
                 hardwareId: path?.hardwareId ?? hardwareId(forPadNamed: slot.name, in: devices),
                 inputPath: path
             )
+            return withDescriptors(withRecord(pad, index: index, devices: devices, host: issueHost), devices: devices)
         }
-        return DiagnosticsSnapshot(hosts: hosts, pads: pads, inputDevices: devices)
+        var snapshot = DiagnosticsSnapshot(hosts: hosts, pads: pads, inputDevices: devices)
+        snapshot.controllerDb = controllerDb()
+        snapshot.controllerStrings = index.strings
+        return snapshot
+    }
+
+    /// The pad with its USB device's raw descriptors and their fingerprint:
+    /// the device of the Direct interface it reads, else what the devices
+    /// matched to it by name agree on (twins of a model share theirs).
+    private func withDescriptors(_ pad: PadDiagnostics, devices: [HidDeviceFacts]) -> PadDiagnostics {
+        let ids = usbDeviceIds(of: pad, devices: devices)
+        let read = agreed(ids.map { $0.flatMap(rawDescriptors) }).flatMap(\.self)
+        var known = pad
+        known.usbDescriptors = read
+        known.hardwareDetail?.descriptorSha256 = read.map { sha256Hex(Data($0.bytes)) }
+        known.hardwareDetail?.endpoints = pad.hardwareDetail?.endpoints ?? hidEndpoints(read, detail: pad.hardwareDetail)
+        return known
+    }
+
+    /// A HID pad's interrupt endpoints, from its configuration descriptor:
+    /// the interface its HID device is.
+    private func hidEndpoints(_ descriptors: UsbRawDescriptors?, detail: HidHardwareDetail?) -> BundleEndpoints? {
+        guard let descriptors, let number = detail?.interfaceNumber else { return nil }
+        return interruptEndpoints(descriptors, interfaceNumber: number)
+    }
+
+    /// A Direct pad's own USB device, or those of the devices matched to a
+    /// GameController pad by name.
+    private func usbDeviceIds(of pad: PadDiagnostics, devices: [HidDeviceFacts]) -> [UInt64?] {
+        guard pad.inputPath?.source != .direct else { return [pad.inputPath?.usbDeviceId] }
+        return carriers(ofPadNamed: pad.slot.name, in: devices).map(\.usbDeviceId)
+    }
+
+    private func rawDescriptors(_ registryId: UInt64) -> UsbRawDescriptors? {
+        if let known = readDescriptors[registryId] { return known.raw }
+        let read = descriptors.rawDescriptors(ofUsbDevice: registryId)
+        readDescriptors[registryId] = ReadDescriptors(raw: read)
+        return read
     }
 
     /// A Moonlight host's session, read off its connection when one exists
@@ -204,4 +288,28 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         guard let connection = moonlight.get(summary.id) else { return .resting(info: info) }
         return .read(connection, info: info)
     }
+}
+
+/// What reading a USB device's raw descriptors gave, none included.
+private struct ReadDescriptors {
+    let raw: UsbRawDescriptors?
+}
+
+/// The pad with its census device, its transport, the data's record for its
+/// identity and the record's issues that apply here.
+func withRecord(_ pad: PadDiagnostics, index: ControllerIndex, devices: [HidDeviceFacts], host: IssueHost) -> PadDiagnostics {
+    var known = pad
+    let device = pad.hardwareId.flatMap { id in devices.first { $0.hardwareId == id } }
+    let hidTransport = pad.inputPath?.transport ?? transport(forPadNamed: pad.slot.name, in: devices)
+    let transport = controllerTransport(hidTransport)
+    known.device = device
+    known.hidTransport = hidTransport
+    known.transport = transport
+    known.hardwareDetail = pad.inputPath?.hardware ?? hardwareDetail(forPadNamed: pad.slot.name, in: devices)
+    guard let id = pad.hardwareId else { return known }
+    let vendorId = UInt16(clamping: id.vendorId)
+    let productId = UInt16(clamping: id.productId)
+    known.record = index.record(vendorId: vendorId, productId: productId, transport: transport)
+    known.issues = known.record.map { issuesApplying($0.issues, transport: transport, host: host) } ?? []
+    return known
 }

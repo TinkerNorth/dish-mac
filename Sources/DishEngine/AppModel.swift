@@ -45,6 +45,16 @@ package final class AppModel: ObservableObject {
     package let crashReporting: CrashReportingController
     /// The Moonlight hosts: discovery, pairing, and the sessions the bindings ask for.
     package let moonlight: MoonlightConnectionManager
+    /// The controller data in force and its check against the website.
+    package let controllerDb: ControllerDbSource
+    package let controllerDbPreferences: ControllerDbPreferenceStore
+    /// "Did it work?" after each inspector test.
+    package let outcomes = PadOutcomesStore()
+    /// A support report's preparation: each live host asked, the Mac read.
+    let reportPreparation: ReportPreparationSource
+    /// The Mac's model and macOS, for the issue match and the bundle.
+    let machine: HostMachine
+    let appVersion: String
 
     @Published package private(set) var slots: [ControllerSlot] = []
     @Published package private(set) var connections: [ConnectionSummary] = []
@@ -110,7 +120,10 @@ package final class AppModel: ObservableObject {
             crashUploader: crashUploader,
             moonlight: moonlight,
             hidPads: DirectPadReaders([IOKitHidPadReader(), XusbPadReader(bus: IOUSBHostXusbBus())]),
-            hidCapture: IOKitHidReportCapture()
+            hidCapture: IOKitHidReportCapture(),
+            controllerDbGateway: Self.controllerDbClient(),
+            controllerDbCache: .live(),
+            deviceConditions: .live
         )
         Self.mintMoonlightIdentity(into: moonlight, gateway: gateway)
     }
@@ -145,13 +158,24 @@ package final class AppModel: ObservableObject {
         hidPads: HidPadReading? = nil,
         hidCapture: HidReportCapturing? = nil,
         discovery: WifiConnectionManager.DiscoveryPaths = .live,
-        approvalPolling: WifiConnectionManager.ApprovalPolling = .standard
+        approvalPolling: WifiConnectionManager.ApprovalPolling = .standard,
+        controllerDbGateway: ControllerDbGateway? = nil,
+        controllerDbCache: ControllerDbCache? = nil,
+        machine: HostMachine = .current(),
+        deviceConditions: DeviceConditionsReading = .none
     ) {
         let wifi = WifiConnectionManager(store: store, approvalPolling: approvalPolling, discovery: discovery)
         let moonlight = moonlight ?? Self.defaultMoonlight(defaults: defaults, store: store)
         let hub = ConnectionHub(wifi: wifi, store: store, moonlight: moonlight)
         let prefs = AppPreferenceStores(defaults: defaults)
-        let input = GameControllerInput(paths: Self.inputPaths(prefs, reader: hidPads, capture: hidCapture))
+        let controllerDb = Self.controllerDbSource(prefs.controllerDb, gateway: controllerDbGateway, cache: controllerDbCache)
+        let paths = Self.inputPaths(prefs, reader: hidPads, capture: hidCapture, index: controllerDb.index.state)
+        let input = GameControllerInput(paths: paths)
+        self.controllerDb = controllerDb
+        controllerDbPreferences = prefs.controllerDb
+        self.machine = machine
+        reportPreparation = ReportPreparationSource(snapshots: { await wifi.connectionSnapshots() }, conditions: deviceConditions)
+        self.appVersion = appVersion
         self.store = store
         self.wifi = wifi
         self.moonlight = moonlight
@@ -175,18 +199,12 @@ package final class AppModel: ObservableObject {
         activity = pipeline.activity
         wakeState = pipeline.wakeState
         wake = pipeline.wake
-        diagnostics = DiagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight, census: hidCensus ?? IOKitHidCensus())
+        diagnostics = Self.diagnosticsSource(wifi: wifi, hub: hub, moonlight: moonlight, census: hidCensus, machine: machine)
         recorder = DiagnosticsRecorder(store: diagnosticsLog)
         self.crashLog = crashLog
         returnPaths = ReturnPathRouter(feedback: input.feedback)
         moonlightFeedback = MoonlightFeedbackRouter(actuators: .live(input), gate: gate, table: routing.table)
-        audio = AudioPipeline(
-            hub: hub,
-            wifi: wifi,
-            input: input,
-            slotPreferences: prefs.slots,
-            dependencies: audioDependencies ?? .live()
-        )
+        audio = Self.audioPipeline(hub: hub, wifi: wifi, input: input, slots: prefs.slots, dependencies: audioDependencies)
         inspector = InputInspector(processor: input.processor)
         crashReporting = CrashReportingController(defaults: defaults, uploader: crashUploader)
         lidWatch = LidWatch(clamshell: clamshell ?? IOKitClamshellState())
@@ -206,6 +224,7 @@ package final class AppModel: ObservableObject {
         observeDiagnostics()
         pipeline.start()
         updates.start()
+        controllerDb.start()
         audio.start()
         observeMicIndicator()
         observeReturnPathWiring()
@@ -236,6 +255,34 @@ package final class AppModel: ObservableObject {
         UpdateChecker(preferences: preferences, gateway: manifestGateway ?? releaseManifestGateway(), currentVersion: appVersion)
     }
 
+    /// What the Diagnostics page reads, the issues matched against this Mac.
+    private static func diagnosticsSource(
+        wifi: WifiConnectionManager,
+        hub: ConnectionHub,
+        moonlight: MoonlightConnectionManager,
+        census: HidCensusReading?,
+        machine: HostMachine
+    ) -> DiagnosticsSource {
+        DiagnosticsSource(
+            wifi: wifi,
+            hub: hub,
+            moonlight: moonlight,
+            census: census ?? IOKitHidCensus(),
+            issueHost: IssueHost(model: machine.model, osMajor: machine.osMajor)
+        )
+    }
+
+    /// Controller audio over the live HAL, or the ports a test hands in.
+    private static func audioPipeline(
+        hub: ConnectionHub,
+        wifi: WifiConnectionManager,
+        input: GameControllerInput,
+        slots: SlotPreferenceStore,
+        dependencies: AudioDependencies?
+    ) -> AudioPipeline {
+        AudioPipeline(hub: hub, wifi: wifi, input: input, slotPreferences: slots, dependencies: dependencies ?? .live())
+    }
+
     /// The release permalink, read through URLSession.
     private static func releaseManifestGateway() -> ManifestGateway {
         guard let url = URL(string: UpdateManifest.latestManifestURLString) else {
@@ -243,6 +290,9 @@ package final class AppModel: ObservableObject {
         }
         return URLSessionManifestGateway(url: url)
     }
+}
+
+extension AppModel {
 
     // MARK: - Wiring
 

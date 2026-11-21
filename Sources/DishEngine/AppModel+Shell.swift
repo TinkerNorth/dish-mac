@@ -3,6 +3,7 @@
 
 import Combine
 import DishCore
+import DishKernel
 import Foundation
 
 /// The facts the window's shell and its pages draw beyond the slot list:
@@ -45,6 +46,12 @@ package struct ShellFacts: Equatable {
     package var buttonCheck: ButtonCheckFacts?
     /// The "Help support this controller" capture on screen, nil while none is.
     package var supportCapture: SupportCaptureFacts?
+    /// The controller data in force and its last check.
+    package var controllerDb = ControllerDbStatus()
+    /// "Did it work?": the question waiting per pad and the answers.
+    package var outcomes = PadOutcomes()
+    /// The report being prepared: each live host asked, the Mac's conditions read.
+    package var reportPreparation = ReportPreparationState.idle
 
     package init(wake: WakeState = WakeState(), update: UpdateStatus = UpdateStatus(), crashLogPresent: Bool = false) {
         self.wake = wake
@@ -75,6 +82,7 @@ extension AppModel {
         observePreferences()
         observeDiagnosticsFacts()
         observeInputPaths()
+        observeControllerDb()
     }
 
     /// The pages fold the global switches with each controller's own.

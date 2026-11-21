@@ -180,6 +180,36 @@ struct UpdatesSection: View {
     }
 }
 
+/// The controller database: which version is in force, the last check,
+/// Check now and the switch, worded as the privacy policy words them.
+struct ControllerDbSection: View {
+    @EnvironmentObject var model: AppModel
+    let state: SettingsPageState
+    private let words = L10n.app
+
+    var body: some View {
+        SettingsSection(title: words.controllerDatabase) {
+            VStack(alignment: .leading, spacing: 8) {
+                Text(state.controllerDb.version)
+                    .font(DishFont.detail)
+                    .foregroundColor(DishTheme.onSurface)
+                Text(state.controllerDb.lastCheck)
+                    .font(DishFont.caption)
+                    .foregroundColor(DishTheme.muted)
+                Button(words.checkNow, action: model.checkControllerUpdatesNow)
+                    .buttonStyle(DishOutlinedButtonStyle())
+                    .disabled(!state.controllerDb.canCheck)
+            }
+            .settingsCard()
+            ToggleRow(
+                title: words.checkForControllerUpdatesAutomatically,
+                detail: words.controllerUpdatesDetail,
+                isOn: Binding(get: { state.controllerDb.checksEnabled }, set: model.setControllerUpdatesEnabled)
+            )
+        }
+    }
+}
+
 struct AboutSection: View {
     let state: SettingsPageState
     let push: (Page) -> Void

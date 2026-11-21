@@ -9,7 +9,7 @@ import XCTest
 /// devices" cards, and a pad's USB ID once the census finds it.
 final class InputDevicesMappersTests: XCTestCase {
 
-    private func device(_ id: UInt64, _ name: String, claimed: Bool, transport: HidTransport = .bluetooth) -> HidDeviceFacts {
+    private func device(_ id: UInt64, _ name: String, claimed: Bool, transport: HidTransport = .bluetooth(.classic)) -> HidDeviceFacts {
         HidDeviceFacts(
             id: id,
             name: name,
@@ -54,7 +54,8 @@ final class InputDevicesMappersTests: XCTestCase {
 
     func testEveryTransportIsWorded() {
         XCTAssertEqual(transportText(.usb), "USB")
-        XCTAssertEqual(transportText(.bluetooth), "Bluetooth")
+        XCTAssertEqual(transportText(.bluetooth(.classic)), "Bluetooth")
+        XCTAssertEqual(transportText(.bluetooth(.le)), "Bluetooth", "the link rides the file, not the card")
         XCTAssertEqual(transportText(.other("SPI")), "SPI", "IOKit's own word")
         XCTAssertEqual(transportText(.unknown), L10n.app.unknown)
     }

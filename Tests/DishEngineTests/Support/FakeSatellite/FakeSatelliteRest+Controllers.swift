@@ -14,6 +14,20 @@ extension FakeSatelliteRest {
         FakeSatelliteHttp.json(404, ["error": "connection not found"])
     }
 
+    /// 2.3.0's own view of the connection, over the session routes' proof;
+    /// nil sends nothing, so a stalled answer times the client out.
+    func connectionDiagnostics(_ request: FakeSatelliteHttp.Request) -> FakeSatelliteHttp.Response? {
+        let id = request.plainPath.dropFirst("/api/connections/".count).split(separator: "/").first.map(String.init) ?? ""
+        if case let .unauthorized(code) = authenticate(request, body: [:]) { return unauthorized(code) }
+        let (document, stalled) = store.with { state in
+            state.diagnosticsGets.append(id)
+            return (state.connectionDiagnostics, state.stallConnectionDiagnostics)
+        }
+        if stalled { return nil }
+        guard id == connectionId, let document else { return FakeSatelliteHttp.json(404, ["error": "unknown route"]) }
+        return FakeSatelliteHttp.json(200, raw: document)
+    }
+
     func reconcile(_ request: FakeSatelliteHttp.Request, id: String) -> FakeSatelliteHttp.Response {
         let body = FakeSatelliteHttp.parseJSON(request.body)
         if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }

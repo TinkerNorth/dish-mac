@@ -37,6 +37,16 @@ if [ ! -d "$RESOURCE_BUNDLE" ]; then
 fi
 cp -R "$RESOURCE_BUNDLE" "$APP/Contents/Resources/Dish_Dish.bundle"
 
+# DishCore's resource bundle carries the controller database the app was
+# built with; CoreResourceBundle.core asks Contents/Resources first, for the
+# same reason as the String Catalog's.
+CORE_BUNDLE="$(dirname "$BIN")/Dish_DishCore.bundle"
+if [ ! -d "$CORE_BUNDLE" ]; then
+  echo "Resource bundle not found at $CORE_BUNDLE — run 'swift build' first." >&2
+  exit 1
+fi
+cp -R "$CORE_BUNDLE" "$APP/Contents/Resources/Dish_DishCore.bundle"
+
 # Whichever build system ran, the app ships per-language tables.
 "$PWD/scripts/compile-catalog.sh" "$APP/Contents/Resources/Dish_Dish.bundle"
 

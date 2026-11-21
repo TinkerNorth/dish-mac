@@ -22,7 +22,11 @@ final class XusbLiveTests: XCTestCase {
     func testTheBusHandsOverTheInterfacesAlreadyThereWithWhatTheReaderDecidesOn() throws {
         let queue = ThreadRole.hidReader.queue(label: XusbPadReader.queueLabel, qos: .userInteractive)
         let found = LockedBox<[XusbInterfaceArrival]>([])
-        let events = XusbBusEvents(arrived: { arrival in found.mutate { $0.append(arrival) } }, removed: ignoreInterfaceRemoval)
+        let events = XusbBusEvents(
+            arrived: { arrival in found.mutate { $0.append(arrival) } },
+            removed: ignoreInterfaceRemoval,
+            reads: readsNoDevice
+        )
         queue.sync { IOUSBHostXusbBus().start(queue: queue, events: events) }
         let arrivals = found.get()
         try XCTSkipIf(arrivals.isEmpty, "this machine lists no USB interface")
@@ -31,8 +35,11 @@ final class XusbLiveTests: XCTestCase {
             UsbInterfaceKey.interfaceSubclass, UsbInterfaceKey.interfaceProtocol
         ]
         for arrival in arrivals {
-            XCTAssertEqual(Set(arrival.properties.keys), keys, "registry entry \(arrival.registryId)")
+            let read = Set(arrival.properties.keys)
+            XCTAssertTrue(read.isSuperset(of: keys), "registry entry \(arrival.registryId)")
+            XCTAssertTrue(read.isSubset(of: Set(xusbInterfaceKeys)), "the release beside them, where the entry has one")
             XCTAssertNotEqual(arrival.registryId, 0)
+            XCTAssertNotNil(arrival.usbDevice, "an interface's device is its parent")
         }
     }
 
@@ -71,3 +78,8 @@ final class XusbLiveTests: XCTestCase {
 private func ignoreSlotRemoval(_: String) {}
 
 private func ignoreInterfaceRemoval(_: UInt64) {}
+
+/// A reader that configures no device, so the bus only lists.
+private func readsNoDevice(_: UInt16, _: UInt16) -> Bool {
+    false
+}

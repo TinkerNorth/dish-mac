@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 
 /// A rail destination: the root of the content column.
@@ -28,12 +29,14 @@ enum Page: Hashable {
     case checkButtons(slotId: String)
     /// "Help support this controller", over a device key `SupportTarget` reads.
     case helpSupport(deviceKey: String)
+    /// "Report a problem" and "Ask a question", opened on a category.
+    case supportReport(category: SupportReportCategory)
 }
 
 /// Where a page lives when something outside the window asks for it.
 func homeDestination(of page: Page) -> Destination {
     switch page {
-    case .diagnostics, .inspector, .crashReport, .licenses, .help: .settings
+    case .diagnostics, .inspector, .crashReport, .licenses, .help, .supportReport: .settings
     case .moonlightHosts: .connections
     case .configureBinding, .setup: .home
     case .deadZones, .checkButtons, .helpSupport: .controllers

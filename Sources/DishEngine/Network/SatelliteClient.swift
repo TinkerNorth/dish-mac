@@ -103,6 +103,8 @@ final class SatelliteClient {
     /// Consecutive un-ACKed heartbeats. Bumped on the heartbeat timer, zeroed
     /// on the receive queue.
     let missedAcks = AtomicInt(0)
+    /// Messages of each kind sent and received this session.
+    let tally = WireTally()
     /// Liveness flag. Written from the heartbeat/receive queues, read from
     /// the `WifiConnection` alive tick.
     let connectionAlive = AtomicBool(true)

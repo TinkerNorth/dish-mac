@@ -49,6 +49,7 @@ struct DishApp: App {
                 .environmentObject(navigation)
                 .environmentObject(notifications)
                 .environment(\.pasteboard, .system)
+                .environment(\.diagnosticsMailer, .system)
                 .frame(minWidth: DishSize.windowMinWidth, minHeight: DishSize.windowMinHeight)
                 .background(DishTheme.background.ignoresSafeArea())
                 .onAppear(perform: bindNotifiers)

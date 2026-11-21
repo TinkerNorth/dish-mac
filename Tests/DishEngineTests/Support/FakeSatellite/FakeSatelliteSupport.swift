@@ -219,6 +219,12 @@ final class FakeSatelliteStore {
         var ackBackendAvailableOverride: Bool?
         /// Version 3: the probe grants the mic, the speaker and the haptics lanes.
         var controllerAudioEnabled = false
+        /// 2.3.0's connection diagnostics: nil answers 404 as an older
+        /// satellite does; `stallConnectionDiagnostics` never answers.
+        var connectionDiagnostics: String?
+        var stallConnectionDiagnostics = false
+        /// What the capabilities probe names as the satellite's version.
+        var serverVersion = "1.6.0"
         // Records.
         var sessionPuts: [[String: Any]] = []
         var reconcileGets: [String] = []
@@ -226,6 +232,7 @@ final class FakeSatelliteStore {
         var pairStatusPolls = 0
         var heartbeatCount = 0
         var catalogRequests = 0
+        var diagnosticsGets: [String] = []
         var frames: [FakeSatelliteFrame] = []
         var replayDrops = 0
         var authFailDrops = 0

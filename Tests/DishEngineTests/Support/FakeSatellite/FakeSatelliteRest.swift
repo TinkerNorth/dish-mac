@@ -158,9 +158,11 @@ final class FakeSatelliteRest {
         case ("DELETE", "/api/pair"): return selfUnpair(request)
         case ("PUT", "/api/connections"): return putSession(request, on: connection)
         case ("GET", "/api/server/capabilities"):
-            return FakeSatelliteHttp.json(200, raw: Self.capabilitiesJSON(controllerAudio: store.with { $0.controllerAudioEnabled }))
+            let (audio, version) = store.with { ($0.controllerAudioEnabled, $0.serverVersion) }
+            return FakeSatelliteHttp.json(200, raw: Self.capabilitiesJSON(controllerAudio: audio, serverVersion: version))
         case ("GET", "/api/catalog"): return catalog(request)
         default:
+            if request.method == "GET", request.plainPath.hasSuffix("/diagnostics") { return connectionDiagnostics(request) }
             if request.plainPath.hasPrefix("/api/connections/") { return connectionSubroute(request) }
             return FakeSatelliteHttp.json(404, ["error": "unknown route"])
         }
@@ -306,13 +308,14 @@ final class FakeSatelliteRest {
     }
 
     /// Every requested descriptor's apply result: the failure knob's code, or
-    /// `ok`.
+    /// `ok` on the fake's one backend (null when the slot did not plug).
     private static func appliedControllers(_ controllers: [[String: Any]], failure: String?) -> [[String: Any]] {
         controllers.map { ctrl -> [String: Any] in
             [
                 "ctrlIdx": ctrl["ctrlIdx"] as? Int ?? 0,
                 "result": failure ?? "ok",
                 "appliedType": ctrl["type"] as? Int ?? 0,
+                "backend": failure == nil ? "fake" : NSNull(),
                 "motion": ["sinkSupportedForType": true, "backendOk": true]
             ]
         }

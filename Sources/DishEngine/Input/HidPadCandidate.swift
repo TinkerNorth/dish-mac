@@ -40,6 +40,13 @@ struct HidPadCandidate: Equatable {
     /// macOS asks for Input Monitoring before opening it: its collections
     /// include a keyboard, a mouse or a touchpad.
     var needsInputMonitoring = false
+    /// What the device showed of its report paths as it arrived, for the
+    /// record's expect check; IOHID shows report sizes, not endpoints.
+    var observedEndpoints = ObservedEndpoints(input: nil, output: nil)
+    /// What IOKit said of the hardware as it arrived.
+    var detail = HidHardwareDetail()
+    /// The IORegistry entry of the USB device above the interface; nil off USB.
+    var usbDeviceId: UInt64?
 
     /// The model's name, else the device's own, else its USB identity.
     var name: String {
@@ -101,28 +108,38 @@ let hidRequiresInputMonitoringKey = "RequiresTCCAuthorization"
 let hidPadPropertyKeys = [
     kIOHIDProductKey, kIOHIDVendorIDKey, kIOHIDProductIDKey, kIOHIDTransportKey, kIOHIDPrimaryUsagePageKey,
     kIOHIDPrimaryUsageKey, kIOHIDDeviceUsagePairsKey, kIOHIDGCSyntheticDeviceKey, kIOHIDMaxInputReportSizeKey,
-    kIOHIDReportDescriptorKey, hidInterfaceNumberKey, hidRequiresInputMonitoringKey
+    kIOHIDReportDescriptorKey, hidInterfaceNumberKey, hidRequiresInputMonitoringKey, kIOHIDMaxOutputReportSizeKey,
+    kIOHIDVersionNumberKey
 ]
 
 /// The manager's matching: each model read by its USB identity (every
-/// interface of it; the candidate picks the one that carries the pad), and
-/// every game usage, all with `GCSyntheticDevice` false.
-func hidPadMatching() -> [[String: Any]] {
-    let byIdentity = directModels.filter { $0.rule != .whenMacOSCannot }.map { model in
+/// interface of it; the candidate picks the one that carries the pad), the
+/// served ones the data adds among them, every device of the vendors the
+/// table reads by identity, and every game usage, all with
+/// `GCSyntheticDevice` false. The matching is set once, as the reader
+/// starts; matching those vendors whole is what lets a row the data serves
+/// later meet its pad at the next attach.
+func hidPadMatching(served: ServedDirectModels = .none) -> [[String: Any]] {
+    let identified = directModels.filter { $0.rule != .whenMacOSCannot }
+    let models = identified + served.matchedByIdentity
+    let byIdentity = models.map { model in
         [kIOHIDVendorIDKey: Int(model.vendorId), kIOHIDProductIDKey: Int(model.productId), kIOHIDGCSyntheticDeviceKey: false]
     }
-    return byIdentity + hidCensusMatching()
+    let vendors = Set(identified.map(\.vendorId)).sorted()
+    let byVendor = vendors.map { vendorId in [kIOHIDVendorIDKey: Int(vendorId), kIOHIDGCSyntheticDeviceKey: false] }
+    return byIdentity + byVendor + hidCensusMatching()
 }
 
 /// The device the reader reads, or nil: a synthetic device, a Nintendo
-/// device the model table does not name, a device with no game usage, and
-/// a descriptor with nothing gamepad-like in it are all left alone.
-func hidPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
+/// device neither the model table nor the data names, a device with no game
+/// usage, and a descriptor with nothing gamepad-like in it are all left
+/// alone. The table is read first, the active data after it.
+func hidPadCandidate(_ properties: [String: Any], served: ServedDirectModels = .none) -> HidPadCandidate? {
     let synthetic = properties[kIOHIDGCSyntheticDeviceKey] as? Bool == true
     guard !synthetic else { return nil }
     let vendorId = UInt16(clamping: properties[kIOHIDVendorIDKey] as? Int ?? 0)
     let productId = UInt16(clamping: properties[kIOHIDProductIDKey] as? Int ?? 0)
-    let model = directModel(vendorId: vendorId, productId: productId)
+    let model = directModel(vendorId: vendorId, productId: productId, served: served)
     guard let decoder = laneDecoder(model: model, vendorId: vendorId, productId: productId, properties: properties) else { return nil }
     let declaredCapacity = properties[kIOHIDMaxInputReportSizeKey] as? Int ?? 0
     var candidate = HidPadCandidate(
@@ -135,6 +152,8 @@ func hidPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
         reportCapacity: max(declaredCapacity, HidPadLimits.minimumReportCapacity)
     )
     candidate.needsInputMonitoring = properties[hidRequiresInputMonitoringKey] as? Bool == true
+    candidate.observedEndpoints = observedReportPaths(properties)
+    candidate.detail = hidHardwareDetail(properties)
     return candidate
 }
 
@@ -148,7 +167,8 @@ private func laneDecoder(model: DirectModel?, vendorId: UInt16, productId: UInt1
     case .steamControllerBle: steamInterface(model, properties) ? .steamControllerBle : nil
     case .steamTriton: steamInterface(model, properties) ? .steamTriton : nil
     case .xusb: nil
-    case .hidGamepad, nil: descriptorDecoder(vendorId: vendorId, productId: productId, properties: properties)
+    case let .hidGamepad(order): descriptorDecoder(vendorId: vendorId, order: order, properties: properties)
+    case nil: descriptorDecoder(vendorId: vendorId, order: .western, properties: properties)
     }
 }
 
@@ -162,12 +182,19 @@ private func steamInterface(_ model: DirectModel?, _ properties: [String: Any]) 
     )
 }
 
-private func descriptorDecoder(vendorId: UInt16, productId: UInt16, properties: [String: Any]) -> DirectLaneDecoder? {
+private func descriptorDecoder(vendorId: UInt16, order: HidButtonOrder, properties: [String: Any]) -> DirectLaneDecoder? {
     let nintendoLeftToMacOS = vendorId == DirectVendor.nintendo
     guard !nintendoLeftToMacOS, declaresGameUsage(properties) else { return nil }
     guard let descriptor = properties[kIOHIDReportDescriptorKey] as? Data else { return nil }
-    let order = hidButtonOrder(vendorId: vendorId, productId: productId)
     return HidGamepadLayout.parse(descriptor: [UInt8](descriptor), order: order).map(DirectLaneDecoder.hidGamepad)
+}
+
+/// An input or output report path exists when the device declares a report
+/// of that kind; a size IOKit does not give is not seen.
+func observedReportPaths(_ properties: [String: Any]) -> ObservedEndpoints {
+    let input = (properties[kIOHIDMaxInputReportSizeKey] as? Int).map { $0 > 0 }
+    let output = (properties[kIOHIDMaxOutputReportSizeKey] as? Int).map { $0 > 0 }
+    return ObservedEndpoints(input: input, output: output)
 }
 
 private func declaresGameUsage(_ properties: [String: Any]) -> Bool {

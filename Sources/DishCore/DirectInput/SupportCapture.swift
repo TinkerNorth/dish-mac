@@ -90,14 +90,25 @@ public struct SupportDevice: Equatable, Sendable {
     /// IOKit's transport word, "USB" or "Bluetooth".
     public let transport: String
     public let descriptor: [UInt8]
+    /// The HID interface's number; nil where IOKit gives none.
+    public let interfaceNumber: Int?
 
-    public init(vendorId: UInt16, productId: UInt16, product: String, manufacturer: String, transport: String, descriptor: [UInt8]) {
+    public init(
+        vendorId: UInt16,
+        productId: UInt16,
+        product: String,
+        manufacturer: String,
+        transport: String,
+        descriptor: [UInt8],
+        interfaceNumber: Int? = nil
+    ) {
         self.vendorId = vendorId
         self.productId = productId
         self.product = product
         self.manufacturer = manufacturer
         self.transport = transport
         self.descriptor = descriptor
+        self.interfaceNumber = interfaceNumber
     }
 
     public var hardwareKey: String {
@@ -120,7 +131,42 @@ public enum SupportLimits {
     /// A stick swept through its travel sends hundreds of distinct reports;
     /// the first ones say enough.
     public static let reportsPerStep = 32
+    /// `usb-descriptors-v1`'s reports at rest.
+    public static let restReports = 20
 }
+
+/// One input report at rest, by when it arrived on the wall clock.
+public struct RestReport: Equatable, Sendable {
+    public let atMs: Int64
+    public let bytes: [UInt8]
+
+    public init(atMs: Int64, bytes: [UInt8]) {
+        self.atMs = atMs
+        self.bytes = bytes
+    }
+}
+
+/// One input report as the capture's thread stamped it, on the uptime clock.
+public struct TimedReport: Equatable, Sendable {
+    public let bytes: [UInt8]
+    public let uptimeNs: UInt64
+
+    public init(bytes: [UInt8], uptimeNs: UInt64) {
+        self.bytes = bytes
+        self.uptimeNs = uptimeNs
+    }
+}
+
+/// Each report placed on the wall clock by its age when the two clocks
+/// were read together; one stamped after that moment is placed at it.
+public func restReports(_ reports: [TimedReport], nowUptimeNs: UInt64, nowWallMs: Int64) -> [RestReport] {
+    reports.map { report in
+        let ageNs = nowUptimeNs > report.uptimeNs ? nowUptimeNs - report.uptimeNs : 0
+        return RestReport(atMs: nowWallMs - Int64(ageNs / nanosecondsPerMillisecond), bytes: report.bytes)
+    }
+}
+
+private let nanosecondsPerMillisecond: UInt64 = 1_000_000
 
 public enum SupportPhase: Equatable, Sendable {
     /// Waiting for the device to be found, or found again.
@@ -135,6 +181,8 @@ public struct SupportCaptureState: Equatable, Sendable {
     /// The distinct reports of the step on screen, in arrival order.
     public var current: [[UInt8]] = []
     public var records: [SupportStepRecord] = []
+    /// The reports at rest, every one, repeats included.
+    public var rest: [RestReport] = []
 
     public init() {}
 
@@ -153,6 +201,9 @@ public enum SupportCaptureEvent: Equatable, Sendable {
     case deviceLost
     /// The reports the ring held, oldest first.
     case reports([[UInt8]])
+    /// The reports at rest the capture held as the person moved on from the
+    /// first step.
+    case restTaken([RestReport])
     case next
     case skip
 }
@@ -163,6 +214,7 @@ public func reduceSupportCapture(_ state: SupportCaptureState, _ event: SupportC
     case let .deviceFound(device): next.device = device
     case .deviceLost: next.device = nil
     case let .reports(reports): next.current = collected(state, reports)
+    case let .restTaken(reports): next.rest = restKept(state, reports)
     case .next: return finishedStep(state, reports: state.current)
     case .skip: return finishedStep(state, reports: nil)
     }
@@ -177,6 +229,13 @@ private func collected(_ state: SupportCaptureState, _ reports: [[UInt8]]) -> [[
         kept.append(report)
     }
     return kept
+}
+
+/// Reports are at rest only while the first step is on screen with the
+/// device open; the first twenty are kept, repeats and all.
+private func restKept(_ state: SupportCaptureState, _ reports: [RestReport]) -> [RestReport] {
+    let atRest = state.phase == .stepping && state.step == .atRest
+    return atRest ? Array(reports.prefix(SupportLimits.restReports)) : state.rest
 }
 
 /// Only a step on screen with its device open moves on.
@@ -231,6 +290,22 @@ private func stepLines(_ record: SupportStepRecord) -> [String] {
     guard let reports = record.reports else { return ["\(record.step.reportName): skipped"] }
     guard !reports.isEmpty else { return ["\(record.step.reportName): no reports"] }
     return ["\(record.step.reportName):"] + reports.map { SupportReportLayout.indent + hexBytes($0) }
+}
+
+/// The capture in `usb-descriptors-v1`'s terms: its strings, the system's
+/// report descriptor, the reports at rest and the guided text; nil before
+/// the device was found. The USB descriptors are added from the pad's USB
+/// device.
+public func bundleCapture(_ state: SupportCaptureState) -> BundleCapture? {
+    guard let device = state.device else { return nil }
+    return BundleCapture(
+        product: device.product.isEmpty ? nil : device.product,
+        manufacturer: device.manufacturer.isEmpty ? nil : device.manufacturer,
+        interfaceNumber: device.interfaceNumber,
+        reportDescriptor: device.descriptor,
+        restReports: state.rest,
+        guided: supportReportText(state)
+    )
 }
 
 /// "Controller support: <product> (<vid:pid>)", the issue's title.

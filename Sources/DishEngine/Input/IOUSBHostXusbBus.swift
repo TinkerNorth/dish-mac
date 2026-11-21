@@ -9,9 +9,11 @@
 // device-level personality of its own beside its interface one. So a
 // vendor-class device's interfaces appear only once someone selects its
 // configuration, and Dish selects the first one of a model it reads when
-// none is selected. IOUSBHostInterface matching takes only the USB class
-// specification's key combinations, so every interface is watched and the
-// reader decides which it reads.
+// none is selected. Every device is watched and the reader asks, as each
+// arrives, whether it reads its model by the data in force then; every
+// interface is watched too, since IOUSBHostInterface matching takes only the
+// USB class specification's key combinations, and the reader decides which
+// it reads.
 
 import DishCore
 import Foundation
@@ -24,18 +26,14 @@ func usbDeviceNeedsConfiguration(currentConfiguration: Int?) -> Bool {
     (currentConfiguration ?? 0) == 0
 }
 
-/// The XUSB models' devices by USB identity, a combination IOUSBHostDevice
-/// matching takes.
-func xusbDeviceIdentities() -> [[String: Int]] {
-    directModels.filter { $0.decoder == .xusb }.map { model in
-        [UsbInterfaceKey.vendorId: Int(model.vendorId), UsbInterfaceKey.productId: Int(model.productId)]
-    }
-}
+/// The keys a device's identity is read under as it arrives.
+private let usbDeviceIdentityKeys = [UsbInterfaceKey.vendorId, UsbInterfaceKey.productId]
 
-/// The interface properties the reader decides on.
-private let xusbInterfaceKeys = [
+/// The interface properties the reader decides on, and the release it
+/// reports.
+let xusbInterfaceKeys = [
     UsbInterfaceKey.vendorId, UsbInterfaceKey.productId, UsbInterfaceKey.interfaceClass,
-    UsbInterfaceKey.interfaceSubclass, UsbInterfaceKey.interfaceProtocol
+    UsbInterfaceKey.interfaceSubclass, UsbInterfaceKey.interfaceProtocol, UsbInterfaceKey.deviceRelease
 ]
 
 final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
@@ -64,9 +62,7 @@ final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
         guard let port = IONotificationPortCreate(kIOMainPortDefault) else { return }
         IONotificationPortSetDispatchQueue(port, queue)
         self.port = port
-        for identity in xusbDeviceIdentities() {
-            watch(matching(kIOUSBHostDeviceClassName, identity), kIOFirstMatchNotification, xusbDevicesMatched)
-        }
+        watch(matching(kIOUSBHostDeviceClassName, [:]), kIOFirstMatchNotification, xusbDevicesMatched)
         watch(matching(kIOUSBHostInterfaceClassName, [:]), kIOFirstMatchNotification, xusbInterfacesMatched)
         watch(matching(kIOUSBHostInterfaceClassName, [:]), kIOTerminatedNotification, xusbInterfacesTerminated)
     }
@@ -84,23 +80,40 @@ final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
     }
 
     fileprivate func devicesMatched(_ iterator: io_iterator_t) {
-        for service in drain(iterator) {
-            configureIfNeeded(service)
+        for service in drainIterator(iterator) {
+            configureIfRead(service)
             IOObjectRelease(service)
         }
     }
 
+    /// Only a device of a model the reader reads is configured.
+    private func configureIfRead(_ service: io_service_t) {
+        let identity = registryProperties(service, keys: usbDeviceIdentityKeys)
+        let vendorId = UInt16(clamping: identity[UsbInterfaceKey.vendorId] as? Int ?? 0)
+        let productId = UInt16(clamping: identity[UsbInterfaceKey.productId] as? Int ?? 0)
+        guard events?.reads(vendorId, productId) == true else { return }
+        configureIfNeeded(service)
+    }
+
+    /// Each interface arrives with its device's interfaces, read off the
+    /// IORegistry for the diagnostics file.
     fileprivate func interfacesMatched(_ iterator: io_iterator_t) {
-        for service in drain(iterator) {
+        for service in drainIterator(iterator) {
             let properties = registryProperties(service, keys: xusbInterfaceKeys)
             let port = IOUSBHostXusbPort(service)
-            events?.arrived(XusbInterfaceArrival(registryId: registryId(of: service), properties: properties, port: port))
+            let arrival = XusbInterfaceArrival(
+                registryId: registryId(of: service),
+                properties: properties,
+                port: port,
+                usbDevice: usbDeviceListing(above: service)
+            )
+            events?.arrived(arrival)
             IOObjectRelease(service)
         }
     }
 
     fileprivate func interfacesTerminated(_ iterator: io_iterator_t) {
-        for service in drain(iterator) {
+        for service in drainIterator(iterator) {
             events?.removed(registryId(of: service))
             IOObjectRelease(service)
         }
@@ -128,21 +141,6 @@ private func matching(_ className: String, _ keys: [String: Int]) -> CFDictionar
     let dictionary = IOServiceMatching(className) as NSMutableDictionary
     dictionary.addEntries(from: keys)
     return dictionary
-}
-
-private func drain(_ iterator: io_iterator_t) -> [io_service_t] {
-    Array(sequence(state: iterator) { iterator in
-        let service = IOIteratorNext(iterator)
-        return service == 0 ? nil : service
-    })
-}
-
-private func registryValue(_ service: io_service_t, _ key: String) -> Any? {
-    IORegistryEntryCreateCFProperty(service, key as CFString, kCFAllocatorDefault, 0)?.takeRetainedValue()
-}
-
-private func registryProperties(_ service: io_service_t, keys: [String]) -> [String: Any] {
-    Dictionary(uniqueKeysWithValues: keys.compactMap { key in registryValue(service, key).map { (key, $0) } })
 }
 
 /// The identity every notification about one service shares.
@@ -197,17 +195,19 @@ final class IOUSBHostXusbPort: XusbPort {
 final class IOUSBHostXusbInterface: XusbOpenInterface {
     let input: UsbInputPipe
     let output: UsbOutputPipe?
+    let endpoints: BundleEndpoints
     private let interface: IOUSBHostInterface
     private let inputPipe: IOUSBHostInputPipe
 
     init(_ interface: IOUSBHostInterface) throws {
-        guard let endpoints = xusbEndpoints(interfaceEndpoints(interface)) else {
+        guard let pair = xusbEndpoints(interfaceEndpoints(interface)) else {
             throw NSError(domain: IOUSBHostErrorDomain, code: Int(kIOReturnNotFound))
         }
-        let inputPipe = try IOUSBHostInputPipe(interface, endpoints.input)
+        let inputPipe = try IOUSBHostInputPipe(interface, pair.input)
         self.inputPipe = inputPipe
         input = inputPipe
-        output = try endpoints.output.map { try IOUSBHostOutputPipe(interface, $0) }
+        output = try pair.output.map { try IOUSBHostOutputPipe(interface, $0) }
+        endpoints = BundleEndpoints(input: pair.input.address, output: pair.output?.address)
         self.interface = interface
     }
 

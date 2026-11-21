@@ -135,9 +135,32 @@ final class HidPadCandidateTests: XCTestCase {
         XCTAssertEqual(windowMs, 30, "about 30 ms, as SDL waits")
     }
 
+    func testACandidateCarriesItsVersionAndItsDescriptorsFingerprint() throws {
+        var properties = DirectFixtures.gamepadProperties()
+        properties[kIOHIDVersionNumberKey] = 0x0210
+        let candidate = try DirectFixtures.candidate(properties)
+        XCTAssertEqual(candidate.detail.versionNumber, 0x0210)
+        XCTAssertNil(candidate.detail.descriptorSha256, "Diagnostics fingerprints the raw USB descriptors")
+        XCTAssertNil(candidate.detail.interfaces, "the reader reads the IORegistry as it opens the device")
+        XCTAssertNil(candidate.usbDeviceId)
+    }
+
+    func testTheUsbDeviceAboveACandidateGivesItsInterfacesAndItsEntry() throws {
+        let listing = UsbDeviceListing(registryId: 77, interfaces: XusbFixtures.interfaces)
+        let candidate = try DirectFixtures.candidate(DirectFixtures.gamepadProperties()).with(usbDevice: listing)
+        XCTAssertEqual(candidate.usbDeviceId, 77)
+        XCTAssertEqual(candidate.detail.interfaces?.map(\.number), [0, 1, 2, 3])
+        XCTAssertNil(try DirectFixtures.candidate(DirectFixtures.gamepadProperties()).with(usbDevice: nil).detail.interfaces)
+    }
+
+    func testTheReaderAsksIOKitForTheVersion() {
+        XCTAssertTrue(hidPadPropertyKeys.contains(kIOHIDVersionNumberKey))
+        XCTAssertTrue(hidPadPropertyKeys.contains(kIOHIDReportDescriptorKey))
+    }
+
     func testTheTransportWordsInADevcapsLine() {
         XCTAssertEqual(transportWord(.usb), "usb")
-        XCTAssertEqual(transportWord(.bluetooth), "bluetooth")
+        XCTAssertEqual(transportWord(.bluetooth(.classic)), "bluetooth")
         XCTAssertEqual(transportWord(.other("SPI")), "SPI")
         XCTAssertEqual(transportWord(.unknown), "unknown")
     }
@@ -195,7 +218,7 @@ final class HidPadCandidateTests: XCTestCase {
         let pad = try DirectFixtures.candidate(bluetoothValveProperties(productId: 0x1106))
         XCTAssertEqual(pad.decoder, .steamControllerBle)
         XCTAssertEqual(pad.name, "Valve Steam Controller (Bluetooth)")
-        XCTAssertEqual(pad.transport, .bluetooth)
+        XCTAssertEqual(pad.transport, .bluetooth(.le), "IOKit's word names the LE link")
         XCTAssertTrue(pad.needsInputMonitoring, "its keyboard and mouse share the device")
         XCTAssertFalse(pad.receiver)
         XCTAssertFalse(pad.capturable)

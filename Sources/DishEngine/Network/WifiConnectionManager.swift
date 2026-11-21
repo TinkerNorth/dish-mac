@@ -104,6 +104,8 @@ package final class WifiConnectionManager: ObservableObject {
     let typeOverrides = ControllerTypeStore()
     /// The satellite's motion word per binding, from the apply results.
     let motionStatus = MotionBackendStatusStore()
+    /// The satellite's answer per binding, from the apply results.
+    let applyAnswers = SlotApplyStore()
 
     private var perConnCancellables: [String: Set<AnyCancellable>] = [:]
     /// Depth-counted so a superseded approval flow unwinding after its
@@ -325,6 +327,7 @@ package final class WifiConnectionManager: ObservableObject {
         capabilities.removeValue(forKey: id)
         typeOverrides.clearConnection(id)
         motionStatus.clearConnection(id)
+        applyAnswers.clearConnection(id)
         clearStale(id)
         clearRetry(id)
         recomputeAnyRegistering()

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 import GameController
 import XCTest
@@ -76,7 +77,7 @@ final class HidDeviceCensusTests: XCTestCase {
             id: 7,
             name: "N64 Controller",
             hardwareId: HidHardwareId(vendorId: 0x057E, productId: 0x2019),
-            transport: .bluetooth,
+            transport: .bluetooth(.classic),
             claimedByGameController: false
         ))
         XCTAssertEqual(hidDeviceFacts(id: 7, properties: properties(), claimed: true)?.claimedByGameController, true)
@@ -89,21 +90,42 @@ final class HidDeviceCensusTests: XCTestCase {
 
     func testTheTransportWordBecomesItsCase() {
         XCTAssertEqual(hidTransport("USB"), .usb)
-        XCTAssertEqual(hidTransport("Bluetooth"), .bluetooth)
-        XCTAssertEqual(hidTransport("BluetoothLowEnergy"), .bluetooth)
         XCTAssertEqual(hidTransport("SPI"), .other("SPI"))
+        XCTAssertEqual(hidTransport("BT-AACP"), .other("BT-AACP"), "not a Bluetooth HID word")
         XCTAssertEqual(hidTransport(""), .unknown)
         XCTAssertEqual(hidTransport(nil), .unknown)
     }
 
+    func testBluetoothIsTheClassicLink() {
+        XCTAssertEqual(kIOHIDTransportBluetoothValue, "Bluetooth")
+        XCTAssertEqual(hidTransport("Bluetooth"), .bluetooth(.classic))
+    }
+
+    func testEitherSpellingOfBluetoothLowEnergyIsTheLELink() {
+        XCTAssertEqual(kIOHIDTransportBluetoothLowEnergyValue, "BluetoothLowEnergy")
+        XCTAssertEqual(hidTransport("BluetoothLowEnergy"), .bluetooth(.le))
+        XCTAssertEqual(hidTransport("Bluetooth Low Energy"), .bluetooth(.le), "the spaced word hidapi has met")
+    }
+
+    func testAnyOtherBluetoothWordIsBluetoothOverALinkNotNamed() {
+        XCTAssertEqual(hidTransport("BluetoothHIDOverSomething"), .bluetooth(nil))
+    }
+
+    func testEveryUserOfTheTransportStillReadsBluetoothWhateverTheLink() {
+        for link in [BluetoothTransportLayer.classic, .le, nil] {
+            XCTAssertEqual(controllerTransport(.bluetooth(link)), .bluetooth)
+            XCTAssertEqual(transportWord(.bluetooth(link)), "bluetooth")
+        }
+    }
+
     // MARK: - A pad's ids
 
-    private func device(_ id: UInt64, _ name: String, pid: Int, claimed: Bool = true) -> HidDeviceFacts {
+    private func device(_ id: UInt64, _ name: String, pid: Int, claimed: Bool = true, transport: HidTransport = .usb) -> HidDeviceFacts {
         HidDeviceFacts(
             id: id,
             name: name,
             hardwareId: HidHardwareId(vendorId: 0x054C, productId: pid),
-            transport: .usb,
+            transport: transport,
             claimedByGameController: claimed
         )
     }
@@ -125,6 +147,26 @@ final class HidDeviceCensusTests: XCTestCase {
         )
         let edge = device(4, "DualSense Wireless Controller", pid: 0x0DF2)
         XCTAssertNil(hardwareId(forPadNamed: "DualSense Wireless Controller", in: [dualSense, edge]), "two ids under one name say nothing")
+    }
+
+    func testAGameControllerPadTakesTheTransportOfTheDeviceItIsMatchedTo() {
+        let overLE = device(1, "Xbox Wireless Controller", pid: 0x0B13, transport: .bluetooth(.le))
+        XCTAssertEqual(transport(forPadNamed: "xbox wireless controller", in: [overLE]), .bluetooth(.le))
+        let unclaimed = device(2, "Xbox Wireless Controller", pid: 0x0B13, claimed: false, transport: .usb)
+        XCTAssertEqual(
+            transport(forPadNamed: "Xbox Wireless Controller", in: [overLE, unclaimed]),
+            .bluetooth(.le),
+            "a device GameController does not claim is no pad"
+        )
+        XCTAssertNil(transport(forPadNamed: "DualSense Wireless Controller", in: [overLE]), "no device carries the name")
+    }
+
+    func testTwinsOnDifferentLinksSayNoTransport() {
+        let classic = device(1, "DualSense Wireless Controller", pid: 0x0CE6, transport: .bluetooth(.classic))
+        let wired = device(2, "DualSense Wireless Controller", pid: 0x0CE6, transport: .usb)
+        let twin = device(3, "DualSense Wireless Controller", pid: 0x0CE6, transport: .bluetooth(.classic))
+        XCTAssertNil(transport(forPadNamed: "DualSense Wireless Controller", in: [classic, wired]), "which twin is the pad is unknown")
+        XCTAssertEqual(transport(forPadNamed: "DualSense Wireless Controller", in: [classic, twin]), .bluetooth(.classic))
     }
 
     // MARK: - Diagnostics

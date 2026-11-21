@@ -27,6 +27,12 @@ let package = Package(
         .target(
             name: "DishCore",
             path: "Sources/DishCore",
+            resources: [
+                // The controller database the app was built with, byte for
+                // byte as dish-website publishes `/controllers/v1/`; copied,
+                // not processed, so the digests in its manifest still hold.
+                .copy("Resources/controllers-v1")
+            ],
             swiftSettings: warningsAreErrors
         ),
         // The unidirectional-dataflow kernel: StateSource, Composer, Controller,

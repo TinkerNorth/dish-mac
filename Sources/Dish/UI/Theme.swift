@@ -108,6 +108,10 @@ enum DishSize {
     static let welcomeMark: CGFloat = 64
     /// Help & FAQ's reading column.
     static let helpColumn: CGFloat = 640
+    /// The report's text field, a few lines tall.
+    static let reportTextHeight: CGFloat = 96
+    /// The report's file preview, scrolled within itself.
+    static let reportPreviewHeight: CGFloat = 280
 }
 
 /// The spacing scale.

@@ -102,6 +102,7 @@ public struct DirectModel: Equatable, Sendable {
 }
 
 public enum DirectVendor {
+    public static let microsoft: UInt16 = 0x045E
     public static let sony: UInt16 = 0x054C
     public static let nintendo: UInt16 = 0x057E
     public static let eightBitDo: UInt16 = 0x2DC8
@@ -195,6 +196,35 @@ public let directModels: [DirectModel] = [
     valveModel(0x1304, "Valve Steam Controller (2026) Puck", .steamTriton, receiver: true),
     valveModel(0x1305, "Valve Steam Controller (2026) receiver", .steamTriton, receiver: true)
 ]
+
+/// An identity the Mac leaves to macOS on purpose, whatever the controller
+/// database says of it: served data never makes one Direct.
+public struct DeclinedDirectIdentity: Equatable, Sendable {
+    public let vendorId: UInt16
+    public let productId: UInt16
+
+    public init(vendorId: UInt16, productId: UInt16) {
+        self.vendorId = vendorId
+        self.productId = productId
+    }
+}
+
+/// The Joy-Cons and their charging grip stay with macOS, the PDP Afterglow
+/// Wireless's USB port is charge-only, and Microsoft's own Xbox 360
+/// Controller is macOS's: XboxGamepad.dext has a personality for its device
+/// and for its XUSB interface (measured in /System/Library/DriverExtensions
+/// on macOS 27.2).
+public let declinedDirectIdentities: [DeclinedDirectIdentity] = [
+    DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x2006),
+    DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x2007),
+    DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x200E),
+    DeclinedDirectIdentity(vendorId: DirectVendor.pdp, productId: 0x0186),
+    DeclinedDirectIdentity(vendorId: DirectVendor.microsoft, productId: 0x028E)
+]
+
+public func directIdentityDeclined(vendorId: UInt16, productId: UInt16) -> Bool {
+    declinedDirectIdentities.contains(DeclinedDirectIdentity(vendorId: vendorId, productId: productId))
+}
 
 /// The 2015 pad's controller interfaces are its vendor-defined ones; its
 /// keyboard and mouse ride their own.

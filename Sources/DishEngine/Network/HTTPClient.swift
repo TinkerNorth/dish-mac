@@ -231,6 +231,30 @@ final class HTTPClient {
         return out
     }
 
+    /// `GET /api/connections/{id}/diagnostics`: the satellite's own view of
+    /// this connection (2.3.0 and later), over the session routes' proof,
+    /// within `timeout`. The core reads the reply; nothing here decides.
+    func getConnectionDiagnostics(
+        ip: String,
+        port: Int,
+        connectionId: String,
+        deviceId: String,
+        hmacProof: String,
+        timeout: TimeInterval = HostSnapshotPolicy.timeoutSeconds
+    ) async -> HostSnapshotReply {
+        let raw = await perform(
+            path: "/api/connections/\(connectionId)/\(HostSnapshotPolicy.routeSuffix)",
+            ip: ip,
+            port: port,
+            method: "GET",
+            body: nil,
+            deviceId: deviceId,
+            hmacProof: hmacProof,
+            timeout: timeout
+        )
+        return HostSnapshotReply(status: raw.status, body: raw.body, timedOut: raw.timedOut)
+    }
+
     // MARK: - Plumbing
 
     /// One exchange's raw result, before route-specific DTO parsing.
@@ -238,6 +262,8 @@ final class HTTPClient {
     private struct RawReply {
         var status = 0
         var body = Data()
+        /// The request outlived its timeout.
+        var timedOut = false
         /// A transport-level failure with no HTTP status is unreachable; a
         /// body (including a 4xx/5xx error body) means the server answered.
         var reachable: Bool {
@@ -252,10 +278,12 @@ final class HTTPClient {
         method: String,
         body: Data?,
         deviceId: String,
-        hmacProof: String
+        hmacProof: String,
+        timeout: TimeInterval? = nil
     ) async -> RawReply {
         guard let url = URL(string: "https://\(ip):\(port)\(path)") else { return RawReply() }
         var req = URLRequest(url: url)
+        if let timeout { req.timeoutInterval = timeout }
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         // Every authenticated route carries the device id + a proof of the
@@ -270,7 +298,7 @@ final class HTTPClient {
         } catch {
             // Includes TOFU mismatch aborts — indistinguishable from a
             // dropped connection by design.
-            return RawReply()
+            return RawReply(timedOut: (error as? URLError)?.code == .timedOut)
         }
     }
 

@@ -56,6 +56,75 @@ final class SupportCaptureTests: XCTestCase {
         XCTAssertEqual(skipped.records.last, SupportStepRecord(step: .pressA, reports: nil))
     }
 
+    // MARK: - At rest
+
+    private let rest = [RestReport(atMs: 10, bytes: [0x30, 0x00]), RestReport(atMs: 14, bytes: [0x30, 0x00])]
+
+    func testTheReportsAtRestAreTakenWhileTheFirstStepShows() {
+        XCTAssertEqual(SupportStep.allCases.first, .atRest)
+        XCTAssertEqual(reduceSupportCapture(stepping(), .restTaken(rest)).rest, rest, "repeats are kept: their times carry the rate")
+    }
+
+    func testTheReportsAtRestAreTwentyAtMost() {
+        let many = (0 ..< 25).map { RestReport(atMs: Int64($0), bytes: [0x30]) }
+        let taken = reduceSupportCapture(stepping(), .restTaken(many))
+        XCTAssertEqual(SupportLimits.restReports, 20)
+        XCTAssertEqual(taken.rest, Array(many.prefix(20)), "the first twenty, in arrival order")
+    }
+
+    func testReportsAtRestCountOnlyAtTheFirstStepWithTheDeviceOpen() {
+        XCTAssertEqual(reduceSupportCapture(SupportCaptureState(), .restTaken(rest)).rest, [], "nothing before the device opens")
+        let pressing = reduceSupportCapture(stepping(), .next)
+        XCTAssertEqual(reduceSupportCapture(pressing, .restTaken(rest)).rest, [], "a press is not at rest")
+    }
+
+    func testEachReportAtRestIsPlacedOnTheWallClockByItsAge() {
+        let timed = [
+            TimedReport(bytes: [1], uptimeNs: 9_000_000_000),
+            TimedReport(bytes: [2], uptimeNs: 9_004_000_000),
+            TimedReport(bytes: [3], uptimeNs: 10_500_000_000)
+        ]
+        let placed = restReports(timed, nowUptimeNs: 10_000_000_000, nowWallMs: 1_763_586_000_000)
+        let expected = [
+            RestReport(atMs: 1_763_585_999_000, bytes: [1]),
+            RestReport(atMs: 1_763_585_999_004, bytes: [2]),
+            RestReport(atMs: 1_763_586_000_000, bytes: [3])
+        ]
+        XCTAssertEqual(placed, expected, "a report stamped after the clock was read is placed at it")
+    }
+
+    // MARK: - usb-descriptors-v1
+
+    private var described: SupportDevice {
+        SupportDevice(
+            vendorId: 0x057E,
+            productId: 0x2019,
+            product: "N64 Controller",
+            manufacturer: "",
+            transport: "USB",
+            descriptor: [0x05, 0x01],
+            interfaceNumber: 0
+        )
+    }
+
+    func testTheCaptureCarriesItsStringsItsDescriptorTheRestAndTheGuidedText() throws {
+        let found = reduceSupportCapture(SupportCaptureState(), .deviceFound(described))
+        let state = reduceSupportCapture(found, .restTaken(rest))
+        let capture = try XCTUnwrap(bundleCapture(state))
+        XCTAssertNil(capture.device, "the USB descriptors are the Mac's to add, from the pad's USB device")
+        XCTAssertNil(capture.configuration)
+        XCTAssertEqual(capture.guided, supportReportText(state), "the guided capture as the Mac formats it for an issue")
+        XCTAssertEqual(capture.product, "N64 Controller")
+        XCTAssertNil(capture.manufacturer, "a name the device does not give is no string")
+        XCTAssertEqual(capture.interfaceNumber, 0)
+        XCTAssertEqual(capture.reportDescriptor, [0x05, 0x01])
+        XCTAssertEqual(capture.restReports, rest)
+    }
+
+    func testNoDeviceIsNoCapture() {
+        XCTAssertNil(bundleCapture(SupportCaptureState()))
+    }
+
     func testTheSequenceEndsAfterItsLastStepAndALostDeviceIsLookedForAgain() {
         var state = stepping()
         for _ in SupportStep.allCases {

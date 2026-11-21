@@ -39,6 +39,8 @@ protocol XusbOpenInterface: AnyObject {
     var input: UsbInputPipe { get }
     /// Nil for an interface with nowhere to send rumble.
     var output: UsbOutputPipe? { get }
+    /// The addresses of the two pipes.
+    var endpoints: BundleEndpoints { get }
     /// Stops the reads and gives the interface back.
     func close()
 }
@@ -57,12 +59,18 @@ struct XusbInterfaceArrival {
     /// its own class, subclass and protocol.
     let properties: [String: Any]
     let port: XusbPort
+    /// Its USB device as the IORegistry lists it; nil when it showed none
+    /// above it.
+    var usbDevice: UsbDeviceListing?
 }
 
-/// What the bus tells the reader, on the reader's queue.
+/// What the bus tells the reader, and asks of it, on the reader's queue.
 struct XusbBusEvents {
     let arrived: (XusbInterfaceArrival) -> Void
     let removed: (_ registryId: UInt64) -> Void
+    /// Whether the reader reads a model of this USB identity, by the data in
+    /// force as the device arrives: the bus configures only such a device.
+    let reads: (_ vendorId: UInt16, _ productId: UInt16) -> Bool
 }
 
 /// The USB side the reader stands on: IOUSBHost in the app, a fake in tests.
@@ -71,19 +79,22 @@ protocol XusbBus: AnyObject {
     func start(queue: DispatchQueue, events: XusbBusEvents)
 }
 
-/// The IORegistry keys an interface's identity and triple are read under.
+/// The IORegistry keys an interface's identity, number, triple and release
+/// are read under (the SDK's `IOUSBHostFamilyDefinitions.h` matching keys).
 enum UsbInterfaceKey {
     static let vendorId = "idVendor"
     static let productId = "idProduct"
+    static let interfaceNumber = "bInterfaceNumber"
     static let interfaceClass = "bInterfaceClass"
     static let interfaceSubclass = "bInterfaceSubClass"
     static let interfaceProtocol = "bInterfaceProtocol"
+    static let deviceRelease = "bcdDevice"
 }
 
 /// The interface the reader reads, or nil: any interface whose triple is not
-/// a wired 360 pad's, and an XUSB interface of a model the table does not
-/// name as one.
-func xusbPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
+/// a wired 360 pad's, and an XUSB interface of a model neither the table nor
+/// the data in force names as one.
+func xusbPadCandidate(_ properties: [String: Any], served: ServedDirectModels = .none) -> HidPadCandidate? {
     let xusb = isXusbInterface(
         interfaceClass: properties[UsbInterfaceKey.interfaceClass] as? Int,
         subclass: properties[UsbInterfaceKey.interfaceSubclass] as? Int,
@@ -91,8 +102,9 @@ func xusbPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
     )
     let vendorId = UInt16(clamping: properties[UsbInterfaceKey.vendorId] as? Int ?? 0)
     let productId = UInt16(clamping: properties[UsbInterfaceKey.productId] as? Int ?? 0)
-    guard xusb, let model = directModel(vendorId: vendorId, productId: productId), model.decoder == .xusb else { return nil }
-    return HidPadCandidate(
+    let model = directModel(vendorId: vendorId, productId: productId, served: served)
+    guard xusb, let model, model.decoder == .xusb else { return nil }
+    var candidate = HidPadCandidate(
         vendorId: vendorId,
         productId: productId,
         product: "",
@@ -101,6 +113,8 @@ func xusbPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
         decoder: .xusb,
         reportCapacity: HidPadLimits.minimumReportCapacity
     )
+    candidate.detail.versionNumber = properties[UsbInterfaceKey.deviceRelease] as? Int
+    return candidate
 }
 
 extension GameControllerProbe {
@@ -166,6 +180,9 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     private var entries = HidEntryRegistry<Entry>()
     private var wiring: HidPadWiring?
     private var events: HidPadEvents?
+    /// What the data adds to the table, read as each device and interface
+    /// arrives, so a row that arrives applies at a pad's next attach.
+    private var served = ServedDirectModels.none
 
     init(
         bus: XusbBus,
@@ -190,29 +207,46 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
 
     func unclaim(slotId: String) {}
 
+    func useServedModels(_ served: ServedDirectModels) {
+        queue.async { [self] in self.served = served }
+    }
+
     // MARK: - On the queue
 
     private func begin(wiring: HidPadWiring, events: HidPadEvents) {
         self.wiring = wiring
         self.events = events
+        served = wiring.served
         let busEvents = XusbBusEvents(
             arrived: { [weak self] in self?.arrived($0) },
-            removed: { [weak self] in self?.removed($0) }
+            removed: { [weak self] in self?.removed($0) },
+            reads: { [weak self] vendorId, productId in self?.reads(vendorId: vendorId, productId: productId) ?? false }
         )
         bus.start(queue: queue, events: busEvents)
+    }
+
+    private func reads(vendorId: UInt16, productId: UInt16) -> Bool {
+        xusbReads(vendorId: vendorId, productId: productId, served: served)
     }
 
     /// An interface the model table names is opened at once; the paths hear
     /// of it either way, read or refused.
     private func arrived(_ arrival: XusbInterfaceArrival) {
         guard !entries.knows(arrival.registryId), let wiring else { return }
-        guard let candidate = xusbPadCandidate(arrival.properties) else { return }
+        guard let classified = xusbPadCandidate(arrival.properties, served: served) else { return }
+        let candidate = classified.with(usbDevice: arrival.usbDevice)
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
-        let pad = XusbArrivingPad(registryId: arrival.registryId, slotId: slotId, candidate: candidate, wiring: wiring)
+        let pad = XusbArrivingPad(
+            registryId: arrival.registryId,
+            slotId: slotId,
+            candidate: candidate,
+            wiring: wiring,
+            writes: DirectWrites()
+        )
         blockingRegion("xusb.open")
         switch Result(catching: { try arrival.port.open(queue: queue) }) {
-        case let .success(interface): read(pad, interface)
+        case let .success(interface): read(pad.seeing(interface), interface)
         case let .failure(error): refuse(pad, status: ioReturn(of: error))
         }
     }
@@ -220,7 +254,7 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     /// The reads start before the paths hear of the pad: its lane keeps the
     /// first reports as the baseline until it is forwarded.
     private func read(_ pad: XusbArrivingPad, _ interface: XusbOpenInterface) {
-        let output = interface.output.map { XusbOutput(slotId: pad.slotId, pipe: $0, quitBoundMs: quitBoundMs) }
+        let output = interface.output.map { XusbOutput(slotId: pad.slotId, pipe: $0, quitBoundMs: quitBoundMs, writes: pad.writes) }
         let lane = pad.lane(output: output)
         let reads = XusbReadLoop(lane: lane, pipe: interface.input) { [weak self] slotId, status in
             self?.readFailed(slotId, status)
@@ -269,9 +303,20 @@ private struct XusbArrivingPad {
     let slotId: String
     let candidate: HidPadCandidate
     let wiring: HidPadWiring
+    let writes: DirectWrites
+
+    /// What the open interface shows of the pad's endpoints: the IN pipe it
+    /// reads, and an OUT pipe or none, and their addresses.
+    func seeing(_ interface: XusbOpenInterface) -> XusbArrivingPad {
+        var seen = candidate
+        seen.observedEndpoints = ObservedEndpoints(input: true, output: interface.output != nil)
+        seen.detail.endpoints = interface.endpoints
+        return XusbArrivingPad(registryId: registryId, slotId: slotId, candidate: seen, wiring: wiring, writes: writes)
+    }
 
     func lane(output: DirectOutput?) -> HidPadLane {
-        HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: DispatchTime.now().uptimeNanoseconds, output: output)
+        let openedNs = DispatchTime.now().uptimeNanoseconds
+        return HidPadLane(slotId: slotId, candidate: candidate, wiring: wiring, openedNs: openedNs, output: output, writes: writes)
     }
 }
 

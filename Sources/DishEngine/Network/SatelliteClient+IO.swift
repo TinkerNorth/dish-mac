@@ -39,6 +39,7 @@ extension SatelliteClient {
             PacketCodec.writeInnerHeader(msgType: msgType, payloadCount: payloadCount, into: inner)
             encode(UnsafeMutableRawBufferPointer(rebasing: inner[ProtocolConstants.innerHeaderSize...]))
             gate.hold { sealAndSend(datagram, innerCount: innerCount) }
+            tally.sent(msgType)
         }
     }
 
@@ -210,6 +211,7 @@ extension SatelliteClient {
     /// hop threads themselves if they need to.
     private func dispatch(_ inner: PacketCodec.InnerMessage) {
         refreshReceiveHandlers()
+        tally.received(inner.msgType)
         switch inner.msgType {
         case ProtocolConstants.msgHeartbeatAck:
             // Pair the ack with the in-flight ping BEFORE the liveness flags

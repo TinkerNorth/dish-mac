@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 
+import DishCore
 import Foundation
 import GameController
 import IOKit.hid
@@ -19,7 +20,8 @@ package struct HidHardwareId: Hashable {
 /// How a HID device reaches the Mac, from IOKit's `Transport` property.
 package enum HidTransport: Equatable {
     case usb
-    case bluetooth
+    /// The link is nil for a Bluetooth word the SDK does not name.
+    case bluetooth(BluetoothTransportLayer?)
     /// A transport IOKit names that is neither (SPI, I2C, Virtual), in IOKit's own word.
     case other(String)
     /// The device names none.
@@ -35,6 +37,12 @@ package struct HidDeviceFacts: Equatable, Identifiable {
     package let transport: HidTransport
     /// `GCController.supportsHIDDevice`: the framework will vend a controller for it.
     package let claimedByGameController: Bool
+    /// IOKit's manufacturer string; empty when the device names none.
+    package var manufacturer = ""
+    /// What IOKit says of its hardware beyond its ids, read once per device.
+    package var detail = HidHardwareDetail()
+    /// The IORegistry entry of the USB device above it; nil off USB.
+    package var usbDeviceId: UInt64?
 
     package init(id: UInt64, name: String, hardwareId: HidHardwareId, transport: HidTransport, claimedByGameController: Bool) {
         self.id = id
@@ -63,7 +71,7 @@ func hidCensusMatching() -> [[String: Any]] {
 /// The properties the census reads off a device.
 let hidCensusPropertyKeys = [
     kIOHIDProductKey, kIOHIDVendorIDKey, kIOHIDProductIDKey, kIOHIDTransportKey, kIOHIDPrimaryUsagePageKey,
-    kIOHIDPrimaryUsageKey, kIOHIDDeviceUsagePairsKey, kIOHIDGCSyntheticDeviceKey
+    kIOHIDPrimaryUsageKey, kIOHIDDeviceUsagePairsKey, kIOHIDGCSyntheticDeviceKey, kIOHIDManufacturerKey
 ]
 
 /// One device's facts from its properties: nil for a synthetic device and
@@ -76,13 +84,15 @@ func hidDeviceFacts(id: UInt64, properties: [String: Any], claimed: Bool) -> Hid
         vendorId: properties[kIOHIDVendorIDKey] as? Int ?? 0,
         productId: properties[kIOHIDProductIDKey] as? Int ?? 0
     )
-    return HidDeviceFacts(
+    var facts = HidDeviceFacts(
         id: id,
         name: properties[kIOHIDProductKey] as? String ?? "",
         hardwareId: hardwareId,
         transport: hidTransport(properties[kIOHIDTransportKey] as? String),
         claimedByGameController: claimed
     )
+    facts.manufacturer = properties[kIOHIDManufacturerKey] as? String ?? ""
+    return facts
 }
 
 /// Every usage a device declares: its usage pairs and its primary usage.
@@ -101,17 +111,49 @@ private func hidUsage(_ properties: [String: Any], pageKey: String, usageKey: St
 func hidTransport(_ word: String?) -> HidTransport {
     guard let word, !word.isEmpty else { return .unknown }
     if word == kIOHIDTransportUSBValue { return .usb }
-    if word.hasPrefix(kIOHIDTransportBluetoothValue) { return .bluetooth }
+    if word.hasPrefix(kIOHIDTransportBluetoothValue) { return .bluetooth(bluetoothLayers[word]) }
     return .other(word)
+}
+
+/// IOKit's Bluetooth words and the link each names: the SDK's "Bluetooth"
+/// (HID over L2CAP) and "BluetoothLowEnergy" (HID over GATT), and the spaced
+/// "Bluetooth Low Energy" hidapi's `mac/hid.c` also matches. Any other
+/// Bluetooth word names no link.
+private let bluetoothLayers: [String: BluetoothTransportLayer] = [
+    kIOHIDTransportBluetoothValue: .classic,
+    kIOHIDTransportBluetoothLowEnergyValue: .le,
+    "Bluetooth Low Energy": .le
+]
+
+/// The devices GameController claims under the pad's name.
+func carriers(ofPadNamed name: String, in devices: [HidDeviceFacts]) -> [HidDeviceFacts] {
+    let wanted = name.trimmingCharacters(in: .whitespaces).lowercased()
+    return devices.filter { $0.claimedByGameController && $0.name.trimmingCharacters(in: .whitespaces).lowercased() == wanted }
+}
+
+/// What every device carrying a pad's name agrees on: nil when none carries
+/// it, or two that do differ, since which of them is the pad is unknown.
+func agreed<Value: Equatable>(_ values: [Value]) -> Value? {
+    guard let first = values.first, values.allSatisfy({ $0 == first }) else { return nil }
+    return first
 }
 
 /// The ids of the one device GameController claims under the pad's name;
 /// nil when no device, or devices with different ids, carry it.
 func hardwareId(forPadNamed name: String, in devices: [HidDeviceFacts]) -> HidHardwareId? {
-    let wanted = name.trimmingCharacters(in: .whitespaces).lowercased()
-    let carriers = devices.filter { $0.claimedByGameController && $0.name.trimmingCharacters(in: .whitespaces).lowercased() == wanted }
-    let ids = Set(carriers.map(\.hardwareId))
-    return ids.count == 1 ? ids.first : nil
+    agreed(carriers(ofPadNamed: name, in: devices).map(\.hardwareId))
+}
+
+/// A GameController pad's transport, its link included, is the one of the
+/// devices matched to it by name.
+func transport(forPadNamed name: String, in devices: [HidDeviceFacts]) -> HidTransport? {
+    agreed(carriers(ofPadNamed: name, in: devices).map(\.transport))
+}
+
+/// What IOKit says of a GameController pad's hardware, from the devices
+/// matched to it by name.
+func hardwareDetail(forPadNamed name: String, in devices: [HidDeviceFacts]) -> HidHardwareDetail? {
+    agreed(carriers(ofPadNamed: name, in: devices).map(\.detail))
 }
 
 // MARK: - The seam
@@ -139,6 +181,9 @@ final class IOKitHidCensus: HidCensusReading {
     /// `supportsHIDDevice` "is not cheap, be sure to cache the result"
     /// (GCController.h): each device's answer is kept while it stays.
     private var claims: [UInt64: Bool] = [:]
+    /// The hardware detail, read once per device: its version, its USB
+    /// interfaces and entry do not change while it stays.
+    private var details: [UInt64: HidDeviceHardware] = [:]
 
     /// Nothing is created until `start`, so a default argument may build one.
     nonisolated init() {}
@@ -164,6 +209,7 @@ final class IOKitHidCensus: HidCensusReading {
         IOHIDManagerUnscheduleFromRunLoop(manager, CFRunLoopGetMain(), CFRunLoopMode.defaultMode.rawValue)
         self.manager = nil
         claims = [:]
+        details = [:]
         Unmanaged.passUnretained(self).release()
     }
 
@@ -172,6 +218,7 @@ final class IOKitHidCensus: HidCensusReading {
         let facts = present.compactMap(facts(of:))
         let ids = Set(facts.map(\.id))
         claims = claims.filter { ids.contains($0.key) }
+        details = details.filter { ids.contains($0.key) }
         return facts.sorted { ($0.name, $0.id) < ($1.name, $1.id) }
     }
 
@@ -184,7 +231,18 @@ final class IOKitHidCensus: HidCensusReading {
         let properties = Dictionary(uniqueKeysWithValues: hidCensusPropertyKeys.compactMap { key in
             IOHIDDeviceGetProperty(device, key as CFString).map { (key, $0 as Any) }
         })
-        return hidDeviceFacts(id: id, properties: properties, claimed: claim(device, id: id))
+        guard var facts = hidDeviceFacts(id: id, properties: properties, claimed: claim(device, id: id)) else { return nil }
+        let hardware = hardware(of: device, id: id, transport: facts.transport)
+        facts.detail = hardware.detail
+        facts.usbDeviceId = hardware.usbDeviceId
+        return facts
+    }
+
+    private func hardware(of device: IOHIDDevice, id: UInt64, transport: HidTransport) -> HidDeviceHardware {
+        if let known = details[id] { return known }
+        let fresh = hidDeviceHardware(device, transport: transport)
+        details[id] = fresh
+        return fresh
     }
 
     private func claim(_ device: IOHIDDevice, id: UInt64) -> Bool {

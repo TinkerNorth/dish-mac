@@ -253,12 +253,21 @@ extension WifiConnectionManager {
     /// that let go meanwhile has nothing to record.
     func recordSlotOutcome(_ applied: ControllerApplyDto?, index: Int, conn: WifiConnection) {
         guard let slotId = conn.slotId(at: index) else { return }
+        if let applied { recordApplyAnswer(applied, connectionId: conn.id, slotId: slotId) }
         if let applied, applied.slotIsLive {
             conn.markSlotApplied(slotId)
             recordMotionStatus(applied, connectionId: conn.id, slotId: slotId)
         } else {
             reportSlotNotApplied(slotId)
         }
+    }
+
+    /// The satellite's answer for the slot, live or not, for the bundle.
+    private func recordApplyAnswer(_ applied: ControllerApplyDto, connectionId: String, slotId: String) {
+        applyAnswers.setAnswer(
+            SlotApplyAnswer(result: applied.result, appliedType: applied.appliedType, backend: applied.backend),
+            for: SlotKey(connectionId: connectionId, slotId: slotId)
+        )
     }
 
     /// The satellite's word on motion for the binding it just applied.

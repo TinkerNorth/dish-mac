@@ -17,6 +17,137 @@ the repos share a version number.
 
 ---
 
+## [1.4.0] - 2026-11-19
+
+### Added
+
+- **The controller database, bundled and kept current.** The fleet's one
+  list of controllers (dish-website's `/controllers/v1/`, dbVersion 1, 272
+  records) ships inside the app, byte for byte with its manifest, and is read
+  by one decoder into immutable records and an index from `vid:pid` to
+  record; a file of another schema is refused, a record that does not decode
+  is left out alone, unknown fields are ignored. Ten seconds after launch and
+  every six hours, Dish asks `dish.tinkernorth.com` for the manifest with
+  `If-None-Match`; a newer version is downloaded, each file checked against
+  the manifest's SHA-256 and size, parsed, and swapped into
+  `~/Library/Application Support/Dish/controllers-v1/` whole. A failure at
+  any step keeps the data in force. Settings has "Check for controller
+  updates automatically" (on by default; off, nothing is sent) and "Check
+  now", with the version in force and the last check's time and result.
+- **The Mac's Direct table is checked against the data.** A test walks every
+  row of the Direct model table and requires a record of the same identity
+  whose family is the row's decoder (and, for a HID pad, whose button order
+  is the row's), and the other way round for every family the table reads
+  whole; the Joy-Cons, their charging grip and the PDP Afterglow are named
+  as identities the Mac declines.
+- **Served rows reach the Direct path.** Where the HID reader classifies a pad
+  by its USB identity, it reads the table first and the active data after
+  it, so a newer list can teach it a pad of a family it already decodes. A
+  served row still waits for GameController's answer as today, and a record
+  that needs a family or an operation this build lacks is inert: its name
+  and issues show, nothing else applies. Both readers take the data in force
+  as each pad attaches, so a row that arrives while the app runs applies at
+  the pad's next attach: the HID reader's matching meets every device of the
+  vendors it reads by identity, and the XUSB bus asks the reader as each USB
+  device arrives. The XUSB reader takes the data's `auto` Xbox 360 rows, so
+  the 43 such wired pads of dbVersion 1 beyond the Ultimate 2 (Logitech's
+  F310, F510 and F710 in XInput mode, Mad Catz, PDP, Hori, PowerA, Razer and
+  others) are read Direct from this release on; an opt-in Xbox 360 row is not
+  applied, since the reader has no claim to wait for, and Microsoft's own Xbox
+  360 Controller stays with macOS's XboxGamepad driver.
+- **Diagnostics at every level.** A controller's Diagnostics card shows its
+  record's id and name, the record's standing as its chip (Verified, Layout
+  guessed, Flagged), the issues the data lists for this transport on this
+  Mac, and for a Direct pad its hardware check (what IOKit showed at attach
+  against the record's `expect`) and its last write (the report, the route,
+  the time and IOKit's answer). Diagnostics shows the bundled version, the
+  version in force and the last check.
+- **"Did it work?" after each inspector test.** The rumble bench, the test
+  tone, the microphone meter and the drift and range tests each ask once
+  they have run; the answers, twenty a controller, are kept for the run and
+  carried in the diagnostics file.
+- **Diagnostics by email.** The report (below) writes
+  `dish-diagnostics-dish-mac-<yyyyMMdd-HHmmss>.json` (`dish-diagnostics.v1`)
+  and opens a message to `support@tinkernorth.com` in your own mail app, with
+  the page's summary as its body; nothing is sent until you press Send.
+  "Save diagnostics" saves the file where you pick, and is what happens when
+  no mail app takes the message. The file holds the app, the Mac's model and
+  macOS, the data's standing, each controller's record, path, hardware,
+  hardware check, last write and answers, the last support capture on the
+  controller it was taken of, the hosts as "Host 1", "Host 2" and the flight
+  recorder with every host named by its alias; never a pairing key,
+  fingerprint, address, Wi-Fi name or host name.
+
+- **Report a problem and Ask a question.** Email diagnostics gives way to
+  two buttons on Diagnostics that open one page: what it is about (not
+  recognised, no rumble or feedback, connection or latency, controller
+  audio, something else, a question), "What happened, and what did you
+  expect?", the controller it concerns (the first attached pad is
+  suggested; its Help-support capture rides along as `capture`), what the
+  file will hold, "Preview file" with the JSON itself, what it never holds,
+  and "Continue in Mail". The person's words go first in the mail and into
+  the file as `report`; the subject is `Dish support: <category> · Dish for
+  macOS <version> on <model>`, the prefix English in every language so the
+  mailbox can filter on it. Every word is in all six languages.
+- **Each host from both ends.** Opening the report asks every live
+  satellite whose probe names 2.3.0 or later for its own view of the
+  connection (`GET /api/connections/{id}/diagnostics`, the session's proof,
+  two seconds), and embeds it under `hosts[i].snapshot`. An older satellite
+  is not asked and gets the `satellite-capabilities` stand-in from what its
+  probe and catalog said, with `snapshotError` `olderSatellite`;
+  `unknownConnection`, `unauthorized`, `badReply`, `timeout` and `offline`
+  carry the stand-in too, and a refusal never touches the pairing. Every
+  string and key of a host's document names hosts by their aliases. A
+  Moonlight host carries `moonlight-serverinfo`: its app version, never its
+  name. Beside it, `hosts[i].session` is the Mac's own
+  view: each slot as asked and as the satellite answered (type, backend,
+  result, touchpad mode), the last heartbeat ack, the round trip, and every
+  message kind counted each way.
+- **Every controller path, input and output.** Each controller in the file
+  carries `input` (frames, rate, the last report published), `output` lane
+  by lane (count, newest value and time, rumble's target and the last
+  Direct write, the speaker and haptics voices from the audio plan), and
+  `bluetooth` (HID, never an address); a lane the Mac cannot count is null.
+- **The Mac's conditions.** A report's file carries the battery and
+  whether it charges, the thermal state, Low Power Mode, and the Wi-Fi
+  band, signal and rate through CoreWLAN, never the network's name.
+- **The Bluetooth link and the USB host, measured.** A Bluetooth pad's
+  `bluetooth.transportLayer` is the link IOKit's transport word names
+  (`Bluetooth` is `classic`, `BluetoothLowEnergy` and the spaced form hidapi
+  meets are `le`, any other word null), kept in the census's transport value;
+  a GameController pad takes the transport of the HID devices matched to it
+  by name, and none when twins on different links share the name. A report's
+  `device.usbHost` is true when IOKit lists a service of class
+  `AppleUSBHostController`, false when it lists none, null with no answer.
+- **A controller's hardware, as IOKit gives it.** Each controller's
+  `hardware` carries `bcdDevice` (`kIOHIDVersionNumberKey`), its USB
+  device's interfaces from the IORegistry's `IOUSBHostInterface` entries,
+  `descriptorSha256`, the SHA-256 of its raw USB descriptors (the device
+  descriptor rebuilt from the registry's fields, then every configuration
+  descriptor as IOUSBLib hands it over without opening the device), and its
+  endpoints: an XUSB pad's pipes, a HID pad's interrupt IN and OUT from its
+  configuration descriptor. The controller carries `rateHz` and its USB
+  audio function's channels and refusal. `firmware` and `probe` are null,
+  with the reasons in `Tests/PARITY.md`. Nothing opens the pad to read them.
+- **The support capture rides the file as `usb-descriptors-v1`.** The pad's
+  last Help-support capture carries `device` and `configuration` (its USB
+  device and configuration descriptors as hex), `strings` (the manufacturer
+  and product as text, never the serial number), `guided` (the guided
+  capture's text, each step's reports), its HID report descriptor with
+  `source` `os` (IOKit's copy) and its interface number, and `restReports`:
+  its first twenty reports, repeats included, with when each arrived, taken
+  as the person moves on from "At rest".
+
+### Changed
+
+- **The privacy policy** gains "Controller database updates" and
+  "Diagnostics by email", with the report, a host's own view of the
+  connection and the Mac's conditions, effective 2026-11-20.
+- **Hot path: two relaxed counters.** Each satellite datagram sent and each
+  one opened bumps one relaxed counter of its kind (`WireTally`), and each
+  feedback command posted to a pad bumps one and stores its newest value and
+  time (`FeedbackTally`); nothing on either path reads them.
+
 ## [1.3.1] - 2026-11-19
 
 ### Fixed
@@ -837,6 +968,7 @@ Tagged, never published: its release workflow was refused before it started.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[1.4.0]: https://github.com/TinkerNorth/dish-mac/compare/1.3.1...1.4.0
 [1.3.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.1
 [1.3.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.0
 [1.2.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.2.1

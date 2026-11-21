@@ -32,6 +32,9 @@ package enum ObservedPage: Equatable {
     case checkButtons(slotId: String)
     /// "Help support this controller" opens the device while its page shows.
     case helpSupport(deviceKey: String)
+    /// "Report a problem" reads the Diagnostics source while it shows, and
+    /// asks each live host for its own view as it opens.
+    case supportReport
 }
 
 /// The pages' lifecycle as intents: a view's `onAppear` and `onDisappear`
@@ -51,6 +54,7 @@ package extension AppModel {
         case let .setup(seedSlotId): startSetup(seed: seedSlotId)
         case let .checkButtons(slotId): input.paths.beginButtonCheck(slotId: slotId)
         case let .helpSupport(deviceKey): input.paths.support.begin(deviceKey: deviceKey)
+        case .supportReport: openSupportReport()
         }
     }
 
@@ -68,6 +72,7 @@ package extension AppModel {
         case .setup: endSetup()
         case .checkButtons: input.paths.buttonCheck.end()
         case .helpSupport: input.paths.support.end()
+        case .supportReport: diagnostics.stop()
         }
     }
 
@@ -79,6 +84,11 @@ package extension AppModel {
     private func showSettings() {
         refreshCrashLogPresence()
         updates.clock.show()
+    }
+
+    private func openSupportReport() {
+        diagnostics.start()
+        reportPreparation.prepare()
     }
 
     private func leaveInspector(slotId: String) {
@@ -100,6 +110,9 @@ extension AppModel {
             .store(in: &cancellables)
         inspector.statePublisher
             .sink { [weak self] inspection in self?.shellFacts.inspection = inspection }
+            .store(in: &cancellables)
+        reportPreparation.statePublisher
+            .sink { [weak self] preparation in self?.shellFacts.reportPreparation = preparation }
             .store(in: &cancellables)
     }
 }

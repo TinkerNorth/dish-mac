@@ -29,6 +29,8 @@ protocol HidReportCapturing: AnyObject, Sendable {
     func stop()
     /// The reports since the last drain, oldest first.
     func drain() -> [[UInt8]]
+    /// The capture's first reports, every one with its arrival, oldest first.
+    func restReports() -> [TimedReport]
 }
 
 /// Opens nothing: the composition root's default outside the app.
@@ -42,14 +44,20 @@ final class InertHidReportCapture: HidReportCapturing {
     func drain() -> [[UInt8]] {
         []
     }
+
+    func restReports() -> [TimedReport] {
+        []
+    }
 }
 
 // MARK: - Which device
 
-/// The properties a capture reads off a device as it opens it.
+/// The properties a capture reads off a device as it opens it: its names,
+/// its ids and transport, its descriptor and interface. Never its serial
+/// number.
 let supportPropertyKeys = [
     kIOHIDProductKey, kIOHIDManufacturerKey, kIOHIDVendorIDKey, kIOHIDProductIDKey, kIOHIDTransportKey,
-    kIOHIDReportDescriptorKey, kIOHIDMaxInputReportSizeKey, kIOHIDGCSyntheticDeviceKey
+    kIOHIDReportDescriptorKey, kIOHIDMaxInputReportSizeKey, kIOHIDGCSyntheticDeviceKey, hidInterfaceNumberKey
 ]
 
 /// A USB identity is matched by IOKit; a name is matched among the game
@@ -74,7 +82,8 @@ func supportDevice(_ properties: [String: Any], target: SupportTarget) -> Suppor
         product: properties[kIOHIDProductKey] as? String ?? "",
         manufacturer: properties[kIOHIDManufacturerKey] as? String ?? "",
         transport: properties[kIOHIDTransportKey] as? String ?? "",
-        descriptor: (properties[kIOHIDReportDescriptorKey] as? Data).map { [UInt8]($0) } ?? []
+        descriptor: (properties[kIOHIDReportDescriptorKey] as? Data).map { [UInt8]($0) } ?? [],
+        interfaceNumber: properties[hidInterfaceNumberKey] as? Int
     )
     return names(target, device) ? device : nil
 }
@@ -101,10 +110,10 @@ final class IOKitHidReportCapture: HidReportCapturing, @unchecked Sendable {
 
     init() {}
 
+    /// The ring's leftovers belong to the session that ended.
     func start(target: SupportTarget, events: HidCaptureEvents) {
         stop()
-        // The ring's leftovers belong to the session that ended.
-        _ = ring.drain()
+        ring.restart()
         let next = HidCaptureSession(target: target, events: events, ring: ring)
         session.set(next)
         next.begin()
@@ -117,6 +126,10 @@ final class IOKitHidReportCapture: HidReportCapturing, @unchecked Sendable {
 
     func drain() -> [[UInt8]] {
         ring.drain()
+    }
+
+    func restReports() -> [TimedReport] {
+        ring.restReports()
     }
 }
 
@@ -203,9 +216,9 @@ final class HidCaptureSession: @unchecked Sendable {
         events.lost()
     }
 
-    /// One report, copied into the ring: no allocation.
+    /// One report, copied into the ring with its arrival: no allocation.
     fileprivate func received(_ report: UnsafeMutablePointer<UInt8>, length: Int) {
-        ring.write(UnsafeBufferPointer(start: report, count: min(length, capacity)))
+        ring.write(UnsafeBufferPointer(start: report, count: min(length, capacity)), uptimeNs: DispatchTime.now().uptimeNanoseconds)
     }
 
     private func closeDevice() {

@@ -17,6 +17,7 @@ final class FakeHidPadReader: HidPadReading, @unchecked Sendable {
     private let eventsBox = LockedBox<HidPadEvents?>(nil)
     private let releasedBox = LockedBox<[String]>([])
     private let claimsBox = LockedBox<[Claim]>([])
+    private let servedBox = LockedBox<[ServedDirectModels]>([])
 
     /// One claim or unclaim the paths asked for, in order.
     enum Claim: Equatable {
@@ -55,6 +56,15 @@ final class FakeHidPadReader: HidPadReading, @unchecked Sendable {
 
     func unclaim(slotId: String) {
         claimsBox.mutate { $0.append(.unclaim(slotId)) }
+    }
+
+    /// Every served table the paths handed over after the start, in order.
+    var servedUpdates: [ServedDirectModels] {
+        servedBox.get()
+    }
+
+    func useServedModels(_ served: ServedDirectModels) {
+        servedBox.mutate { $0.append(served) }
     }
 }
 

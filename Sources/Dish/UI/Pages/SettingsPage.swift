@@ -29,6 +29,7 @@ struct SettingsPage: View {
                 PowerSection(state: state)
                 DiagnosticsSection(state: state, push: push)
                 UpdatesSection(state: state)
+                ControllerDbSection(state: state)
                 AboutSection(state: state, push: push, select: select)
             }
             .padding(DishSpace.page)

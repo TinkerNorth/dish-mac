@@ -806,6 +806,41 @@
         }
       }
     },
+    "%@ · %@" : {
+      "comment" : "Inspector: an answered test, then the answer.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ · %@"
+          }
+        }
+      }
+    },
     "%@ — as %@" : {
       "comment" : "Connections: a manifest line, the pad and the controller type the binding sends it as.",
       "localizations" : {
@@ -1047,6 +1082,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "%@: desconectado"
+          }
+        }
+      }
+    },
+    "%@: did it work?" : {
+      "comment" : "Inspector: the test that just ran, then the question.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: je li uspjelo?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: Hat es funktioniert?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: ¿ha funcionado?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@ : ça a marché ?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%@: funcionou?"
           }
         }
       }
@@ -2329,6 +2399,41 @@
         }
       }
     },
+    "A question" : {
+      "comment" : "Report category: the person asks rather than reports.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pitanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Frage"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Una pregunta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une question"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uma pergunta"
+          }
+        }
+      }
+    },
     "A session carries four controllers at most, and %@ already has four. Unbind one to make room." : {
       "comment" : "Banner body; the argument is the host's name.",
       "localizations" : {
@@ -3344,6 +3449,76 @@
         }
       }
     },
+    "As expected" : {
+      "comment" : "Diagnostics: the pad's hardware matched its record.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kako je očekivano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wie erwartet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como se esperaba"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comme prévu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Como esperado"
+          }
+        }
+      }
+    },
+    "Ask a question" : {
+      "comment" : "Diagnostics button: opens the report page on a question.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Postavite pitanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eine Frage stellen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hacer una pregunta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poser une question"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fazer uma pergunta"
+          }
+        }
+      }
+    },
     "Asked %@ to close the app it is running." : {
       "comment" : "Banner: the dish asked the host to close its app.",
       "localizations" : {
@@ -3375,6 +3550,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pedimos a %@ que feche o app em execução."
+          }
+        }
+      }
+    },
+    "Asking each connected host for its own view of this connection…" : {
+      "comment" : "The report page while the hosts are asked.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pitam svaki povezani host za njegov pogled na ovu vezu…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeder verbundene Host wird nach seiner Sicht auf diese Verbindung gefragt…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preguntando a cada host conectado por su propia vista de esta conexión…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque hôte connecté est interrogé sur sa propre vue de cette connexion…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Perguntando a cada host conectado sua própria visão desta conexão…"
           }
         }
       }
@@ -4324,6 +4534,41 @@
         }
       }
     },
+    "Bundled version" : {
+      "comment" : "Diagnostics: the controller database version the app shipped with.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Isporučena verzija"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mitgelieferte Version"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión incluida"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version fournie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versão incluída"
+          }
+        }
+      }
+    },
     "Button %lld" : {
       "comment" : "Check the buttons: a control reads the pad's declared button n (the desktops' words).",
       "localizations" : {
@@ -4744,6 +4989,41 @@
         }
       }
     },
+    "Check for controller updates automatically" : {
+      "comment" : "Settings switch; the privacy policy's own wording in every language.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatski provjeravaj ažuriranja kontrolera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Automatisch nach Controller-Updates suchen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Buscar actualizaciones de mandos automáticamente"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher les mises à jour des manettes automatiquement"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificar atualizações de controles automaticamente"
+          }
+        }
+      }
+    },
     "Check for updates" : {
       "comment" : "Button: a manual check.",
       "localizations" : {
@@ -4810,6 +5090,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verificar atualizações automaticamente"
+          }
+        }
+      }
+    },
+    "Check now" : {
+      "comment" : "Settings button: one controller database check; the privacy policy's own wording.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjeri sada"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jetzt prüfen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobar ahora"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifier maintenant"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificar agora"
           }
         }
       }
@@ -5055,6 +5370,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Verificando atualizações…"
+          }
+        }
+      }
+    },
+    "Checking…" : {
+      "comment" : "A controller database check is running.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjeravam…"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Wird geprüft…"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobando…"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification…"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificando…"
+          }
+        }
+      }
+    },
+    "Checks are off" : {
+      "comment" : "A controller database check: the switch is off, nothing was sent.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjere su isključene"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prüfungen sind aus"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las comprobaciones están desactivadas"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les vérifications sont désactivées"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As verificações estão desligadas"
           }
         }
       }
@@ -5794,6 +6179,41 @@
         }
       }
     },
+    "Connection or latency" : {
+      "comment" : "Report category: the link to the host drops or lags.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Veza ili kašnjenje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verbindung oder Latenz"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conexión o latencia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connexion ou latence"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Conexão ou latência"
+          }
+        }
+      }
+    },
     "Connections" : {
       "comment" : "Title of the Connections page. Maps to Android `title_connections`.",
       "localizations" : {
@@ -5825,6 +6245,76 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Conexões"
+          }
+        }
+      }
+    },
+    "Contact support" : {
+      "comment" : "Diagnostics: the page Report a problem and Ask a question open.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontaktirajte podršku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Support kontaktieren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contactar con soporte"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Contacter l’assistance"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Falar com o suporte"
+          }
+        }
+      }
+    },
+    "Continue in Mail" : {
+      "comment" : "The report page button: opens the person's mail app with the report.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nastavite u Mailu"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In Mail fortfahren"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar en Mail"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuer dans Mail"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Continuar no Mail"
           }
         }
       }
@@ -5969,6 +6459,41 @@
         }
       }
     },
+    "Controller database" : {
+      "comment" : "Settings section and Diagnostics section: the fleet's list of controllers.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baza kontrolera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller-Datenbank"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Base de datos de mandos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Base de données des manettes"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Banco de dados de controles"
+          }
+        }
+      }
+    },
     "Controller index" : {
       "comment" : "Controller card line key.",
       "localizations" : {
@@ -6035,6 +6560,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Inspetor de controle"
+          }
+        }
+      }
+    },
+    "Controller not recognised" : {
+      "comment" : "Report category: Dish does not see or read the controller.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroler nije prepoznat"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controller wird nicht erkannt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mando no se reconoce"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Manette non reconnue"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Controle não reconhecido"
           }
         }
       }
@@ -6774,6 +7334,41 @@
         }
       }
     },
+    "Did it work?" : {
+      "comment" : "Inspector: the question after each test, and its section's title.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Je li uspjelo?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hat es funktioniert?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Ha funcionado?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ça a marché ?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funcionou?"
+          }
+        }
+      }
+    },
     "Direct" : {
       "comment" : "The input path Dish reads from the pad's HID reports.",
       "localizations" : {
@@ -7159,6 +7754,41 @@
         }
       }
     },
+    "Dish asks dish.tinkernorth.com for a newer list of controllers ten seconds after launch and every six hours." : {
+      "comment" : "Settings: the controller database switch's detail, first sentence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish pita dish.tinkernorth.com za noviji spisak kontrolera deset sekundi nakon pokretanja i svakih šest sati."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish fragt dish.tinkernorth.com zehn Sekunden nach dem Start und alle sechs Stunden nach einer neueren Controller-Liste."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish pide a dish.tinkernorth.com una lista de mandos más reciente diez segundos después de abrirse y cada seis horas."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish demande à dish.tinkernorth.com une liste de manettes plus récente dix secondes après le lancement, puis toutes les six heures."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish pede a dish.tinkernorth.com uma lista de controles mais recente dez segundos após abrir e a cada seis horas."
+          }
+        }
+      }
+    },
     "Dish can read this controller directly." : {
       "comment" : "Controllers: an offer card's first sentence, for a pad Dish reads only on the user's word (a Steam Controller).",
       "localizations" : {
@@ -7295,6 +7925,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O Dish fechou inesperadamente da última vez. O relatório abaixo teve a sua pasta pessoal, os endereços de rede e quaisquer valores parecidos com chaves removidos."
+          }
+        }
+      }
+    },
+    "Dish could not write the diagnostics file." : {
+      "comment" : "Diagnostics: the file for the mail or the save could not be written.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish nije mogao zapisati datoteku dijagnostike."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish konnte die Diagnosedatei nicht schreiben."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish no pudo escribir el archivo de diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dish n’a pas pu écrire le fichier de diagnostics."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O Dish não conseguiu gravar o arquivo de diagnóstico."
           }
         }
       }
@@ -8209,6 +8874,41 @@
         }
       }
     },
+    "Drift test" : {
+      "comment" : "Inspector: the stick drift test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test pomaka"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Drift-Test"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba de deriva"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test de dérive"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teste de drift"
+          }
+        }
+      }
+    },
     "Drift test (hands off the sticks)" : {
       "comment" : "Inspector button.",
       "localizations" : {
@@ -8244,6 +8944,41 @@
         }
       }
     },
+    "Each controller's identity and record, and how much went in and came out of it" : {
+      "comment" : "What the file holds: each controller, as counts, never a stream.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Identitet i zapis svakog kontrolera, te koliko je ulaza i izlaza prošlo kroz njega"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kennung und Eintrag jedes Controllers, und wie viel hinein- und herausging"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La identidad y el registro de cada mando, y cuánto entró y salió de él"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "L’identité et la fiche de chaque manette, et ce qui y est entré et en est sorti"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A identidade e o registro de cada controle, e quanto entrou e saiu dele"
+          }
+        }
+      }
+    },
     "Each host's session, each controller down to the wire, and a log of what changed." : {
       "comment" : "Diagnostics intro and the Settings row detail.",
       "localizations" : {
@@ -8275,6 +9010,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "A sessão de cada host, cada controle até a conexão e um registro do que mudou."
+          }
+        }
+      }
+    },
+    "Each host's version and session, under an alias, and what the host says of this connection" : {
+      "comment" : "What the file holds: each host from both ends, named only by an alias.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verziju i sesiju svakog hosta, pod pseudonimom, i šta host kaže o ovoj vezi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version und Sitzung jedes Hosts unter einem Alias, und was der Host über diese Verbindung sagt"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La versión y la sesión de cada host, bajo un alias, y lo que el host dice de esta conexión"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La version et la session de chaque hôte, sous un alias, et ce que l’hôte dit de cette connexion"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "A versão e a sessão de cada host, sob um apelido, e o que o host diz desta conexão"
           }
         }
       }
@@ -9185,6 +9955,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Concluir leva você por entrada, destino e vínculo — cerca de um minuto."
+          }
+        }
+      }
+    },
+    "Flagged" : {
+      "comment" : "A chip: failures were reported for the controller's record.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Označeno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gemeldet"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Señalado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signalée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sinalizado"
           }
         }
       }
@@ -10134,6 +10939,41 @@
         }
       }
     },
+    "Hardware check" : {
+      "comment" : "Diagnostics: the pad's hardware at attach against its record.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjera hardvera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hardware-Prüfung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Comprobación del hardware"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérification du matériel"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificação do hardware"
+          }
+        }
+      }
+    },
     "Hat %lld" : {
       "comment" : "Check the buttons: the d-pad reads the pad's hat n (the desktops' words).",
       "localizations" : {
@@ -10235,6 +11075,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ajude a dar suporte a este controle"
+          }
+        }
+      }
+    },
+    "Hide file" : {
+      "comment" : "The report page button: hides the file preview.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sakrij datoteku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei ausblenden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar el archivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Masquer le fichier"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ocultar arquivo"
           }
         }
       }
@@ -11044,6 +11919,41 @@
         }
       }
     },
+    "It didn't work" : {
+      "comment" : "Inspector: the answer button, and the answer as kept.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nije uspjelo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hat nicht funktioniert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No ha funcionado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ça n’a pas marché"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não funcionou"
+          }
+        }
+      }
+    },
     "It forwards input over your local network to the free Satellite helper." : {
       "comment" : "Help & FAQ: what is dish answer (one sentence of a paragraph).",
       "localizations" : {
@@ -11075,6 +11985,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ele encaminha a entrada pela sua rede local até o ajudante gratuito Satellite."
+          }
+        }
+      }
+    },
+    "It never holds pairing keys, fingerprints, IP addresses, Wi-Fi names or host names." : {
+      "comment" : "The report page: what the file never holds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nikad ne sadrži ključeve uparivanja, otiske, IP adrese, nazive Wi-Fi mreža ni imena hostova."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sie enthält nie Kopplungsschlüssel, Fingerabdrücke, IP-Adressen, WLAN- oder Host-Namen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca contiene claves de emparejamiento, huellas, direcciones IP, nombres de Wi-Fi ni de hosts."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Il ne contient jamais de clés d’appairage, d’empreintes, d’adresses IP, de noms de Wi-Fi ni d’hôtes."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca contém chaves de pareamento, impressões digitais, endereços IP, nomes de Wi-Fi ou de hosts."
           }
         }
       }
@@ -11180,6 +12125,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Ele responde quando o Dish o lê diretamente"
+          }
+        }
+      }
+    },
+    "It worked" : {
+      "comment" : "Inspector: the answer button, and the answer as kept.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Uspjelo je"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hat funktioniert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ha funcionado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ça a marché"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Funcionou"
           }
         }
       }
@@ -11429,6 +12409,41 @@
         }
       }
     },
+    "Known issue" : {
+      "comment" : "Diagnostics: a problem the controller database lists for this pad here.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Poznat problem"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bekanntes Problem"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Problema conocido"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Problème connu"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Problema conhecido"
+          }
+        }
+      }
+    },
     "Ko-fi" : {
       "comment" : "Support Dish: a way to give, by its service's name.",
       "localizations" : {
@@ -11565,6 +12580,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "LINKS"
+          }
+        }
+      }
+    },
+    "Last check" : {
+      "comment" : "Diagnostics: when the controller database was last checked, and what was found.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadnja provjera"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letzte Prüfung"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Última comprobación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernière vérification"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Última verificação"
+          }
+        }
+      }
+    },
+    "Last check %@: %@" : {
+      "comment" : "The time of the last controller database check, then its result.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadnja provjera %@: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letzte Prüfung %@: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Última comprobación %@: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernière vérification %@ : %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Última verificação %@: %@"
+          }
+        }
+      }
+    },
+    "Last write" : {
+      "comment" : "Diagnostics: the last report Dish sent the pad itself.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zadnje slanje"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Letzter Schreibvorgang"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Última escritura"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dernière écriture"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Última gravação"
           }
         }
       }
@@ -12195,6 +13315,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Barra de luz"
+          }
+        }
+      }
+    },
+    "Listed as" : {
+      "comment" : "Diagnostics: the controller's name in the controller database.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Naveden kao"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geführt als"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Figura como"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Répertoriée comme"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Listado como"
           }
         }
       }
@@ -13844,6 +14999,41 @@
         }
       }
     },
+    "Never checked" : {
+      "comment" : "The controller database has not been checked yet.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još nije provjereno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch nie geprüft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca comprobada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jamais vérifiée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nunca verificado"
+          }
+        }
+      }
+    },
     "New code" : {
       "comment" : "PIN sheet: mint another PIN.",
       "localizations" : {
@@ -14509,6 +15699,41 @@
         }
       }
     },
+    "No rumble or feedback" : {
+      "comment" : "Report category: vibration, lights or triggers do not respond.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nema vibracije ni povratne reakcije"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kein Rumble oder Feedback"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sin vibración ni respuesta háptica"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de vibration ni de retour"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sem vibração ou resposta"
+          }
+        }
+      }
+    },
     "No satellites found" : {
       "comment" : "Connections: the FOUND list's title once a sweep heard nothing.",
       "localizations" : {
@@ -14789,6 +16014,41 @@
         }
       }
     },
+    "None yet" : {
+      "comment" : "Diagnostics: Dish has sent the pad nothing yet.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Još ništa"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Noch keiner"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna todavía"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune pour l’instant"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhuma ainda"
+          }
+        }
+      }
+    },
     "Not a controller: not claimed by GameController" : {
       "comment" : "Diagnostics: an input device's status when GameController does not claim it. After Android `diagnostics_state_ignored`.",
       "localizations" : {
@@ -14820,6 +16080,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Não é um controle: não reconhecido pelo GameController"
+          }
+        }
+      }
+    },
+    "Not about a controller" : {
+      "comment" : "The controller picker's choice for a report about no controller.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne odnosi se na kontroler"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Betrifft keinen Controller"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No es sobre un mando"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ne concerne pas une manette"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Não é sobre um controle"
           }
         }
       }
@@ -15349,6 +16644,41 @@
         }
       }
     },
+    "Nothing is sent until you press Send." : {
+      "comment" : "Diagnostics: what Email diagnostics does, second sentence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ništa se ne šalje dok ne pritisnete Pošalji."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nichts wird gesendet, bevor du auf Senden drückst."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "No se envía nada hasta que pulses Enviar."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n’est envoyé tant que vous n’appuyez pas sur Envoyer."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nada é enviado até você tocar em Enviar."
+          }
+        }
+      }
+    },
     "Nothing on %@ has changed yet. Bind is the first and only write." : {
       "comment" : "The setup walk: nothing on the host has changed yet.",
       "localizations" : {
@@ -15520,6 +16850,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Desligado"
+          }
+        }
+      }
+    },
+    "Off, nothing is sent." : {
+      "comment" : "Settings: the controller database switch's detail, second sentence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kad je isključeno, ništa se ne šalje."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aus wird nichts gesendet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desactivado, no se envía nada."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Désactivé, rien n’est envoyé."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desligado, nada é enviado."
           }
         }
       }
@@ -17589,6 +18954,41 @@
         }
       }
     },
+    "Preview file" : {
+      "comment" : "The report page button: shows the diagnostics file's JSON.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pregledaj datoteku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datei ansehen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver el archivo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aperçu du fichier"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ver arquivo"
+          }
+        }
+      }
+    },
     "Privacy policy" : {
       "comment" : "About link title.",
       "localizations" : {
@@ -18079,6 +19479,41 @@
         }
       }
     },
+    "Range test" : {
+      "comment" : "Inspector: the stick range test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test raspona"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bereichstest"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prueba de rango"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Test d’amplitude"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Teste de alcance"
+          }
+        }
+      }
+    },
     "Range test (sweep full circles)" : {
       "comment" : "Inspector button.",
       "localizations" : {
@@ -18394,6 +19829,41 @@
         }
       }
     },
+    "Record" : {
+      "comment" : "Diagnostics: the controller database record a pad matched, by its id.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Zapis"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Eintrag"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registro"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fiche"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Registro"
+          }
+        }
+      }
+    },
     "Recurring" : {
       "comment" : "Support Dish: a cadence.",
       "localizations" : {
@@ -18460,6 +19930,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Lembrado"
+          }
+        }
+      }
+    },
+    "Report %@ via %@ was refused at %@: %@" : {
+      "comment" : "Diagnostics: the last write's report id, route, time and IOKit's error.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izvještaj %@ preko %@ je odbijen u %@: %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report %@ über %@ wurde um %@ abgelehnt: %@"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El informe %@ por %@ fue rechazado a las %@: %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le rapport %@ par %@ a été refusé à %@ : %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O relatório %@ via %@ foi recusado às %@: %@"
+          }
+        }
+      }
+    },
+    "Report %@ via %@ went through at %@" : {
+      "comment" : "Diagnostics: the last write's report id, route and time; it was taken.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izvještaj %@ preko %@ je prošao u %@"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Report %@ über %@ ging um %@ durch"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El informe %@ por %@ se envió a las %@"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le rapport %@ par %@ est passé à %@"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O relatório %@ via %@ foi enviado às %@"
+          }
+        }
+      }
+    },
+    "Report a problem" : {
+      "comment" : "Diagnostics button: opens the report page on a problem.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Prijavite problem"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Problem melden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Informar de un problema"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Signaler un problème"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Relatar um problema"
           }
         }
       }
@@ -19304,6 +20879,41 @@
         }
       }
     },
+    "Run a test above, then say whether it worked." : {
+      "comment" : "Inspector: the outcomes section before any test ran, first sentence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pokrenite test iznad, pa recite je li uspio."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Führe oben einen Test aus und sag dann, ob er funktioniert hat."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ejecuta una prueba de arriba y di si ha funcionado."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancez un test ci-dessus, puis dites s’il a marché."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Execute um teste acima e diga se funcionou."
+          }
+        }
+      }
+    },
     "Running app" : {
       "comment" : "A Moonlight host card line key.",
       "localizations" : {
@@ -19335,6 +20945,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "App em execução"
+          }
+        }
+      }
+    },
+    "SET_REPORT" : {
+      "comment" : "A write route: a HID SET_REPORT (the HID specification's own term).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SET_REPORT"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SET_REPORT"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SET_REPORT"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SET_REPORT"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "SET_REPORT"
           }
         }
       }
@@ -19545,6 +21190,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Atualização do Satellite obrigatória"
+          }
+        }
+      }
+    },
+    "Save diagnostics" : {
+      "comment" : "Diagnostics button: saves the diagnostics file where the person picks.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sačuvaj dijagnostiku"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnose sichern"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Guardar diagnóstico"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer les diagnostics"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Salvar diagnóstico"
           }
         }
       }
@@ -20455,6 +22135,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pular esta versão"
+          }
+        }
+      }
+    },
+    "Something else" : {
+      "comment" : "Report category: none of the others.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nešto drugo"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Etwas anderes"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otra cosa"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Autre chose"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Outra coisa"
           }
         }
       }
@@ -21614,6 +23329,41 @@
         }
       }
     },
+    "Test tone" : {
+      "comment" : "Inspector: the test tone, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probni ton"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testton"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tono de prueba"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son de test"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tom de teste"
+          }
+        }
+      }
+    },
     "Thank you. Every dollar, every star, every shared link. — Emir" : {
       "comment" : "Support Dish: the sign-off.",
       "localizations" : {
@@ -21719,6 +23469,41 @@
         }
       }
     },
+    "The answers ride the diagnostics file." : {
+      "comment" : "Inspector: the outcomes section before any test ran, second sentence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Odgovori idu u datoteku dijagnostike."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Antworten kommen in die Diagnosedatei."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Las respuestas van en el archivo de diagnóstico."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les réponses vont dans le fichier de diagnostics."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "As respostas vão no arquivo de diagnóstico."
+          }
+        }
+      }
+    },
     "The app closed on the host. Start a new session to keep using this controller." : {
       "comment" : "Banner body under ended the session.",
       "localizations" : {
@@ -21785,6 +23570,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O app iniciou, mas a transmissão não subiu, então o Dish o fechou de novo."
+          }
+        }
+      }
+    },
+    "The attached file holds this summary in detail, and never pairing keys, fingerprints, IP addresses, Wi-Fi names or host names." : {
+      "comment" : "The diagnostics mail's one sentence after the summary: what the file holds and never holds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priložena datoteka sadrži ovaj sažetak u detalje, a nikad ključeve uparivanja, otiske, IP adrese, nazive Wi-Fi mreža ni imena hostova."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die angehängte Datei enthält diese Zusammenfassung im Detail und nie Kopplungsschlüssel, Fingerabdrücke, IP-Adressen, WLAN- oder Host-Namen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo adjunto contiene este resumen en detalle, y nunca claves de emparejamiento, huellas, direcciones IP, nombres de Wi-Fi ni de hosts."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier joint contient ce résumé en détail, et jamais de clés d’appairage, d’empreintes, d’adresses IP, de noms de Wi-Fi ni d’hôtes."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arquivo anexado contém este resumo em detalhe, e nunca chaves de pareamento, impressões digitais, endereços IP, nomes de Wi-Fi ou de hosts."
           }
         }
       }
@@ -21859,6 +23679,41 @@
         }
       }
     },
+    "The controller it concerns" : {
+      "comment" : "The report page: the label over the controller picker.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Kontroler o kojem se radi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der betroffene Controller"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El mando afectado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La manette concernée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O controle em questão"
+          }
+        }
+      }
+    },
     "The controller sent nothing during the test." : {
       "comment" : "Inspector result.",
       "localizations" : {
@@ -21890,6 +23745,111 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O controle não enviou nada durante o teste."
+          }
+        }
+      }
+    },
+    "The download did not verify" : {
+      "comment" : "A controller database check: the files did not match their manifest.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Preuzimanje nije prošlo provjeru"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Der Download hat die Prüfung nicht bestanden"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La descarga no superó la verificación"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le téléchargement n’a pas passé la vérification"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O download não passou na verificação"
+          }
+        }
+      }
+    },
+    "The event log, and the capture of the controller you picked if you took one" : {
+      "comment" : "What the file holds: the flight recorder and the Help-support capture.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Dnevnik događaja i snimak odabranog kontrolera, ako ste ga napravili"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Das Ereignisprotokoll und die Aufnahme des gewählten Controllers, falls du eine gemacht hast"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El registro de eventos y la captura del mando elegido, si hiciste una"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le journal des événements, et la capture de la manette choisie si vous en avez fait une"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O registro de eventos e a captura do controle escolhido, se você fez uma"
+          }
+        }
+      }
+    },
+    "The file will hold" : {
+      "comment" : "The report page: the header over what the diagnostics file holds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datoteka će sadržavati"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Datei enthält"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo contendrá"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier contiendra"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arquivo vai conter"
           }
         }
       }
@@ -22520,6 +24480,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tema"
+          }
+        }
+      }
+    },
+    "This Mac's model, macOS version, battery, temperature state, Wi-Fi signal strength and whether it has a USB host controller" : {
+      "comment" : "What the file holds: the Mac's facts and conditions, never a network name.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Model ovog Maca, verziju macOS-a, bateriju, stanje temperature, jačinu Wi-Fi signala i ima li USB host kontroler"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modell dieses Macs, macOS-Version, Akku, Temperaturzustand, WLAN-Signalstärke und ob er einen USB-Host-Controller hat"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El modelo de este Mac, la versión de macOS, la batería, el estado térmico, la intensidad de la señal Wi-Fi y si tiene un controlador host USB"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le modèle de ce Mac, la version de macOS, la batterie, l’état thermique, la force du signal Wi-Fi et s’il a un contrôleur hôte USB"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O modelo deste Mac, a versão do macOS, a bateria, o estado térmico, a intensidade do sinal Wi-Fi e se ele tem um controlador host USB"
           }
         }
       }
@@ -23644,6 +25639,41 @@
         }
       }
     },
+    "Up to date" : {
+      "comment" : "A controller database check: nothing newer.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ažurno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktuell"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Al día"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À jour"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atualizado"
+          }
+        }
+      }
+    },
     "Update available: Dish %@. See Settings for the release." : {
       "comment" : "Toast when a newer release exists.",
       "localizations" : {
@@ -23679,6 +25709,41 @@
         }
       }
     },
+    "Updated" : {
+      "comment" : "A controller database check: a newer version was installed.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ažurirano"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aktualisiert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Actualizada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mise à jour"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Atualizado agora"
+          }
+        }
+      }
+    },
     "Use Direct" : {
       "comment" : "The input check's action: move the pad onto the Direct path.",
       "localizations" : {
@@ -23710,6 +25775,146 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Usar Direto"
+          }
+        }
+      }
+    },
+    "Verified" : {
+      "comment" : "A chip: the controller's record was checked on hardware by the maintainer.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Provjereno"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Geprüft"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificado"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vérifiée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verificado"
+          }
+        }
+      }
+    },
+    "Version %lld, bundled with Dish" : {
+      "comment" : "The controller database in force came with the app.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verzija %lld, isporučena uz Dish"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %lld, mit Dish geliefert"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión %lld, incluida con Dish"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %lld, fournie avec Dish"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versão %lld, incluída no Dish"
+          }
+        }
+      }
+    },
+    "Version %lld, downloaded" : {
+      "comment" : "The controller database in force was downloaded from the website.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verzija %lld, preuzeta"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %lld, heruntergeladen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión %lld, descargada"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version %lld, téléchargée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versão %lld, baixada"
+          }
+        }
+      }
+    },
+    "Version in use" : {
+      "comment" : "Diagnostics: the controller database version in force.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verzija u upotrebi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Verwendete Version"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versión en uso"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Version utilisée"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Versão em uso"
           }
         }
       }
@@ -24204,6 +26409,41 @@
         }
       }
     },
+    "What happened, and what did you expect?" : {
+      "comment" : "The report page: the label over the person's own words.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Šta se desilo i šta ste očekivali?"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Was ist passiert, und was hast du erwartet?"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "¿Qué pasó y qué esperabas?"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Que s’est-il passé, et qu’attendiez-vous ?"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O que aconteceu e o que você esperava?"
+          }
+        }
+      }
+    },
     "What is Dish?" : {
       "comment" : "Help & FAQ: what is dish.",
       "localizations" : {
@@ -24270,6 +26510,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O que é o Satellite?"
+          }
+        }
+      }
+    },
+    "What it is about" : {
+      "comment" : "The report page: the label over the category picker.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O čemu se radi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Worum es geht"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De qué se trata"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "De quoi il s’agit"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sobre o que é"
           }
         }
       }
@@ -25079,6 +27354,76 @@
         }
       }
     },
+    "Your mail app opens with the file attached." : {
+      "comment" : "Diagnostics: what Email diagnostics does, first sentence.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaša aplikacija za e-poštu otvara se s priloženom datotekom."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Mail-App öffnet sich mit der angehängten Datei."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu app de correo se abre con el archivo adjunto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre app de messagerie s’ouvre avec le fichier joint."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu app de e-mail abre com o arquivo anexado."
+          }
+        }
+      }
+    },
+    "Your mail app opens with your words first, then this Mac's summary, and the file attached." : {
+      "comment" : "The report page's intro: what the mail holds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaša aplikacija za e-poštu otvara se s vašim riječima na početku, zatim sažetkom ovog Maca i priloženom datotekom."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Mail-App öffnet sich mit deinen Worten zuerst, dann der Zusammenfassung dieses Macs und der angehängten Datei."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu app de correo se abre con tus palabras primero, después el resumen de este Mac y el archivo adjunto."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre app de messagerie s’ouvre avec vos mots en premier, puis le résumé de ce Mac et le fichier joint."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Seu app de e-mail abre com suas palavras primeiro, depois o resumo deste Mac e o arquivo anexado."
+          }
+        }
+      }
+    },
     "Your pick" : {
       "comment" : "Diagnostics: the path is the one the user picked.",
       "localizations" : {
@@ -25110,6 +27455,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sua escolha"
+          }
+        }
+      }
+    },
+    "Your words and the category you picked" : {
+      "comment" : "What the file holds: the report.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaše riječi i kategoriju koju ste odabrali"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Worte und die gewählte Kategorie"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tus palabras y la categoría que elegiste"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vos mots et la catégorie choisie"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suas palavras e a categoria escolhida"
           }
         }
       }
@@ -25600,6 +27980,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "coincide"
+          }
+        }
+      }
+    },
+    "interrupt OUT" : {
+      "comment" : "A write route: the pad's interrupt OUT endpoint (USB's own term).",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "interrupt OUT"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Interrupt-OUT"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "interrupt OUT"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "interrupt OUT"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "interrupt OUT"
           }
         }
       }

@@ -11,6 +11,16 @@ import XCTest
 /// a test queues.
 final class FakeHidReportCapture: HidReportCapturing, @unchecked Sendable {
     private let box = LockedBox<(targets: [SupportTarget], stops: Int, queued: [[UInt8]], events: HidCaptureEvents?)>(([], 0, [], nil))
+    private let restBox = LockedBox<[TimedReport]>([])
+
+    /// What the capture holds at rest, as its thread stamped it.
+    func holdAtRest(_ reports: [TimedReport]) {
+        restBox.set(reports)
+    }
+
+    func restReports() -> [TimedReport] {
+        restBox.get()
+    }
 
     var targets: [SupportTarget] {
         box.get().targets
@@ -67,11 +77,14 @@ final class SupportCaptureServiceTests: XCTestCase {
     private var scheduler: ManualPathScheduler!
     private var service: SupportCaptureService!
 
+    /// Uptime 10 s and 1_763_586_000_000 on the wall clock, read together.
+    private static let clocks = CaptureClocks(uptimeNs: { 10_000_000_000 }, wallMs: { 1_763_586_000_000 })
+
     override func setUp() {
         super.setUp()
         capture = FakeHidReportCapture()
         scheduler = ManualPathScheduler()
-        service = SupportCaptureService(capture: capture, scheduler: scheduler)
+        service = SupportCaptureService(capture: capture, scheduler: scheduler, clocks: Self.clocks)
     }
 
     func testAKeyThatNamesNoDeviceOpensNothing() {
@@ -110,6 +123,52 @@ final class SupportCaptureServiceTests: XCTestCase {
         XCTAssertNil(service.state)
     }
 
+    // MARK: - At rest
+
+    private let heldAtRest = [
+        TimedReport(bytes: [0x01, 0x80], uptimeNs: 9_000_000_000),
+        TimedReport(bytes: [0x01, 0x80], uptimeNs: 9_004_000_000)
+    ]
+
+    func testMovingOnFromTheFirstStepTakesTheReportsAtRestOnTheWallClock() throws {
+        service.begin(deviceKey: "1234:5678")
+        try XCTUnwrap(capture.events).found(device)
+        drainMain()
+        capture.holdAtRest(heldAtRest)
+        service.send(.next)
+        XCTAssertEqual(service.state?.capture.rest, [
+            RestReport(atMs: 1_763_585_999_000, bytes: [0x01, 0x80]),
+            RestReport(atMs: 1_763_585_999_004, bytes: [0x01, 0x80])
+        ])
+        capture.holdAtRest([TimedReport(bytes: [0x02], uptimeNs: 9_900_000_000)])
+        service.send(.next)
+        XCTAssertEqual(service.state?.capture.rest.count, 2, "only the first step's reports are at rest")
+    }
+
+    func testSkippingTheFirstStepTakesNoReportsAtRest() throws {
+        service.begin(deviceKey: "1234:5678")
+        try XCTUnwrap(capture.events).found(device)
+        drainMain()
+        capture.holdAtRest(heldAtRest)
+        service.send(.skip)
+        XCTAssertEqual(service.state?.capture.rest, [])
+    }
+
+    func testTheFinishedCaptureCarriesItInUsbDescriptorsTerms() throws {
+        service.begin(deviceKey: "1234:5678")
+        try XCTUnwrap(capture.events).found(device)
+        drainMain()
+        capture.holdAtRest(heldAtRest)
+        for _ in SupportStep.allCases {
+            service.send(.next)
+        }
+        let finished = try XCTUnwrap(service.lastFinished)
+        XCTAssertEqual(finished.capture?.restReports.count, 2)
+        XCTAssertEqual(finished.capture?.product, "Pad")
+        XCTAssertEqual(finished.report.hasPrefix("Controller support capture"), true, "the text for an issue stays")
+        XCTAssertEqual(finished.capture?.guided, finished.report, "and rides the capture as its guided text")
+    }
+
     func testAPostFromACaptureThatEndedLandsNowhere() throws {
         service.begin(deviceKey: "1234:5678")
         let stale = try XCTUnwrap(capture.events)
@@ -146,6 +205,23 @@ final class SupportCaptureServiceTests: XCTestCase {
         XCTAssertNil(supportDevice(synthetic, target: .named("Pad")), "never the device macOS synthesises")
     }
 
+    func testTheDeviceReadForTheCaptureCarriesItsInterfaceAndNeverItsSerialNumber() {
+        let properties: [String: Any] = [
+            kIOHIDVendorIDKey: 0x1234, kIOHIDProductIDKey: 0x5678, kIOHIDProductKey: "Pad", kIOHIDTransportKey: "USB",
+            hidInterfaceNumberKey: 2
+        ]
+        let read = supportDevice(properties, target: .usb(vendorId: 0x1234, productId: 0x5678))
+        XCTAssertEqual(read?.interfaceNumber, 2)
+        XCTAssertTrue(supportPropertyKeys.contains(hidInterfaceNumberKey))
+        XCTAssertFalse(supportPropertyKeys.contains(kIOHIDSerialNumberKey), "the serial number is never read")
+    }
+
+    func testEachPropertyIsAskedForOnce() {
+        XCTAssertEqual(Set(supportPropertyKeys).count, supportPropertyKeys.count, "the properties are keyed uniquely")
+        XCTAssertTrue(supportPropertyKeys.contains(kIOHIDMaxInputReportSizeKey))
+        XCTAssertTrue(supportPropertyKeys.contains(kIOHIDVendorIDKey))
+    }
+
     // MARK: - The ring
 
     private func write(_ ring: HidReportRing, _ bytes: [UInt8]) {
@@ -161,6 +237,28 @@ final class SupportCaptureServiceTests: XCTestCase {
         XCTAssertEqual(ring.drain(), [])
         write(ring, [2, 2])
         XCTAssertEqual(ring.drain(), [], "the last report is still the last after a drain")
+    }
+
+    func testTheRingKeepsTheFirstTwentyReportsAtRestRepeatsAndTimesIncluded() {
+        let ring = HidReportRing()
+        for index in 0 ..< 25 {
+            [UInt8(0x01)].withUnsafeBufferPointer { ring.write($0, uptimeNs: UInt64(index)) }
+        }
+        let held = ring.restReports()
+        XCTAssertEqual(held.count, 20)
+        XCTAssertEqual(held.map(\.uptimeNs), (0 ..< 20).map(UInt64.init))
+        XCTAssertEqual(Set(held.map(\.bytes)), [[0x01]], "a repeat at rest is a report at rest")
+        XCTAssertEqual(ring.drain(), [[0x01]], "the steps still see each report once")
+    }
+
+    func testARestartedRingHoldsNoReportsAtRest() {
+        let ring = HidReportRing()
+        write(ring, [1])
+        ring.restart()
+        XCTAssertEqual(ring.restReports(), [])
+        XCTAssertEqual(ring.drain(), [], "and none for the steps")
+        write(ring, [1])
+        XCTAssertEqual(ring.drain(), [[1]], "the last report of the capture that ended is not this one's last")
     }
 
     func testAFullRingOverwritesItsOldestAndKeepsALongReportsFirstBytes() {

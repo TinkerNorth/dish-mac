@@ -43,6 +43,23 @@ func checkSecondsLeft(_ check: PadCheck, nowMs: Int64) -> Int {
     return Int((leftMs + 999) / 1000)
 }
 
+/// The pad's transport in the controller data's words; nil when IOKit
+/// names neither USB nor Bluetooth.
+package func controllerTransport(_ transport: HidTransport?) -> ControllerTransport? {
+    switch transport {
+    case .usb: .usb
+    case .bluetooth: .bluetooth
+    case .other, .unknown, nil: nil
+    }
+}
+
+/// The candidate's hardware against its record's `expect`, as it attached.
+func attachMismatches(_ candidate: HidPadCandidate, index: ControllerIndex) -> [String] {
+    let transport = controllerTransport(candidate.transport)
+    guard let record = index.record(vendorId: candidate.vendorId, productId: candidate.productId, transport: transport) else { return [] }
+    return expectMismatches(record.expect, observed: candidate.observedEndpoints)
+}
+
 /// The facts every forwarding pad has, whichever path it is on.
 func basePathFacts(_ machine: InputSourceState, outcome: CheckOutcome?, nowMs: Int64) -> SlotInputPath? {
     guard case let .forwarding(source) = machine.phase else { return nil }
@@ -214,6 +231,10 @@ extension InputPaths {
         facts.rumble = carriage(of: key).rumble
         facts.transport = candidate.transport
         facts.hardwareId = candidate.hardwareId
+        facts.hardware = candidate.detail
+        facts.usbDeviceId = candidate.usbDeviceId
+        facts.expectMismatches = attachMismatches(candidate, index: controllerIndex)
+        facts.lastWrite = lastWrites[key]
         return facts
     }
 
@@ -225,6 +246,8 @@ extension InputPaths {
         facts?.keepsDisconnecting = bursts.noticed.contains(id)
         facts?.transport = pad.arrival?.candidate.transport
         facts?.hardwareId = pad.arrival?.candidate.hardwareId
+        facts?.hardware = pad.arrival?.candidate.detail
+        facts?.usbDeviceId = pad.arrival?.candidate.usbDeviceId
         return facts
     }
 }

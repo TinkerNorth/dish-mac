@@ -23,17 +23,26 @@ final class XusbOutput: DirectOutput, @unchecked Sendable {
     private let queue: DispatchQueue
     /// Started and stopped only on the queue.
     private let holdTicker: QueueTicker
+    /// Each write's verdict, for the pad's "Last write" row.
+    private let writes: DirectWrites
 
     // Owned by the queue.
     /// A level is running, so a stop is owed.
     private var holding = false
     private var gone = false
 
-    init(slotId: String, pipe: UsbOutputPipe, quitBoundMs: Int, holdTicker: QueueTicker = DispatchTicker()) {
+    init(
+        slotId: String,
+        pipe: UsbOutputPipe,
+        quitBoundMs: Int,
+        holdTicker: QueueTicker = DispatchTicker(),
+        writes: DirectWrites = DirectWrites()
+    ) {
         self.slotId = slotId
         self.pipe = pipe
         self.quitBoundMs = quitBoundMs
         self.holdTicker = holdTicker
+        self.writes = writes
         queue = DispatchQueue(label: "com.tinkernorth.dish.xusb.\(slotId)", qos: .userInitiated)
     }
 
@@ -101,6 +110,7 @@ final class XusbOutput: DirectOutput, @unchecked Sendable {
 
     private func send(_ report: [UInt8]) {
         let status = pipe.write(report)
+        writes.record(route: .interruptOut, reportId: report.first ?? 0, status: status)
         guard status != kIOReturnSuccess else { return }
         Self.log.error("XUSB output id=\(self.slotId, privacy: .public) status=\(status)")
     }
