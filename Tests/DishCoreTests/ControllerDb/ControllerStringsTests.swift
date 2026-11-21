@@ -32,6 +32,16 @@ final class ControllerStringsTests: XCTestCase {
         XCTAssertEqual(strings.issueTitle("x", locale: "ja"), "Broken")
     }
 
+    func testARegionOrAScriptReadsItsLanguagesTable() {
+        let tables = ControllerStrings(tables: [
+            "en": ["k": "en"], "bs": ["k": "bs"], "es": ["k": "es"], "fr": ["k": "fr"], "pt-BR": ["k": "pt-BR"]
+        ])
+        let cases = ["bs-Latn-BA": "bs", "es-419": "es", "fr-CA": "fr", "pt-PT": "pt-BR", "en-GB": "en", "ja-JP": "en"]
+        for (locale, expected) in cases {
+            XCTAssertEqual(tables.text("k", locale: locale), expected, locale)
+        }
+    }
+
     func testAKeyNoTableHasIsNil() {
         XCTAssertNil(strings.controllerName("ghost", locale: "en"))
     }
