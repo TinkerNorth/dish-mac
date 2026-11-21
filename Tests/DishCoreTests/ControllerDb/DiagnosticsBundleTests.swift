@@ -38,7 +38,7 @@ final class DiagnosticsBundleTests: XCTestCase {
             expectMismatches: ["endpoints.out: expected true, found false"],
             lastWrite: DirectWriteVerdict(route: .setReport, reportId: 2, status: Int32(bitPattern: 0xE000_02ED), atMs: 1_763_586_000_100),
             outcomes: [TestOutcome(test: .rumbleStrong, result: .worked, atMs: 1_763_585_990_000)],
-            capture: "VID:PID 054c:0ce6",
+            capture: Self.capture,
             input: BundlePadInput(frames: 1000, rateHz: 250, last: nil),
             audio: BundleAudio(channels: 4, refused: false)
         )
@@ -71,9 +71,19 @@ final class DiagnosticsBundleTests: XCTestCase {
             ),
             pads: [pad, BundlePadFacts(record: nil, transport: nil, path: .gameController, hardware: nil)],
             hosts: hosts,
-            log: log
+            log: log,
+            supportCaptureText: "VID:PID 054c:0ce6"
         )
     }
+
+    private static let capture = BundleCapture(
+        device: "Transport: USB\nVendorID: 054c",
+        product: "Wireless Controller",
+        manufacturer: "Sony",
+        interfaceNumber: 3,
+        reportDescriptor: [0x05, 0x01, 0x09, 0x05],
+        restReports: [RestReport(atMs: 1_763_585_990_000, bytes: [0x01, 0x80]), RestReport(atMs: 1_763_585_990_004, bytes: [0x01, 0x80])]
+    )
 
     private static let descriptorSha256 = "5f2c0d3c8bb7f1d36ee86c1e4b4e9a3a2e7b1f0d9c8a7b6e5d4c3b2a19087f6e"
 
@@ -119,7 +129,71 @@ final class DiagnosticsBundleTests: XCTestCase {
         let outcome = try XCTUnwrap((pad["outcomes"] as? [[String: Any]])?.first)
         XCTAssertEqual(outcome["test"] as? String, "rumble.strong")
         XCTAssertEqual(outcome["result"] as? String, "worked")
-        XCTAssertEqual(pad["capture"] as? [String: String], ["format": "support-capture-text", "text": "VID:PID 054c:0ce6"])
+        XCTAssertNotNil(pad["capture"] as? [String: Any])
+    }
+
+    func testTheCaptureIsUsbDescriptorsV1() throws {
+        let pad = try XCTUnwrap(try (object()["controllers"] as? [[String: Any]])?.first)
+        let capture = try XCTUnwrap(pad["capture"] as? [String: Any])
+        XCTAssertEqual(capture["format"] as? String, "usb-descriptors-v1")
+        XCTAssertEqual(capture["device"] as? String, "Transport: USB\nVendorID: 054c", "text from IOKit's properties")
+        XCTAssertTrue(capture["configuration"] is NSNull, "IOKit hands the configuration's bytes only to an exclusive session")
+        XCTAssertEqual(capture["strings"] as? [String: String], ["manufacturer": "Sony", "product": "Wireless Controller"])
+        XCTAssertEqual(
+            capture["hidReportDescriptors"] as? [[String: AnyHashable]],
+            [["interface": 3, "hex": "05010905", "source": "device"]]
+        )
+        XCTAssertEqual(capture["restReports"] as? [[String: AnyHashable]], [
+            ["atMs": 1_763_585_990_000, "hex": "0180"],
+            ["atMs": 1_763_585_990_004, "hex": "0180"]
+        ])
+        XCTAssertEqual(Set(capture.keys), ["format", "device", "configuration", "strings", "hidReportDescriptors", "restReports"])
+    }
+
+    func testTheGuidedStepsRideAsTheMacsTextCaptureInExtra() throws {
+        let extra = try XCTUnwrap(try object()["extra"] as? [String: Any])
+        XCTAssertEqual(extra["supportCapture"] as? [String: String], ["format": "support-capture-text", "text": "VID:PID 054c:0ce6"])
+    }
+
+    func testAFileWithNoCaptureHasNoExtra() throws {
+        let base = fixture()
+        let facts = DiagnosticsBundleFacts(
+            createdAtMs: 0,
+            app: base.app,
+            device: base.device,
+            controllerDb: base.controllerDb,
+            pads: [],
+            hosts: [],
+            log: []
+        )
+        let file = try XCTUnwrap(JSONSerialization.jsonObject(with: diagnosticsBundleJSON(facts)) as? [String: Any])
+        XCTAssertNil(file["extra"])
+    }
+
+    func testADescriptorWhoseInterfaceIOKitDoesNotNameSaysNullAndANameNotGivenIsNull() throws {
+        let overBluetooth = BundleCapture(
+            device: "Transport: Bluetooth",
+            product: "Pad",
+            manufacturer: nil,
+            interfaceNumber: nil,
+            reportDescriptor: [0x05, 0x01],
+            restReports: []
+        )
+        let facts = DiagnosticsBundleFacts(
+            createdAtMs: 0,
+            app: fixture().app,
+            device: fixture().device,
+            controllerDb: ControllerDbStatus(),
+            pads: [BundlePadFacts(record: nil, transport: .bluetooth, path: .direct, hardware: nil, capture: overBluetooth)],
+            hosts: [],
+            log: []
+        )
+        let file = try XCTUnwrap(JSONSerialization.jsonObject(with: diagnosticsBundleJSON(facts)) as? [String: Any])
+        let capture = try XCTUnwrap(((file["controllers"] as? [[String: Any]])?.first)?["capture"] as? [String: Any])
+        let descriptor = try XCTUnwrap((capture["hidReportDescriptors"] as? [[String: Any]])?.first)
+        XCTAssertTrue(descriptor["interface"] is NSNull)
+        XCTAssertTrue((capture["strings"] as? [String: Any])?["manufacturer"] is NSNull)
+        XCTAssertEqual(capture["restReports"] as? [[String: AnyHashable]], [])
     }
 
     func testAPadWithNoRecordOrCaptureSaysNullForBoth() throws {

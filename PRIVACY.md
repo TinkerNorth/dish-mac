@@ -259,9 +259,13 @@ The file holds:
 - the app's flight recorder, the lines Diagnostics shows, with every host
   named by its alias;
 - only if you ran "Help support this controller" this session, that
-  controller's report as the page showed it: its ids, names, connection, HID
-  report descriptor and the reports it sent as you pressed each control; in
-  a report, only when it is the controller you picked.
+  controller's capture: its ids, names, connection and the facts macOS
+  lists for it (its version, report sizes and report interval, and on USB
+  its device's class and descriptor fields, never its serial number), its
+  HID report descriptor, the first twenty reports it sent while at rest with
+  when each arrived, and the reports it sent as you pressed each control,
+  also as the page showed them; in a report, only when it is the controller
+  you picked.
 
 It never holds pairing keys, pairing secrets, certificate fingerprints, IP
 addresses, Wi-Fi names, the names you gave your hosts or devices, or anything

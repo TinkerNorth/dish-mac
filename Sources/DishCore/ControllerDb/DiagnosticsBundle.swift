@@ -100,6 +100,36 @@ public struct BundleAudio: Equatable, Sendable {
     }
 }
 
+/// A Help-support capture in `usb-descriptors-v1`'s terms.
+public struct BundleCapture: Equatable, Sendable {
+    /// IOKit's facts of the device as text, one per line.
+    public let device: String
+    public let product: String?
+    public let manufacturer: String?
+    /// The HID interface the descriptor is the device's own for; nil where
+    /// IOKit names none.
+    public let interfaceNumber: Int?
+    /// `kIOHIDReportDescriptorKey`: the device's own bytes.
+    public let reportDescriptor: [UInt8]
+    public let restReports: [RestReport]
+
+    public init(
+        device: String,
+        product: String?,
+        manufacturer: String?,
+        interfaceNumber: Int?,
+        reportDescriptor: [UInt8],
+        restReports: [RestReport]
+    ) {
+        self.device = device
+        self.product = product
+        self.manufacturer = manufacturer
+        self.interfaceNumber = interfaceNumber
+        self.reportDescriptor = reportDescriptor
+        self.restReports = restReports
+    }
+}
+
 /// How the Mac reads a pad.
 public enum BundlePadPath: String, Equatable, Sendable {
     case direct
@@ -116,8 +146,8 @@ public struct BundlePadFacts: Equatable, Sendable {
     public let expectMismatches: [String]
     public let lastWrite: DirectWriteVerdict?
     public let outcomes: [TestOutcome]
-    /// The support capture's text, for the one pad the person captured.
-    public let capture: String?
+    /// The support capture, for the one pad the person captured.
+    public let capture: BundleCapture?
     /// What went in; nil where the pad has no feed yet.
     public let input: BundlePadInput?
     /// What came out, lane by lane.
@@ -134,7 +164,7 @@ public struct BundlePadFacts: Equatable, Sendable {
         expectMismatches: [String] = [],
         lastWrite: DirectWriteVerdict? = nil,
         outcomes: [TestOutcome] = [],
-        capture: String? = nil,
+        capture: BundleCapture? = nil,
         input: BundlePadInput? = nil,
         output: BundlePadOutput? = nil,
         audio: BundleAudio? = nil
@@ -218,6 +248,8 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
     public let report: SupportReport?
     /// Nil when the file was written without reading them.
     public let conditions: BundleDeviceConditions?
+    /// The guided capture's text, when its capture rides a pad of the file.
+    public let supportCaptureText: String?
 
     public init(
         createdAtMs: Int64,
@@ -228,7 +260,8 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
         hosts: [BundleHostFacts],
         log: [BundleLogFacts],
         report: SupportReport? = nil,
-        conditions: BundleDeviceConditions? = nil
+        conditions: BundleDeviceConditions? = nil,
+        supportCaptureText: String? = nil
     ) {
         self.createdAtMs = createdAtMs
         self.app = app
@@ -239,6 +272,7 @@ public struct DiagnosticsBundleFacts: Equatable, Sendable {
         self.log = log
         self.report = report
         self.conditions = conditions
+        self.supportCaptureText = supportCaptureText
     }
 }
 
@@ -274,7 +308,10 @@ func diagnosticsBundle(_ facts: DiagnosticsBundleFacts) -> BundleFile {
         controllers: facts.pads.map(bundleController),
         hosts: facts.hosts.enumerated().map { bundleHost($1, alias: hostAlias($0), aliases: aliases) },
         log: facts.log.map { BundleFile.Log(atMs: $0.atMs, tag: $0.tag, message: scrub($0.message, aliases)) },
-        report: facts.report.map(supportReportFile)
+        report: facts.report.map(supportReportFile),
+        extra: facts.supportCaptureText.map { text in
+            BundleFile.Extra(supportCapture: BundleFile.TextCapture(format: BundleFile.TextCapture.format, text: text))
+        }
     )
 }
 
@@ -336,11 +373,30 @@ private func bundleController(_ pad: BundlePadFacts) -> BundleFile.Controller {
         lastFeedback: nil,
         lastWrite: write,
         outcomes: pad.outcomes.map { BundleFile.Outcome(test: $0.test.rawValue, result: $0.result.rawValue, atMs: $0.atMs) },
-        capture: pad.capture.map { BundleFile.Capture(format: BundleFile.Capture.supportCaptureText, text: $0) },
+        capture: pad.capture.map(bundleCaptureFile),
         input: pad.input.map(bundleInput),
         output: pad.output.map { bundleOutput($0, write: write) },
         bluetooth: bundleBluetooth(pad.transport, layer: pad.bluetoothLayer).map(bundleBluetoothFile)
     )
+}
+
+private func bundleCaptureFile(_ capture: BundleCapture) -> BundleFile.Capture {
+    let descriptor = BundleFile.ReportDescriptor(
+        interface: capture.interfaceNumber,
+        hex: contiguousHex(capture.reportDescriptor),
+        source: BundleFile.ReportDescriptor.fromTheDevice
+    )
+    return BundleFile.Capture(
+        device: capture.device,
+        strings: BundleFile.Strings(manufacturer: capture.manufacturer, product: capture.product),
+        hidReportDescriptors: capture.reportDescriptor.isEmpty ? [] : [descriptor],
+        restReports: capture.restReports.map { BundleFile.Report(atMs: $0.atMs, hex: contiguousHex($0.bytes)) }
+    )
+}
+
+/// "05010905": lowercase pairs with no separator, as dish-android writes them.
+private func contiguousHex(_ bytes: [UInt8]) -> String {
+    bytes.map { String(format: "%02x", $0) }.joined()
 }
 
 private func bundleHardware(_ hardware: BundleHardwareFacts) -> BundleFile.Hardware {

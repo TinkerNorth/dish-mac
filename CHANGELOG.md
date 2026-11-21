@@ -118,6 +118,15 @@ the repos share a version number.
   channels and refusal. `firmware` and `probe` are null, with the reasons in
   `Tests/PARITY.md`, as are a HID pad's endpoints, which only a client
   holding the interface could read. Nothing is opened to read them.
+- **The support capture rides the file as `usb-descriptors-v1`.** The pad's
+  last Help-support capture carries `device` (IOKit's own properties as
+  text, and on USB its device's descriptor fields, never the serial number),
+  `strings`, its HID report descriptor with `source` `device` and its
+  interface number, and `restReports`: its first twenty reports, repeats
+  included, with when each arrived, taken as the person moves on from "At
+  rest". `configuration` is null. The guided steps' reports have no place in
+  that format, so the text capture rides beside it in
+  `extra.supportCapture` as `support-capture-text`.
 
 ### Changed
 

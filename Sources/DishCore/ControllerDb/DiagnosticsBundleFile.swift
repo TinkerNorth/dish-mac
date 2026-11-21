@@ -130,9 +130,77 @@ struct BundleFile: Encodable {
         let atMs: Int64
     }
 
-    /// The contract's capture object; the Mac's format is its Help-support text.
+    /// `usb-descriptors-v1`: the Mac's descriptor is the device's own
+    /// (`kIOHIDReportDescriptorKey`), and `configuration` is null because
+    /// IOKit hands its bytes only to a client holding the device.
     struct Capture: Encodable {
-        static let supportCaptureText = "support-capture-text"
+        static let format = "usb-descriptors-v1"
+
+        let device: String
+        let strings: Strings
+        let hidReportDescriptors: [ReportDescriptor]
+        let restReports: [Report]
+
+        private enum CodingKeys: String, CodingKey {
+            case format, device, configuration, strings, hidReportDescriptors, restReports
+        }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(Self.format, forKey: .format)
+            try container.encode(device, forKey: .device)
+            try container.encodeNil(forKey: .configuration)
+            try container.encode(strings, forKey: .strings)
+            try container.encode(hidReportDescriptors, forKey: .hidReportDescriptors)
+            try container.encode(restReports, forKey: .restReports)
+        }
+    }
+
+    /// The device's strings as text; never its serial number.
+    struct Strings: Encodable {
+        let manufacturer: String?
+        let product: String?
+
+        private enum CodingKeys: String, CodingKey { case manufacturer, product }
+
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(manufacturer, forKey: .manufacturer)
+            try container.encode(product, forKey: .product)
+        }
+    }
+
+    struct ReportDescriptor: Encodable {
+        static let fromTheDevice = "device"
+
+        let interface: Int?
+        let hex: String
+        let source: String
+
+        private enum CodingKeys: String, CodingKey { case interface, hex, source }
+
+        /// An interface IOKit does not name is null.
+        func encode(to encoder: Encoder) throws {
+            var container = encoder.container(keyedBy: CodingKeys.self)
+            try container.encode(interface, forKey: .interface)
+            try container.encode(hex, forKey: .hex)
+            try container.encode(source, forKey: .source)
+        }
+    }
+
+    struct Report: Encodable {
+        let atMs: Int64
+        let hex: String
+    }
+
+    /// The Mac's own additions: its guided capture's text, whose steps
+    /// `usb-descriptors-v1` has no place for.
+    struct Extra: Encodable {
+        let supportCapture: TextCapture
+    }
+
+    struct TextCapture: Encodable {
+        static let format = "support-capture-text"
 
         let format: String
         let text: String
@@ -247,4 +315,5 @@ struct BundleFile: Encodable {
     let hosts: [Host]
     let log: [Log]
     let report: SupportReportFile?
+    let extra: Extra?
 }

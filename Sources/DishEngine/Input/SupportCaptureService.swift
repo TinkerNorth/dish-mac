@@ -26,12 +26,25 @@ package struct SupportCaptureFacts: Equatable {
 /// The last capture the person finished this run, for the diagnostics bundle.
 package struct FinishedCapture: Equatable {
     package let deviceKey: String
+    /// The text the page copies for an issue: the guided steps' reports.
     package let report: String
+    /// The same capture in `usb-descriptors-v1`'s terms.
+    package let capture: BundleCapture?
 
-    package init(deviceKey: String, report: String) {
+    package init(deviceKey: String, report: String, capture: BundleCapture? = nil) {
         self.deviceKey = deviceKey
         self.report = report
+        self.capture = capture
     }
+}
+
+/// The two clocks a report at rest is placed by: the uptime the capture's
+/// thread stamps it on, and the wall clock the file is written in.
+struct CaptureClocks {
+    let uptimeNs: () -> UInt64
+    let wallMs: () -> Int64
+
+    static let live = CaptureClocks(uptimeNs: { DispatchTime.now().uptimeNanoseconds }, wallMs: wallClockMs)
 }
 
 @MainActor
@@ -41,6 +54,7 @@ final class SupportCaptureService: StateSource<SupportCaptureFacts?> {
 
     private let capture: HidReportCapturing
     private let scheduler: InputPathScheduler
+    private let clocks: CaptureClocks
     private let relay = SupportRelay()
     private var drainTimer: InputPathTimer?
     /// Counts the captures, so a post from one that ended lands nowhere.
@@ -48,9 +62,10 @@ final class SupportCaptureService: StateSource<SupportCaptureFacts?> {
     /// Kept after its page closes; the next finished capture replaces it.
     private(set) var lastFinished: FinishedCapture?
 
-    init(capture: HidReportCapturing, scheduler: InputPathScheduler) {
+    init(capture: HidReportCapturing, scheduler: InputPathScheduler, clocks: CaptureClocks = .live) {
         self.capture = capture
         self.scheduler = scheduler
+        self.clocks = clocks
         super.init(initial: nil)
         relay.service = self
     }
@@ -68,12 +83,23 @@ final class SupportCaptureService: StateSource<SupportCaptureFacts?> {
         drainTimer = scheduler.every(ms: Self.drainMs) { [weak self] in self?.drain() }
     }
 
-    /// Next and Skip; the last step stops the capture and keeps the result.
+    /// Next and Skip; the last step stops the capture and keeps the result,
+    /// as the text for an issue and in `usb-descriptors-v1`'s terms.
     func send(_ event: SupportCaptureEvent) {
+        takeRestOnLeavingIt(event)
         reduce(event)
         guard let facts = state, facts.capture.phase == .finished else { return }
-        lastFinished = FinishedCapture(deviceKey: facts.deviceKey, report: supportReportText(facts.capture))
+        let report = supportReportText(facts.capture)
+        lastFinished = FinishedCapture(deviceKey: facts.deviceKey, report: report, capture: bundleCapture(facts.capture))
         stopCapturing()
+    }
+
+    /// Moving on from the first step takes what the capture held at rest,
+    /// placed on the wall clock; a skip takes none.
+    private func takeRestOnLeavingIt(_ event: SupportCaptureEvent) {
+        guard event == .next, state?.capture.step == .atRest else { return }
+        let held = restReports(capture.restReports(), nowUptimeNs: clocks.uptimeNs(), nowWallMs: clocks.wallMs())
+        reduce(.restTaken(held))
     }
 
     func end() {

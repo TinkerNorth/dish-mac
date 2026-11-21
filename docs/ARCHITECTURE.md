@@ -461,9 +461,17 @@ GameController.
   `HidReportRing` of 64 preallocated 128-byte slots (a repeat of the last
   report is not written), so the hot path builds nothing; the service drains
   the ring every 100 ms on its own timer, not a view's. The descriptor
-  (`kIOHIDReportDescriptorKey`), product, manufacturer and transport are
-  read once as the device opens. The result is text on the page: nothing is
-  sent, and the issue link opens with only its title filled in.
+  (`kIOHIDReportDescriptorKey`), product, manufacturer, transport, interface
+  number and the facts the file describes the device by (its own HID
+  properties and, on USB, its `IOUSBHostDevice`'s descriptor fields, never
+  the serial number) are read once as the device opens. Beside the ring's
+  slots, its first twenty reports are kept whole, repeats included, each
+  stamped with its uptime on arrival; the service takes them as the person
+  moves on from "At rest" and places them on the wall clock
+  (`restReports` in the core). The result is text on the page, and the same
+  capture in `usb-descriptors-v1`'s terms (`bundleCapture`) for the
+  diagnostics file, with the text in its `extra`: nothing is sent, and the
+  issue link opens with only its title filled in.
 - **R7: a Nintendo controller GameController lists is a carrier.** A
   `GCController` whose product category names a Direct-by-model pad ("Switch
   Pro Controller", "Switch N64 Controller", the SNES pad's) gets no input slot

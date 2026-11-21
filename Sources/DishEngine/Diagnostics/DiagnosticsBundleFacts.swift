@@ -65,19 +65,22 @@ package func diagnosticsBundleFacts(_ inputs: DiagnosticsBundleInputs) -> Diagno
             .with(session: hostSession(host, inputs: inputs, records: records), snapshot: hostSnapshot(host, inputs: inputs))
     }
     let known = Set(hosts.flatMap(\.names))
+    let padFacts = pads.map { pad in
+        bundlePadFacts(pad, outcomes: inputs.outcomes, capture: captureRiding(pad, inputs: inputs))
+            .with(reading: inputs.padReadings[pad.slot.id], pad: pad)
+    }
+    let captureRides = padFacts.contains { $0.capture != nil }
     return DiagnosticsBundleFacts(
         createdAtMs: inputs.createdAtMs,
         app: inputs.app,
         device: BundleDeviceFacts(model: inputs.machine.model, os: inputs.machine.osName, arch: inputs.machine.arch),
         controllerDb: inputs.snapshot.controllerDb,
-        pads: pads.map { pad in
-            bundlePadFacts(pad, outcomes: inputs.outcomes, capture: captureRiding(pad, inputs: inputs))
-                .with(reading: inputs.padReadings[pad.slot.id], pad: pad)
-        },
+        pads: padFacts,
         hosts: hosts,
         log: inputs.events.map { bundleLogLine($0, knownHosts: known) },
         report: inputs.report.map { supportReport($0, pads: pads) },
-        conditions: inputs.preparation?.conditions
+        conditions: inputs.preparation?.conditions,
+        supportCaptureText: captureRides ? inputs.capture?.report : nil
     )
 }
 
@@ -209,7 +212,7 @@ func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: Finis
         expectMismatches: pad.inputPath?.expectMismatches ?? [],
         lastWrite: pad.inputPath?.lastWrite,
         outcomes: outcomes.answers[pad.slot.id] ?? [],
-        capture: capture.flatMap { captured(pad, by: $0) ? $0.report : nil },
+        capture: capture.flatMap { captured(pad, by: $0) ? $0.capture : nil },
         audio: bundleAudio(pad.audio)
     )
 }

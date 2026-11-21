@@ -82,11 +82,14 @@ final class SupportReportFactsTests: XCTestCase {
     }
 
     func testWithAReportTheCaptureRidesOnlyThePadItNames() {
-        var asked = inputs(capture: FinishedCapture(deviceKey: "named:Mystery Pad", report: "R"))
+        let taken = BundleCapture(device: "", product: nil, manufacturer: nil, interfaceNumber: nil, reportDescriptor: [], restReports: [])
+        var asked = inputs(capture: FinishedCapture(deviceKey: "named:Mystery Pad", report: "R", capture: taken))
         asked.report = SupportReportDraft(category: .notRecognised, text: "", slotId: "pad")
         XCTAssertEqual(diagnosticsBundleFacts(asked).pads.map(\.capture), [nil, nil])
+        XCTAssertNil(diagnosticsBundleFacts(asked).supportCaptureText, "nor its steps")
         asked.report = SupportReportDraft(category: .notRecognised, text: "", slotId: "gc")
-        XCTAssertEqual(diagnosticsBundleFacts(asked).pads.map(\.capture), [nil, "R"])
+        XCTAssertEqual(diagnosticsBundleFacts(asked).pads.map(\.capture), [nil, taken])
+        XCTAssertEqual(diagnosticsBundleFacts(asked).supportCaptureText, "R")
     }
 
     func testSaveDiagnosticsHasNoReportNoConditionsAndAsksNoHost() {
