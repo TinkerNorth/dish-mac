@@ -14,7 +14,10 @@ import IOKit.hid
 package struct HidHardwareDetail: Equatable {
     /// `kIOHIDVersionNumberKey`: a USB pad's `bcdDevice`.
     package var versionNumber: Int?
-    /// SHA-256 of `kIOHIDReportDescriptorKey`, lowercase hex.
+    /// The USB interface the HID device is, by its `bInterfaceNumber`.
+    package var interfaceNumber: Int?
+    /// SHA-256 of the USB device's raw descriptors, lowercase hex; filled
+    /// by Diagnostics, nil off USB and where IOKit hands none over.
     package var descriptorSha256: String?
     /// The USB device's interfaces as the IORegistry lists them; nil off
     /// USB, or when no USB device is above the pad.
@@ -37,13 +40,15 @@ package struct HidHardwareDetail: Equatable {
 }
 
 /// The properties the detail reads off a HID device.
-let hidDetailPropertyKeys = [kIOHIDVersionNumberKey, kIOHIDReportDescriptorKey]
+let hidDetailPropertyKeys = [kIOHIDVersionNumberKey, hidInterfaceNumberKey]
 
-/// The version and the descriptor's fingerprint from a HID device's own
-/// properties; its USB interfaces are read from the IORegistry apart.
+/// The version from a HID device's own properties; its USB interfaces are
+/// read from the IORegistry apart, and the fingerprint of its raw USB
+/// descriptors by Diagnostics. The HID report descriptor is the capture's.
 func hidHardwareDetail(_ properties: [String: Any]) -> HidHardwareDetail {
-    let descriptor = (properties[kIOHIDReportDescriptorKey] as? Data).flatMap { $0.isEmpty ? nil : $0 }
-    return HidHardwareDetail(versionNumber: properties[kIOHIDVersionNumberKey] as? Int, descriptorSha256: descriptor.map(sha256Hex))
+    var detail = HidHardwareDetail(versionNumber: properties[kIOHIDVersionNumberKey] as? Int)
+    detail.interfaceNumber = properties[hidInterfaceNumberKey] as? Int
+    return detail
 }
 
 /// One interface from its IORegistry entry; nil for an entry missing its
@@ -75,28 +80,38 @@ func looksForUsbDevice(_ transport: HidTransport) -> Bool {
     }
 }
 
-/// What IOKit says of a HID device's hardware: its version and descriptor,
-/// and, on USB, its device's interfaces. Nothing is opened.
-func hidDeviceDetail(_ device: IOHIDDevice, transport: HidTransport) -> HidHardwareDetail {
+/// What IOKit says of a HID device's hardware, and the IORegistry entry of
+/// the USB device above it.
+struct HidDeviceHardware: Equatable {
+    let detail: HidHardwareDetail
+    let usbDeviceId: UInt64?
+}
+
+/// The version and, on USB, its device's interfaces and entry. Nothing is
+/// opened.
+func hidDeviceHardware(_ device: IOHIDDevice, transport: HidTransport) -> HidDeviceHardware {
     let properties = Dictionary(uniqueKeysWithValues: hidDetailPropertyKeys.compactMap { key in
         IOHIDDeviceGetProperty(device, key as CFString).map { (key, $0 as Any) }
     })
+    let listing = usbDeviceListing(ofHidService: IOHIDDeviceGetService(device), transport: transport)
     var detail = hidHardwareDetail(properties)
-    detail.interfaces = usbInterfaceEntries(ofHidService: IOHIDDeviceGetService(device), transport: transport).map(usbInterfaces)
-    return detail
+    detail.interfaces = listing.map { usbInterfaces($0.interfaces) }
+    return HidDeviceHardware(detail: detail, usbDeviceId: listing?.registryId)
 }
 
-/// The interfaces' entries of a HID device's USB device; nil off USB.
-func usbInterfaceEntries(ofHidService service: io_service_t, transport: HidTransport) -> [[String: Any]]? {
+/// A HID device's USB device as the IORegistry lists it; nil off USB.
+func usbDeviceListing(ofHidService service: io_service_t, transport: HidTransport) -> UsbDeviceListing? {
     guard looksForUsbDevice(transport) else { return nil }
-    return usbInterfaceEntries(above: service)
+    return usbDeviceListing(above: service)
 }
 
 extension HidPadCandidate {
-    /// The candidate with its USB device's interfaces, read as it arrived.
-    func with(interfaces entries: [[String: Any]]?) -> HidPadCandidate {
+    /// The candidate with its USB device's interfaces and entry, read as it
+    /// arrived.
+    func with(usbDevice listing: UsbDeviceListing?) -> HidPadCandidate {
         var read = self
-        read.detail.interfaces = entries.map(usbInterfaces)
+        read.detail.interfaces = listing.map { usbInterfaces($0.interfaces) }
+        read.usbDeviceId = listing?.registryId
         return read
     }
 }

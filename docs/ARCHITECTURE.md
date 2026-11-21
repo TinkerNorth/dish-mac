@@ -466,7 +466,8 @@ GameController.
   `HidReportRing` of 64 preallocated 128-byte slots (a repeat of the last
   report is not written), so the hot path builds nothing; the service drains
   the ring every 100 ms on its own timer, not a view's. The descriptor
-  (`kIOHIDReportDescriptorKey`), product, manufacturer, transport, interface
+  (`kIOHIDReportDescriptorKey`, the operating system's copy), product,
+  manufacturer, transport, interface
   number and the facts the file describes the device by (its own HID
   properties and, on USB, its `IOUSBHostDevice`'s descriptor fields, never
   the serial number) are read once as the device opens. Beside the ring's
@@ -545,19 +546,26 @@ the client's `WireTally`; `PadFeedback` keeps each pad's `FeedbackTally`.
 Both tallies are relaxed counters the hot path bumps and never reads.
 
 What the file says of a pad's hardware is read off IOKit without opening
-anything (`Input/HidHardwareDetail.swift`, `Input/UsbRegistry.swift`): the
-version (`kIOHIDVersionNumberKey`) and the SHA-256 of the report descriptor
-(`kIOHIDReportDescriptorKey`) from the HID device's own properties, and, for a
-pad on USB, the interfaces of the `IOUSBHostDevice` found at most three
-parents up the service plane, each `IOUSBHostInterface` child by its number
-and class triple. IOUSBHost hands a device's descriptors only to a client with
-an exclusive session, which macOS's drivers hold for a pad, so the
-registry's published fields are what is read. The census reads it once per
-device, the HID reader as it attaches a Direct pad (USB only, on its own
-thread), the XUSB bus as an interface arrives, and the XUSB reader adds the
-addresses of the pipes it opened. The IOKit classes read for the file are
-`IOHIDDevice` (properties), `IOUSBHostDevice` and `IOUSBHostInterface`
-(registry entries) and `AppleUSBHostController` (counted for `usbHost`).
+the pad (`Input/HidHardwareDetail.swift`, `Input/UsbRegistry.swift`,
+`Input/UsbDescriptors.swift`): the version (`kIOHIDVersionNumberKey`) and the
+interface number from the HID device's own properties, and, for a pad on
+USB, the `IOUSBHostDevice` found at most three parents up the service plane:
+its entry's id and each `IOUSBHostInterface` child by its number and class
+triple. The census reads that once per device, the HID reader as it attaches
+a Direct pad (USB only, on its own thread), the XUSB bus as an interface
+arrives, and the XUSB reader adds the addresses of the pipes it opened.
+`DiagnosticsSource` then reads each USB device's raw descriptors once, on the
+main actor, through the `UsbDescriptorReading` seam: the device descriptor
+rebuilt from the `IOUSBHostDevice`'s registry fields and every configuration
+descriptor through IOUSBLib's device interface, which hands them over as
+received from the bus without the device being opened (IOUSBHost's own
+objects need an exclusive session, which macOS's drivers hold for a pad).
+Their SHA-256 is `descriptorSha256`, a HID pad's interrupt endpoints come
+from the configuration in force, and the configurations ride the capture.
+The IOKit classes read for the file are `IOHIDDevice` (properties),
+`IOUSBHostDevice` and `IOUSBHostInterface` (registry entries),
+`IOUSBDeviceInterface100` (IOUSBLib, never opened) and
+`AppleUSBHostController` (counted for `usbHost`).
 
 ## Several pads on one satellite
 

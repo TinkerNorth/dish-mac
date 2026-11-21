@@ -135,14 +135,14 @@ final class XusbPadReaderTests: XCTestCase {
         let input = bridge()
         var properties = XusbFixtures.ultimate2()
         properties[UsbInterfaceKey.deviceRelease] = 0x0114
-        bus.plug(1, properties, port: FakeXusbPort(), interfaces: XusbFixtures.interfaces)
+        bus.plug(1, properties, port: FakeXusbPort(), usbDevice: UsbDeviceListing(registryId: 77, interfaces: XusbFixtures.interfaces))
         drainMain()
         scheduler.advance(ms: 100)
         let hardware = try XCTUnwrap(input.paths.facts(forSlot: Self.slotId)?.hardware)
         XCTAssertEqual(hardware.versionNumber, 0x0114, "the interface's bcdDevice")
         XCTAssertEqual(hardware.interfaces?.map(\.number), [0, 1, 2, 3])
         XCTAssertEqual(hardware.endpoints, BundleEndpoints(input: 0x81, output: 0x02), "the pipes Dish opened")
-        XCTAssertNil(hardware.descriptorSha256, "an XUSB interface has no HID report descriptor")
+        XCTAssertEqual(input.paths.facts(forSlot: Self.slotId)?.usbDeviceId, 77, "the USB device Diagnostics fingerprints")
     }
 
     func testTheBusReadsTheVersionWithTheIdentity() {

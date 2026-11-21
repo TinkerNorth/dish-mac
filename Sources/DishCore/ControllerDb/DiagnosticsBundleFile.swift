@@ -130,13 +130,14 @@ struct BundleFile: Encodable {
         let atMs: Int64
     }
 
-    /// `usb-descriptors-v1`: the Mac's descriptor is the device's own
-    /// (`kIOHIDReportDescriptorKey`), and `configuration` is null because
-    /// IOKit hands its bytes only to a client holding the device.
+    /// `usb-descriptors-v1`: the Mac's report descriptor is the operating
+    /// system's copy (`kIOHIDReportDescriptorKey`), and `configuration` is
+    /// null where IOKit hands no configuration descriptor over.
     struct Capture: Encodable {
         static let format = "usb-descriptors-v1"
 
         let device: String
+        let configuration: String?
         let strings: Strings
         let hidReportDescriptors: [ReportDescriptor]
         let restReports: [Report]
@@ -149,7 +150,7 @@ struct BundleFile: Encodable {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(Self.format, forKey: .format)
             try container.encode(device, forKey: .device)
-            try container.encodeNil(forKey: .configuration)
+            try container.encode(configuration, forKey: .configuration)
             try container.encode(strings, forKey: .strings)
             try container.encode(hidReportDescriptors, forKey: .hidReportDescriptors)
             try container.encode(restReports, forKey: .restReports)
@@ -171,7 +172,9 @@ struct BundleFile: Encodable {
     }
 
     struct ReportDescriptor: Encodable {
-        static let fromTheDevice = "device"
+        /// IOKit's `kIOHIDReportDescriptorKey` is the operating system's
+        /// copy, which a HID driver may have rewritten.
+        static let fromTheOperatingSystem = "os"
 
         let interface: Int?
         let hex: String

@@ -144,6 +144,24 @@ final class DiagnosticsBundleFactsTests: XCTestCase {
         XCTAssertEqual(byName.supportCaptureText, "N")
     }
 
+    func testTheCaptureCarriesTheConfigurationDescriptorsOfThePadsUsbDevice() throws {
+        var snapshot = inputs(capture: FinishedCapture(deviceKey: "054c:0ce6", report: "R", capture: Self.taken))
+        var pads = snapshot.snapshot.pads
+        pads[0].usbDescriptors = UsbRawDescriptors(device: [0x12, 0x01], configurations: [[0x09, 0x02]])
+        snapshot = DiagnosticsBundleInputs(
+            createdAtMs: snapshot.createdAtMs,
+            app: snapshot.app,
+            machine: snapshot.machine,
+            snapshot: DiagnosticsSnapshot(hosts: snapshot.snapshot.hosts, pads: pads),
+            events: [],
+            outcomes: snapshot.outcomes,
+            capture: snapshot.capture,
+            hostVersions: snapshot.hostVersions
+        )
+        let capture = try XCTUnwrap(diagnosticsBundleFacts(snapshot).pads.first?.capture)
+        XCTAssertEqual(capture.configuration, [[0x09, 0x02]])
+    }
+
     func testACaptureOfNoPadInTheFileRidesNowhere() {
         let elsewhere = diagnosticsBundleFacts(inputs(capture: FinishedCapture(deviceKey: "1234:5678", report: "X", capture: Self.taken)))
         XCTAssertEqual(elsewhere.pads.map(\.capture), [nil, nil])

@@ -38,14 +38,16 @@ func registryProperties(_ entry: io_registry_entry_t, keys: [String]) -> [String
     Dictionary(uniqueKeysWithValues: keys.compactMap { key in registryValue(entry, key).map { (key, $0) } })
 }
 
-/// The interfaces' entries of the USB device at or above `entry`; nil when
-/// none is within reach (a Bluetooth or SPI device, or a virtual one that
-/// calls itself USB).
-func usbInterfaceEntries(above entry: io_registry_entry_t) -> [[String: Any]]? {
+/// The USB device at or above `entry`: its entry's id and its interfaces'
+/// entries; nil when none is within reach (a Bluetooth or SPI device, or a
+/// virtual one that calls itself USB).
+func usbDeviceListing(above entry: io_registry_entry_t) -> UsbDeviceListing? {
     IOObjectRetain(entry)
     guard let device = usbDeviceSearch(entry, levelsLeft: usbDeviceSearchLevels) else { return nil }
     defer { IOObjectRelease(device) }
-    return usbInterfaceEntries(of: device)
+    var registryId: UInt64 = 0
+    guard IORegistryEntryGetRegistryEntryID(device, &registryId) == KERN_SUCCESS else { return nil }
+    return UsbDeviceListing(registryId: registryId, interfaces: usbInterfaceEntries(of: device))
 }
 
 /// The USB device's own entry at or above `entry`, read under `keys`.

@@ -105,7 +105,7 @@ final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
                 registryId: registryId(of: service),
                 properties: properties,
                 port: port,
-                deviceInterfaces: usbInterfaceEntries(above: service)
+                usbDevice: usbDeviceListing(above: service)
             )
             events?.arrived(arrival)
             IOObjectRelease(service)

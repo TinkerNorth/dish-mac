@@ -242,9 +242,9 @@ final class FakeXusbBus: XusbBus, @unchecked Sendable {
         startBox.get() != nil
     }
 
-    func plug(_ registryId: UInt64, _ properties: [String: Any], port: XusbPort, interfaces: [[String: Any]]? = nil) {
+    func plug(_ registryId: UInt64, _ properties: [String: Any], port: XusbPort, usbDevice: UsbDeviceListing? = nil) {
         guard let start = startBox.get() else { return }
-        let arrival = XusbInterfaceArrival(registryId: registryId, properties: properties, port: port, deviceInterfaces: interfaces)
+        let arrival = XusbInterfaceArrival(registryId: registryId, properties: properties, port: port, usbDevice: usbDevice)
         start.queue.sync { start.events.arrived(arrival) }
     }
 

@@ -77,7 +77,9 @@ public struct BundleHardwareFacts: Equatable, Sendable {
     public var interfaces: [BundleUsbInterface]?
     /// Nil where IOKit does not say: only a pad Dish opens itself names them.
     public var endpoints: BundleEndpoints?
-    /// SHA-256 of the HID report descriptor, lowercase hex.
+    /// SHA-256 of the raw USB descriptors (the device descriptor, then each
+    /// configuration descriptor in index order), lowercase hex; nil off USB
+    /// and where IOKit hands none over.
     public var descriptorSha256: String?
 
     public init(vendorId: UInt16, productId: UInt16, product: String?, manufacturer: String?) {
@@ -109,9 +111,12 @@ public struct BundleCapture: Equatable, Sendable {
     /// The HID interface the descriptor is the device's own for; nil where
     /// IOKit names none.
     public let interfaceNumber: Int?
-    /// `kIOHIDReportDescriptorKey`: the device's own bytes.
+    /// `kIOHIDReportDescriptorKey`: the operating system's copy.
     public let reportDescriptor: [UInt8]
     public let restReports: [RestReport]
+    /// Each configuration descriptor in index order, as the bus delivered
+    /// them; nil where IOKit hands none over.
+    public let configuration: [[UInt8]]?
 
     public init(
         device: String,
@@ -119,7 +124,8 @@ public struct BundleCapture: Equatable, Sendable {
         manufacturer: String?,
         interfaceNumber: Int?,
         reportDescriptor: [UInt8],
-        restReports: [RestReport]
+        restReports: [RestReport],
+        configuration: [[UInt8]]? = nil
     ) {
         self.device = device
         self.product = product
@@ -127,6 +133,20 @@ public struct BundleCapture: Equatable, Sendable {
         self.interfaceNumber = interfaceNumber
         self.reportDescriptor = reportDescriptor
         self.restReports = restReports
+        self.configuration = configuration
+    }
+
+    /// The capture with its device's configuration descriptors.
+    public func with(configuration descriptors: [[UInt8]]?) -> BundleCapture {
+        BundleCapture(
+            device: device,
+            product: product,
+            manufacturer: manufacturer,
+            interfaceNumber: interfaceNumber,
+            reportDescriptor: reportDescriptor,
+            restReports: restReports,
+            configuration: descriptors
+        )
     }
 }
 
@@ -384,10 +404,11 @@ private func bundleCaptureFile(_ capture: BundleCapture) -> BundleFile.Capture {
     let descriptor = BundleFile.ReportDescriptor(
         interface: capture.interfaceNumber,
         hex: contiguousHex(capture.reportDescriptor),
-        source: BundleFile.ReportDescriptor.fromTheDevice
+        source: BundleFile.ReportDescriptor.fromTheOperatingSystem
     )
     return BundleFile.Capture(
         device: capture.device,
+        configuration: capture.configuration.map { contiguousHex(Array($0.joined())) },
         strings: BundleFile.Strings(manufacturer: capture.manufacturer, product: capture.product),
         hidReportDescriptors: capture.reportDescriptor.isEmpty ? [] : [descriptor],
         restReports: capture.restReports.map { BundleFile.Report(atMs: $0.atMs, hex: contiguousHex($0.bytes)) }

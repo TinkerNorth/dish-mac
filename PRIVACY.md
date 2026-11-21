@@ -224,10 +224,10 @@ The file holds:
   when the last check ran and how it ended;
 - for each attached controller, its identity and hardware facts: the USB or
   Bluetooth ids, the product and maker names the controller reports, its
-  version number, a fingerprint (SHA-256) of its HID report descriptor, on
-  USB its interfaces' numbers and classes as macOS's registry lists them (and
-  the endpoint addresses of a controller Dish opens itself), its USB audio
-  function's channel count and whether macOS refused it, how it is
+  version number, on USB a fingerprint (SHA-256) of its USB descriptors and
+  its interfaces' numbers, classes and endpoint addresses as macOS lists
+  them, its USB audio function's channel count and whether macOS refused
+  it, how it is
   connected, how Dish reads it, the controller database record it matched,
   what its hardware showed at attach against that record, and the last report
   Dish sent it with the answer macOS gave; none of it identifies the unit,
@@ -262,7 +262,8 @@ The file holds:
   controller's capture: its ids, names, connection and the facts macOS
   lists for it (its version, report sizes and report interval, and on USB
   its device's class and descriptor fields, never its serial number), its
-  HID report descriptor, the first twenty reports it sent while at rest with
+  HID report descriptor and on USB its configuration descriptors, the first
+  twenty reports it sent while at rest with
   when each arrived, and the reports it sent as you pressed each control,
   also as the page showed them; in a report, only when it is the controller
   you picked.
@@ -353,7 +354,7 @@ so treat it as sensitive before attaching it to a public issue.
 | Input Monitoring (macOS asks) | Reading a controller that is also a keyboard or a mouse, such as a Steam Controller (the 2026 one on a cable, or either one over Bluetooth), only when you press Use Direct for it. Dish reads the controller's own reports to forward its buttons, sticks, trackpads and motion; it reads no other keyboard or mouse and records no typing. Refusing leaves the controller as it was. |
 | Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
 | Wi-Fi link readout (CoreWLAN) | Only as a report opens: the current Wi-Fi interface's band, signal strength (RSSI) and transmit rate, for the file you choose to mail. Dish never reads the network's name or the access point's address, so macOS's location permission is never asked. |
-| USB and HID device facts (IOKit registry) | For the diagnostics file only: as a report opens, whether macOS lists a USB host controller, counted in the IORegistry and written as a yes or a no; and each attached controller's version number, report descriptor fingerprint and USB interfaces as the IORegistry lists them, read as the controller attaches or as the Diagnostics page shows it. Nothing is opened to read them, and nothing leaves the Mac until you send the file. |
+| USB and HID device facts (IOKit registry and IOUSBLib) | For the diagnostics file only: as a report opens, whether macOS lists a USB host controller, counted in the IORegistry and written as a yes or a no; and each attached controller's version number, USB interfaces and endpoints, and the descriptors its USB device gave macOS as it was plugged in (fingerprinted, and in a capture written out), read as the controller attaches or as the Diagnostics page shows it. Nothing opens the controller or sends it a request to read them, and nothing leaves the Mac until you send the file. |
 | `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |
 
 The app runs unsandboxed and asks for no other permission than these.

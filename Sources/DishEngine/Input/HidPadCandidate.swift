@@ -45,6 +45,8 @@ struct HidPadCandidate: Equatable {
     var observedEndpoints = ObservedEndpoints(input: nil, output: nil)
     /// What IOKit said of the hardware as it arrived.
     var detail = HidHardwareDetail()
+    /// The IORegistry entry of the USB device above the interface; nil off USB.
+    var usbDeviceId: UInt64?
 
     /// The model's name, else the device's own, else its USB identity.
     var name: String {

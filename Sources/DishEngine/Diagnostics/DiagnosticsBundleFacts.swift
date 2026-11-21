@@ -212,7 +212,7 @@ func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: Finis
         expectMismatches: pad.inputPath?.expectMismatches ?? [],
         lastWrite: pad.inputPath?.lastWrite,
         outcomes: outcomes.answers[pad.slot.id] ?? [],
-        capture: capture.flatMap { captured(pad, by: $0) ? $0.capture : nil },
+        capture: capture.flatMap { captured(pad, by: $0) ? $0.capture?.with(configuration: pad.usbDescriptors?.configurations) : nil },
         audio: bundleAudio(pad.audio)
     )
 }

@@ -39,7 +39,7 @@ final class XusbLiveTests: XCTestCase {
             XCTAssertTrue(read.isSuperset(of: keys), "registry entry \(arrival.registryId)")
             XCTAssertTrue(read.isSubset(of: Set(xusbInterfaceKeys)), "the release beside them, where the entry has one")
             XCTAssertNotEqual(arrival.registryId, 0)
-            XCTAssertNotNil(arrival.deviceInterfaces, "an interface's device is its parent")
+            XCTAssertNotNil(arrival.usbDevice, "an interface's device is its parent")
         }
     }
 

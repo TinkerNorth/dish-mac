@@ -140,8 +140,17 @@ final class HidPadCandidateTests: XCTestCase {
         properties[kIOHIDVersionNumberKey] = 0x0210
         let candidate = try DirectFixtures.candidate(properties)
         XCTAssertEqual(candidate.detail.versionNumber, 0x0210)
-        XCTAssertEqual(candidate.detail.descriptorSha256, sha256Hex(Data(DirectFixtures.gamepadDescriptor)))
+        XCTAssertNil(candidate.detail.descriptorSha256, "Diagnostics fingerprints the raw USB descriptors")
         XCTAssertNil(candidate.detail.interfaces, "the reader reads the IORegistry as it opens the device")
+        XCTAssertNil(candidate.usbDeviceId)
+    }
+
+    func testTheUsbDeviceAboveACandidateGivesItsInterfacesAndItsEntry() throws {
+        let listing = UsbDeviceListing(registryId: 77, interfaces: XusbFixtures.interfaces)
+        let candidate = try DirectFixtures.candidate(DirectFixtures.gamepadProperties()).with(usbDevice: listing)
+        XCTAssertEqual(candidate.usbDeviceId, 77)
+        XCTAssertEqual(candidate.detail.interfaces?.map(\.number), [0, 1, 2, 3])
+        XCTAssertNil(try DirectFixtures.candidate(DirectFixtures.gamepadProperties()).with(usbDevice: nil).detail.interfaces)
     }
 
     func testTheReaderAsksIOKitForTheVersion() {

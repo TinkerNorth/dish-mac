@@ -71,6 +71,8 @@ package struct SlotInputPath: Equatable {
     package var lastWrite: DirectWriteVerdict?
     /// What IOKit said of the hardware of the interface Dish reads.
     package var hardware: HidHardwareDetail?
+    /// The IORegistry entry of the USB device that interface belongs to.
+    package var usbDeviceId: UInt64?
 
     package init(source: InputSource, reason: InputSourceReason) {
         self.source = source

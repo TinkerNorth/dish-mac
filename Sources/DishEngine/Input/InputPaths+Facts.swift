@@ -232,6 +232,7 @@ extension InputPaths {
         facts.transport = candidate.transport
         facts.hardwareId = candidate.hardwareId
         facts.hardware = candidate.detail
+        facts.usbDeviceId = candidate.usbDeviceId
         facts.expectMismatches = attachMismatches(candidate, index: controllerIndex)
         facts.lastWrite = lastWrites[key]
         return facts
@@ -246,6 +247,7 @@ extension InputPaths {
         facts?.transport = pad.arrival?.candidate.transport
         facts?.hardwareId = pad.arrival?.candidate.hardwareId
         facts?.hardware = pad.arrival?.candidate.detail
+        facts?.usbDeviceId = pad.arrival?.candidate.usbDeviceId
         return facts
     }
 }

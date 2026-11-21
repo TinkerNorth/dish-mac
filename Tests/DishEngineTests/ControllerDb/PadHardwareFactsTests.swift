@@ -68,7 +68,7 @@ final class PadHardwareFactsTests: XCTestCase {
 
     private static let detail = HidHardwareDetail(
         versionNumber: 0x0107,
-        descriptorSha256: String(repeating: "ab", count: 32),
+        descriptorSha256: nil,
         interfaces: [BundleUsbInterface(number: 3, interfaceClass: 0x03, subclass: 0x00, interfaceProtocol: 0x00)],
         endpoints: nil
     )
@@ -81,7 +81,6 @@ final class PadHardwareFactsTests: XCTestCase {
         let known = try withRecord(pad, index: bundledIndex(), devices: [], host: IssueHost(model: "Mac14,2", osMajor: 26))
         let hardware = try XCTUnwrap(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).hardware)
         XCTAssertEqual(hardware.bcdDevice, 0x0107)
-        XCTAssertEqual(hardware.descriptorSha256, Self.detail.descriptorSha256)
         XCTAssertEqual(hardware.interfaces, Self.detail.interfaces)
         XCTAssertNil(hardware.endpoints)
     }
@@ -101,6 +100,7 @@ final class PadHardwareFactsTests: XCTestCase {
         let pad = PadDiagnostics(slot: ControllerSlot(id: "gc", name: "DualSense"), wire: nil, hardwareId: ids)
         var wired = HidDeviceFacts(id: 1, name: "DualSense", hardwareId: ids, transport: .usb, claimedByGameController: true)
         wired.detail = Self.detail
+        wired.detail.descriptorSha256 = String(repeating: "ab", count: 32)
         let wireless = HidDeviceFacts(
             id: 2,
             name: "DualSense",

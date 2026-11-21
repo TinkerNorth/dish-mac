@@ -120,20 +120,23 @@ the repos share a version number.
   `device.usbHost` is true when IOKit lists a service of class
   `AppleUSBHostController`, false when it lists none, null with no answer.
 - **A controller's hardware, as IOKit gives it.** Each controller's
-  `hardware` carries `bcdDevice` (`kIOHIDVersionNumberKey`), the SHA-256 of
-  its report descriptor, its USB device's interfaces from the IORegistry's
-  `IOUSBHostInterface` entries, and an XUSB pad's endpoints from the pipes
-  Dish opened; the controller carries `rateHz` and its USB audio function's
-  channels and refusal. `firmware` and `probe` are null, with the reasons in
-  `Tests/PARITY.md`, as are a HID pad's endpoints, which only a client
-  holding the interface could read. Nothing is opened to read them.
+  `hardware` carries `bcdDevice` (`kIOHIDVersionNumberKey`), its USB
+  device's interfaces from the IORegistry's `IOUSBHostInterface` entries,
+  `descriptorSha256`, the SHA-256 of its raw USB descriptors (the device
+  descriptor rebuilt from the registry's fields, then every configuration
+  descriptor as IOUSBLib hands it over without opening the device), and its
+  endpoints: an XUSB pad's pipes, a HID pad's interrupt IN and OUT from its
+  configuration descriptor. The controller carries `rateHz` and its USB
+  audio function's channels and refusal. `firmware` and `probe` are null,
+  with the reasons in `Tests/PARITY.md`. Nothing opens the pad to read them.
 - **The support capture rides the file as `usb-descriptors-v1`.** The pad's
   last Help-support capture carries `device` (IOKit's own properties as
   text, and on USB its device's descriptor fields, never the serial number),
-  `strings`, its HID report descriptor with `source` `device` and its
-  interface number, and `restReports`: its first twenty reports, repeats
-  included, with when each arrived, taken as the person moves on from "At
-  rest". `configuration` is null. The guided steps' reports have no place in
+  `strings`, its HID report descriptor with `source` `os` (IOKit's copy)
+  and its interface number, `configuration` (every configuration descriptor
+  as hex), and `restReports`: its first twenty reports, repeats included,
+  with when each arrived, taken as the person moves on from "At rest". The
+  guided steps' reports have no place in
   that format, so the text capture rides beside it in
   `extra.supportCapture` as `support-capture-text`.
 

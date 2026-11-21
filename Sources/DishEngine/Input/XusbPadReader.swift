@@ -59,9 +59,9 @@ struct XusbInterfaceArrival {
     /// its own class, subclass and protocol.
     let properties: [String: Any]
     let port: XusbPort
-    /// Each of its device's interfaces' properties; nil when the IORegistry
-    /// showed no device above it.
-    var deviceInterfaces: [[String: Any]]?
+    /// Its USB device as the IORegistry lists it; nil when it showed none
+    /// above it.
+    var usbDevice: UsbDeviceListing?
 }
 
 /// What the bus tells the reader, and asks of it, on the reader's queue.
@@ -234,7 +234,7 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     private func arrived(_ arrival: XusbInterfaceArrival) {
         guard !entries.knows(arrival.registryId), let wiring else { return }
         guard let classified = xusbPadCandidate(arrival.properties, served: served) else { return }
-        let candidate = classified.with(interfaces: arrival.deviceInterfaces)
+        let candidate = classified.with(usbDevice: arrival.usbDevice)
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)
         let pad = XusbArrivingPad(

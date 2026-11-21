@@ -41,6 +41,8 @@ package struct HidDeviceFacts: Equatable, Identifiable {
     package var manufacturer = ""
     /// What IOKit says of its hardware beyond its ids, read once per device.
     package var detail = HidHardwareDetail()
+    /// The IORegistry entry of the USB device above it; nil off USB.
+    package var usbDeviceId: UInt64?
 
     package init(id: UInt64, name: String, hardwareId: HidHardwareId, transport: HidTransport, claimedByGameController: Bool) {
         self.id = id
@@ -179,9 +181,9 @@ final class IOKitHidCensus: HidCensusReading {
     /// `supportsHIDDevice` "is not cheap, be sure to cache the result"
     /// (GCController.h): each device's answer is kept while it stays.
     private var claims: [UInt64: Bool] = [:]
-    /// The hardware detail, read once per device: its version, descriptor
-    /// and USB interfaces do not change while it stays.
-    private var details: [UInt64: HidHardwareDetail] = [:]
+    /// The hardware detail, read once per device: its version, its USB
+    /// interfaces and entry do not change while it stays.
+    private var details: [UInt64: HidDeviceHardware] = [:]
 
     /// Nothing is created until `start`, so a default argument may build one.
     nonisolated init() {}
@@ -230,13 +232,15 @@ final class IOKitHidCensus: HidCensusReading {
             IOHIDDeviceGetProperty(device, key as CFString).map { (key, $0 as Any) }
         })
         guard var facts = hidDeviceFacts(id: id, properties: properties, claimed: claim(device, id: id)) else { return nil }
-        facts.detail = detail(of: device, id: id, transport: facts.transport)
+        let hardware = hardware(of: device, id: id, transport: facts.transport)
+        facts.detail = hardware.detail
+        facts.usbDeviceId = hardware.usbDeviceId
         return facts
     }
 
-    private func detail(of device: IOHIDDevice, id: UInt64, transport: HidTransport) -> HidHardwareDetail {
+    private func hardware(of device: IOHIDDevice, id: UInt64, transport: HidTransport) -> HidDeviceHardware {
         if let known = details[id] { return known }
-        let fresh = hidDeviceDetail(device, transport: transport)
+        let fresh = hidDeviceHardware(device, transport: transport)
         details[id] = fresh
         return fresh
     }

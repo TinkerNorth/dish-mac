@@ -62,6 +62,9 @@ package struct PadDiagnostics: Equatable, Identifiable {
     /// What IOKit said of its hardware: the Direct interface's, else what
     /// the devices matched to it by name agree on.
     package var hardwareDetail: HidHardwareDetail?
+    /// Its USB device's raw descriptors, read without opening it; nil off
+    /// USB and where IOKit hands none over.
+    package var usbDescriptors: UsbRawDescriptors?
     /// The record's issues that apply to this Mac and this transport.
     package var issues: [ControllerIssue] = []
 
@@ -129,13 +132,20 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     /// as one replaces the other, so the source stops with the last.
     private var watchers = 0
 
+    private let descriptors: UsbDescriptorReading
+    /// Each USB device's raw descriptors, read once: they do not change
+    /// while the device stays, and a new attach is a new entry.
+    private var readDescriptors: [UInt64: ReadDescriptors] = [:]
+
     init(
         wifi: WifiConnectionManager,
         hub: ConnectionHub,
         moonlight: MoonlightConnectionManager? = nil,
         census: HidCensusReading = IOKitHidCensus(),
-        issueHost: IssueHost = IssueHost(model: "", osMajor: 0)
+        issueHost: IssueHost = IssueHost(model: "", osMajor: 0),
+        descriptors: UsbDescriptorReading = IOKitUsbDescriptorReader()
     ) {
+        self.descriptors = descriptors
         self.issueHost = issueHost
         self.wifi = wifi
         self.hub = hub
@@ -228,12 +238,46 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
                 hardwareId: path?.hardwareId ?? hardwareId(forPadNamed: slot.name, in: devices),
                 inputPath: path
             )
-            return withRecord(pad, index: index, devices: devices, host: issueHost)
+            return withDescriptors(withRecord(pad, index: index, devices: devices, host: issueHost), devices: devices)
         }
         var snapshot = DiagnosticsSnapshot(hosts: hosts, pads: pads, inputDevices: devices)
         snapshot.controllerDb = controllerDb()
         snapshot.controllerStrings = index.strings
         return snapshot
+    }
+
+    /// The pad with its USB device's raw descriptors and their fingerprint:
+    /// the device of the Direct interface it reads, else what the devices
+    /// matched to it by name agree on (twins of a model share theirs).
+    private func withDescriptors(_ pad: PadDiagnostics, devices: [HidDeviceFacts]) -> PadDiagnostics {
+        let ids = usbDeviceIds(of: pad, devices: devices)
+        let read = agreed(ids.map { $0.flatMap(rawDescriptors) }).flatMap(\.self)
+        var known = pad
+        known.usbDescriptors = read
+        known.hardwareDetail?.descriptorSha256 = read.map { sha256Hex(Data($0.bytes)) }
+        known.hardwareDetail?.endpoints = pad.hardwareDetail?.endpoints ?? hidEndpoints(read, detail: pad.hardwareDetail)
+        return known
+    }
+
+    /// A HID pad's interrupt endpoints, from its configuration descriptor:
+    /// the interface its HID device is.
+    private func hidEndpoints(_ descriptors: UsbRawDescriptors?, detail: HidHardwareDetail?) -> BundleEndpoints? {
+        guard let descriptors, let number = detail?.interfaceNumber else { return nil }
+        return interruptEndpoints(descriptors, interfaceNumber: number)
+    }
+
+    /// A Direct pad's own USB device, or those of the devices matched to a
+    /// GameController pad by name.
+    private func usbDeviceIds(of pad: PadDiagnostics, devices: [HidDeviceFacts]) -> [UInt64?] {
+        guard pad.inputPath?.source != .direct else { return [pad.inputPath?.usbDeviceId] }
+        return carriers(ofPadNamed: pad.slot.name, in: devices).map(\.usbDeviceId)
+    }
+
+    private func rawDescriptors(_ registryId: UInt64) -> UsbRawDescriptors? {
+        if let known = readDescriptors[registryId] { return known.raw }
+        let read = descriptors.rawDescriptors(ofUsbDevice: registryId)
+        readDescriptors[registryId] = ReadDescriptors(raw: read)
+        return read
     }
 
     /// A Moonlight host's session, read off its connection when one exists
@@ -244,6 +288,11 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         guard let connection = moonlight.get(summary.id) else { return .resting(info: info) }
         return .read(connection, info: info)
     }
+}
+
+/// What reading a USB device's raw descriptors gave, none included.
+private struct ReadDescriptors {
+    let raw: UsbRawDescriptors?
 }
 
 /// The pad with its census device, its transport, the data's record for its
