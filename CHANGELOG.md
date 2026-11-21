@@ -45,7 +45,16 @@ the repos share a version number.
   it, so a newer list can teach it a pad of a family it already decodes. A
   served row still waits for GameController's answer as today, and a record
   that needs a family or an operation this build lacks is inert: its name
-  and issues show, nothing else applies. The XUSB reader keeps to its table.
+  and issues show, nothing else applies. Both readers take the data in force
+  as each pad attaches, so a row that arrives while the app runs applies at
+  the pad's next attach: the HID reader's matching meets every device of the
+  vendors it reads by identity, and the XUSB bus asks the reader as each USB
+  device arrives. The XUSB reader takes the data's `auto` Xbox 360 rows, so
+  the 43 such wired pads of dbVersion 1 beyond the Ultimate 2 (Logitech's
+  F310, F510 and F710 in XInput mode, Mad Catz, PDP, Hori, PowerA, Razer and
+  others) are read Direct from this release on; an opt-in Xbox 360 row is not
+  applied, since the reader has no claim to wait for, and Microsoft's own Xbox
+  360 Controller stays with macOS's XboxGamepad driver.
 - **Diagnostics at every level.** A controller's Diagnostics card shows its
   record's id and name, the record's standing as its chip (Verified, Layout
   guessed, Flagged), the issues the data lists for this transport on this

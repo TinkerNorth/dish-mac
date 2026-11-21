@@ -2,6 +2,7 @@
 // Copyright (C) 2026 Dish contributors.
 
 import DishCore
+import GameController
 import IOKit.hid
 import XCTest
 @testable import DishEngine
@@ -11,8 +12,14 @@ import XCTest
 /// nothing. What the device showed of its report paths rides the candidate.
 final class ServedCandidateTests: XCTestCase {
 
-    private func served(family: String, usb: String, mapping: String? = nil, requires: [String]? = nil) throws -> ServedDirectModels {
-        var input: [String: Any] = ["protocol": ["ref": family], "direct": ["rule": "auto"]]
+    private func served(
+        family: String,
+        usb: String,
+        mapping: String? = nil,
+        requires: [String]? = nil,
+        rule: String = "auto"
+    ) throws -> ServedDirectModels {
+        var input: [String: Any] = ["protocol": ["ref": family], "direct": ["rule": rule]]
         input["mapping"] = mapping
         let record: [String: Any] = [
             "schema": 1, "id": "served", "requires": ["families": requires ?? [family], "ops": []],
@@ -66,6 +73,25 @@ final class ServedCandidateTests: XCTestCase {
         XCTAssertEqual(models.matchedByIdentity, [], "an auto row is met through the game usages")
         let matching = hidPadMatching(served: models)
         XCTAssertEqual(matching.count, hidPadMatching().count)
+    }
+
+    /// IOKit's matching: every key of the dictionary has the device's value.
+    private func matches(_ dictionary: [String: Any], _ properties: [String: Any]) -> Bool {
+        dictionary.allSatisfy { key, value in (properties[key] as? NSObject)?.isEqual(value) ?? (key == kIOHIDGCSyntheticDeviceKey) }
+    }
+
+    func testAServedOptInRowArrivingWhileTheAppRunsIsMetAtThePadsNextAttach() throws {
+        let startedWith = hidPadMatching()
+        let pad = DirectFixtures.valveProperties(productId: 0x1399)
+        XCTAssertTrue(startedWith.contains { matches($0, pad) }, "the matching the reader started with meets every Valve device")
+        XCTAssertNil(hidPadCandidate(pad), "no row names it yet")
+        let models = try served(family: "steamTriton", usb: "28de:1399", rule: "optIn")
+        XCTAssertNotNil(hidPadCandidate(pad, served: models), "the row in force at its next attach reads it")
+    }
+
+    func testTheVendorsMatchedWholeAreTheOnesTheTableReadsByIdentity() {
+        let vendors = Set(hidPadMatching().filter { $0[kIOHIDProductIDKey] == nil }.compactMap { $0[kIOHIDVendorIDKey] as? Int })
+        XCTAssertEqual(vendors, [0x057E, 0x28DE], "Nintendo's and Valve's")
     }
 
     func testTheReportPathsADeviceDeclaresAreObserved() {

@@ -4,9 +4,10 @@
 // The controller database meeting the Mac's own Direct table. The table
 // (`directModels`) stays the policy: it is read first, and the database is
 // consulted only for an id the table does not name, and only where the Mac
-// compiles the record's family for the HID reader. A record whose
-// `requires` names a family or an op this build lacks is inert: its name
-// and issues show, its input and output are not applied.
+// compiles the record's family for a reader: the HID reader's families, and
+// the XUSB reader's Xbox 360 one. A record whose `requires` names a family
+// or an op this build lacks is inert: its name and issues show, its input
+// and output are not applied.
 
 import Foundation
 
@@ -47,10 +48,10 @@ public let macCompiledFamilies: Set<ControllerFamily> = [
     .switchProUsb, .switchN64Usb, .hid, .steamController, .steamControllerBle, .steamTriton, .xinput360
 ]
 
-/// The families a served row may bring to the HID reader. The XUSB reader
-/// watches its devices by the table's identities alone (see PARITY.md).
+/// The families a served row may bring to a Direct reader: the HID
+/// reader's, and the XUSB reader's Xbox 360 one.
 public let servedDirectFamilies: Set<ControllerFamily> = [
-    .switchProUsb, .switchN64Usb, .hid, .steamController, .steamControllerBle, .steamTriton
+    .switchProUsb, .switchN64Usb, .hid, .steamController, .steamControllerBle, .steamTriton, .xinput360
 ]
 
 /// Schema 1 names no op this build carries.
@@ -83,15 +84,32 @@ private func servedDecoder(_ record: ControllerRecord) -> DirectDecoder? {
     case .steamController: .steamController
     case .steamControllerBle: .steamControllerBle
     case .steamTriton: .steamTriton
-    case .xinput360, .xinput360Wireless, .xboxOneGip, .dualshock4, .dualsense, .stadia, nil: nil
+    case .xinput360: .xusb
+    case .xinput360Wireless, .xboxOneGip, .dualshock4, .dualsense, .stadia, nil: nil
     }
 }
 
-/// The Direct model a record gives an id, or nil for an inert record and a
-/// family the HID reader does not take from data.
+/// The XUSB reader opens a pad as it arrives and has no claim to wait for,
+/// so an opt-in row of its family is not one it can follow.
+private func readerFollows(_ decoder: DirectDecoder, rule: DirectRule) -> Bool {
+    decoder != .xusb || rule != .optIn
+}
+
+/// The user may send it back to GameController only where both paths read
+/// it: never the N64, whose input GameController drops, nor an XUSB pad,
+/// which macOS has no driver for.
+private func servedOffersStandard(_ decoder: DirectDecoder) -> Bool {
+    decoder != .switchReport(.n64) && decoder != .xusb
+}
+
+/// The Direct model a record gives an id, or nil for an inert record, a
+/// family no Direct reader takes from data, and a rule its reader cannot
+/// follow.
 public func servedDirectModel(_ record: ControllerRecord, vendorId: UInt16, productId: UInt16, name: String) -> DirectModel? {
     guard !recordIsInert(record), let family = record.family, servedDirectFamilies.contains(family) else { return nil }
     guard let decoder = servedDecoder(record) else { return nil }
+    let rule = macDirectRule(record.directRule)
+    guard readerFollows(decoder, rule: rule) else { return nil }
     let nintendo = vendorId == DirectVendor.nintendo
     return DirectModel(
         vendorId: vendorId,
@@ -99,9 +117,9 @@ public func servedDirectModel(_ record: ControllerRecord, vendorId: UInt16, prod
         name: name,
         decoder: decoder,
         family: nintendo ? .nintendo : .other,
-        rule: macDirectRule(record.directRule),
+        rule: rule,
         gameControllerCarriesOutput: nintendo,
-        offersStandard: decoder != .switchReport(.n64),
+        offersStandard: servedOffersStandard(decoder),
         receiver: false
     )
 }
@@ -139,6 +157,12 @@ public struct ServedDirectModels: Equatable, Sendable {
     public var matchedByIdentity: [DirectModel] {
         models.keys.sorted().compactMap { models[$0] }.filter { $0.rule != .whenMacOSCannot }
     }
+}
+
+/// Whether the XUSB reader reads a model of this identity: the table's, or
+/// the data's in force.
+public func xusbReads(vendorId: UInt16, productId: UInt16, served: ServedDirectModels) -> Bool {
+    directModel(vendorId: vendorId, productId: productId, served: served)?.decoder == .xusb
 }
 
 /// The table first, then the data.

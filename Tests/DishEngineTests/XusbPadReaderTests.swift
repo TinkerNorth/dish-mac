@@ -261,7 +261,79 @@ final class XusbPadReaderTests: XCTestCase {
         XCTAssertFalse(usbDeviceNeedsConfiguration(currentConfiguration: 1), "a configuration someone selected stays")
     }
 
-    func testTheDevicesWatchedForConfiguringAreTheXusbModelsByIdentity() {
-        XCTAssertEqual(xusbDeviceIdentities(), [[UsbInterfaceKey.vendorId: 0x2DC8, UsbInterfaceKey.productId: 0x310B]])
+    // MARK: - Served rows, at the next attach
+
+    /// An index whose one record is an `auto` Xbox 360 row for 1234:5678.
+    private func indexWithAnXbox360Row(rule: String = "auto") throws -> ControllerIndex {
+        let record: [String: Any] = [
+            "schema": 1, "id": "served-360", "requires": ["families": ["xinput360"], "ops": []],
+            "identity": ["usb": ["1234:5678"], "bluetooth": []], "input": ["protocol": ["ref": "xinput360"], "direct": ["rule": rule]],
+            "support": ["verification": ["state": "verified"]]
+        ]
+        let database = try JSONSerialization.data(withJSONObject: ["schema": 1, "dbVersion": 2, "records": [record]])
+        let set = try XCTUnwrap(parsedControllerDbSet(
+            manifest: ControllerDbManifest(dbVersion: 2, files: [:]),
+            files: [ControllerDbFiles.controllers: database]
+        ))
+        return ControllerIndex(set, source: .cache)
+    }
+
+    private func pathsAndBridge(index: ControllerIndex) -> (InputPaths, GameControllerInput) {
+        let paths = InputPaths(
+            choices: UsbPathChoiceStore(defaults: defaults),
+            reader: reader,
+            scheduler: scheduler,
+            controllerIndex: index
+        )
+        let input = GameControllerInput(
+            connected: [],
+            paths: paths,
+            categoryOf: { _ in "MFi" },
+            hostBattery: { PadBattery(level: 50, status: .discharging) }
+        )
+        reader.queue.sync {}
+        return (paths, input)
+    }
+
+    func testARowArrivingWhileTheAppRunsAppliesAtThePadsNextAttach() throws {
+        let (paths, input) = pathsAndBridge(index: ControllerIndex(BundledControllerDb.empty, source: .bundled))
+        let before = FakeXusbPort()
+        bus.plug(1, XusbFixtures.ultimate2(productId: 0x5678, vendorId: 0x1234), port: before)
+        drainMain()
+        XCTAssertEqual(before.opens, 0, "no row names it yet")
+        try paths.useControllerIndex(indexWithAnXbox360Row())
+        reader.queue.sync {}
+        XCTAssertEqual(before.opens, 0, "a pad already attached is not read from the new row")
+        unplug()
+        let after = FakeXusbPort()
+        bus.plug(2, XusbFixtures.ultimate2(productId: 0x5678, vendorId: 0x1234), port: after)
+        drainMain()
+        scheduler.advance(ms: 100)
+        XCTAssertEqual(after.opens, 1, "its next attach reads it")
+        XCTAssertEqual(input.slots.map(\.id), ["hid:1234:5678"])
+        XCTAssertEqual(input.paths.state["hid:1234:5678"]?.source, .direct)
+    }
+
+    func testTheBusConfiguresADeviceOfAServedRowFromTheRowsArrivalOn() throws {
+        _ = pathsAndBridge(index: ControllerIndex(BundledControllerDb.empty, source: .bundled))
+        XCTAssertTrue(bus.readerReads(vendorId: 0x2DC8, productId: 0x310B), "the table's model")
+        XCTAssertFalse(bus.readerReads(vendorId: 0x1234, productId: 0x5678))
+        try reader.useServedModels(ServedDirectModels(index: indexWithAnXbox360Row()))
+        XCTAssertTrue(bus.readerReads(vendorId: 0x1234, productId: 0x5678), "the next device of its identity is configured")
+        XCTAssertFalse(bus.readerReads(vendorId: 0x045E, productId: 0x028E), "macOS's own driver keeps Microsoft's")
+    }
+
+    func testTheReaderStartsWithTheRowsTheDataHadAtLaunch() throws {
+        _ = try pathsAndBridge(index: indexWithAnXbox360Row())
+        XCTAssertTrue(bus.readerReads(vendorId: 0x1234, productId: 0x5678))
+    }
+
+    func testAnOptInXbox360RowIsNotReadSinceTheReaderHasNoClaimToWaitFor() throws {
+        let (_, input) = try pathsAndBridge(index: indexWithAnXbox360Row(rule: "optIn"))
+        let port = FakeXusbPort()
+        bus.plug(1, XusbFixtures.ultimate2(productId: 0x5678, vendorId: 0x1234), port: port)
+        drainMain()
+        XCTAssertEqual(port.opens, 0)
+        XCTAssertTrue(input.slots.isEmpty)
     }
 }

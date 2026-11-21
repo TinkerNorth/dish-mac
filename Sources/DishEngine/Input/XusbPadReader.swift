@@ -64,10 +64,13 @@ struct XusbInterfaceArrival {
     var deviceInterfaces: [[String: Any]]?
 }
 
-/// What the bus tells the reader, on the reader's queue.
+/// What the bus tells the reader, and asks of it, on the reader's queue.
 struct XusbBusEvents {
     let arrived: (XusbInterfaceArrival) -> Void
     let removed: (_ registryId: UInt64) -> Void
+    /// Whether the reader reads a model of this USB identity, by the data in
+    /// force as the device arrives: the bus configures only such a device.
+    let reads: (_ vendorId: UInt16, _ productId: UInt16) -> Bool
 }
 
 /// The USB side the reader stands on: IOUSBHost in the app, a fake in tests.
@@ -89,9 +92,9 @@ enum UsbInterfaceKey {
 }
 
 /// The interface the reader reads, or nil: any interface whose triple is not
-/// a wired 360 pad's, and an XUSB interface of a model the table does not
-/// name as one.
-func xusbPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
+/// a wired 360 pad's, and an XUSB interface of a model neither the table nor
+/// the data in force names as one.
+func xusbPadCandidate(_ properties: [String: Any], served: ServedDirectModels = .none) -> HidPadCandidate? {
     let xusb = isXusbInterface(
         interfaceClass: properties[UsbInterfaceKey.interfaceClass] as? Int,
         subclass: properties[UsbInterfaceKey.interfaceSubclass] as? Int,
@@ -99,7 +102,8 @@ func xusbPadCandidate(_ properties: [String: Any]) -> HidPadCandidate? {
     )
     let vendorId = UInt16(clamping: properties[UsbInterfaceKey.vendorId] as? Int ?? 0)
     let productId = UInt16(clamping: properties[UsbInterfaceKey.productId] as? Int ?? 0)
-    guard xusb, let model = directModel(vendorId: vendorId, productId: productId), model.decoder == .xusb else { return nil }
+    let model = directModel(vendorId: vendorId, productId: productId, served: served)
+    guard xusb, let model, model.decoder == .xusb else { return nil }
     var candidate = HidPadCandidate(
         vendorId: vendorId,
         productId: productId,
@@ -176,6 +180,9 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     private var entries = HidEntryRegistry<Entry>()
     private var wiring: HidPadWiring?
     private var events: HidPadEvents?
+    /// What the data adds to the table, read as each device and interface
+    /// arrives, so a row that arrives applies at a pad's next attach.
+    private var served = ServedDirectModels.none
 
     init(
         bus: XusbBus,
@@ -200,23 +207,33 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
 
     func unclaim(slotId: String) {}
 
+    func useServedModels(_ served: ServedDirectModels) {
+        queue.async { [self] in self.served = served }
+    }
+
     // MARK: - On the queue
 
     private func begin(wiring: HidPadWiring, events: HidPadEvents) {
         self.wiring = wiring
         self.events = events
+        served = wiring.served
         let busEvents = XusbBusEvents(
             arrived: { [weak self] in self?.arrived($0) },
-            removed: { [weak self] in self?.removed($0) }
+            removed: { [weak self] in self?.removed($0) },
+            reads: { [weak self] vendorId, productId in self?.reads(vendorId: vendorId, productId: productId) ?? false }
         )
         bus.start(queue: queue, events: busEvents)
+    }
+
+    private func reads(vendorId: UInt16, productId: UInt16) -> Bool {
+        xusbReads(vendorId: vendorId, productId: productId, served: served)
     }
 
     /// An interface the model table names is opened at once; the paths hear
     /// of it either way, read or refused.
     private func arrived(_ arrival: XusbInterfaceArrival) {
         guard !entries.knows(arrival.registryId), let wiring else { return }
-        guard let classified = xusbPadCandidate(arrival.properties) else { return }
+        guard let classified = xusbPadCandidate(arrival.properties, served: served) else { return }
         let candidate = classified.with(interfaces: arrival.deviceInterfaces)
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)

@@ -112,14 +112,20 @@ let hidPadPropertyKeys = [
 
 /// The manager's matching: each model read by its USB identity (every
 /// interface of it; the candidate picks the one that carries the pad), the
-/// served ones the data adds among them, and every game usage, all with
-/// `GCSyntheticDevice` false.
+/// served ones the data adds among them, every device of the vendors the
+/// table reads by identity, and every game usage, all with
+/// `GCSyntheticDevice` false. The matching is set once, as the reader
+/// starts; matching those vendors whole is what lets a row the data serves
+/// later meet its pad at the next attach.
 func hidPadMatching(served: ServedDirectModels = .none) -> [[String: Any]] {
-    let models = directModels.filter { $0.rule != .whenMacOSCannot } + served.matchedByIdentity
+    let identified = directModels.filter { $0.rule != .whenMacOSCannot }
+    let models = identified + served.matchedByIdentity
     let byIdentity = models.map { model in
         [kIOHIDVendorIDKey: Int(model.vendorId), kIOHIDProductIDKey: Int(model.productId), kIOHIDGCSyntheticDeviceKey: false]
     }
-    return byIdentity + hidCensusMatching()
+    let vendors = Set(identified.map(\.vendorId)).sorted()
+    let byVendor = vendors.map { vendorId in [kIOHIDVendorIDKey: Int(vendorId), kIOHIDGCSyntheticDeviceKey: false] }
+    return byIdentity + byVendor + hidCensusMatching()
 }
 
 /// The device the reader reads, or nil: a synthetic device, a Nintendo

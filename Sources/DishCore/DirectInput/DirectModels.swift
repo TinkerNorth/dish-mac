@@ -102,6 +102,7 @@ public struct DirectModel: Equatable, Sendable {
 }
 
 public enum DirectVendor {
+    public static let microsoft: UInt16 = 0x045E
     public static let sony: UInt16 = 0x054C
     public static let nintendo: UInt16 = 0x057E
     public static let eightBitDo: UInt16 = 0x2DC8
@@ -208,13 +209,17 @@ public struct DeclinedDirectIdentity: Equatable, Sendable {
     }
 }
 
-/// The Joy-Cons and their charging grip stay with macOS, and the PDP
-/// Afterglow Wireless's USB port is charge-only.
+/// The Joy-Cons and their charging grip stay with macOS, the PDP Afterglow
+/// Wireless's USB port is charge-only, and Microsoft's own Xbox 360
+/// Controller is macOS's: XboxGamepad.dext has a personality for its device
+/// and for its XUSB interface (measured in /System/Library/DriverExtensions
+/// on macOS 27.2).
 public let declinedDirectIdentities: [DeclinedDirectIdentity] = [
     DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x2006),
     DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x2007),
     DeclinedDirectIdentity(vendorId: DirectVendor.nintendo, productId: 0x200E),
-    DeclinedDirectIdentity(vendorId: DirectVendor.pdp, productId: 0x0186)
+    DeclinedDirectIdentity(vendorId: DirectVendor.pdp, productId: 0x0186),
+    DeclinedDirectIdentity(vendorId: DirectVendor.microsoft, productId: 0x028E)
 ]
 
 public func directIdentityDeclined(vendorId: UInt16, productId: UInt16) -> Bool {

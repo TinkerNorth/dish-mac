@@ -9,9 +9,11 @@
 // device-level personality of its own beside its interface one. So a
 // vendor-class device's interfaces appear only once someone selects its
 // configuration, and Dish selects the first one of a model it reads when
-// none is selected. IOUSBHostInterface matching takes only the USB class
-// specification's key combinations, so every interface is watched and the
-// reader decides which it reads.
+// none is selected. Every device is watched and the reader asks, as each
+// arrives, whether it reads its model by the data in force then; every
+// interface is watched too, since IOUSBHostInterface matching takes only the
+// USB class specification's key combinations, and the reader decides which
+// it reads.
 
 import DishCore
 import Foundation
@@ -24,13 +26,8 @@ func usbDeviceNeedsConfiguration(currentConfiguration: Int?) -> Bool {
     (currentConfiguration ?? 0) == 0
 }
 
-/// The XUSB models' devices by USB identity, a combination IOUSBHostDevice
-/// matching takes.
-func xusbDeviceIdentities() -> [[String: Int]] {
-    directModels.filter { $0.decoder == .xusb }.map { model in
-        [UsbInterfaceKey.vendorId: Int(model.vendorId), UsbInterfaceKey.productId: Int(model.productId)]
-    }
-}
+/// The keys a device's identity is read under as it arrives.
+private let usbDeviceIdentityKeys = [UsbInterfaceKey.vendorId, UsbInterfaceKey.productId]
 
 /// The interface properties the reader decides on, and the release it
 /// reports.
@@ -65,9 +62,7 @@ final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
         guard let port = IONotificationPortCreate(kIOMainPortDefault) else { return }
         IONotificationPortSetDispatchQueue(port, queue)
         self.port = port
-        for identity in xusbDeviceIdentities() {
-            watch(matching(kIOUSBHostDeviceClassName, identity), kIOFirstMatchNotification, xusbDevicesMatched)
-        }
+        watch(matching(kIOUSBHostDeviceClassName, [:]), kIOFirstMatchNotification, xusbDevicesMatched)
         watch(matching(kIOUSBHostInterfaceClassName, [:]), kIOFirstMatchNotification, xusbInterfacesMatched)
         watch(matching(kIOUSBHostInterfaceClassName, [:]), kIOTerminatedNotification, xusbInterfacesTerminated)
     }
@@ -86,9 +81,18 @@ final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
 
     fileprivate func devicesMatched(_ iterator: io_iterator_t) {
         for service in drainIterator(iterator) {
-            configureIfNeeded(service)
+            configureIfRead(service)
             IOObjectRelease(service)
         }
+    }
+
+    /// Only a device of a model the reader reads is configured.
+    private func configureIfRead(_ service: io_service_t) {
+        let identity = registryProperties(service, keys: usbDeviceIdentityKeys)
+        let vendorId = UInt16(clamping: identity[UsbInterfaceKey.vendorId] as? Int ?? 0)
+        let productId = UInt16(clamping: identity[UsbInterfaceKey.productId] as? Int ?? 0)
+        guard events?.reads(vendorId, productId) == true else { return }
+        configureIfNeeded(service)
     }
 
     /// Each interface arrives with its device's interfaces, read off the

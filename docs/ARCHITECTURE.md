@@ -268,7 +268,9 @@ a second reader over IOUSBHost (below). Everything else stays on
 GameController.
 
 - **The reader.** `IOKitHidPadReader` owns one `IOHIDManager`, matching the
-  Nintendo and Valve models by identity and every game usage, all with
+  Nintendo and Valve models by identity, every device of those two vendors
+  (so a row the data serves later meets its pad at the next attach: the
+  matching is set once, as the reader starts) and every game usage, all with
   `GCSyntheticDevice` false, scheduled on the run loop of a thread of its own
   (`com.tinkernorth.dish.hid`), never the main one. Each candidate
   (`hidPadCandidate`, decided from the device's properties alone) is opened
@@ -367,8 +369,10 @@ GameController.
   is logged once per attach as `DEVCAPS DIRECT`.
 - **An XUSB pad, through IOUSBHost.** `XusbPadReader` reads on a queue of
   its own (`com.tinkernorth.dish.xusb`, in the HID reader's lock-law role)
-  over a bus seam. In the app `IOUSBHostXusbBus` watches the XUSB models'
-  devices by USB identity and every interface (IOUSBHostInterface matching
+  over a bus seam. In the app `IOUSBHostXusbBus` watches every USB device,
+  asking the reader as each arrives whether it reads its model by the data
+  in force then (`xusbReads`: the table's XUSB rows and the data's `auto`
+  Xbox 360 rows), and every interface (IOUSBHostInterface matching
   takes only the USB class specification's key combinations), selects a
   device's first configuration when none is selected (a vendor-class device
   arrives unconfigured: Apple's composite driver configures device classes
@@ -376,7 +380,8 @@ GameController.
   XboxGamepad.dext gives Microsoft's pads a device-level personality for
   it), and hands over each interface. The reader opens the ones
   `xusbPadCandidate` names (the FF/5D/01 triple and an XUSB row of the
-  model table) for itself alone, reads the first interrupt IN endpoint a
+  model table or of the data in force as the interface arrives) for itself
+  alone, reads the first interrupt IN endpoint a
   report at a time into a `HidPadLane` whose decoder is the core's
   `decodeXusbReport` (`XusbReadLoop`: the completion made once, the report
   decoded in place in the pipe's buffer, then the next read), and gives the
@@ -516,7 +521,8 @@ second source) performs them over the `ControllerDbGateway`
 (`ControllerDbHTTPClient` in the app), keeps the download in
 `ControllerDbCache` (a `Repository` swapped whole), and is switched by
 `ControllerDbPreferenceStore`. The index reaches `InputPaths`, which hands
-`ServedDirectModels` to the HID reader (the table first, the data after it)
+`ServedDirectModels` to both readers (the table first, the data after it,
+read as each pad attaches)
 and checks each Direct pad's hardware against its record's `expect`, and
 `DiagnosticsSource`, which matches every pad to its record and its issues.
 Each Direct lane carries a `DirectWrites` mailbox its writers post the last

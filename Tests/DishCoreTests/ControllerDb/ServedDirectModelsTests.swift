@@ -66,7 +66,7 @@ final class ServedDirectModelsTests: XCTestCase {
     func testEachFamilyTheReaderCompilesGetsItsDecoder() throws {
         let cases: [(String, DirectDecoder)] = [
             ("switchProUsb", .switchReport(.pro)), ("switchN64Usb", .switchReport(.n64)), ("steamController", .steamController),
-            ("steamControllerBle", .steamControllerBle), ("steamTriton", .steamTriton)
+            ("steamControllerBle", .steamControllerBle), ("steamTriton", .steamTriton), ("xinput360", .xusb)
         ]
         for (family, decoder) in cases {
             XCTAssertEqual(try served([record(family)]).model(vendorId: 0x1234, productId: 0x5678)?.decoder, decoder, family)
@@ -115,10 +115,32 @@ final class ServedDirectModelsTests: XCTestCase {
         XCTAssertTrue(recordIsInert(unknown))
     }
 
-    func testAnXusbRowIsNotInertButIsNotServedToTheHidReader() throws {
+    func testAnXbox360RowReachesTheXusbReaderAsAPadMacOSCannotRead() throws {
         let xusb = try decodeControllerDatabase(databaseData(records: [record("xinput360")])).get().records[0]
         XCTAssertFalse(recordIsInert(xusb))
-        XCTAssertNil(try served([record("xinput360")]).model(vendorId: 0x1234, productId: 0x5678))
+        let model = try XCTUnwrap(try served([record("xinput360")]).model(vendorId: 0x1234, productId: 0x5678))
+        XCTAssertEqual(model.decoder, .xusb)
+        XCTAssertEqual(model.rule, .whenMacOSCannot, "GameController never lists it, so the reader reads it at once")
+        XCTAssertFalse(model.offersStandard, "no Standard path reads it")
+        XCTAssertTrue(model.drivesItsOwnRumble)
+    }
+
+    func testAnOptInXbox360RowIsNotServedSinceTheXusbReaderHasNoClaimToWaitFor() throws {
+        XCTAssertNil(try served([record("xinput360", rule: "optIn")]).model(vendorId: 0x1234, productId: 0x5678))
+    }
+
+    func testMicrosoftsOwnXbox360ControllerStaysWithMacOSsDriver() throws {
+        XCTAssertTrue(directIdentityDeclined(vendorId: 0x045E, productId: 0x028E), "XboxGamepad.dext names it")
+        XCTAssertNil(try served([record("xinput360", usb: "045e:028e")]).model(vendorId: 0x045E, productId: 0x028E))
+    }
+
+    func testTheXusbReaderReadsTheTablesModelsAndTheDatasOnly() throws {
+        let models = try served([record("xinput360"), record("hid", usb: "1234:0001")])
+        XCTAssertTrue(xusbReads(vendorId: 0x2DC8, productId: 0x310B, served: .none), "the table's")
+        XCTAssertTrue(xusbReads(vendorId: 0x1234, productId: 0x5678, served: models), "the data's")
+        XCTAssertFalse(xusbReads(vendorId: 0x1234, productId: 0x5678, served: .none), "not before the data names it")
+        XCTAssertFalse(xusbReads(vendorId: 0x1234, productId: 0x0001, served: models), "a HID row is not the XUSB reader's")
+        XCTAssertFalse(xusbReads(vendorId: 0x045E, productId: 0x028E, served: models))
     }
 
     func testTheMacsProbeGatesEveryServedRule() {

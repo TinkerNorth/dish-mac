@@ -252,4 +252,11 @@ final class FakeXusbBus: XusbBus, @unchecked Sendable {
         guard let start = startBox.get() else { return }
         start.queue.sync { start.events.removed(registryId) }
     }
+
+    /// Whether the reader asks for a device of this identity to be
+    /// configured, as the bus asks it when the device arrives.
+    func readerReads(vendorId: UInt16, productId: UInt16) -> Bool {
+        guard let start = startBox.get() else { return false }
+        return start.queue.sync { start.events.reads(vendorId, productId) }
+    }
 }

@@ -52,9 +52,9 @@ final class BundledControllerDbTests: XCTestCase {
     }
 
     /// The reverse, for every family the Mac's table reads whole: a record of
-    /// it is a row of the table or an identity the Mac declines. The XUSB
-    /// reader reads only the models it was run on (PARITY.md), so the Xbox
-    /// 360 family is the one the table covers in part.
+    /// it is a row of the table or an identity the Mac declines. The table
+    /// covers the Xbox 360 family in part; the data's other rows of it reach
+    /// the XUSB reader as served rows.
     func testEveryRecordOfAFamilyTheTableReadsWholeIsARowOrDeclined() throws {
         let tableFamilies = macCompiledFamilies.subtracting([.xinput360])
         for record in try bundled().database.records where record.family.map(tableFamilies.contains) == true {
@@ -73,9 +73,21 @@ final class BundledControllerDbTests: XCTestCase {
         }
     }
 
-    func testTheBundledCopyAddsNoDirectModelToday() throws {
-        let served = try ServedDirectModels(index: ControllerIndex(bundled(), source: .bundled))
-        XCTAssertEqual(served.matchedByIdentity, [])
+    func testTheBundledCopyAddsTheAutoXbox360RowsAndNothingElse() throws {
+        let set = try bundled()
+        let served = ServedDirectModels(index: ControllerIndex(set, source: .bundled))
+        XCTAssertEqual(served.matchedByIdentity, [], "no opt-in row is served")
         XCTAssertNil(served.model(vendorId: 0x057E, productId: 0x200E), "the charging grip stays with macOS")
+        let autoXbox360 = set.database.records.filter { $0.family == .xinput360 && $0.directRule == .auto }.flatMap(\.usb)
+        let expected = try autoXbox360.compactMap { identity -> String? in
+            let (vendorId, productId) = try XCTUnwrap(parseUsbPathKey(identity))
+            let compiled = directModel(vendorId: vendorId, productId: productId) != nil
+            return compiled || directIdentityDeclined(vendorId: vendorId, productId: productId) ? nil : identity
+        }
+        XCTAssertEqual(expected.count, 43, "45 auto rows, less the table's Ultimate 2 and macOS's own 045e:028e")
+        for identity in expected {
+            let (vendorId, productId) = try XCTUnwrap(parseUsbPathKey(identity))
+            XCTAssertEqual(served.model(vendorId: vendorId, productId: productId)?.decoder, .xusb, identity)
+        }
     }
 }
