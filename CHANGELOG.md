@@ -164,7 +164,9 @@ the repos share a version number.
   effect.** Each drain on the pad's feedback queue stores the game's newest
   value of its surface in a value the queue alone owns, and holds it back
   while an inspector test holds that surface; the receive loop's posts are
-  unchanged, and the addition takes no lock and allocates nothing.
+  unchanged, and the addition takes no lock and allocates nothing. The
+  inspector's own writes go straight to the pad, so the diagnostics file's
+  output lanes count only what the hosts sent, a rumble test included.
 
 ## [1.3.1] - 2026-11-19
 

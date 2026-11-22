@@ -73,10 +73,11 @@ final class RumbleActuatorDecouplingTests: XCTestCase {
 
     func testRumbleActuatorApplyHasNoLightbarParameters() throws {
         let code = try codeOnly(rumbleActuatorSource())
-        // `apply` takes only the three vibration arguments.
+        // `apply` takes only the three vibration arguments: a level for each
+        // side of the pair (the handles, or the triggers) and the hold.
         XCTAssertTrue(
-            code.contains("func apply(strong: UInt16, weak: UInt16, durationMs: UInt16)"),
-            "RumbleActuator.apply must carry only the strong/weak/durationMs vibration arguments"
+            code.contains("func apply(left: UInt16, right: UInt16, durationMs: UInt16)"),
+            "RumbleActuator.apply must carry only the left/right/durationMs vibration arguments"
         )
     }
 
