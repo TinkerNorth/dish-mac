@@ -187,8 +187,9 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertNil(slot.audioRoute, "no audio catalog read yet")
     }
 
-    /// The pad's route folds into its capabilities bound or not, the mute
-    /// rides every slot, and the engine's word only a bound one.
+    /// The pad's route folds into its capabilities bound or not, and the
+    /// mute and the engine's word ride every slot: the inspector's tests
+    /// reach a pad no host carries.
     @MainActor
     func testTheAudioRouteFoldsIntoTheCapabilitiesAndTheEnginesWordRidesTheBinding() throws {
         let gc = GameControllerInput.Slot(
@@ -219,7 +220,7 @@ final class SlotFactsTests: XCTestCase {
         XCTAssertEqual(unbound.capabilities, ControllerCapabilities(hasMotion: true, hasMic: true, hasSpeaker: true, hasHapticLanes: true))
         XCTAssertEqual(unbound.audioRoute, .routed)
         XCTAssertTrue(unbound.micMuted)
-        XCTAssertNil(unbound.audio, "the engine only speaks for a bound controller")
+        XCTAssertEqual(unbound.audio, state, "the engine speaks for a pad no host carries too")
 
         let summary = ConnectionSummary(id: "sat", name: "Desk", live: .connected, boundSlotId: "pad")
         let bound = try XCTUnwrap(composeSlots(gcSlots: [gc], connections: [summary], bindings: ["pad": "sat"], facts: facts).first)
