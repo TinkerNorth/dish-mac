@@ -1,6 +1,6 @@
 # Dish for macOS: Privacy Policy
 
-**Effective date:** 2026-11-20.
+**Effective date:** 2026-11-22.
 **Canonical copy:** this file, at
 [`https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md`](https://github.com/TinkerNorth/dish-mac/blob/main/PRIVACY.md).
 
@@ -39,7 +39,9 @@ describing another.
   USB) is sent only to the satellite you paired with, only while that
   controller's mic switch is on and it is not muted. The switch is off until
   you turn it on; macOS asks your permission the first time; nothing is
-  stored.
+  stored. The one other time it opens is the inspector's microphone test,
+  which you start yourself: it shows a level meter for up to eight seconds,
+  and what it hears is not recorded, kept or sent.
 - Settings, remembered satellites and certificate pins live in your own
   preferences; pairing keys live in your login keychain. Nothing is synced to
   a cloud account by the app.
@@ -350,7 +352,7 @@ so treat it as sensitive before attaching it to a public issue.
 | User notifications | One notice, the first time closing the window leaves Dish running behind the menu-bar item. macOS asks you for permission before it is shown. |
 | Host battery readout (IOKit power sources) | Reading your Mac's internal battery from macOS's list of power sources (`IOPSCopyPowerSourcesInfo`): its charge as a percentage of its capacity, and whether it is charging, full or discharging. Any other power source, such as a UPS, is skipped, and a Mac with no internal battery reads as 100 % on mains power. For a controller bound to a satellite or a Moonlight host, Dish sends the lower of the controller's own battery and the Mac's, with the charging state of the one it sends (an unknown level counts as the higher, and a tie goes to the controller); a controller that reports no battery of its own sends the Mac's. A controller that is not bound sends neither. The Mac's battery is read, and the result sent, a second after a controller shows and every 30 seconds after; in between, a controller on the Standard path reads it every 3 seconds and sends only when the charging state to send has changed, and a controller on the Direct path reads and sends it whenever its own reading changes. The controller's card shows the controller's own reading (the Mac's, for a controller on the Standard path that reports none). |
 | Input Monitoring (macOS asks) | Reading a controller that is also a keyboard or a mouse, such as a Steam Controller (the 2026 one on a cable, or either one over Bluetooth), only when you press Use Direct for it. Dish reads the controller's own reports to forward its buttons, sticks, trackpads and motion; it reads no other keyboard or mouse and records no typing. Refusing leaves the controller as it was. |
-| Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. |
+| Microphone (a controller's own, over USB) | Sending the pad's microphone to the satellite as the emulated pad's mic. macOS asks you the first time a controller's mic switch is turned on; the switch is off until you turn it on, and muting sends nothing at all. The inspector's microphone test opens the same microphone for up to eight seconds when you start it, to show a level meter; what it hears is measured and dropped, never encoded, stored or sent. |
 | Wi-Fi link readout (CoreWLAN) | Only as a report opens: the current Wi-Fi interface's band, signal strength (RSSI) and transmit rate, for the file you choose to mail. Dish never reads the network's name or the access point's address, so macOS's location permission is never asked. |
 | USB and HID device facts (IOKit registry and IOUSBLib) | For the diagnostics file only: as a report opens, whether macOS lists a USB host controller, counted in the IORegistry and written as a yes or a no; and each attached controller's version number, USB interfaces and endpoints, and the descriptors its USB device gave macOS as it was plugged in (fingerprinted, and in a capture written out), read as the controller attaches or as the Diagnostics page shows it. Nothing opens the controller or sends it a request to read them, and nothing leaves the Mac until you send the file. |
 | `~/Library/Caches/com.tinkernorth.dish.mac/io.sentry/` file write | The crash reporter's run state and any report not yet sent (section 3), only while *Share crash reports* is on. |

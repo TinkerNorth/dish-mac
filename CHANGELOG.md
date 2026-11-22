@@ -167,6 +167,11 @@ the repos share a version number.
   unchanged, and the addition takes no lock and allocates nothing. The
   inspector's own writes go straight to the pad, so the diagnostics file's
   output lanes count only what the hosts sent, a rumble test included.
+- **The privacy policy** names the inspector's microphone test: it opens a
+  controller's own microphone for up to eight seconds when you start it, to
+  show a level meter, and what it hears is not recorded, kept or sent. The
+  test is older than this release; the policy had not named it. Effective
+  2026-11-22.
 
 ## [1.3.1] - 2026-11-19
 
