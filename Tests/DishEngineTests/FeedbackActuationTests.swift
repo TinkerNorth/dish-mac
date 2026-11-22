@@ -46,8 +46,9 @@ final class FeedbackActuationTests: XCTestCase {
     /// there is no trigger test to run.
     @MainActor
     func testAPadHasTriggerMotorsOnlyWhenItsHapticsNameBothTriggers() {
-        XCTAssertTrue(GameControllerInput.hasTriggerMotors([.default, .all, .handles, .leftHandle, .rightHandle, .triggers, .leftTrigger, .rightTrigger]))
-        XCTAssertFalse(GameControllerInput.hasTriggerMotors([.default, .all, .handles, .leftHandle, .rightHandle]), "a DualSense's")
+        let handles: Set<GCHapticsLocality> = [.default, .all, .handles, .leftHandle, .rightHandle]
+        XCTAssertTrue(GameControllerInput.hasTriggerMotors(handles.union([.triggers, .leftTrigger, .rightTrigger])))
+        XCTAssertFalse(GameControllerInput.hasTriggerMotors(handles), "a DualSense's")
         XCTAssertFalse(GameControllerInput.hasTriggerMotors([.leftTrigger]))
         XCTAssertFalse(GameControllerInput.hasTriggerMotors([.triggers]), "the pair alone names no side to test")
         XCTAssertFalse(GameControllerInput.hasTriggerMotors([]))
