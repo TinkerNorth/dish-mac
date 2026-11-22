@@ -6,9 +6,9 @@ import DishEngine
 import SwiftUI
 
 /// One controller under the inspector: its input as the host sees it and as
-/// the pad sent it, motion and touch, the stick tests, the rumble bench and
-/// the audio tests. Arms the inspector while shown and disarms it on the
-/// way out, the mic meter with it.
+/// the pad sent it, motion and touch, the stick tests, and the feedback and
+/// audio tests its path carries. Arms the inspector while shown and disarms
+/// it on the way out, the mic meter with it.
 struct InspectorPage: View {
 
     @EnvironmentObject var model: AppModel
@@ -31,7 +31,7 @@ struct InspectorPage: View {
                 liveInputSection
                 motionSection
                 stickTestsSection
-                rumbleSection
+                feedbackSection
                 audioSection
                 InspectorOutcomesSection(slotId: slotId, state: state.outcomes)
             }
@@ -146,23 +146,33 @@ struct InspectorPage: View {
         }
     }
 
-    // MARK: - Rumble
+    // MARK: - Feedback
 
-    private var rumbleSection: some View {
+    private var feedbackSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            SectionHeader(title: words.rumbleTest)
+            SectionHeader(title: words.feedbackTests)
             InspectorCard {
-                if let benches = state.benches {
-                    note(benches.rumbleNote)
-                    HStack(spacing: 8) {
-                        ForEach(BuzzMotor.allCases, id: \.self) { motor in
-                            Button(buzzMotorText(motor)) { model.testRumble(slotId: slotId, motor: motor) }
-                                .buttonStyle(DishOutlinedButtonStyle())
+                if let feedback = state.benches?.feedback {
+                    note(feedback.note)
+                    VStack(alignment: .leading, spacing: 8) {
+                        ForEach(feedback.rows) { row in
+                            feedbackRow(row)
                         }
                     }
-                    .disabled(!benches.rumbleEnabled)
+                    .disabled(!feedback.enabled)
                 }
             }
+        }
+    }
+
+    private func feedbackRow(_ row: BenchRowState) -> some View {
+        HStack(spacing: 8) {
+            rowLabel(row.label)
+            ForEach(row.tests) { button in
+                Button(button.title) { model.runFeedbackTest(button.test, slotId: slotId) }
+                    .buttonStyle(DishOutlinedButtonStyle())
+            }
+            Spacer(minLength: 0)
         }
     }
 
@@ -172,20 +182,39 @@ struct InspectorPage: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionHeader(title: words.audioTests)
             InspectorCard {
-                if let benches = state.benches {
-                    toneRow(benches)
-                    micRow(benches)
+                if let audio = state.benches?.audio {
+                    if let speaker = audio.speaker {
+                        toneRow(speaker, play: playTestTone)
+                    }
+                    if let haptics = audio.haptics {
+                        toneRow(haptics, play: playHapticsTone)
+                    }
+                    if let mic = audio.mic {
+                        micRow(mic)
+                    }
+                    if let empty = audio.emptyNote {
+                        note(empty)
+                    }
                 }
             }
         }
     }
 
-    private func toneRow(_ benches: InspectorBenchState) -> some View {
+    private func playTestTone() {
+        model.playTestTone(slotId: slotId)
+    }
+
+    private func playHapticsTone() {
+        model.playHapticsTone(slotId: slotId)
+    }
+
+    private func toneRow(_ row: ToneRowState, play: @escaping () -> Void) -> some View {
         HStack(spacing: 8) {
-            Button(words.playTone) { model.playTestTone(slotId: slotId) }
+            rowLabel(row.label)
+            Button(words.playTone, action: play)
                 .buttonStyle(DishOutlinedButtonStyle())
-                .disabled(!benches.toneEnabled)
-            if let note = benches.toneNote {
+                .disabled(!row.enabled)
+            if let note = row.note {
                 Text(note)
                     .font(DishFont.caption)
                     .foregroundColor(DishTheme.muted)
@@ -194,18 +223,19 @@ struct InspectorPage: View {
         }
     }
 
-    private func micRow(_ benches: InspectorBenchState) -> some View {
+    private func micRow(_ row: MicRowState) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                micButton(benches.mic)
-                if let note = benches.micNote {
+                rowLabel(row.label)
+                micButton(row.button)
+                if let note = row.note {
                     Text(note)
                         .font(DishFont.caption)
                         .foregroundColor(DishTheme.muted)
                 }
                 Spacer(minLength: 0)
             }
-            if let level = benches.micLevel {
+            if let level = row.level {
                 ProgressView(value: level)
                     .tint(DishTheme.primary)
             }
@@ -226,6 +256,14 @@ struct InspectorPage: View {
     }
 
     // MARK: - Pieces
+
+    /// A bench row's name, in the readouts' label column.
+    private func rowLabel(_ text: String) -> some View {
+        Text(text)
+            .font(DishFont.caption)
+            .foregroundColor(DishTheme.muted)
+            .frame(width: 110, alignment: .leading)
+    }
 
     private func factLine(_ key: String, _ value: String) -> some View {
         HStack(alignment: .top, spacing: 8) {

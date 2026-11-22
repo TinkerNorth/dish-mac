@@ -52,6 +52,15 @@ final class DiagnosticsBundleFactsTests: XCTestCase {
         return pad
     }
 
+    /// A pad's ledger with one answer, `worked`, for a test that ended at `atMs`.
+    private func answered(_ test: InspectorTest, atMs: Int64) -> PadTestLedger {
+        var ledger = PadTestLedger()
+        ledger.started(test)
+        ledger.ended(test, atMs: atMs)
+        ledger.answered(worked: true)
+        return ledger
+    }
+
     private func inputs(capture: FinishedCapture? = nil) -> DiagnosticsBundleInputs {
         let satellite = HostDiagnostics(
             summary: ConnectionSummary(
@@ -85,7 +94,7 @@ final class DiagnosticsBundleFactsTests: XCTestCase {
             DiagnosticsEvent(atMs: 4, kind: .padUnbound, subject: "Pad", host: Forbidden.forgottenHost),
             DiagnosticsEvent(atMs: 5, kind: .padAttached, subject: "Pad")
         ]
-        let outcomes = PadOutcomes(answers: ["pad": [TestOutcome(test: .rumbleStrong, result: .worked, atMs: 9)]])
+        let outcomes = PadOutcomes(ledgers: ["pad": answered(.rumbleStrong, atMs: 9)])
         return DiagnosticsBundleInputs(
             createdAtMs: 1_763_586_251_000,
             app: BundleAppFacts(name: "dish-mac", version: "1.4.0", build: "1.4.0", flavor: "github"),

@@ -6,14 +6,16 @@ import Foundation
 import GameController
 
 /// The controllers as the feedback queue drives them: each slot's controller
-/// as the main actor last filed it, the rumble actuator made for it on first
-/// use, and a Direct pad's own output where it drives its own rumble. Owned
-/// by the feedback queue: filings hop to it and the actuators it hands out
-/// run on it, so nothing here waits on the main thread.
+/// as the main actor last filed it, the rumble actuators made for its handles
+/// and its triggers on first use, and a Direct pad's own output where it
+/// drives its own rumble. Owned by the feedback queue: filings hop to it and
+/// the actuators it hands out run on it, so nothing here waits on the main
+/// thread.
 final class PadActuators {
     let queue: DispatchQueue
     private var controllers: [String: GCController] = [:]
     private var rumblers: [String: RumbleActuator] = [:]
+    private var triggerRumblers: [String: RumbleActuator] = [:]
     private var outputs: [String: DirectOutput] = [:]
 
     init(queue: DispatchQueue) {
@@ -35,6 +37,7 @@ final class PadActuators {
     private func store(_ controller: GCController?, for slotId: String) {
         guard controllers[slotId] !== controller else { return }
         rumblers.removeValue(forKey: slotId)?.shutdown()
+        triggerRumblers.removeValue(forKey: slotId)?.shutdown()
         controllers[slotId] = controller
     }
 
@@ -54,6 +57,15 @@ final class PadActuators {
             },
             playerLeds: { [self] slotId, player in
                 controllers[slotId]?.playerIndex = GameControllerInput.playerIndex(for: player)
+            },
+            triggerRumble: { [self] slotId, left, right, durationMs in
+                triggerRumbler(for: slotId)?.apply(left: left, right: right, durationMs: durationMs)
+            },
+            lightbarShown: { [self] slotId in
+                controllers[slotId]?.light.map { lightbarColor($0.color) }
+            },
+            playerShown: { [self] slotId in
+                controllers[slotId].map { GameControllerInput.player(for: $0.playerIndex) }
             }
         )
     }
@@ -62,14 +74,31 @@ final class PadActuators {
     /// controller's engines.
     private func rumble(_ slotId: String, strong: UInt16, weak: UInt16, durationMs: UInt16) {
         if let output = outputs[slotId] { return output.rumble(strong: strong, weak: weak, durationMs: durationMs) }
-        rumbler(for: slotId)?.apply(strong: strong, weak: weak, durationMs: durationMs)
+        rumbler(for: slotId)?.apply(left: strong, right: weak, durationMs: durationMs)
     }
 
     /// A pad without haptics takes no actuator and its rumble is dropped.
     private func rumbler(for slotId: String) -> RumbleActuator? {
         if let existing = rumblers[slotId] { return existing }
-        guard let controller = controllers[slotId], let fresh = RumbleActuator(controller: controller) else { return nil }
+        guard let controller = controllers[slotId], let fresh = RumbleActuator(controller: controller, at: .handles) else { return nil }
         rumblers[slotId] = fresh
         return fresh
     }
+
+    /// A pad whose haptics name no trigger motors takes no actuator.
+    private func triggerRumbler(for slotId: String) -> RumbleActuator? {
+        if let existing = triggerRumblers[slotId] { return existing }
+        guard let controller = controllers[slotId], let fresh = RumbleActuator(controller: controller, at: .triggers) else { return nil }
+        triggerRumblers[slotId] = fresh
+        return fresh
+    }
+}
+
+/// A framework colour as the light bar's bytes, each channel rounded.
+func lightbarColor(_ color: GCColor) -> LightbarColor {
+    LightbarColor(r: lightbarByte(color.red), g: lightbarByte(color.green), b: lightbarByte(color.blue))
+}
+
+private func lightbarByte(_ channel: Float) -> UInt8 {
+    UInt8(clamping: Int((min(max(channel, 0), 1) * 255).rounded()))
 }

@@ -167,40 +167,56 @@ final class ControllerDbMappersTests: XCTestCase {
 
     func testEachTestHasItsName() {
         XCTAssertEqual(InspectorTest.allCases.map { inspectorTestText($0) }, [
-            buzzMotorText(.weak), buzzMotorText(.strong), buzzMotorText(.both), "Test tone", words.microphone, "Drift test", "Range test"
+            "Rumble, weak", "Rumble, strong", "Rumble, both motors",
+            "Trigger rumble, left", "Trigger rumble, right", "Trigger rumble, both triggers",
+            "Light bar cycle", "Player LED cycle", "Trigger pulse",
+            "Test tone", "Test tone on the haptics", words.microphone, "Drift test", "Range test"
         ])
     }
 
+    /// A pad's ledger after the runs given, each ended at its time and
+    /// answered, then the run that waits.
+    private func ledger(answered: [TestOutcome], asking: EndedTest? = nil, running: InspectorTest? = nil) -> PadTestLedger {
+        var ledger = PadTestLedger()
+        for outcome in answered {
+            ledger.started(outcome.test)
+            ledger.ended(outcome.test, atMs: outcome.atMs)
+            ledger.answered(worked: outcome.result == .worked)
+        }
+        if let asking {
+            ledger.started(asking.test)
+            ledger.ended(asking.test, atMs: asking.atMs)
+        }
+        if let running { ledger.started(running) }
+        return ledger
+    }
+
     func testBeforeAnyTestTheSectionSaysWhatToDo() {
-        let state = outcomesState(slotId: "pad", outcomes: PadOutcomes(), stickTestRunning: false)
+        let state = outcomesState(slotId: "pad", outcomes: PadOutcomes())
         XCTAssertNil(state.question)
         XCTAssertEqual(state.answers, [])
         XCTAssertEqual(state.hint, words.outcomesHint)
     }
 
-    func testATestThatRanAsksAndTheAnswersShowNewestFirst() {
-        let outcomes = PadOutcomes(
-            asking: ["pad": .tone],
-            answers: ["pad": [
-                TestOutcome(test: .rumbleWeak, result: .worked, atMs: 1),
-                TestOutcome(test: .microphone, result: .didNotWork, atMs: 2)
-            ]]
-        )
-        let state = outcomesState(slotId: "pad", outcomes: outcomes, stickTestRunning: false)
+    func testATestThatEndedAsksAndTheAnswersShowNewestFirst() {
+        let answered = [
+            TestOutcome(test: .rumbleWeak, result: .worked, atMs: 1),
+            TestOutcome(test: .microphone, result: .didNotWork, atMs: 2)
+        ]
+        let outcomes = PadOutcomes(ledgers: ["pad": ledger(answered: answered, asking: EndedTest(test: .tone, atMs: 3))])
+        let state = outcomesState(slotId: "pad", outcomes: outcomes)
         XCTAssertEqual(state.question, "Test tone: did it work?")
-        XCTAssertEqual(state.answers, ["\(words.microphone) · It didn't work", "\(buzzMotorText(.weak)) · It worked"])
+        XCTAssertEqual(state.answers, ["\(words.microphone) · It didn't work", "Rumble, weak · It worked"])
         XCTAssertNil(state.hint)
     }
 
-    func testAStickTestAsksOnlyOnceItHasFinished() {
-        let outcomes = PadOutcomes(asking: ["pad": .stickDrift])
-        XCTAssertNil(outcomesState(slotId: "pad", outcomes: outcomes, stickTestRunning: true).question)
-        XCTAssertEqual(outcomesState(slotId: "pad", outcomes: outcomes, stickTestRunning: false).question, "Drift test: did it work?")
-        let rumble = PadOutcomes(asking: ["pad": .rumbleBoth])
-        XCTAssertNotNil(outcomesState(slotId: "pad", outcomes: rumble, stickTestRunning: true).question, "another test asks at once")
+    func testARunningTestAsksNothingUntilItHasEnded() {
+        let outcomes = PadOutcomes(ledgers: ["pad": ledger(answered: [], running: .lightbarCycle)])
+        XCTAssertNil(outcomesState(slotId: "pad", outcomes: outcomes).question)
     }
 
     func testAnotherPadsQuestionIsNotThisOnes() {
-        XCTAssertNil(outcomesState(slotId: "other", outcomes: PadOutcomes(asking: ["pad": .tone]), stickTestRunning: false).question)
+        let outcomes = PadOutcomes(ledgers: ["pad": ledger(answered: [], asking: EndedTest(test: .tone, atMs: 1))])
+        XCTAssertNil(outcomesState(slotId: "other", outcomes: outcomes).question)
     }
 }

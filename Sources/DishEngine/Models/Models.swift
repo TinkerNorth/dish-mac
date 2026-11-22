@@ -280,6 +280,10 @@ package struct ControllerCapabilities: Hashable {
     package var hasMotion = false
     package var hasTouchpad = false
     package var hasRumble = false
+    /// The controller's haptics have motors in both triggers
+    /// (`GCHapticsLocality.leftTrigger` and `.rightTrigger`), which only the
+    /// bench drives: no host sends this Mac trigger rumble of its own.
+    package var hasTriggerRumble = false
     /// The controller has an addressable RGB light bar (`GCController.light`).
     /// Drives the "Lightbar" capability chip and the `capLightbar` bit in the
     /// REST controller descriptor's caps word.
@@ -303,6 +307,7 @@ package struct ControllerCapabilities: Hashable {
         hasMotion: Bool = false,
         hasTouchpad: Bool = false,
         hasRumble: Bool = false,
+        hasTriggerRumble: Bool = false,
         hasLightbar: Bool = false,
         hasBattery: Bool = false,
         hasTriggerEffects: Bool = false,
@@ -315,6 +320,7 @@ package struct ControllerCapabilities: Hashable {
         self.hasMotion = hasMotion
         self.hasTouchpad = hasTouchpad
         self.hasRumble = hasRumble
+        self.hasTriggerRumble = hasTriggerRumble
         self.hasLightbar = hasLightbar
         self.hasBattery = hasBattery
         self.hasTriggerEffects = hasTriggerEffects

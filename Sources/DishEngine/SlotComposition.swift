@@ -79,10 +79,10 @@ func composeSlots(
         slot.micMuted = facts.mutes.contains(gc.id)
         slot.family = gc.family
         slot.trackpads = gc.trackpads
+        slot.audio = facts.audio[gc.id]
         guard let connectionId = bindings[gc.id] else { return slot }
         slot.boundConnectionId = connectionId
         slot.boundStatus = connections.first { $0.id == connectionId }
-        slot.audio = facts.audio[gc.id]
         attachBindingFacts(to: &slot, gc: gc, connectionId: connectionId, facts: facts)
         return slot
     }

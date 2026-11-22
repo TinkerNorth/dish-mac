@@ -50,6 +50,8 @@ package struct ShellFacts: Equatable {
     package var controllerDb = ControllerDbStatus()
     /// "Did it work?": the question waiting per pad and the answers.
     package var outcomes = PadOutcomes()
+    /// The feedback test each pad runs now; a pad runs one at a time.
+    package var benchRuns: [String: FeedbackTest] = [:]
     /// The report being prepared: each live host asked, the Mac's conditions read.
     package var reportPreparation = ReportPreparationState.idle
 

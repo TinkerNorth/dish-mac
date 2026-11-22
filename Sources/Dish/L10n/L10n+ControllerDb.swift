@@ -181,6 +181,46 @@ extension L10n {
         catalog.text("Test tone")
     }
 
+    var rumbleWeakTest: String {
+        catalog.text("Rumble, weak")
+    }
+
+    var rumbleStrongTest: String {
+        catalog.text("Rumble, strong")
+    }
+
+    var rumbleBothTest: String {
+        catalog.text("Rumble, both motors")
+    }
+
+    var triggerRumbleLeftTest: String {
+        catalog.text("Trigger rumble, left")
+    }
+
+    var triggerRumbleRightTest: String {
+        catalog.text("Trigger rumble, right")
+    }
+
+    var triggerRumbleBothTest: String {
+        catalog.text("Trigger rumble, both triggers")
+    }
+
+    var lightbarCycleTest: String {
+        catalog.text("Light bar cycle")
+    }
+
+    var playerLedsCycleTest: String {
+        catalog.text("Player LED cycle")
+    }
+
+    var triggerPulseTest: String {
+        catalog.text("Trigger pulse")
+    }
+
+    var hapticsToneTest: String {
+        catalog.text("Test tone on the haptics")
+    }
+
     var driftTest: String {
         catalog.text("Drift test")
     }

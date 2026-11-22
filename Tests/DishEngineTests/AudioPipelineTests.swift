@@ -91,6 +91,28 @@ final class AudioPipelineTests: XCTestCase {
         XCTAssertEqual(micIndicatorState(["a": armedPlan(muted: true), "b": armedPlan(muted: false)]), .live, "one live mic is live")
     }
 
+    func testAPadNoHostCarriesKeepsItsRouteForTheInspectorAndNothingElse() {
+        let desk = connection("desk")
+        let routed = PadAudioRoute(verdict: .routed, function: function)
+        let bindings = audioBindings(
+            bindings: ["late": "desk", "moonlit": "moonlight-host"],
+            pool: ["desk": desk],
+            routes: ["free": routed, "late": routed, "moonlit": routed, "silent": PadAudioRoute(verdict: .noAudioFunction, function: nil)],
+            preferences: [:],
+            mutes: [],
+            permitted: true
+        )
+        XCTAssertEqual(bindings.map(\.slotId), ["free", "late", "moonlit"], "a pad with no audio function has nothing to test")
+        for binding in bindings {
+            XCTAssertNil(binding.connection, "\(binding.slotId) is carried by no satellite yet")
+            XCTAssertEqual(binding.route, function)
+            XCTAssertEqual(binding.facts.host, HostAudioVerdict.none)
+            XCTAssertFalse(binding.facts.live)
+            XCTAssertTrue(binding.facts.micPermitted)
+            XCTAssertEqual(audioPlan(binding.facts), AudioPlan.silent, "no voice and no claim")
+        }
+    }
+
     func testTheBindingsFollowThePoolInSlotOrder() {
         let desk = connection("desk")
         let den = connection("den")
@@ -201,7 +223,7 @@ final class AudioPipelineTests: XCTestCase {
 
         // The inspector's tone asks for the output the way a voice would; the system refuses it.
         ports.refuseOutput = true
-        XCTAssertFalse(pipeline.engine.playTone(for: "ds"))
+        XCTAssertFalse(pipeline.engine.playTone(for: "ds", on: .speaker, ended: {}))
         let withdrawn = await waitUntil { desk.descriptor(for: "ds").map { $0.caps & lanes == 0 } == true }
         XCTAssertTrue(withdrawn, "a lane the Mac cannot open is no longer promised, so the satellite falls back to rumble")
         XCTAssertEqual(pipeline.engine.state["ds"]?.playbackRefused, true)

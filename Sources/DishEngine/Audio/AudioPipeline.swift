@@ -182,8 +182,10 @@ func audioFacts(
     )
 }
 
-/// The engine's bindings: every bound slot its satellite carries, on the
-/// controller index it holds there, in slot order.
+/// The engine's bindings, in slot order: every bound slot its satellite
+/// carries, on the controller index it holds there, and every other pad
+/// with an audio function, carried by no host, so the inspector's tests
+/// still reach it.
 @MainActor
 func audioBindings(
     bindings: [String: String],
@@ -193,19 +195,54 @@ func audioBindings(
     mutes: Set<String>,
     permitted: Bool
 ) -> [AudioBinding] {
-    bindings.compactMap { slotId, connectionId -> AudioBinding? in
-        guard let conn = pool[connectionId], let index = conn.controllerIndex(of: slotId) else { return nil }
-        let facts = audioFacts(
-            route: routes[slotId],
-            preferences: preferences[slotId] ?? SlotPreferences(),
-            host: conn.hostAudio,
-            live: conn.hasLiveSession,
-            permitted: permitted,
-            muted: mutes.contains(slotId)
-        )
-        return AudioBinding(slotId: slotId, connection: conn, controllerIndex: index, route: routes[slotId]?.function, facts: facts)
+    let slotIds = Set(bindings.keys).union(routes.keys).sorted()
+    return slotIds.compactMap { slotId in
+        let gates = AudioGates(preferences: preferences[slotId] ?? SlotPreferences(), permitted: permitted, muted: mutes.contains(slotId))
+        let carried = bindings[slotId].flatMap { pool[$0] }.flatMap { carriedBinding(slotId, on: $0, routes: routes, gates: gates) }
+        return carried ?? hostlessBinding(slotId, routes: routes, gates: gates)
     }
-    .sorted { $0.slotId < $1.slotId }
+}
+
+/// A slot's own switches, the system's leave and the mute.
+struct AudioGates {
+    let preferences: SlotPreferences
+    let permitted: Bool
+    let muted: Bool
+}
+
+/// Nil while the satellite does not carry the slot yet.
+@MainActor
+private func carriedBinding(
+    _ slotId: String,
+    on conn: WifiConnection,
+    routes: [String: PadAudioRoute],
+    gates: AudioGates
+) -> AudioBinding? {
+    guard let index = conn.controllerIndex(of: slotId) else { return nil }
+    let facts = audioFacts(
+        route: routes[slotId],
+        preferences: gates.preferences,
+        host: conn.hostAudio,
+        live: conn.hasLiveSession,
+        permitted: gates.permitted,
+        muted: gates.muted
+    )
+    return AudioBinding(slotId: slotId, connection: conn, controllerIndex: index, route: routes[slotId]?.function, facts: facts)
+}
+
+/// No host, so no voice and no claim: only the inspector's tests open the
+/// pad's endpoints. Nil for a pad with no audio function.
+private func hostlessBinding(_ slotId: String, routes: [String: PadAudioRoute], gates: AudioGates) -> AudioBinding? {
+    guard let function = routes[slotId]?.function else { return nil }
+    let facts = audioFacts(
+        route: routes[slotId],
+        preferences: gates.preferences,
+        host: .none,
+        live: false,
+        permitted: gates.permitted,
+        muted: gates.muted
+    )
+    return AudioBinding(slotId: slotId, connection: nil, controllerIndex: 0, route: function, facts: facts)
 }
 
 /// The app-wide word: how many microphones are armed and how many deliver.

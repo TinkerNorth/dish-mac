@@ -1,23 +1,30 @@
 // SPDX-License-Identifier: LGPL-3.0-or-later
 // Copyright (C) 2026 Dish contributors.
 //
-// "Did it work?" after each inspector test: the test waiting for its answer
-// per pad, and the answers, the newest twenty per pad, kept for the run.
-// The Diagnostics bundle carries them; nothing is sent anywhere else.
+// "Did it work?" after each inspector test: per pad, the test running, the
+// one that ended and waits for its answer, and the answers, the newest
+// twenty, kept for the run. The Diagnostics bundle carries them; nothing is
+// sent anywhere else.
 
 import DishCore
 import DishKernel
 import Foundation
 
 package struct PadOutcomes: Equatable {
-    /// The test each pad ran last and has not been answered for.
-    package var asking: [String: InspectorTest] = [:]
-    /// Each pad's answers, oldest first.
-    package var answers: [String: [TestOutcome]] = [:]
+    package var ledgers: [String: PadTestLedger] = [:]
 
-    package init(asking: [String: InspectorTest] = [:], answers: [String: [TestOutcome]] = [:]) {
-        self.asking = asking
-        self.answers = answers
+    package init(ledgers: [String: PadTestLedger] = [:]) {
+        self.ledgers = ledgers
+    }
+
+    /// The test that ended on the pad and has not been answered for.
+    package func asking(_ slotId: String) -> EndedTest? {
+        ledgers[slotId]?.asking
+    }
+
+    /// The pad's answers, oldest first.
+    package func answers(_ slotId: String) -> [TestOutcome] {
+        ledgers[slotId]?.answers ?? []
     }
 }
 
@@ -30,33 +37,31 @@ package final class PadOutcomesStore: StateSource<PadOutcomes> {
         super.init(initial: PadOutcomes())
     }
 
-    /// A test ran on the pad: its question replaces any unanswered one.
-    func ran(_ test: InspectorTest, slotId: String) {
-        updateState { var next = $0
-            next.asking[slotId] = test
-            return next
-        }
+    /// A test started on the pad: its question waits for its end, and any
+    /// question still unanswered goes.
+    func started(_ test: InspectorTest, slotId: String) {
+        updateLedger(slotId) { $0.started(test) }
+    }
+
+    /// The test ended now: the page asks, and the answer carries this time.
+    func ended(_ test: InspectorTest, slotId: String) {
+        let atMs = now()
+        updateLedger(slotId) { $0.ended(test, atMs: atMs) }
     }
 
     /// The person's answer to the question waiting on the pad; nothing when
     /// none waits.
     func answer(slotId: String, worked: Bool) {
-        guard let test = state.asking[slotId] else { return }
-        let outcome = TestOutcome(test: test, result: worked ? .worked : .didNotWork, atMs: now())
+        updateLedger(slotId) { $0.answered(worked: worked) }
+    }
+
+    private func updateLedger(_ slotId: String, _ change: (inout PadTestLedger) -> Void) {
+        var ledger = state.ledgers[slotId] ?? PadTestLedger()
+        change(&ledger)
         updateState { var next = $0
-            next.asking.removeValue(forKey: slotId)
-            next.answers[slotId] = appendingOutcome(next.answers[slotId] ?? [], outcome)
+            next.ledgers[slotId] = ledger
             return next
         }
-    }
-}
-
-/// The bench's motor as the test the bundle names.
-func rumbleTest(_ motor: BuzzMotor) -> InspectorTest {
-    switch motor {
-    case .weak: .rumbleWeak
-    case .strong: .rumbleStrong
-    case .both: .rumbleBoth
     }
 }
 

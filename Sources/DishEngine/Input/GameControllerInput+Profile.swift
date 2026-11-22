@@ -65,6 +65,7 @@ extension GameControllerInput {
             hasMotion: controller.motion != nil,
             hasTouchpad: false,
             hasRumble: controller.haptics != nil,
+            hasTriggerRumble: hasTriggerMotors(controller.haptics?.supportedLocalities ?? []),
             hasLightbar: controller.light != nil,
             hasBattery: true,
             hasTriggerEffects: false,

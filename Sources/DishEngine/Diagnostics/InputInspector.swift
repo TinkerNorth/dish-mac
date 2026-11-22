@@ -126,6 +126,8 @@ package struct InputInspection: Hashable {
 package final class InputInspector: StateSource<InputInspection> {
 
     private let processor: GamepadInputProcessor
+    /// Told when a stick test starts and when it ends, so the page asks.
+    private let outcomes: PadOutcomesStore
     private let now: () -> Int64
     private let pollMs: Int
     private var rate = InputRateTracker()
@@ -134,8 +136,14 @@ package final class InputInspector: StateSource<InputInspection> {
     private var armedSlotId: String?
 
     /// The clock is injected, so a test drives the poll itself.
-    init(processor: GamepadInputProcessor, now: @escaping () -> Int64 = uptimeMs, pollMs: Int = 50) {
+    init(
+        processor: GamepadInputProcessor,
+        outcomes: PadOutcomesStore,
+        now: @escaping () -> Int64 = uptimeMs,
+        pollMs: Int = 50
+    ) {
         self.processor = processor
+        self.outcomes = outcomes
         self.now = now
         self.pollMs = pollMs
         super.init(initial: .disarmed)
@@ -160,14 +168,15 @@ package final class InputInspector: StateSource<InputInspection> {
 
     /// Ignored while no inspection is armed.
     package func startStickTest(_ kind: StickTestKind) {
-        guard armedSlotId != nil else { return }
+        guard let slotId = armedSlotId else { return }
         bench.start(kind, nowMs: now())
+        outcomes.started(stickTest(kind), slotId: slotId)
         tick()
     }
 
     /// One poll: the pad's record folded into the state, the rate measured
     /// from the report count, the running test fed the raw sticks and
-    /// advanced on the clock.
+    /// advanced on the clock; the poll that ends a test tells the outcomes.
     package func tick() {
         guard let slotId = armedSlotId else { return }
         let input = processor.latestInput(slotId) ?? LatestInput()
@@ -176,7 +185,10 @@ package final class InputInspector: StateSource<InputInspection> {
         if let raw = input.raw {
             bench.sample(left: InputReadout.stickSample(x: raw.lx, y: raw.ly), right: InputReadout.stickSample(x: raw.rx, y: raw.ry))
         }
+        let wasRunning = bench.phase == .running
         bench.advance(nowMs: nowMs)
+        let ended = wasRunning && bench.phase == .done
+        if ended { outcomes.ended(stickTest(bench.kind), slotId: slotId) }
         let inspection = InputInspection(
             slotId: slotId,
             snapshot: inputSnapshot(input),

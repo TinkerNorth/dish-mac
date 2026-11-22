@@ -99,6 +99,19 @@ extension GameControllerInput {
         }
     }
 
+    /// The player a pattern lights, zero for none: what the bench puts back
+    /// on a pad whose player lights the game never set.
+    nonisolated static func player(for index: GCControllerPlayerIndex) -> Int {
+        switch index {
+        case .index1: 1
+        case .index2: 2
+        case .index3: 3
+        case .index4: 4
+        case .indexUnset: 0
+        @unknown default: 0
+        }
+    }
+
     // MARK: - Battery
 
     /// Spin up the per-device battery timers. The 30 s timer is the steady

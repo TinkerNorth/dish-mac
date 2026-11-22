@@ -5,13 +5,30 @@ import DishCore
 import Foundation
 
 /// What the feedback queue does with each pad's newest command: drive the
-/// haptics, the light, the adaptive triggers and the player index. Called on
-/// that queue only; the controller bridge in production, recorders in tests.
+/// haptics, the light, the adaptive triggers and the player index, and the
+/// bench's trigger motors. Called on that queue only; the controller bridge
+/// in production, recorders in tests.
 struct FeedbackActuators {
     var rumble: (_ slotId: String, _ strong: UInt16, _ weak: UInt16, _ durationMs: UInt16) -> Void
     var lightbar: (_ slotId: String, _ red: UInt8, _ green: UInt8, _ blue: UInt8) -> Void
     var triggerEffects: (_ slotId: String, _ command: TriggerEffectsCommand) -> Void
     var playerLeds: (_ slotId: String, _ player: Int) -> Void
+    var triggerRumble: (_ slotId: String, _ left: UInt16, _ right: UInt16, _ durationMs: UInt16) -> Void = ignoreTriggerRumble
+    /// What the pad's light and player lights show now, read as a bench test
+    /// takes them: what they go back to when the game never set them.
+    var lightbarShown: (_ slotId: String) -> LightbarColor? = noLightbarShown
+    var playerShown: (_ slotId: String) -> Int? = noPlayerShown
+}
+
+/// A pad with no trigger motors to drive.
+func ignoreTriggerRumble(_: String, _: UInt16, _: UInt16, _: UInt16) {}
+
+func noLightbarShown(_: String) -> LightbarColor? {
+    nil
+}
+
+func noPlayerShown(_: String) -> Int? {
+    nil
 }
 
 /// The pads' feedback: one serial queue at the input queue's quality that
@@ -52,7 +69,10 @@ final class PadFeedback {
 /// One pad's commands on their way to the feedback queue, the newest of each
 /// kind: posted from any thread (a receive loop, the main actor), taken on
 /// the queue. A post schedules a drain only when none is pending, so a burst
-/// costs one hop and the queue applies its last value.
+/// costs one hop and the queue applies its last value. The queue keeps the
+/// game's newest light bar, player and trigger effect, and while a bench
+/// test holds one of them, the game's value waits for the test's end (the
+/// contract's bench, rules 2 and 3).
 final class FeedbackPad {
     let slotId: String
     private let queue: DispatchQueue
@@ -64,6 +84,11 @@ final class FeedbackPad {
     private let playerWord = AtomicWord.allocate()
     private let triggerMail = Mailbox<TriggerEffectsBox>()
     let tally: FeedbackTally
+
+    // Owned by the queue: each state surface between the game and the bench.
+    private var lightbarSurface = BenchSurfaceState<LightbarColor>()
+    private var playerSurface = BenchSurfaceState<Int>()
+    private var triggerSurface = BenchSurfaceState<TriggerEffectsCommand>()
 
     private static let pending: Int64 = 1 << 62
 
@@ -121,23 +146,78 @@ final class FeedbackPad {
     private func drainLightbar() {
         let word = lightbarWord.exchange(0)
         guard word & Self.pending != 0 else { return }
-        actuators.lightbar(
-            slotId,
-            UInt8(truncatingIfNeeded: word >> 16),
-            UInt8(truncatingIfNeeded: word >> 8),
-            UInt8(truncatingIfNeeded: word)
+        let color = LightbarColor(
+            r: UInt8(truncatingIfNeeded: word >> 16),
+            g: UInt8(truncatingIfNeeded: word >> 8),
+            b: UInt8(truncatingIfNeeded: word)
         )
+        guard let shown = lightbarSurface.gameSent(color) else { return }
+        actuators.lightbar(slotId, shown.r, shown.g, shown.b)
     }
 
     private func drainPlayer() {
         let word = playerWord.exchange(0)
         guard word & Self.pending != 0 else { return }
-        actuators.playerLeds(slotId, Int(Int32(truncatingIfNeeded: word)))
+        guard let shown = playerSurface.gameSent(Int(Int32(truncatingIfNeeded: word))) else { return }
+        actuators.playerLeds(slotId, shown)
     }
 
     private func drainTriggerEffects() {
-        guard let box = triggerMail.take() else { return }
-        actuators.triggerEffects(slotId, box.command)
+        guard let box = triggerMail.take(), let shown = triggerSurface.gameSent(box.command) else { return }
+        actuators.triggerEffects(slotId, shown)
+    }
+
+    // MARK: - The bench
+
+    /// A test takes a state surface: from here the game's values for it
+    /// wait, and what the surface shows now is what it goes back to if the
+    /// game never set it.
+    func benchTake(_ surface: BenchSurface) {
+        queue.async { self.takeOnQueue(surface) }
+    }
+
+    /// One of a test's writes, straight to the pad: it is not the game's, so
+    /// no lane counts it and no surface remembers it.
+    func bench(_ action: BenchAction) {
+        queue.async { self.performOnQueue(action) }
+    }
+
+    /// The test ended: the surface shows the game's newest value again, or
+    /// what it showed before the test.
+    func benchRelease(_ surface: BenchSurface) {
+        queue.async { self.releaseOnQueue(surface) }
+    }
+
+    private func takeOnQueue(_ surface: BenchSurface) {
+        switch surface {
+        case .lightbar: lightbarSurface.take(idle: actuators.lightbarShown(slotId))
+        case .playerLeds: playerSurface.take(idle: actuators.playerShown(slotId))
+        case .triggerEffects: triggerSurface.take(idle: idleTriggerEffects)
+        }
+    }
+
+    private func performOnQueue(_ action: BenchAction) {
+        switch action {
+        case let .rumble(buzz): actuators.rumble(slotId, buzz.strong, buzz.weak, buzz.durationMs)
+        case let .triggerRumble(buzz): actuators.triggerRumble(slotId, buzz.left, buzz.right, buzz.durationMs)
+        case let .lightbar(color): actuators.lightbar(slotId, color.r, color.g, color.b)
+        case let .player(player): actuators.playerLeds(slotId, player)
+        case let .triggerEffects(command): actuators.triggerEffects(slotId, command)
+        }
+    }
+
+    private func releaseOnQueue(_ surface: BenchSurface) {
+        switch surface {
+        case .lightbar:
+            guard let back = lightbarSurface.release() else { return }
+            actuators.lightbar(slotId, back.r, back.g, back.b)
+        case .playerLeds:
+            guard let back = playerSurface.release() else { return }
+            actuators.playerLeds(slotId, back)
+        case .triggerEffects:
+            guard let back = triggerSurface.release() else { return }
+            actuators.triggerEffects(slotId, back)
+        }
     }
 }
 

@@ -151,18 +151,18 @@ extension L10n {
         catalog.text("n/a")
     }
 
-    // MARK: - The rumble bench
+    // MARK: - The feedback tests
 
-    var rumbleTest: String {
-        catalog.text("Rumble test")
+    var feedbackTests: String {
+        catalog.text("Feedback tests")
     }
 
-    var rumbleTestNote: String {
-        catalog.text("A short buzz straight to the controller, whatever its rumble switch says.")
+    var feedbackTestsNote: String {
+        catalog.text("Each test goes straight to the controller, whatever its switches say, and what the game set comes back when it ends.")
     }
 
-    var noRumbleOnThisPath: String {
-        catalog.text("This controller has no rumble motors on the path it is on now.")
+    var noFeedbackOnThisPath: String {
+        catalog.text("This controller takes no feedback on the path it is on now.")
     }
 
     var weakMotor: String {
@@ -177,6 +177,26 @@ extension L10n {
         catalog.text("Both")
     }
 
+    var triggerRumble: String {
+        catalog.text("Trigger rumble")
+    }
+
+    var leftTriggerMotor: String {
+        catalog.text("Left")
+    }
+
+    var rightTriggerMotor: String {
+        catalog.text("Right")
+    }
+
+    var cycleWord: String {
+        catalog.text("Cycle")
+    }
+
+    var pulseResistance: String {
+        catalog.text("Pulse resistance")
+    }
+
     // MARK: - The audio tests
 
     var audioTests: String {
@@ -189,10 +209,6 @@ extension L10n {
 
     var tonePlayingWord: String {
         catalog.text("Playing…")
-    }
-
-    var noAudioOutput: String {
-        catalog.text("No audio output for this controller.")
     }
 
     var testMicrophone: String {

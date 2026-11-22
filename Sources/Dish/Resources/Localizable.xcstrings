@@ -2469,41 +2469,6 @@
         }
       }
     },
-    "A short buzz straight to the controller, whatever its rumble switch says." : {
-      "comment" : "Inspector note.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Kratka vibracija direktno na kontroler, bez obzira na prekidač vibracije."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Ein kurzes Vibrieren direkt am Controller, unabhängig vom Vibrationsschalter."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Una vibración corta directa al mando, diga lo que diga su interruptor de vibración."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Une courte vibration envoyée directement à la manette, quel que soit son réglage de vibration."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Uma vibração curta direto no controle, seja qual for a chave de vibração."
-          }
-        }
-      }
-    },
     "A short hop over Wi-Fi" : {
       "comment" : "The first-run welcome: a short hop over wifi.",
       "localizations" : {
@@ -6984,6 +6949,41 @@
         }
       }
     },
+    "Cycle" : {
+      "comment" : "Inspector button: steps the light bar, or the player LEDs, through their test colours or patterns.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciklus"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Durchlaufen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cycle"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo"
+          }
+        }
+      }
+    },
     "D-pad down" : {
       "comment" : "A button name.",
       "localizations" : {
@@ -9084,6 +9084,41 @@
         }
       }
     },
+    "Each test goes straight to the controller, whatever its switches say, and what the game set comes back when it ends." : {
+      "comment" : "Inspector note above the feedback tests.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Svaki test ide direktno na kontroler, bez obzira na njegove prekidače, a ono što je igra postavila vraća se kad test završi."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Jeder Test geht direkt an den Controller, unabhängig von seinen Schaltern, und was das Spiel eingestellt hat, kehrt zurück, wenn er endet."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada prueba va directa al mando, digan lo que digan sus interruptores, y lo que el juego había puesto vuelve cuando termina."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chaque test est envoyé directement à la manette, quels que soient ses réglages, et ce que le jeu avait défini revient à la fin du test."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cada teste vai direto ao controle, sejam quais forem as chaves dele, e o que o jogo definiu volta quando o teste termina."
+          }
+        }
+      }
+    },
     "Edit ›" : {
       "comment" : "Home: the binding strip's button into Configure binding.",
       "localizations" : {
@@ -9850,6 +9885,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "O retorno do host aciona os motores do controle."
+          }
+        }
+      }
+    },
+    "Feedback tests" : {
+      "comment" : "Inspector section: the tests of the pad's rumble, lights and triggers.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testovi povratnih efekata"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Feedback-Tests"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pruebas de respuesta"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tests de retour"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testes de resposta"
           }
         }
       }
@@ -12864,6 +12934,41 @@
         }
       }
     },
+    "Left" : {
+      "comment" : "Trigger rumble bench button: the left trigger's motor.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lijevi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Links"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Izquierdo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Gauche"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Esquerdo"
+          }
+        }
+      }
+    },
     "Left grip touch" : {
       "comment" : "An extended button's name (Satellite protocol 4).",
       "localizations" : {
@@ -13280,6 +13385,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Barra de luz"
+          }
+        }
+      }
+    },
+    "Light bar cycle" : {
+      "comment" : "Inspector: the light bar test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciklus svjetlosne trake"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lichtleisten-Durchlauf"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo de la barra de luz"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cycle de la barre lumineuse"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo da barra de luz"
           }
         }
       }
@@ -15380,41 +15520,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Sem pontos de áudio neste caminho."
-          }
-        }
-      }
-    },
-    "No audio output for this controller." : {
-      "comment" : "Inspector note.",
-      "localizations" : {
-        "bs" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nema audio izlaza za ovaj kontroler."
-          }
-        },
-        "de" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Keine Audioausgabe für diesen Controller."
-          }
-        },
-        "es" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "No hay salida de audio para este mando."
-          }
-        },
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Aucune sortie audio pour cette manette."
-          }
-        },
-        "pt-BR" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Sem saída de áudio para este controle."
           }
         }
       }
@@ -18254,6 +18359,41 @@
         }
       }
     },
+    "Player LED cycle" : {
+      "comment" : "Inspector: the player LED test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciklus LED indikatora igrača"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Spieler-LED-Durchlauf"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo de los LED de jugador"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Cycle des LED de joueur"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ciclo dos LEDs de jogador"
+          }
+        }
+      }
+    },
     "Player LEDs" : {
       "comment" : "Capability row.",
       "localizations" : {
@@ -19230,6 +19370,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pulso"
+          }
+        }
+      }
+    },
+    "Pulse resistance" : {
+      "comment" : "Inspector button: both adaptive triggers at full resistance for two seconds.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsiraj otpor"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Widerstand pulsen"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsar resistencia"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulser la résistance"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pulsar resistência"
           }
         }
       }
@@ -20459,6 +20634,41 @@
         }
       }
     },
+    "Right" : {
+      "comment" : "Trigger rumble bench button: the right trigger's motor.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Desni"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Derecho"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Droite"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Direito"
+          }
+        }
+      }
+    },
     "Right click" : {
       "comment" : "Inspector: the pointer's right button, held.",
       "localizations" : {
@@ -20844,37 +21054,107 @@
         }
       }
     },
-    "Rumble test" : {
-      "comment" : "Inspector section.",
+    "Rumble, both motors" : {
+      "comment" : "Inspector: the rumble test on both motors, as an answered test names it.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Test vibracije"
+            "value" : "Vibracija, oba motora"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vibrationstest"
+            "value" : "Vibration, beide Motoren"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Prueba de vibración"
+            "value" : "Vibración, ambos motores"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Test de vibration"
+            "value" : "Vibration, les deux moteurs"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Teste de vibração"
+            "value" : "Vibração, os dois motores"
+          }
+        }
+      }
+    },
+    "Rumble, strong" : {
+      "comment" : "Inspector: the strong-motor rumble test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibracija, jaka"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration, stark"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración, fuerte"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration, forte"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibração, forte"
+          }
+        }
+      }
+    },
+    "Rumble, weak" : {
+      "comment" : "Inspector: the weak-motor rumble test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibracija, slaba"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration, schwach"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración, suave"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration, faible"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibração, fraca"
           }
         }
       }
@@ -23364,6 +23644,41 @@
         }
       }
     },
+    "Test tone on the haptics" : {
+      "comment" : "Inspector: the test tone on the pad's haptics lanes, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Probni ton na haptici"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Testton über die Haptik"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tono de prueba en la háptica"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Son de test sur le retour haptique"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tom de teste na háptica"
+          }
+        }
+      }
+    },
     "Thank you. Every dollar, every star, every shared link. — Emir" : {
       "comment" : "Support Dish: the sign-off.",
       "localizations" : {
@@ -24589,37 +24904,37 @@
         }
       }
     },
-    "This controller has no rumble motors on the path it is on now." : {
-      "comment" : "Inspector note.",
+    "This controller takes no feedback on the path it is on now." : {
+      "comment" : "Inspector note: the pad's path carries none of the feedback tests.",
       "localizations" : {
         "bs" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ovaj kontroler nema motore za vibraciju na putu na kojem je sada."
+            "value" : "Ovaj kontroler ne prima povratne efekte na putu na kojem je sada."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dieser Controller hat auf seinem jetzigen Pfad keine Vibrationsmotoren."
+            "value" : "Dieser Controller nimmt auf seinem jetzigen Pfad kein Feedback an."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este mando no tiene motores de vibración en la vía que usa ahora."
+            "value" : "Este mando no admite respuesta en la vía que usa ahora."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Cette manette n'a pas de moteurs de vibration sur la voie qu'elle utilise."
+            "value" : "Cette manette ne reçoit aucun retour sur la voie qu'elle utilise."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Este controle não tem motores de vibração no caminho que está usando agora."
+            "value" : "Este controle não recebe resposta no caminho que está usando agora."
           }
         }
       }
@@ -25110,6 +25425,181 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Zona morta do gatilho"
+          }
+        }
+      }
+    },
+    "Trigger pulse" : {
+      "comment" : "Inspector: the adaptive-trigger test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Otpor okidača"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger-Widerstand"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resistencia de gatillos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Résistance des gâchettes"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Resistência dos gatilhos"
+          }
+        }
+      }
+    },
+    "Trigger rumble" : {
+      "comment" : "Inspector row: the motors in the triggers.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibracija okidača"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger-Vibration"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración de gatillos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration des gâchettes"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibração dos gatilhos"
+          }
+        }
+      }
+    },
+    "Trigger rumble, both triggers" : {
+      "comment" : "Inspector: the test of both trigger motors, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibracija okidača, oba okidača"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger-Vibration, beide Trigger"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración de gatillos, ambos gatillos"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration des gâchettes, les deux gâchettes"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibração dos gatilhos, os dois gatilhos"
+          }
+        }
+      }
+    },
+    "Trigger rumble, left" : {
+      "comment" : "Inspector: the left trigger motor's test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibracija okidača, lijevi"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger-Vibration, links"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración de gatillos, izquierdo"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration des gâchettes, gauche"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibração dos gatilhos, esquerdo"
+          }
+        }
+      }
+    },
+    "Trigger rumble, right" : {
+      "comment" : "Inspector: the right trigger motor's test, as an answered test names it.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibracija okidača, desni"
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Trigger-Vibration, rechts"
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibración de gatillos, derecho"
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibration des gâchettes, droite"
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vibração dos gatilhos, direito"
           }
         }
       }

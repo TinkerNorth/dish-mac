@@ -41,7 +41,7 @@ final class PadHardwareFactsTests: XCTestCase {
         let known = try withRecord(pad, index: bundledIndex(), devices: [device], host: IssueHost(model: "Mac14,2", osMajor: 26))
         XCTAssertEqual(known.hidTransport, .bluetooth(.le))
         XCTAssertEqual(known.transport, .bluetooth)
-        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).bluetoothLayer, .le)
+        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(), capture: nil).bluetoothLayer, .le)
     }
 
     func testADirectPadTakesTheLinkOfTheInterfaceItReads() throws {
@@ -56,12 +56,12 @@ final class PadHardwareFactsTests: XCTestCase {
         )
         let known = try withRecord(pad, index: bundledIndex(), devices: [], host: IssueHost(model: "Mac14,2", osMajor: 26))
         XCTAssertEqual(known.hidTransport, .bluetooth(.classic))
-        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).bluetoothLayer, .classic)
+        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(), capture: nil).bluetoothLayer, .classic)
     }
 
     func testAPadOffBluetoothHasNoLink() throws {
         let known = try withRecord(usbDirectPad(), index: bundledIndex(), devices: [], host: IssueHost(model: "Mac14,2", osMajor: 26))
-        XCTAssertNil(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).bluetoothLayer)
+        XCTAssertNil(bundlePadFacts(known, outcomes: PadOutcomes(), capture: nil).bluetoothLayer)
     }
 
     // MARK: - What IOKit said of the hardware
@@ -79,7 +79,7 @@ final class PadHardwareFactsTests: XCTestCase {
         path.hardware = Self.detail
         pad = PadDiagnostics(slot: pad.slot, wire: nil, hardwareId: pad.hardwareId, inputPath: path)
         let known = try withRecord(pad, index: bundledIndex(), devices: [], host: IssueHost(model: "Mac14,2", osMajor: 26))
-        let hardware = try XCTUnwrap(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).hardware)
+        let hardware = try XCTUnwrap(bundlePadFacts(known, outcomes: PadOutcomes(), capture: nil).hardware)
         XCTAssertEqual(hardware.bcdDevice, 0x0107)
         XCTAssertEqual(hardware.interfaces, Self.detail.interfaces)
         XCTAssertNil(hardware.endpoints)
@@ -92,7 +92,7 @@ final class PadHardwareFactsTests: XCTestCase {
         device.detail = Self.detail
         let known = try withRecord(pad, index: bundledIndex(), devices: [device], host: IssueHost(model: "Mac14,2", osMajor: 26))
         XCTAssertEqual(known.hardwareDetail, Self.detail)
-        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).hardware?.bcdDevice, 0x0107)
+        XCTAssertEqual(bundlePadFacts(known, outcomes: PadOutcomes(), capture: nil).hardware?.bcdDevice, 0x0107)
     }
 
     func testTwinsWhoseHardwareDiffersSayNothingOfIt() throws {
@@ -110,7 +110,7 @@ final class PadHardwareFactsTests: XCTestCase {
         )
         let known = try withRecord(pad, index: bundledIndex(), devices: [wired, wireless], host: IssueHost(model: "Mac14,2", osMajor: 26))
         XCTAssertNil(known.hardwareDetail, "which twin is the pad is unknown")
-        let hardware = try XCTUnwrap(bundlePadFacts(known, outcomes: PadOutcomes(answers: [:]), capture: nil).hardware)
+        let hardware = try XCTUnwrap(bundlePadFacts(known, outcomes: PadOutcomes(), capture: nil).hardware)
         XCTAssertNil(hardware.bcdDevice)
         XCTAssertNil(hardware.descriptorSha256)
     }
@@ -133,7 +133,7 @@ final class PadHardwareFactsTests: XCTestCase {
             audio: PadAudioDiagnostics(route: route, state: state, counters: nil)
         )
         XCTAssertEqual(
-            bundlePadFacts(routed, outcomes: PadOutcomes(answers: [:]), capture: nil).audio,
+            bundlePadFacts(routed, outcomes: PadOutcomes(), capture: nil).audio,
             BundleAudio(channels: 4, refused: true)
         )
         let open = PadDiagnostics(
@@ -142,7 +142,7 @@ final class PadHardwareFactsTests: XCTestCase {
             audio: PadAudioDiagnostics(route: route, state: ControllerAudioState(), counters: nil)
         )
         XCTAssertEqual(
-            bundlePadFacts(open, outcomes: PadOutcomes(answers: [:]), capture: nil).audio,
+            bundlePadFacts(open, outcomes: PadOutcomes(), capture: nil).audio,
             BundleAudio(channels: 4, refused: false)
         )
     }
@@ -153,8 +153,8 @@ final class PadHardwareFactsTests: XCTestCase {
             wire: nil,
             audio: PadAudioDiagnostics(route: PadAudioRoute(verdict: .noAudioFunction, function: nil), state: nil, counters: nil)
         )
-        XCTAssertNil(bundlePadFacts(unrouted, outcomes: PadOutcomes(answers: [:]), capture: nil).audio)
-        XCTAssertNil(bundlePadFacts(PadDiagnostics(slot: unrouted.slot, wire: nil), outcomes: PadOutcomes(answers: [:]), capture: nil)
+        XCTAssertNil(bundlePadFacts(unrouted, outcomes: PadOutcomes(), capture: nil).audio)
+        XCTAssertNil(bundlePadFacts(PadDiagnostics(slot: unrouted.slot, wire: nil), outcomes: PadOutcomes(), capture: nil)
             .audio)
     }
 
@@ -180,7 +180,7 @@ final class PadHardwareFactsTests: XCTestCase {
             machine: HostMachine(model: "Mac14,2", osMajor: 26, osMinor: 1, arch: "arm64"),
             snapshot: DiagnosticsSnapshot(pads: [pad]),
             events: [],
-            outcomes: PadOutcomes(answers: [:]),
+            outcomes: PadOutcomes(),
             capture: nil,
             hostVersions: [:]
         )
