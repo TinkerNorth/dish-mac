@@ -108,7 +108,9 @@ protocol-1 satellite; see [Protocol](#protocol).
 - Shows a Diagnostics page with each session's own account of itself, each
   controller down to the wire, and a log of what changed; inspects one
   controller live (its input as the host sees it, motion and touch, a drift
-  and a range test on the raw sticks, a rumble bench, a test tone and a
+  and a range test on the raw sticks, and a test of every item its path
+  carries: rumble, trigger rumble, the light bar, the player LEDs, the
+  adaptive triggers, a test tone on its speaker and on its haptics, and a
   microphone meter); keeps a local crash log you review, redacted, before
   choosing to send it, and, with "Share crash reports" on, sends an
   anonymous crash report to Sentry like the other clients (official builds

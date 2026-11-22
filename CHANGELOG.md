@@ -62,10 +62,23 @@ the repos share a version number.
   against the record's `expect`) and its last write (the report, the route,
   the time and IOKit's answer). Diagnostics shows the bundled version, the
   version in force and the last check.
-- **"Did it work?" after each inspector test.** The rumble bench, the test
-  tone, the microphone meter and the drift and range tests each ask once
-  they have run; the answers, twenty a controller, are kept for the run and
-  carried in the diagnostics file.
+- **The inspector tests every item the controller's path carries.** Beside
+  rumble (weak, strong, both), the test tone, the microphone meter and the
+  stick tests, the inspector tests trigger rumble (left, right, both, on an
+  Xbox controller's impulse triggers), the light bar (red, green, then blue),
+  the player LEDs (players one to four), the adaptive triggers (both held at
+  full resistance for two seconds) and the DualSense's HD haptics (the test
+  tone on its haptics lanes), with dish-android's strengths and times. An
+  item shows only where the controller's path carries it; what the path
+  cannot carry is absent, and `Tests/PARITY.md` says why. A test drives the
+  controller from this Mac alone, bound to a host or not; the light bar, the
+  player LEDs and the triggers go back to what the game set when it ends, and
+  a value the game sends during the test is the one put back. The test tone
+  is dish-android's: 660 Hz then 880 Hz, each with a 10 ms fade.
+- **"Did it work?" after each inspector test.** Every test asks once it has
+  ended, and the answer carries the time it ended; the answers, twenty a
+  controller, are kept for the run and carried in the diagnostics file under
+  the contract's names.
 - **Diagnostics by email.** The report (below) writes
   `dish-diagnostics-dish-mac-<yyyyMMdd-HHmmss>.json` (`dish-diagnostics.v1`)
   and opens a message to `support@tinkernorth.com` in your own mail app, with
@@ -147,6 +160,11 @@ the repos share a version number.
   one opened bumps one relaxed counter of its kind (`WireTally`), and each
   feedback command posted to a pad bumps one and stores its newest value and
   time (`FeedbackTally`); nothing on either path reads them.
+- **The feedback queue keeps the game's light bar, player and trigger
+  effect.** Each drain on the pad's feedback queue stores the game's newest
+  value of its surface in a value the queue alone owns, and holds it back
+  while an inspector test holds that surface; the receive loop's posts are
+  unchanged, and the addition takes no lock and allocates nothing.
 
 ## [1.3.1] - 2026-11-19
 

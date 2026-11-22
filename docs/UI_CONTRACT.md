@@ -390,9 +390,20 @@ first) to the scene's `diagnosticsMailer` value, `NSSharingService(named:
 A controller database card shows the bundled version, the version in force
 and the last check; a pad's card adds its record, the record's chip, its
 issues, and for a Direct pad its hardware check and last write
-(`recordLines`). The inspector ends with "Did it work?" (`outcomesState`,
-`answerTestOutcome`). Settings' controller database section words the switch
-and Check now as the privacy policy does.
+(`recordLines`). The inspector's bench is two cards, Feedback tests and
+Audio tests, drawn from `inspectorBenches`: the core's `benchItems` over the
+pad's capabilities (`ControllerCapabilities.benchCarriage`) decides which
+items the path carries, and an item it cannot carry has no row, never a
+button that does nothing. A feedback row is a label and a button per test
+(`BenchRowState`, `runFeedbackTest`); every feedback button waits while the
+pad runs one (`ShellFacts.benchRuns`), and the card says why when no row
+shows. The audio card has a row each for the speaker's tone
+(`playTestTone`), the haptics lanes' (`playHapticsTone`) and the
+microphone meter (`startMicMeter`, `stopMicMeter`), each where the pad's
+route reaches it; a tone waits while either plays. The inspector ends with
+"Did it work?" (`outcomesState`, `answerTestOutcome`), asked once the test
+has ended. Settings' controller database section words the switch and Check
+now as the privacy policy does.
 
 ## The setup walk
 

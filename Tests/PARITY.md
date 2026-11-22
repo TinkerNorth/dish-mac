@@ -7,7 +7,7 @@
 >
 > Legend: ✅ works · ⚠️ shipped, not yet verified on real hardware · ❌ not
 > available · – not applicable · 🔜 decided and in progress. Verified against
-> the code on 2026-10-27.
+> the code on 2026-10-27; section 6 on 2026-11-22.
 
 ## 1. What works, per client
 
@@ -20,7 +20,7 @@
 | Moonlight host (Sunshine / Apollo / Wolf) | ✅ | ✅ | ✅ | ⚠️ discovery, PIN pairing with mutual TLS after, one session per host for up to four pads (launch or resume, RTSP, media pings, the ENet control stream), motion / touch / battery up and rumble / light bar back, the app picker and the Emulate pick per pad; every wire piece pinned against Wolf's captures and the whole path run against a loopback host (`IntegrationMoonlightFakeHostTests`), not yet against a live one |
 | Mouse mode on the host | ✅ | ❌ | ❌ (deferred) | ✅ per-controller pick Off / Pad / Mouse; the request rides the session PUT and a flip mid-session converges through the re-key path |
 | Controller audio (mic + speaker) | ✅ (the caps follow the host's grant and a refused output since #292) | ✅ | ✅ | ⚠️ over the DualSense's and DualShock 4's USB audio function through Core Audio, Opus through AudioToolbox; mic and speaker switches per controller, the mic off until asked, each pad's lanes on its own controller index; the `mic` and `speaker` caps ride the descriptor only while the pad's function is reachable, the switch is on, the satellite's probe grants the direction and the system opened the endpoint, and a refused output or microphone withdraws them until the endpoint changes (`audioPlan` is the one rule the voices and the descriptor read); not yet verified on a pad |
-| DualSense HD haptics | ⚠️ (the cap follows the host's grant and a refused output since #292) | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; the `hapticAudio` cap follows the same rule as the speaker's, so a lane the Mac will not open is never promised and the satellite reduces the haptics to rumble instead; not yet verified on a pad |
+| DualSense HD haptics | ⚠️ (the cap follows the host's grant and a refused output since #292) | ⚠️ | ⚠️ | ⚠️ the haptics lanes on channels 3–4 of the DualSense's four-channel USB stream, under the speaker switch; the `hapticAudio` cap follows the same rule as the speaker's, so a lane the Mac will not open is never promised and the satellite reduces the haptics to rumble instead; the inspector plays its test tone on the lanes (`haptics.play`); none over Bluetooth (section 6); not yet verified on a pad |
 | Adaptive triggers, player LEDs, mic lamp | ✅ | ✅ | ✅ | ⚠️ triggers through GameController's adaptive-trigger shapes (feedback, weapon, vibration; galloping resets) · ✅ player LEDs on a DualSense · ⚠️ mic lamp as a chip on Home's binding strip (GameController reaches no DualSense lamp) |
 | Lightbar, motion, touchpad, battery | ✅ | ✅ | ✅ | ✅ lightbar, motion, touchpad · ✅ battery: the wire carries the lower of the pad's own and the Mac's on both paths (a pad with none sends the Mac's), the card shows the pad's own |
 | Crash reports (opt-out) | ✅ Crashlytics | ✅ Sentry | ✅ Sentry | ✅ Sentry (sentry-cocoa) behind "Share crash reports", on by default, armed only by an official build; the local redacted log and its report card stay |
@@ -30,7 +30,7 @@
 | Survives PC sleep and resume | – | ✅ Satellite | ✅ Satellite | ✅ Satellite and Moonlight (sleep releases held input and closes every session, a satellite's with its `DELETE`; wake reopens them and rescans; a lid that closed on a stream is said once) |
 | Keep-awake is user-configurable | ❌ | ✅ | ✅ | ✅ off · while playing (stillness window) · while connected; display optional; a closed lid still sleeps the Mac (no API keeps a lidded Mac awake: `IOPMLib.h` calls `kIOPMAssertionTypePreventSystemSleep` "not supported in any OS X releases"; clamshell mode needs power and a display) |
 | Input while another app is in front | – (stops by design) | ✅ | ✅ | ✅ GameController's background monitoring, on from the first connect (broken in macOS 15.4, fixed in 15.5) |
-| Diagnostics screen | ✅ | ✅ | ✅ | ✅ page (pushed from Settings, or opened by the menu-bar item): session facts for satellites and Moonlight hosts (the session's standing, the app, the control round trip, each pad's reports), each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, the rumble bench, the test tone and the microphone meter) |
+| Diagnostics screen | ✅ | ✅ | ✅ | ✅ page (pushed from Settings, or opened by the menu-bar item): session facts for satellites and Moonlight hosts (the session's standing, the app, the control round trip, each pad's reports), each controller down to the wire, the flight recorder, and the controller inspector (live input, motion and touch, the drift and range stick tests on the raw sticks, and the bench: every feedback and audio item the pad's path carries, section 6) |
 | Inspector: the extended buttons, the pointer's right button and its wheel | ✅ (#282) | ✅ (#129) | ✅ (#112) | ✅ the Pressed line names the extended buttons after the XUSB ones, in wire-bit order ("Pressed: A · Left paddle 1 · Misc 1", SDL's "Misc 1" in every language), and a line under the touchpad readout shows the pointer's right click and a wheel turn ("Right click · Wheel -120"), hidden with neither; the pad's record keeps each pointer frame's wheel step beside its touch, so the line shows the last frame's turn; the pads that fill the word are section 2's "Extra buttons" row, the frame's right button and wheel the Mouse pick's ("Steam Controller trackpads") |
 | Diagnostics: other input devices | ✅ "Other input devices" cards (2.4.1, #258) | – (SDL takes every device) | – (the same) | ✅ the HID census (IOHIDManager over Joystick / GamePad / MultiAxisController, synthetic devices excluded, watched while the page shows): a card per game device GameController does not claim, with "Not a controller: not claimed by GameController", its hardware ID, its connection and Help support this controller |
 | Diagnostics: a controller's USB ID | ❌ | ✅ "USB ID" (2.4.0) | ✅ the same | ✅ "USB ID" on a controller's card when the census finds exactly one claimed device under the pad's name |
@@ -64,7 +64,8 @@
 | Expect check at attach | 🔜 | 🔜 | 🔜 | ⚠️ IOHID shows report sizes, not endpoints: `endpoints.in` / `endpoints.out` are compared as "an input / output report path exists" (`kIOHIDMaxInputReportSizeKey`, `kIOHIDMaxOutputReportSizeKey` above 0), so a pad whose output goes by SET_REPORT over the control pipe reads as having one; the XUSB reader compares its real interrupt pipes; a size IOKit does not give is not compared. Mismatches in the contract's form on the Diagnostics card and in the bundle |
 | Last write (client to pad) | 🔜 | 🔜 | 🔜 | ✅ every Direct write's verdict (the Switch start sequence, a Steam Controller's feature and output reports, an XUSB pad's rumble): route, report id, IOKit's answer by name, time; posted through a lock-free mailbox, taken on the Diagnostics tick, a "Last write" row on the card and `lastWrite` in the bundle |
 | Last feedback (host to client) | 🔜 | 🔜 | 🔜 | ❌ no "Last feedback" row yet; the bundle's `lastFeedback` is absent |
-| "Did it work?" after each test | 🔜 | 🔜 | 🔜 | ✅ after the rumble bench (weak, strong, both), the test tone, the microphone meter and the drift and range tests, on the inspector; answers `worked` / `didNotWork` on the contract's test names (`rumble.weak`, `rumble.strong`, `rumble.both`, `tone.play`, `mic.level`, `stick.drift`, `stick.range`; the Mac's inspector has no trigger-pulse or lamp test), twenty per pad for the run, in the bundle |
+| "Did it work?" after each test | 🔜 | 🔜 | 🔜 | ✅ after every bench test, asked once the test has ended and answered with the time it ended (`PadTestLedger`, the contract's rule 4); answers `worked` / `didNotWork` on the contract's test names (`rumble.weak`, `rumble.strong`, `rumble.both`, `triggerRumble.left`, `triggerRumble.right`, `triggerRumble.both`, `lightbar.cycle`, `playerLeds.cycle`, `trigger.pulse`, `tone.play`, `haptics.play`, `mic.level`, `stick.drift`, `stick.range`; never `lamp.on` or `lamp.pulse`, section 6), twenty per pad for the run, in the bundle; a run another run replaced, or one cut short by the pad's audio going away, asks nothing |
+| The bench: every item the path carries (contract "The bench") | 🔜 | 🔜 | 🔜 | ⚠️ the inspector offers each item only where the pad's composed capabilities carry it (`benchItems`), section 6 by path: rumble, trigger rumble, the light bar cycle, the player LED cycle, the adaptive-trigger pulse, the test tone on the speaker and on the haptics lanes, the microphone meter, the stick tests; dish-android's strengths and times (48000 for 400 ms, 400 ms a step, 2 s of rigid resistance, the two-note tone with 10 ms fades). A test drives the pad from this Mac alone, bound or not; while it holds the light bar, the player LEDs or the triggers, the game's values for that surface are remembered on the pad's feedback queue instead of written, and its end writes back the game's newest value, or what the surface showed when the test took it (the triggers: no effect); the other surfaces keep following the game. Not yet run on a pad |
 | Report a problem (`dish-diagnostics.v1`, second cut) | 🔜 | 🔜 | 🔜 | ⚠️ "Report a problem" and "Ask a question" on Diagnostics open one page (Contact support): the category, the person's words, the controller it concerns (the first attached pad suggested), what the file holds and never holds, Preview file, Continue in Mail (`NSSharingService(named: .composeEmail)`, words first, subject `Dish support: <category> · Dish for macOS <version> on <model>` with only the category translated); "Save diagnostics" saves the first cut's file without a report, a host's own view or the Mac's conditions. Each controller's hardware, rate and audio function and its capture are the rows below. Not yet tried with Mail.app on a Mac |
 | A host's own view (`satellite-connection-diagnostics.v1`) | 🔜 | 🔜 | 🔜 | ✅ opening the report asks every live satellite whose probe names 2.3.0 or later for `GET /api/connections/{id}/diagnostics` with the session's proof, all at once, two seconds each; an older one is never asked and gets the `satellite-capabilities` stand-in (its probe's version, protocol, `backends` as listed, `controllerAudio`, the catalog's version) with `olderSatellite`; `unknownConnection` (404), `unauthorized`, `badReply` (a 5xx, or a body that is not the document), `timeout`, `offline` otherwise, each with the stand-in; a refusal never touches the pairing. A Moonlight host gets `moonlight-serverinfo` with its app version only (`state` and `pairStatus` null: the plaintext serverinfo reports every host free and every caller unpaired), never its name. Every string and key of a host's document is aliased like a log line |
 | The client's view of each session | 🔜 | 🔜 | 🔜 | ⚠️ a satellite's slots (index, record, requested and applied type by the catalog's slug, backend, result, touchpad mode), the last enriched ack, the RTT window's p50, p99 and samples, and every message kind counted each way (`WireTally`, relaxed); a Moonlight host's pads and its control round trip, with its message kinds not counted (`sent` and `received` null) |
@@ -237,3 +238,82 @@ updates the rows above.
    dish-android's other XUSB rows (the Ultimate 2C, the SN30 Pro and the
    third-party 360 pads), and a refused XUSB pad on the Controllers page,
    which today only the log shows.
+5. A run of the bench on pads (section 6): an Xbox Wireless Controller's
+   trigger motors, a DualSense on USB through every item it carries (the
+   light bar, the player LEDs, the triggers, the speaker, the haptics lanes
+   and the microphone, each put back as the game left it), and a Switch
+   Pro's player LEDs through its carrier. After it: a Moonlight host's
+   trigger rumble onto the trigger motors where the framework names them,
+   instead of folded into the body motors.
+
+## 6. The Diagnostics bench, item by path
+
+What the inspector can test on each path a Mac reads a pad through, the
+same facts the game's own writes are gated on (`ControllerCapabilities`,
+read by `benchItems`). A cell that cannot carry its item has no button on
+the page; the evidence for each is below the table. The audio items ride
+the pad's USB audio function (Core Audio), whichever path reads its input.
+
+| Item (tests) | GameController | Direct: the Switch family, through its carrier | Direct: XUSB | Direct: the Steam Controllers |
+|---|---|---|---|---|
+| Rumble (`rumble.weak`, `.strong`, `.both`) | ✅ the handles' engines where `GCController.haptics` exists | ✅ the carrier's engines, when the pairing is sure | ✅ the pad's own rumble report | ✅ the 2026 pad's haptic rumble report · ❌ the 2015 pad (a) |
+| Trigger rumble (`triggerRumble.left`, `.right`, `.both`) | ✅ where `GCDeviceHaptics.supportedLocalities` names `leftTrigger` and `rightTrigger` (an Xbox Wireless Controller's impulse triggers) · ❌ elsewhere | ❌ (b) | ❌ (b) | ❌ (b) |
+| Light bar (`lightbar.cycle`) | ✅ where `GCController.light` exists | ❌ (c) | ❌ (c) | ❌ (c) |
+| Player LEDs (`playerLeds.cycle`) | ✅ a DualSense, by player index (d) | ✅ the carrier's player index (d) | ❌ (e) | ❌ (c) |
+| Adaptive triggers (`trigger.pulse`) | ✅ a DualSense (`GCDualSenseAdaptiveTrigger`) | ❌ (f) | ❌ (f) | ❌ (f) |
+| Mic lamp (`lamp.on`, `lamp.pulse`) | ❌ (g) | ❌ (g) | ❌ (g) | ❌ (g) |
+| Speaker (`tone.play`) | ✅ a DualSense or DualShock 4 on USB · ❌ over Bluetooth (h) | – | – | – |
+| HD haptics (`haptics.play`) | ✅ a DualSense on USB, channels 3–4 · ❌ over Bluetooth and on a DualShock 4 (h) | – | – | – |
+| Microphone (`mic.level`) | ✅ a DualSense or DualShock 4 on USB · ❌ over Bluetooth (h) | – | – | – |
+| Sticks (`stick.drift`, `stick.range`) | ✅ | ✅ | ✅ | ✅ |
+
+- (a) The 2015 Steam Controller has trackpad voice coils and no motors:
+  `SteamPlan.rumbles` is false for it, so no rumble reaches it from a game
+  or a test.
+- (b) No Direct pad has a trigger motor the Mac can address. The XUSB
+  rumble report holds two motor levels (`xusbRumbleReport`, `00 08 00 LL SS
+  00 00 00`, the layout SDL's `SDL_hidapi_xbox360.c` and Linux's xpad
+  write); the 2026 Steam Controller's `ID_OUT_REPORT_HAPTIC_RUMBLE` holds a
+  left and a right motor (`tritonRumbleReport`); a Switch pad's carrier moves
+  its rumble and player lights only (`InputPathHost.carryOutput`), and the
+  Switch family has no trigger motors. No host sends this Mac trigger rumble
+  of its own either: the satellite's protocol has no such message, and a
+  Moonlight host's `RUMBLE_TRIGGERS` is folded into the body motors
+  (`MoonlightRumbleMix`); the bench drives the trigger motors themselves
+  (section 5, item 5).
+- (c) No Direct model has an RGB light bar, and no Direct writer sends a
+  light: the Switch family's lights are its player LEDs, an XUSB pad's is
+  its player ring (e), and the Steam Controllers' writers send their
+  configuration and rumble only (`SteamPlan.onClaim`, `onConnect`,
+  `refresh`, `onRelease`; `SteamOutput`).
+- (d) GameController lights a pattern per player, never a single LED
+  (`GCController.playerIndex`: `GCControllerPlayerIndexUnset` and 1–4), and
+  every Mac path lights player LEDs that way: the game's mask is folded to
+  a player (`PlayerLedsCommand.playerNumber`, the lit count). The contract's
+  single-LED masks would all read as player one, so the Mac's cycle walks
+  players one to four, 400 ms each (`playerCycle`), under the same test
+  name.
+- (e) An Xbox 360 pad's LED ring takes the LED report `01 03 <pattern>` on
+  the interrupt OUT pipe the rumble rides (SDL's `SetSlotLED` in
+  `SDL_hidapi_xbox360.c`, xpad's `xpad_send_led_command`), but the Mac's
+  XUSB writer sends only the rumble report (`XusbOutput`), so the slot
+  claims no player LEDs and neither a game nor a test reaches the ring:
+  deferred with the Ultimate 2 run (section 5, item 4).
+- (f) Adaptive triggers are a DualSense's, and the Mac reads a DualSense
+  through GameController alone: no Direct model is a DualSense
+  (`directModels`).
+- (g) GameController has no mic lamp API: in the macOS 27.2 SDK,
+  `GCDualSenseGamepad.h` declares the touchpad and the two
+  `GCDualSenseAdaptiveTrigger`s and nothing else, and no GameController
+  header names a mute or microphone light. The lamp is a field of the
+  DualSense's own output report, which on a Mac only the framework writes:
+  the Mac never opens a DualSense's HID device. The game's lamp state shows
+  as the chip on Home's binding strip (section 3's "Mic lamp" row).
+- (h) The pad's audio is its USB audio function: over Bluetooth neither the
+  DualSense nor the DualShock 4 shows one to Core Audio, and
+  `padAudioFunctions` takes USB devices only (`PadAudioDevices.swift`). The
+  haptics lanes are channels 3–4 of a DualSense's four-channel output
+  (`PadAudioFunction.hasHapticLanes`); a DualShock 4's headset output is two
+  channels. Where the lanes are absent the `hapticAudio` cap is not claimed,
+  so the satellite reduces a game's haptics to rumble for that pad (contract
+  §UDP messages, `HAPTIC_AUDIO`), which the rumble tests cover.
