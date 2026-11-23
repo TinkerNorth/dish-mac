@@ -99,6 +99,35 @@ jobs:
           path: Dish.app
           retention-days: 14
 
+      # The release's own zip, named the way a tag names it (unsigned), for the
+      # hardening dry run below.
+      - name: Stage the release zip
+        run: scripts/stage-zip.sh "$(tr -d '[:space:]' < VERSION)" false
+
+      - name: Upload the zip for the hardening dry run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos
+          path: dist/
+          retention-days: 1
+          if-no-files-found: error
+
+  # The release's scan, SBOMs, checksums and signing, on the PR-built zip: the
+  # shared workflow release.yml calls on a tag, with a throwaway key and nothing
+  # published. contents: read is all it needs, so it runs on a fork's pull
+  # request too.
+  release-dry-run:
+    name: Release hardening (dry run)
+    if: ${{ github.event_name == 'pull_request' }}
+    needs: [ci]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_release_harden.yml
+    with:
+      artifact-pattern: macos*
+      product: dish-mac
+      dry-run: true
+
   # The LOCK_STATS build counts every tracked lock by thread role; its own
   # tests and the lock-law test run only there. A cache of its own, so
   # neither job restores the other's objects.

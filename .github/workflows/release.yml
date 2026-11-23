@@ -35,20 +35,17 @@ concurrency:
 jobs:
   gates:
     name: PR-time gates against tag
-    # The shared workflow asks for these; a caller job that grants less is
-    # refused before the run starts (the 1.0.0 tag's first run did).
+    # Exactly what the shared workflow declares; a caller job that grants more
+    # or less is refused before the run starts (the 1.0.0 tag's first run did).
     permissions:
       contents: read
       pull-requests: read
-      security-events: write
     uses: ./.github/workflows/_security.yml
     with:
-      osv_scan_paths: |
-        .
-      gitleaks_enabled: true
+      osv_scan_paths: .
+      # The Dependency graph setting is off (the maintainer's to enable); the
+      # job also only means anything on a pull request.
       dependency_review_enabled: false
-      action_pin_lint_enabled: true
-      allowlist_expiry_enabled: true
 
   # ─────────────────────────────────────────────────────────────────────
   # Signing-secret gate. Advisory by default, as the satellite's and the
@@ -226,20 +223,7 @@ jobs:
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
           SIGNED: ${{ steps.sign.outputs.present }}
-        run: |
-          mkdir -p dist
-          tag="${TAG}"
-          suffix=""
-          if [ "${SIGNED}" != "true" ]; then
-            suffix="-unsigned"
-          fi
-          # The versioned copy carries the honesty marker when there is no
-          # Developer ID. The stable name is a permanent download URL that
-          # latest.json and the website read by name, so it never changes
-          # shape, signed or not (the Windows client's dish-setup.exe rule).
-          ditto -c -k --sequesterRsrc --keepParent Dish.app "dist/dish-${tag}${suffix}.zip"
-          cp "dist/dish-${tag}${suffix}.zip" "dist/dish-mac.zip"
-          ls -l dist/
+        run: scripts/stage-zip.sh "${TAG}" "${SIGNED}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -323,130 +307,21 @@ jobs:
           path: dist/latest.json
           if-no-files-found: error
 
+  # Scan, SBOMs, SHA256SUMS and one cosign bundle (<file>.sigstore.json) per
+  # file: the shared workflow pull requests exercise as a dry run. The run must
+  # be on the tag ref (a tag push, or `gh workflow run release.yml --ref X.Y.Z
+  # -f tag=X.Y.Z`), because the signing certificate names the ref.
   harden:
     name: Harden artifacts (scan, SBOM, sign)
     needs: [release, manifest]
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
     permissions:
       contents: read
-      id-token: write
-      security-events: write
-    outputs:
-      hashes: ${{ steps.hashes.outputs.hashes }}
-    steps:
-      # The app bundle and the manifest land side by side so SHA256SUMS, the
-      # cosign signatures and the SLSA provenance cover latest.json too.
-      - name: Download release artifacts
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: macos*
-          merge-multiple: true
-          path: release
-
-      - name: Vulnerability scan (Grype)
-        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
-        id: grype
-        with:
-          path: release/
-          severity-cutoff: high
-          fail-build: true
-          only-fixed: false
-          add-cpes-if-none: true
-          output-format: sarif
-
-      - name: Upload Grype SARIF to code scanning
-        if: ${{ always() && steps.grype.outputs.sarif != '' }}
-        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
-        with:
-          sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: release-grype
-
-      - name: Generate SBOM (SPDX)
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-        with:
-          path: release/
-          format: spdx-json
-          output-file: release/dish-mac.sbom.spdx.json
-          upload-artifact: false
-          upload-release-assets: false
-
-      - name: Generate SBOM (CycloneDX)
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-        with:
-          path: release/
-          format: cyclonedx-json
-          output-file: release/dish-mac.sbom.cdx.json
-          upload-artifact: false
-          upload-release-assets: false
-
-      - name: Install cosign (upstream binary)
-        shell: bash
-        env:
-          COSIGN_VERSION: "2.4.1"
-          # Pin upstream SHA-256 of cosign-linux-amd64. Verify with:
-          #   gh release view v${COSIGN_VERSION} -R sigstore/cosign --json assets
-          COSIGN_SHA256: "8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b" # cosign-linux-amd64 v2.4.1
-        run: |
-          set -euo pipefail
-          curl -fsSL -o /tmp/cosign \
-            "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64"
-          if [ "${COSIGN_SHA256}" != "TODO_REPLACE_WITH_UPSTREAM_SHA256" ]; then
-            echo "${COSIGN_SHA256}  /tmp/cosign" | sha256sum -c -
-          else
-            echo "::warning::COSIGN_SHA256 is unset — replace with the upstream SHA-256 to enforce binary integrity."
-          fi
-          chmod +x /tmp/cosign
-          sudo mv /tmp/cosign /usr/local/bin/cosign
-          cosign version
-
-      - name: Generate SHA256SUMS
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd release
-          find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -printf '%f\n' \
-            | LC_ALL=C sort \
-            | xargs -d '\n' sha256sum --binary > SHA256SUMS
-          cat SHA256SUMS
-
-      - name: Cosign-sign each artifact + SHA256SUMS (keyless)
-        shell: bash
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          set -euo pipefail
-          cd release
-          for f in *; do
-            case "$f" in
-              *.sig|*.crt|SHA256SUMS.sig|SHA256SUMS.crt) continue ;;
-            esac
-            cosign sign-blob --yes \
-              --output-signature "${f}.sig" \
-              --output-certificate "${f}.crt" \
-              "$f"
-          done
-          ls -l
-
-      - name: Compute base64 SHA256 hashes for SLSA provenance
-        id: hashes
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd release
-          h=$(find . -maxdepth 1 -type f ! -name '*.sig' ! -name '*.crt' \
-                  -printf '%f\n' \
-                | LC_ALL=C sort \
-                | xargs -d '\n' sha256sum \
-                | base64 -w0)
-          echo "hashes=${h}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload hardened bundle
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-bundle
-          path: release/
-          retention-days: 14
+      id-token: write # cosign keyless: Fulcio certificate, Rekor entry
+      security-events: write # Grype SARIF to code scanning
+    uses: ./.github/workflows/_release_harden.yml
+    with:
+      artifact-pattern: macos*
+      product: dish-mac
 
   provenance:
     name: SLSA L3 provenance
