@@ -99,7 +99,8 @@ Each repo runs the same shape of gates:
 
 - Action-pin lint — every `uses:` line must reference a 40-char SHA.
 - Allowlist expiry — `.security/allowlist.yaml` entries must be unexpired.
-- Dependency review — GitHub advisory DB (PR-only).
+- Dependency review — GitHub advisory DB (PR-only; it runs once the
+  repository's Dependency graph setting is on).
 - OSV-Scanner — vendored components + manifest deps; ecosystem-specific
   scope (see each repo's `security.yml`).
 - Gitleaks — secret scanning over the worktree.
@@ -116,12 +117,14 @@ Each repo runs the same shape of gates:
   `ENFORCE_RELEASE_SIGNING` is `true`, which fails the tag instead. Dish
   for macOS has no Developer ID yet and ships unsigned that way, ad-hoc
   signed, with Gatekeeper's Open Anyway steps in the release notes.
-- Artifact-level vulnerability scan — Anchore Grype, fails on
-  CRITICAL/HIGH.
-- SBOM generation — Syft, both SPDX-JSON and CycloneDX-JSON.
-- `SHA256SUMS` over every artifact + its signatures + the SBOMs.
-- Cosign keyless signing — every artifact and `SHA256SUMS` get a `.sig`
-  + `.crt`, anchored in the Sigstore transparency log.
+- Artifact-level vulnerability scan — Anchore Grype (a pinned binary), fails
+  on CRITICAL/HIGH.
+- SBOM generation — Syft (a pinned binary), both SPDX-JSON and
+  CycloneDX-JSON.
+- `SHA256SUMS` over every artifact and the SBOMs.
+- Cosign keyless signing — every file and `SHA256SUMS` get a
+  `<file>.sigstore.json` bundle, anchored in the Sigstore transparency log.
+  The same steps run on every pull request as a dry run with a throwaway key.
 - SLSA L3 build provenance — `slsa-framework/slsa-github-generator`
   emits `<repo>.intoto.jsonl`.
 
@@ -134,110 +137,92 @@ Release page.
 ## Verifying a release artifact (consumer recipe)
 
 This recipe works the same way for every release, every repo, every
-platform — only the artifact filenames change.
+platform; only the artifact filenames change. Releases cut after the shared
+release-hardening workflow landed carry one Sigstore bundle per file
+(`<file>.sigstore.json`); earlier releases (dish-mac up to 1.4.0) carry a
+`.sig` and a `.crt` per file and are verified the second way below. The tag is
+bare `X.Y.Z` in every command.
 
 ### 0) Pre-requisites
 
 ```bash
-# cosign 2.x
-brew install cosign            # macOS
-go install github.com/sigstore/cosign/v2/cmd/cosign@latest
-
-# slsa-verifier (for the SLSA provenance step)
-go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@latest
+# cosign 3.x: brew install cosign, or a release binary from
+# github.com/sigstore/cosign/releases (check it against cosign_checksums.txt)
 ```
 
 ### 1) Download every file from the Release
 
-For tag `X.Y.Z` of `<repo>` (one of `satellite`, `dish-android`,
-`dish-linux`, `dish-mac`, `dish-ios`):
+```bash
+TAG=X.Y.Z
+REPO=<repo>     # satellite, dish-android, dish-ios, dish-mac, dish-windows, dish-linux
+gh release download "$TAG" -R "TinkerNorth/$REPO" -D "$REPO-$TAG"
+cd "$REPO-$TAG"
+```
+
+You should see the platform artifacts, `SHA256SUMS` with its signature,
+`<product>.sbom.spdx.json` and `<product>.sbom.cdx.json`, and
+`<product>.intoto.jsonl` (the SLSA L3 provenance).
+
+### 2) Releases after the shared workflow: one bundle per file
 
 ```bash
-gh release download X.Y.Z -R TinkerNorth/<repo> -D ./release
-cd release
-ls
+# SHA256SUMS was signed by this repository's release workflow, on this tag.
+cosign verify-blob \
+  --bundle SHA256SUMS.sigstore.json \
+  --certificate-identity "https://github.com/TinkerNorth/$REPO/.github/workflows/_release_harden.yml@refs/tags/$TAG" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  SHA256SUMS
+
+# Every file you downloaded matches it (macOS: shasum -a 256 -c).
+sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-You should see (filenames vary per repo):
+The identity is exact, not a regular expression, and names
+`_release_harden.yml` because the certificate's identity is the workflow that
+ran the signing step. To verify one file on its own, run the same
+`cosign verify-blob` with `--bundle <file>.sigstore.json` and `<file>`.
 
-```
-satellite-...        # platform binary / installer / .app / .apk / etc.
-satellite-....sig    # cosign signature
-satellite-....crt    # cosign certificate
-SHA256SUMS
-SHA256SUMS.sig
-SHA256SUMS.crt
-satellite.sbom.spdx.json
-satellite.sbom.cdx.json
-satellite.intoto.jsonl   # SLSA L3 provenance
-```
+### 3) Releases up to dish-mac 1.4.0: `.sig` and `.crt`
 
-### 2) Verify the checksum bundle
-
-```bash
-sha256sum -c SHA256SUMS         # Linux / Windows
-shasum -a 256 -c SHA256SUMS     # macOS
-```
-
-Every line must say `OK`. A failure here means the artifact was
-modified after release.
-
-### 3) Verify cosign signed `SHA256SUMS` from the right workflow
+These were signed by `release.yml` itself. cosign 3 still verifies them with
+the deprecated flags (it prints two deprecation lines):
 
 ```bash
 cosign verify-blob \
-  --certificate SHA256SUMS.crt \
-  --signature   SHA256SUMS.sig \
-  --certificate-identity-regexp '^https://github\.com/TinkerNorth/<repo>/\.github/workflows/release\.yml@refs/tags/[0-9].*$' \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
+  --certificate SHA256SUMS.crt --signature SHA256SUMS.sig \
+  --certificate-identity "https://github.com/TinkerNorth/$REPO/.github/workflows/release.yml@refs/tags/$TAG" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   SHA256SUMS
+shasum -a 256 -c SHA256SUMS
 ```
 
-Output ends with `Verified OK`. The `--certificate-identity-regexp`
-binds the signature to a specific workflow path on `TinkerNorth/<repo>` —
-substitute the actual GitHub organisation. A match means the signature
-came from a tagged-release run of `release.yml` on the public commit
-that produced these artifacts; the Sigstore transparency log
-(`https://search.sigstore.dev/`) carries the same record.
+(Run against dish-mac 1.4.0 with cosign 3.1.4: `Verified OK`, every file `OK`.
+Other repositories' earlier releases name `release.yml` or `_release_harden.yml`
+in the identity; read the workflow out of the certificate.)
 
-To verify each artifact individually (not just `SHA256SUMS`):
+### 4) The SLSA L3 provenance
+
+`<product>.intoto.jsonl` is a Sigstore bundle whose statement names every
+released file by SHA-256. It is signed by the SLSA generator at the exact
+commit the workflow pins, which `slsa-verifier` refuses ("invalid ref") because
+that is not a release tag, so verify it with cosign, naming the generator's
+commit from the provenance's `builder.id`:
 
 ```bash
-for f in *.exe *.zip *.deb *.AppImage *.apk *.aab; do
-  [ -f "$f" ] || continue
-  cosign verify-blob \
-    --certificate "$f.crt" \
-    --signature   "$f.sig" \
-    --certificate-identity-regexp '^https://github\.com/TinkerNorth/<repo>/\.github/workflows/release\.yml@refs/tags/[0-9].*$' \
-    --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-    "$f"
-done
+cosign verify-blob-attestation \
+  --bundle "dish-mac.intoto.jsonl" --new-bundle-format --type slsaprovenance \
+  --certificate-identity "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a" \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  dish-mac.zip
 ```
 
-### 4) Verify the SLSA L3 provenance
-
-```bash
-slsa-verifier verify-artifact \
-  --provenance-path <repo>.intoto.jsonl \
-  --source-uri      github.com/TinkerNorth/<repo> \
-  --source-tag      X.Y.Z \
-  <artifact-filename>
-```
-
-This proves the artifact was produced by a tagged run of `release.yml`
-on the named source repo. Output ends with
-`PASSED: SLSA verification passed`.
+(`Verified OK` against dish-mac 1.4.0. The commit is the generator v2.1.0 the
+workflow pins; use the one in the provenance you are checking.)
 
 ### 5) (Optional) Inspect the SBOM
 
 ```bash
-# Top-level summary
-syft attestation --output spdx-json release/<repo>.sbom.spdx.json
-
-# Or just diff against last release
-diff <(jq -S . prev-release/<repo>.sbom.spdx.json) \
-     <(jq -S . release/<repo>.sbom.spdx.json) \
-  | less
+jq -S . dish-mac.sbom.spdx.json | less
 ```
 
 ---

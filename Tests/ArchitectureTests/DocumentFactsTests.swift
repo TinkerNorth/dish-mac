@@ -119,6 +119,65 @@ final class DocumentFactsTests: XCTestCase {
         }
     }
 
+    // MARK: shared security and release tools
+
+    private func envValue(_ name: String, in text: String) -> String? {
+        firstMatch("\(name): \"([0-9.]+)\"", in: text)
+    }
+
+    func testToolsShPinsTheScannersTheSharedSecurityWorkflowPins() throws {
+        let tools = try toolsScript()
+        let security = try RepoFiles.read(".github/workflows/_security.yml")
+        let pairs = [
+            ("OSV_SCANNER_VERSION", "OSV-Scanner"),
+            ("GITLEAKS_VERSION", "gitleaks"),
+            ("PYYAML_VERSION", "PyYAML")
+        ]
+        for (name, label) in pairs {
+            let local = firstMatch("\(name)=\"([0-9.]+)\"", in: tools)
+            let shared = envValue(name, in: security)
+            XCTAssertNotNil(local, "scripts/tools.sh pins \(label)")
+            XCTAssertEqual(local, shared, "scripts/tools.sh and _security.yml pin one \(label)")
+        }
+    }
+
+    func testThirdPartyNamesTheScannersAndReleaseToolsTheWorkflowsPin() throws {
+        let notice = try RepoFiles.read("THIRD_PARTY.md")
+        let security = try RepoFiles.read(".github/workflows/_security.yml")
+        let harden = try RepoFiles.read(".github/workflows/_release_harden.yml")
+        let pins: [(name: String, version: String?)] = [
+            ("OSV-Scanner", envValue("OSV_SCANNER_VERSION", in: security)),
+            ("gitleaks", envValue("GITLEAKS_VERSION", in: security)),
+            ("cosign", envValue("COSIGN_VERSION", in: harden)),
+            ("Syft", envValue("SYFT_VERSION", in: harden)),
+            ("Grype", envValue("GRYPE_VERSION", in: harden))
+        ]
+        for pin in pins {
+            let named = firstMatch("\\[\(pin.name)\\]\\([^)]*\\) \\| ([0-9.]+)", in: notice)
+            XCTAssertNotNil(pin.version, "\(pin.name) is pinned in a shared workflow")
+            XCTAssertEqual(
+                named,
+                pin.version,
+                "a shared workflow pins \(pin.name) \(pin.version ?? "?"): edit THIRD_PARTY.md and its bundled copy"
+            )
+        }
+    }
+
+    func testTheSharedWorkflowsAreCalledNotCopied() throws {
+        let release = try RepoFiles.read(".github/workflows/release.yml")
+        let security = try RepoFiles.read(".github/workflows/security.yml")
+        let ci = try RepoFiles.read(".github/workflows/macos-ci.yml")
+        XCTAssertTrue(security.contains("uses: ./.github/workflows/_security.yml"))
+        XCTAssertTrue(release.contains("uses: ./.github/workflows/_security.yml"), "the tag re-runs the gates")
+        XCTAssertTrue(release.contains("uses: ./.github/workflows/_release_harden.yml"), "the tag hardens through the shared workflow")
+        XCTAssertTrue(ci.contains("uses: ./.github/workflows/_release_harden.yml"), "pull requests dry-run the same workflow")
+        XCTAssertTrue(ci.contains("dry-run: true"))
+        for text in [release, security, ci] {
+            XCTAssertFalse(text.contains("cosign sign-blob"), "signing is the shared workflow's, not inline")
+            XCTAssertFalse(text.contains("TODO_REPLACE_WITH_UPSTREAM_SHA256"), "no unpinned-tool branch")
+        }
+    }
+
     // MARK: Xcode
 
     func testEveryWorkflowSelectsTheSameXcodeByVersion() throws {

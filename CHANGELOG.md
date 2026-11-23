@@ -30,8 +30,26 @@ the repos share a version number.
   Satellite 2.3.0, CodeQL blocks and uploads, and the release is created as a
   draft and published only after the measurements are on it.
 
+- **Shared security and release hardening.** `_security.yml`,
+  `_release_harden.yml` and the three scripts they run are the fleet's
+  byte-identical copies. Pull requests run the release's scan, SBOMs,
+  checksums and signing as a dry run on the PR-built zip, and
+  `scripts/ci-local.sh` runs the pin lint, the allowlist gate, OSV-Scanner 2.7.1
+  (which now reads `Package.resolved`) and gitleaks with pinned binaries. cosign
+  3.1.4 signs a release as one `<file>.sigstore.json` per file, and the signing
+  identity becomes the shared workflow's, `_release_harden.yml@refs/tags/X.Y.Z`;
+  `SECURITY.md` has the recipe for both forms, run against 1.4.0. The app
+  checks no signature, so already-installed versions are not affected.
+- SwiftLint's `trailing_comma` and SwiftFormat's `redundantSelf` and
+  `unusedArguments` rules are on. Two rules stay off as fleet style choices
+  (`opening_brace`, `blankLinesAtStartOfScope`), each with its reason in the
+  config.
+
 ### Fixed
 
+- `packaging/Dish.entitlements` held `--options` inside an XML comment, which
+  is not valid XML: a Developer ID signature would have failed with "Failed to
+  parse entitlements". The pull-request signing step found it.
 - `THIRD_PARTY.md`, in the repository and in the app's Licenses page, names
   sentry-cocoa 9.35.0 and says the app links one package; `SECURITY.md` names
   protocol 4, the advisory signing gate and all six clients. A test now ties

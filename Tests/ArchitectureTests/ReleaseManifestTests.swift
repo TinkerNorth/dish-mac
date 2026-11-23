@@ -49,10 +49,11 @@ final class ReleaseManifestTests: XCTestCase {
 
     func testTheSigningGateIsAdvisoryAndTheStableNameNeverCarriesASuffix() throws {
         let workflow = try RepoFiles.read(Self.workflowPath)
+        let stage = try RepoFiles.read("scripts/stage-zip.sh")
         let gateIsAVariable = workflow.contains("ENFORCE: ${{ vars.ENFORCE_RELEASE_SIGNING }}")
         let laterJobsLearnTheOutcome = workflow.contains("signed: ${{ steps.check.outputs.signed }}")
-        let stableNameKept = workflow.contains("\"dist/dish-mac.zip\"")
-        let stableNameSuffixed = workflow.contains("dish-mac${suffix}.zip")
+        let stableNameKept = stage.contains("\"dist/dish-mac.zip\"")
+        let stableNameSuffixed = stage.contains("dish-mac${suffix}.zip")
         let gatesGrantWhatIsAsked = workflow.contains("pull-requests: read\n      security-events: write")
         let dispatchNamesTheTag = workflow.contains("TAG: ${{ inputs.tag || github.ref_name }}")
         let generatorBuiltFromThePin = workflow.contains("compile-generator: true")

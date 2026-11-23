@@ -347,8 +347,17 @@ Build + style:
 
 Security gates (also blocking):
 
-- `security.yml`: action-pin lint, vulnerability allowlist expiry,
-  OSV-Scanner, gitleaks secret scan, GitHub `dependency-review-action`.
+- `security.yml`, through the shared `_security.yml` (byte-identical in every
+  repository): `scripts/check-action-pins.sh`, the vulnerability allowlist
+  gate (`scripts/security-allowlist.py`), OSV-Scanner 2 over the tree
+  (`scripts/osv-scan.sh`, which reads `Package.resolved`), the gitleaks scan,
+  and GitHub's `dependency-review-action`, which is off
+  (`dependency_review_enabled: false`) until the repository's Dependency graph
+  setting is switched on, a maintainer's step.
+- `macos-ci.yml`'s `Release hardening (dry run)` job, on pull requests: the
+  shared `_release_harden.yml` on the PR-built `dish-mac.zip` (Grype scan,
+  SBOMs, `SHA256SUMS`, cosign bundles checked against a throwaway key,
+  nothing published).
 - `codeql.yml`: CodeQL `swift` analysis (security-extended +
   security-and-quality query packs).
 
@@ -369,53 +378,26 @@ past. Renew or remove on or before `expires`.
 ### Running security checks locally
 
 ```bash
-# Action-pin lint (40-char SHA enforcement on every uses: line)
-grep -REn '^\s*uses:' .github/workflows/ \
-  | grep -vE '@[0-9a-f]{40}\b' \
-  || echo "all pinned"
-
-# Allowlist expiry
-python3 - <<'PY'
-import datetime, yaml, sys
-data = yaml.safe_load(open('.security/allowlist.yaml').read()) or {}
-for e in data.get('exceptions', []) or []:
-    if datetime.date.fromisoformat(str(e['expires'])) < datetime.date.today():
-        print('EXPIRED:', e); sys.exit(1)
-PY
-
-# OSV-Scanner against the worktree (picks up Package.resolved)
-osv-scanner --recursive --skip-git .
-
-# Gitleaks
-gitleaks detect --no-banner --redact --source .
+scripts/check-security.sh
 ```
+
+It runs the pin lint, the allowlist gate, OSV-Scanner (which picks up
+`Package.resolved`) and gitleaks, with the binaries `scripts/tools.sh` pins
+(OSV-Scanner 2.7.1, gitleaks 8.30.1; arm64 Macs) and the CI scripts
+themselves; `scripts/ci-local.sh` runs it first. The scanners and the
+hardening tools are listed in `THIRD_PARTY.md`.
 
 ### Verifying a release artifact
 
 Each GitHub Release ships `dish-X.Y.Z.zip` (signed and notarized when the
 Apple secrets exist, `dish-X.Y.Z-unsigned.zip` until they do) and its
-stable-name copy `dish-mac.zip`, `*.sig`/`*.crt` (cosign keyless),
-`SHA256SUMS` + `SHA256SUMS.sig`/`*.crt`, the SPDX + CycloneDX SBOMs, and
-`dish-mac.intoto.jsonl` (SLSA L3).
-
-```bash
-shasum -a 256 -c SHA256SUMS
-
-cosign verify-blob \
-  --certificate SHA256SUMS.crt \
-  --signature   SHA256SUMS.sig \
-  --certificate-identity-regexp '^https://github\.com/TinkerNorth/dish-mac/\.github/workflows/release\.yml@refs/tags/[0-9].*$' \
-  --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
-  SHA256SUMS
-
-slsa-verifier verify-artifact \
-  --provenance-path dish-mac.intoto.jsonl \
-  --source-uri      github.com/TinkerNorth/dish-mac \
-  --source-tag      X.Y.Z \
-  dish-X.Y.Z.zip
-```
-
-The full cross-repo verification recipe lives in [`SECURITY.md`](SECURITY.md).
+stable-name copy `dish-mac.zip`, `latest.json`, a cosign keyless bundle
+`<file>.sigstore.json` for each of them, `SHA256SUMS` with its bundle, the
+SPDX and CycloneDX SBOMs, and `dish-mac.intoto.jsonl` (SLSA L3). Releases up
+to 1.4.0 carry a `.sig` and a `.crt` per file instead of a bundle.
+[`SECURITY.md`](SECURITY.md) has the recipe for both, run against 1.4.0; the
+identity to verify against is
+`https://github.com/TinkerNorth/dish-mac/.github/workflows/_release_harden.yml@refs/tags/X.Y.Z`.
 
 ## Cutting a release
 
@@ -426,7 +408,11 @@ Release through the same `scripts/build-app.sh` as pull requests, signs and
 notarizes `Dish.app` when the five Apple secrets are present, launches the
 final bundle with `scripts/launch-smoke.sh`, scans and signs every artifact,
 emits the SBOMs and the SLSA provenance, runs the release measurements, and
-creates the GitHub Release as a draft with everything on it. A last job flips
+creates the GitHub Release as a draft with everything on it. The scan, SBOMs,
+checksums and signing are the shared `_release_harden.yml`, which pull
+requests run as a dry run; the signing certificate names the ref, so the run
+must be on the tag (`gh workflow run release.yml --ref X.Y.Z -f tag=X.Y.Z`
+re-releases; a dispatch from `main` is refused). A last job flips
 the draft to published, so `releases/latest/download/latest.json` never points
 at a half-published release. The signing gate is advisory,
 as the satellite's and the Windows client's are: without the secrets a stable
