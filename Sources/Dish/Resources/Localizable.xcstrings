@@ -3554,6 +3554,41 @@
         }
       }
     },
+    "Attach the file to it." : {
+      "comment" : "Contact support, with no mail app: attach the saved file to the email.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Priložite joj datoteku."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Hänge die Datei an."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Adjunta el archivo."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Joignez-y le fichier."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Anexe o arquivo a ela."
+          }
+        }
+      }
+    },
     "Audio from the host plays on the pad’s speaker or headset." : {
       "comment" : "Speaker chip tooltip while on.",
       "localizations" : {
@@ -15734,6 +15769,41 @@
         }
       }
     },
+    "No mail app took the message." : {
+      "comment" : "Contact support: Continue in Mail found no mail app to open the message.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nijedna aplikacija za e-poštu nije preuzela poruku."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Keine Mail-App hat die Nachricht übernommen."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ninguna app de correo aceptó el mensaje."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune app de messagerie n’a pris le message."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nenhum app de e-mail aceitou a mensagem."
+          }
+        }
+      }
+    },
     "No motion data from this controller." : {
       "comment" : "Inspector line.",
       "localizations" : {
@@ -24134,6 +24204,76 @@
         }
       }
     },
+    "The file is saved at %@." : {
+      "comment" : "Contact support, with no mail app: where the report file was saved; the argument is its path.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datoteka je sačuvana u %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Datei ist unter %@ gespeichert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo está guardado en %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier est enregistré dans %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arquivo está salvo em %@."
+          }
+        }
+      }
+    },
+    "The file was not saved." : {
+      "comment" : "Contact support, with no mail app: the person closed the save panel.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Datoteka nije sačuvana."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Datei wurde nicht gespeichert."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "El archivo no se guardó."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Le fichier n’a pas été enregistré."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "O arquivo não foi salvo."
+          }
+        }
+      }
+    },
     "The file will hold" : {
       "comment" : "The report page: the header over what the diagnostics file holds.",
       "localizations" : {
@@ -27910,6 +28050,41 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Seu app de e-mail abre com suas palavras primeiro, depois o resumo deste Mac e o arquivo anexado."
+          }
+        }
+      }
+    },
+    "Your message is on the clipboard: paste it into an email to %@." : {
+      "comment" : "Contact support, with no mail app: the subject and the words were copied; the argument is the support address.",
+      "localizations" : {
+        "bs" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vaša poruka je u međuspremniku: zalijepite je u e-poruku za %@."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Deine Nachricht ist in der Zwischenablage: Füge sie in eine E-Mail an %@ ein."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tu mensaje está en el portapapeles: pégalo en un correo para %@."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Votre message est dans le presse-papiers : collez-le dans un e-mail à %@."
+          }
+        },
+        "pt-BR" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Sua mensagem está na área de transferência: cole-a em um e-mail para %@."
           }
         }
       }

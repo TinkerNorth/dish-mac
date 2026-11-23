@@ -14,9 +14,11 @@ struct SupportReportPage: View {
 
     @EnvironmentObject var model: AppModel
     @Environment(\.diagnosticsMailer) private var mailer
+    @Environment(\.pasteboard) private var pasteboard
     @State private var form: SupportReportForm
     @State private var preview: String?
     @State private var failed = false
+    @State private var noMail: String?
 
     private let words = L10n.app
 
@@ -112,6 +114,13 @@ struct SupportReportPage: View {
                     .font(DishFont.caption)
                     .foregroundColor(DishTheme.error)
             }
+            if let noMail {
+                Text(noMail)
+                    .font(DishFont.caption)
+                    .foregroundColor(DishTheme.muted)
+                    .textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -152,6 +161,8 @@ struct SupportReportPage: View {
     private func continueInMail(_ state: SupportReportPageState) {
         guard let file = model.writeSupportReport(state.draft) else { return failed = true }
         failed = false
-        if !mailer.compose(state.mail, file) { mailer.save(file) }
+        guard !mailer.compose(state.mail, file) else { return noMail = nil }
+        pasteboard.copy(supportReportMailText(state.mail))
+        noMail = noMailNote(savedAt: mailer.save(file), recipient: state.mail.recipient)
     }
 }

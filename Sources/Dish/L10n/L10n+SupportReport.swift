@@ -107,4 +107,26 @@ extension L10n {
     var askingHosts: String {
         catalog.text("Asking each connected host for its own view of this connection…")
     }
+
+    // MARK: - No mail app
+
+    var noMailApp: String {
+        catalog.text("No mail app took the message.")
+    }
+
+    func fileSavedAt(_ path: String) -> String {
+        catalog.format("The file is saved at %@.", path)
+    }
+
+    var fileNotSaved: String {
+        catalog.text("The file was not saved.")
+    }
+
+    func messageOnTheClipboard(_ recipient: String) -> String {
+        catalog.format("Your message is on the clipboard: paste it into an email to %@.", recipient)
+    }
+
+    var attachTheFile: String {
+        catalog.text("Attach the file to it.")
+    }
 }

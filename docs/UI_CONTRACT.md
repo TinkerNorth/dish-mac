@@ -385,7 +385,9 @@ until picked) and draws `supportReportPageState`. Preview file shows
 `supportReportPreview`; Continue in Mail, held while the hosts are asked,
 writes `writeSupportReport` and hands it with `supportReportMail` (the words
 first) to the scene's `diagnosticsMailer` value, `NSSharingService(named:
-.composeEmail)`, or to a save panel. Save diagnostics writes
+.composeEmail)`; with no mail app the message goes to the clipboard
+(`supportReportMailText`), the file to a save panel, and the page says
+where each went and that it goes to support (`noMailNote`). Save diagnostics writes
 `writeDiagnosticsBundle`, with no report, to a save panel.
 A controller database card shows the bundled version, the version in force
 and the last check; a pad's card adds its record, the record's chip, its

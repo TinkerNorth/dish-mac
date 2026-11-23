@@ -137,6 +137,32 @@ final class SupportReportMappersTests: XCTestCase {
         XCTAssertEqual(try state(form, facts()).draft, SupportReportDraft(category: .connection, text: "Lag", slotId: nil))
     }
 
+    func testWithNoMailAppTheClipboardTakesTheSubjectThenTheBody() {
+        let mail = DiagnosticsMailState(
+            recipient: "support@tinkernorth.com",
+            subject: "Dish support: A question",
+            body: "Hello.\n\nSummary"
+        )
+        XCTAssertEqual(supportReportMailText(mail), "Dish support: A question\n\nHello.\n\nSummary")
+    }
+
+    func testWithNoMailAppTheNoteSaysWhereTheFileWasSavedAndWhereTheWordsWait() {
+        let file = URL(fileURLWithPath: "/Users/someone/Desktop/dish-diagnostics.json")
+        XCTAssertEqual(
+            noMailNote(savedAt: file, recipient: "support@tinkernorth.com"),
+            "No mail app took the message. The file is saved at /Users/someone/Desktop/dish-diagnostics.json. "
+                + "Your message is on the clipboard: paste it into an email to support@tinkernorth.com. Attach the file to it."
+        )
+    }
+
+    func testWithNoMailAppAndTheSaveClosedTheNoteSaysTheFileWasNotSaved() {
+        XCTAssertEqual(
+            noMailNote(savedAt: nil, recipient: "support@tinkernorth.com"),
+            "No mail app took the message. The file was not saved. "
+                + "Your message is on the clipboard: paste it into an email to support@tinkernorth.com."
+        )
+    }
+
     func testThePreviewButtonSaysWhatItWillDo() {
         XCTAssertEqual(previewToggleText(showing: false), words.previewFile)
         XCTAssertEqual(previewToggleText(showing: true), words.hideFile)

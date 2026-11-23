@@ -104,6 +104,20 @@ func supportReportMail(
     )
 }
 
+/// The mail as one text for the clipboard when no mail app takes it: the
+/// subject, then the body with the person's words first.
+func supportReportMailText(_ mail: DiagnosticsMailState) -> String {
+    mail.subject + "\n\n" + mail.body
+}
+
+/// What the page says when no mail app took the message: where the file
+/// went, or that it was not saved, and that the message waits on the
+/// clipboard for an email to support.
+func noMailNote(savedAt file: URL?, recipient: String, words: L10n = .app) -> String {
+    guard let file else { return paragraph(words.noMailApp, words.fileNotSaved, words.messageOnTheClipboard(recipient)) }
+    return paragraph(words.noMailApp, words.fileSavedAt(file.path), words.messageOnTheClipboard(recipient), words.attachTheFile)
+}
+
 func supportReportPageState(
     form: SupportReportForm,
     facts: ShellFacts,
