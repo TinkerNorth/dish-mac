@@ -219,6 +219,22 @@ final class ControllerAudioEngineTests: XCTestCase {
         XCTAssertTrue(resumed)
     }
 
+    /// The microphone's sends are bound to the host the input opened for;
+    /// a pad moved to another host or index opens it again for the new one.
+    func testAPadMovedToAnotherHostOpensItsMicrophoneForThatHost() {
+        engine.apply([binding(facts())])
+        let server = DiscoveredServer(name: "Den", ip: "10.0.0.2", udpPort: 9876, pairPort: 9443, httpPort: 9443, machineId: "den")
+        let other = WifiConnection(id: "den", server: server)
+        engine.apply([AudioBinding(slotId: "slot", connection: other, controllerIndex: 0, route: dualSense, facts: facts())])
+        XCTAssertEqual(ports.inputs.count, 2, "a second input, sending to the new host")
+        XCTAssertEqual(ports.inputs.first?.started, false, "the first one, bound to the old host, is closed")
+        XCTAssertEqual(ports.inputs.last?.started, true)
+        engine.apply([AudioBinding(slotId: "slot", connection: other, controllerIndex: 1, route: dualSense, facts: facts())])
+        XCTAssertEqual(ports.inputs.count, 3, "another index on the same host is a move too")
+        engine.apply([AudioBinding(slotId: "slot", connection: other, controllerIndex: 1, route: dualSense, facts: facts(muted: true))])
+        XCTAssertEqual(ports.inputs.count, 3, "a binding that did not move keeps its input")
+    }
+
     func testHalfWindowsAccumulateAcrossCallbacks() async throws {
         engine.apply([binding(facts())])
         let input = try XCTUnwrap(ports.inputs.first)

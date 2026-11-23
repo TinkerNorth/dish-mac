@@ -272,6 +272,8 @@ private final class SlotAudio {
         let moved = connection !== binding.connection || controllerIndex != binding.controllerIndex
         if moved {
             releaseHandlers()
+            input?.stop()
+            input = nil
             connection = binding.connection
             controllerIndex = binding.controllerIndex
             playout.restart()
@@ -445,7 +447,8 @@ private final class SlotAudio {
 
     /// The microphone captures while the plan says so, or the meter listens;
     /// the mute flag is read per window, so a mute lands within one, and the
-    /// meter never delivers. A pad no host carries has nowhere to send.
+    /// meter never delivers. A pad no host carries has nowhere to send; the
+    /// input sends to the host it opened for, so a move opens it again.
     private func reconcileInput(_ connection: WifiConnection?, _ next: AudioPlan) {
         guard let route, next.micArmed || metering else {
             input?.stop()
