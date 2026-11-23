@@ -211,8 +211,10 @@ final class LocalizationTests: XCTestCase {
     /// there read tables only because CI compiles them first.
     func testCICompilesTheCatalogBeforeTheTestsRun() throws {
         let workflow = try RepoFiles.read(".github/workflows/macos-ci.yml")
-        let compile = try XCTUnwrap(workflow.range(of: "compile-catalog.sh"), "CI must compile the catalog")
-        let tests = try XCTUnwrap(workflow.range(of: "swift test"), "CI must run the tests")
+        XCTAssertTrue(workflow.contains("run: scripts/build-and-test.sh"), "CI builds and tests through the one script")
+        let script = try RepoFiles.read("scripts/build-and-test.sh")
+        let compile = try XCTUnwrap(script.range(of: "compile-catalog.sh"), "CI must compile the catalog")
+        let tests = try XCTUnwrap(script.range(of: "swift test --skip-build"), "CI must run the tests")
         XCTAssertLessThan(compile.lowerBound, tests.lowerBound, "the tables must exist before the tests read them")
     }
 }

@@ -19,6 +19,11 @@
 #  Moonlight identity there, as any launch does. First it checks the controller database the app ships
 #  (check-bundled-db.sh), which a broken copy would otherwise pass silently.
 #
+#  DISH_SMOKE_AS_SIGNED=1 launches the app in place instead, with its own
+#  signature and bundle identifier: how release.yml checks the final, signed
+#  bundle (a re-signed copy would drop the hardened runtime). That writes the
+#  app's real preferences, so it is for CI runners only, never a developer's Mac.
+#
 #  Usage: scripts/launch-smoke.sh [path/to/Dish.app]
 # ============================================================================
 
@@ -52,9 +57,13 @@ restore_build() {
 }
 trap restore_build EXIT
 
-cp -R "$APP" "$SMOKE_APP"
-/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $SMOKE_ID" "$SMOKE_APP/Contents/Info.plist"
-codesign --force --sign - "$SMOKE_APP" 2> /dev/null
+if [ "${DISH_SMOKE_AS_SIGNED:-0}" = "1" ]; then
+    SMOKE_EXECUTABLE="$EXECUTABLE"
+else
+    cp -R "$APP" "$SMOKE_APP"
+    /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $SMOKE_ID" "$SMOKE_APP/Contents/Info.plist"
+    codesign --force --sign - "$SMOKE_APP" 2> /dev/null
+fi
 
 if [ -d .build ]; then
     mv .build "$HIDDEN_BUILD"

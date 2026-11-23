@@ -11,21 +11,28 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: Build, test, lint, format
     # macOS 14 images are deprecated (unsupported from 2026-11-02) and their
-    # Xcode 15 SwiftPM cannot compile the String Catalog. Xcode 26 is the
-    # default on this image; bump together with CONTRIBUTING.md.
+    # Xcode 15 SwiftPM cannot compile the String Catalog. Xcode 26.6 is the
+    # macos-26 image's default today; it is selected by version below so an
+    # image update cannot change the toolchain silently. Bump together with
+    # CONTRIBUTING.md.
     runs-on: macos-26
     timeout-minutes: 45
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
       - name: Swift version
         run: swift --version
@@ -57,31 +64,32 @@ jobs:
       - name: SwiftFormat (check only) and SwiftLint
         run: scripts/check-format.sh
 
-      - name: Build (debug, with tests)
-        run: swift build --build-tests --enable-code-coverage
+      - name: Build (debug, with tests) and run the tests
+        run: scripts/build-and-test.sh
 
-      # This toolchain's SwiftPM copies the String Catalog verbatim, which
-      # nothing reads at run time; the tests read the compiled tables.
-      - name: Compile the String Catalog where SwiftPM copied it
-        run: find .build -type d -name 'Dish_Dish.bundle' -exec ./scripts/compile-catalog.sh {} \;
+      # Every scenario of the bench for 0.2 s against the release build, then
+      # the bundle: the same script ci-local.sh runs.
+      - name: Release build, bench smoke, bundle
+        run: scripts/build-app.sh
 
-      - name: Run tests
-        run: swift test --skip-build --parallel --enable-code-coverage
-
-      - name: Build release binary
-        run: swift build --configuration release
-
-      # Every scenario for 0.2 s against the release build; the exit status is
-      # the harness's own accounting (pacing, arrivals), never a latency.
-      - name: Bench smoke run
-        run: .build/release/DishBench --smoke
-
-      - name: Bundle .app
-        run: ./bundle.sh release
+      # The release signs with the hardened runtime; ad hoc here, so the
+      # signing command, the entitlement and the launch of the result are
+      # exercised on every pull request. Notarisation needs the Apple secrets
+      # and runs only in release.yml.
+      - name: Sign with the hardened runtime (ad hoc)
+        run: scripts/sign-app.sh - Dish.app
 
       # A user's Mac has no build tree to fall back on; the launch must not
-      # need one (1.0.2 to 1.2.0 crashed at launch everywhere but CI).
+      # need one (1.0.2 to 1.2.0 crashed at launch everywhere but CI). The
+      # script also checks the bundled controller database first.
       - name: Launch the bundled app with no build tree beside it
+        run: scripts/launch-smoke.sh Dish.app
+
+      # The hardened bundle itself, in place (a runner has no preferences to
+      # protect), as release.yml launches the final one.
+      - name: Launch the hardened bundle as signed
+        env:
+          DISH_SMOKE_AS_SIGNED: "1"
         run: scripts/launch-smoke.sh Dish.app
 
       - name: Upload .app artifact
@@ -102,9 +110,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
       - name: Cache SwiftPM
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -119,11 +129,5 @@ jobs:
             ${{ runner.os }}-lockstats-spm-
             ${{ runner.os }}-spm-
 
-      - name: Build the tests with lock statistics
-        run: swift build --build-tests -Xswiftc -DLOCK_STATS
-
-      - name: Run the lock statistics tests
-        run: swift test --skip-build --filter 'TrackedLockStatsTests|LockLawTests'
-
-      - name: Bench smoke run with lock statistics
-        run: .build/debug/DishBench --smoke
+      - name: Lock statistics build, tests and bench smoke
+        run: scripts/lock-stats.sh

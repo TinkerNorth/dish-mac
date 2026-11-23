@@ -19,7 +19,7 @@ final class ResourceBundleLaunchTests: XCTestCase {
     private static let bundleScriptPath = "bundle.sh"
     private static let smokeScriptPath = "scripts/launch-smoke.sh"
     private static let smokeStep = "run: scripts/launch-smoke.sh Dish.app"
-    private static let bundleStep = "run: ./bundle.sh release"
+    private static let bundleStep = "run: scripts/build-app.sh"
     fileprivate static let databaseCheckPath = "scripts/check-bundled-db.sh"
     private static let coreBundle = "Contents/Resources/Dish_DishCore.bundle"
     /// The manifest and the seven data files it names.
@@ -68,6 +68,11 @@ final class ResourceBundleLaunchTests: XCTestCase {
             let launch = try XCTUnwrap(workflow.range(of: Self.smokeStep), "\(workflowPath) launches the bundled app")
             XCTAssertTrue(bundle.lowerBound < launch.lowerBound, "\(workflowPath) launches what it bundled")
         }
+    }
+
+    func testTheBuildScriptBundlesTheApp() throws {
+        let script = try RepoFiles.read("scripts/build-app.sh")
+        XCTAssertTrue(script.contains("./bundle.sh release"), "the workflows' bundle step is this script")
     }
 
     func testTheLocalGatesLaunchTheBundledAppToo() throws {

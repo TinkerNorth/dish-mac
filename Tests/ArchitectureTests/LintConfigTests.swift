@@ -44,7 +44,9 @@ final class LintConfigTests: XCTestCase {
 
     func testStrictModeIsWhatCIRuns() throws {
         let workflow = try RepoFiles.read(".github/workflows/macos-ci.yml")
-        XCTAssertTrue(workflow.contains("swiftlint lint --strict"), "CI must run SwiftLint in strict mode")
-        XCTAssertTrue(workflow.contains("swiftformat --lint"), "CI must run SwiftFormat in lint mode")
+        XCTAssertTrue(workflow.contains("run: scripts/check-format.sh"), "CI runs the one format-and-lint script")
+        let script = try RepoFiles.read("scripts/check-format.sh")
+        XCTAssertTrue(script.contains("swiftlint\" lint --strict"), "CI must run SwiftLint in strict mode")
+        XCTAssertTrue(script.contains("swiftformat\" --lint"), "CI must run SwiftFormat in lint mode")
     }
 }

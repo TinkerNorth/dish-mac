@@ -54,7 +54,7 @@ final class ReleaseManifestTests: XCTestCase {
         let stableNameKept = workflow.contains("\"dist/dish-mac.zip\"")
         let stableNameSuffixed = workflow.contains("dish-mac${suffix}.zip")
         let gatesGrantWhatIsAsked = workflow.contains("pull-requests: read\n      security-events: write")
-        let dispatchNamesTheTag = workflow.contains("tag=\"${{ inputs.tag || github.ref_name }}\"")
+        let dispatchNamesTheTag = workflow.contains("TAG: ${{ inputs.tag || github.ref_name }}")
         let generatorBuiltFromThePin = workflow.contains("compile-generator: true")
         XCTAssertTrue(gateIsAVariable, "the hard gate is a repository variable")
         XCTAssertTrue(laterJobsLearnTheOutcome, "later jobs learn whether the app is signed")
