@@ -25,8 +25,8 @@
 #    --allow-missing     accepted for the fleet's interface; every tool this
 #                        script needs is fetched, so nothing can be missing
 #
-#  CI only: dependency review (the repository's Dependency graph setting is
-#  off), CodeQL, and the release-hardening dry run (a Linux job: Grype, Syft
+#  CI only: dependency review (it reads GitHub's dependency graph for the
+#  pull request), CodeQL, and the release-hardening dry run (a Linux job: Grype, Syft
 #  and cosign of the PR-built zip). Also CI only, because each needs a runner
 #  secret or a Developer ID: the
 #  Developer ID signature, notarisation and stapling, and the final-bundle

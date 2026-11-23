@@ -307,10 +307,13 @@ shape.
   `Tests/PARITY.md` lands in the same change.
 - Keep commits focused; squash noisy fixup commits before review.
 
-> **Note on branch protection.** GitHub's branch-protection features are not
-> available for this repository's plan, so direct pushes to `main` are not
-> blocked at the platform level. Treat the PR-based flow as a convention and
-> rely on CI as the quality gate.
+`main` is protected, for administrators too. A pull request merges only when
+its branch is up to date with `main` and these checks have passed:
+`Build, test, lint, format`, `Lock statistics build and tests`,
+`Analyze (swift)`, the four `shared /` jobs (`Action pin lint (40-char SHA
+required)`, `OSV-Scanner (vendored + manifest deps)`, `Secret scan
+(gitleaks)`, `Vulnerability allowlist expiry check`) and `Release hardening
+(dry run) / scan, SBOM, sign`.
 
 ## What CI runs
 
@@ -351,9 +354,8 @@ Security gates (also blocking):
   repository): `scripts/check-action-pins.sh`, the vulnerability allowlist
   gate (`scripts/security-allowlist.py`), OSV-Scanner 2 over the tree
   (`scripts/osv-scan.sh`, which reads `Package.resolved`), the gitleaks scan,
-  and GitHub's `dependency-review-action`, which is off
-  (`dependency_review_enabled: false`) until the repository's Dependency graph
-  setting is switched on, a maintainer's step.
+  and GitHub's `dependency-review-action` on pull requests
+  (`dependency_review_enabled: true`).
 - `macos-ci.yml`'s `Release hardening (dry run)` job, on pull requests: the
   shared `_release_harden.yml` on the PR-built `dish-mac.zip` (Grype scan,
   SBOMs, `SHA256SUMS`, cosign bundles checked against a throwaway key,

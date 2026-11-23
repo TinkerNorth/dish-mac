@@ -49,6 +49,11 @@ the repos share a version number.
   `_release_harden.yml`, now the fleet's newer copy, folds it into the
   product SBOM and has Grype scan that SBOM. A test fails when the document
   misses a component `THIRD_PARTY.md` says reaches the user.
+- **Dependency review runs on every pull request**, now that the repository's
+  dependency graph and Dependabot alerts are on, and `main` is protected:
+  CONTRIBUTING names the checks a pull request needs. The provenance recipe in
+  `SECURITY.md` drops cosign's deprecated `--new-bundle-format` flag, run
+  against 1.4.0 with cosign 3.1.4.
 - SwiftLint's `trailing_comma` and SwiftFormat's `redundantSelf` and
   `unusedArguments` rules are on. Two rules stay off as fleet style choices
   (`opening_brace`, `blankLinesAtStartOfScope`), each with its reason in the

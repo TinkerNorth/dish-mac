@@ -34,7 +34,6 @@ jobs:
     with:
       # SwiftPM resolution lives in Package.resolved, which OSV-Scanner 2 reads.
       osv_scan_paths: .
-      # The repository's Dependency graph setting is off, so the job cannot run
-      # (it needs the graph). Enabling it is the maintainer's: Settings, Code
-      # security, Dependency graph; then this becomes true.
-      dependency_review_enabled: false
+      # The repository's Dependency graph and Dependabot alerts are on, so
+      # dependency review runs on every pull request.
+      dependency_review_enabled: true

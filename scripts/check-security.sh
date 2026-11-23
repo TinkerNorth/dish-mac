@@ -7,9 +7,9 @@
 #  gitleaks over the git history. The scanners are the pinned binaries
 #  scripts/tools.sh fetches (darwin-arm64); CI runs the same versions on Linux.
 #
-#  Not run here: dependency review, which needs GitHub's dependency graph (a
-#  repository setting that is off, so security.yml passes
-#  dependency_review_enabled: false), and CodeQL, which codeql.yml runs.
+#  Not run here: dependency review, which compares a pull request's
+#  dependencies against GitHub's dependency graph and so runs only in
+#  security.yml, and CodeQL, which codeql.yml runs.
 # ============================================================================
 
 set -euo pipefail

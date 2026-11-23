@@ -43,9 +43,9 @@ jobs:
     uses: ./.github/workflows/_security.yml
     with:
       osv_scan_paths: .
-      # The Dependency graph setting is off (the maintainer's to enable); the
-      # job also only means anything on a pull request.
-      dependency_review_enabled: false
+      # The Dependency graph is on; the job itself runs only on a pull
+      # request, so on a tag it is skipped.
+      dependency_review_enabled: true
 
   # ─────────────────────────────────────────────────────────────────────
   # Signing-secret gate. Advisory by default, as the satellite's and the

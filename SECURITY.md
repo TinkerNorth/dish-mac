@@ -99,8 +99,7 @@ Each repo runs the same shape of gates:
 
 - Action-pin lint — every `uses:` line must reference a 40-char SHA.
 - Allowlist expiry — `.security/allowlist.yaml` entries must be unexpired.
-- Dependency review — GitHub advisory DB (PR-only; it runs once the
-  repository's Dependency graph setting is on).
+- Dependency review — GitHub advisory DB (PR-only).
 - OSV-Scanner — vendored components + manifest deps; ecosystem-specific
   scope (see each repo's `security.yml`).
 - Gitleaks — secret scanning over the worktree.
@@ -210,13 +209,13 @@ commit from the provenance's `builder.id`:
 
 ```bash
 cosign verify-blob-attestation \
-  --bundle "dish-mac.intoto.jsonl" --new-bundle-format --type slsaprovenance \
+  --bundle "dish-mac.intoto.jsonl" --type slsaprovenance \
   --certificate-identity "https://github.com/slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml@f7dd8c54c2067bafc12ca7a55595d5ee9b75204a" \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com \
   dish-mac.zip
 ```
 
-(`Verified OK` against dish-mac 1.4.0. The commit is the generator v2.1.0 the
+(`Verified OK` against dish-mac 1.4.0 with cosign 3.1.4. The commit is the generator v2.1.0 the
 workflow pins; use the one in the provenance you are checking.)
 
 ### 5) (Optional) Inspect the SBOM
@@ -229,11 +228,6 @@ jq -S . dish-mac.sbom.spdx.json | less
 
 ## Known gaps
 
-- **Branch protection on `main`.** The repos run on a
-  free org plan that does not expose required-status-check enforcement
-  for private repositories. Direct pushes to `main` are blocked by
-  convention only; the per-repo CI workflows are the de-facto gate.
-  See the matching `README.md` in each repo for the full text.
 - **Vendored-header scanners.** `satellite/lib/` and
   `satellite/vigem/include/` are not understood by ecosystem scanners.
   We feed OSV-Scanner a synthetic `osv-scanner.toml` derived from
