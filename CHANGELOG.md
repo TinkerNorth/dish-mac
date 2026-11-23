@@ -82,17 +82,24 @@ the repos share a version number.
 - **Diagnostics by email.** The report (below) writes
   `dish-diagnostics-dish-mac-<yyyyMMdd-HHmmss>.json` (`dish-diagnostics.v1`)
   and opens a message to `support@tinkernorth.com` in your own mail app, with
-  the page's summary as its body; nothing is sent until you press Send.
-  "Save diagnostics" saves the file where you pick, and is what happens when
-  no mail app takes the message. The file holds the app, the Mac's model and
+  your words and then the page's summary as its body; nothing is sent until
+  you press Send. The summary in the mail names each host by the file's
+  alias, "Host 1", "Host 2", and carries no host's address, port or name,
+  while the page keeps showing the real names. When no mail app takes the
+  message, it goes to the clipboard, the file is saved where you pick, and
+  the page says where the file is and that both go to support.
+  "Save diagnostics" saves the file alone where you pick. A served manifest
+  that names any path but the database and a language's strings, or a file
+  over 4 MB, is refused before anything is requested, and the cache writes
+  nothing else, so a manifest cannot place a file outside it. The file holds the app, the Mac's model and
   macOS, the data's standing, each controller's record, path, hardware,
   hardware check, last write and answers, the last support capture on the
   controller it was taken of, the hosts as "Host 1", "Host 2" and the flight
   recorder with every host named by its alias; never a pairing key,
   fingerprint, address, Wi-Fi name or host name.
 
-- **Report a problem and Ask a question.** Email diagnostics gives way to
-  two buttons on Diagnostics that open one page: what it is about (not
+- **Report a problem and Ask a question.** Two buttons on Diagnostics open
+  one page: what it is about (not
   recognised, no rumble or feedback, connection or latency, controller
   audio, something else, a question), "What happened, and what did you
   expect?", the controller it concerns (the first attached pad is
@@ -155,23 +162,49 @@ the repos share a version number.
 
 - **The privacy policy** gains "Controller database updates" and
   "Diagnostics by email", with the report, a host's own view of the
-  connection and the Mac's conditions, effective 2026-11-20.
-- **Hot path: two relaxed counters.** Each satellite datagram sent and each
-  one opened bumps one relaxed counter of its kind (`WireTally`), and each
-  feedback command posted to a pad bumps one and stores its newest value and
-  time (`FeedbackTally`); nothing on either path reads them.
+  connection and the Mac's conditions, effective 2026-11-22.
+- **Hot path: what the diagnostics record.** Each satellite datagram sent
+  and each one opened bumps one relaxed counter of its kind (`WireTally`).
+  Each feedback command a host sends is posted to its pad as before, and the
+  post now also records it in the pad's `FeedbackTally` on the receive
+  thread: a clock read and three relaxed atomic operations (the newest value,
+  its time and the count), no lock and no allocation. Each Direct write
+  records its verdict (`DirectWrites`): one small allocation, a mailbox
+  exchange and a clock read, on the XUSB output queue, on the Steam output
+  queue, and on the HID reader thread once per start step. Nothing on these
+  paths reads what they record.
 - **The feedback queue keeps the game's light bar, player and trigger
   effect.** Each drain on the pad's feedback queue stores the game's newest
   value of its surface in a value the queue alone owns, and holds it back
-  while an inspector test holds that surface; the receive loop's posts are
-  unchanged, and the addition takes no lock and allocates nothing. The
-  inspector's own writes go straight to the pad, so the diagnostics file's
+  while an inspector test holds that surface; the drain takes no lock and
+  allocates nothing for it. The inspector's own writes go straight to the pad, so the diagnostics file's
   output lanes count only what the hosts sent, a rumble test included.
 - **The privacy policy** names the inspector's microphone test: it opens a
   controller's own microphone for up to eight seconds when you start it, to
   show a level meter, and what it hears is not recorded, kept or sent. The
-  test is older than this release; the policy had not named it. Effective
-  2026-11-22.
+  test is older than this release; the policy had not named it.
+- **The microphone prompt names both uses.** With no satellite and the mic
+  switch off, the inspector's microphone test can be what first opens a
+  controller's microphone, so macOS's prompt can come from it; the prompt
+  now says Dish sends the microphone to the satellite only while the
+  controller's mic switch is on, and that the inspector's test shows its
+  level on this Mac and sends nothing.
+- **The controller database check sends less and cannot hang.** Its
+  requests name one language for every Mac instead of yours, and a transfer
+  that has not finished in a minute ends as offline, so a server that
+  trickles bytes no longer holds "Check now" and the six-hour check off.
+- **A newer controller list keeps a record whose issue names an OS version
+  as text.** An issue's `os` may give a platform's version as a number or as
+  a version string; "26.1" now matches macOS 26, where before the whole
+  record was left out. A version that reads as no number matches no macOS.
+
+### Fixed
+
+- **A controller's microphone reaches the host it was moved to.** The
+  microphone's frames went to the host its input had opened for, so a pad
+  moved straight from one satellite to another, or bound to a host while the
+  inspector's microphone test listened, sent its host nothing until its
+  microphone closed. A move now opens the microphone again for the new host.
 
 ## [1.3.1] - 2026-11-19
 
