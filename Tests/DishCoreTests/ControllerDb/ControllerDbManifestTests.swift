@@ -26,6 +26,43 @@ final class ControllerDbManifestTests: XCTestCase {
         XCTAssertEqual(decodeControllerDbManifest(Data("nope".utf8)), .failure(.badJson))
     }
 
+    func testOnlyTheDatabaseAndALocalesStringsAreDatabasePaths() {
+        let published = ["controllers.json", "strings/en.json", "strings/bs.json", "strings/pt-BR.json", "strings/fil.json"]
+        let refused = [
+            "../../x", "/etc/passwd", "manifest.json", "schema/controller-db.schema.json", "strings/../controllers.json",
+            "strings/en.json/../../x", "strings/en/x.json", "./controllers.json", "controllers.json.bak", "strings/e.json", ""
+        ]
+        XCTAssertEqual(published.filter(isControllerDbPath), published)
+        XCTAssertEqual(refused.filter(isControllerDbPath), [])
+    }
+
+    func testAManifestThatNamesAnyOtherPathIsRefused() throws {
+        let escapes = try manifestData(["controllers.json": 1, "strings/en.json": 1, "../../x": 1])
+        XCTAssertEqual(decodeControllerDbManifest(escapes), .failure(.badJson))
+    }
+
+    func testAManifestThatDoesNotNameEnglishIsRefused() throws {
+        let noEnglish = try manifestData(["controllers.json": 1])
+        XCTAssertEqual(decodeControllerDbManifest(noEnglish), .failure(.badJson))
+    }
+
+    func testAManifestNamingAFileOverTheCapOrOfNegativeSizeIsRefused() throws {
+        let cap = ControllerDbLimits.maxFileBytes
+        let atTheCap = try manifestData(["controllers.json": cap, "strings/en.json": 1])
+        let overTheCap = try manifestData(["controllers.json": cap + 1, "strings/en.json": 1])
+        let negative = try manifestData(["controllers.json": -1, "strings/en.json": 1])
+        XCTAssertEqual(cap, 4 * 1024 * 1024)
+        XCTAssertNotNil(try? decodeControllerDbManifest(atTheCap).get(), "the cap itself is allowed")
+        XCTAssertEqual(decodeControllerDbManifest(overTheCap), .failure(.badJson))
+        XCTAssertEqual(decodeControllerDbManifest(negative), .failure(.badJson))
+    }
+
+    /// A version 2 manifest naming each path at the size given.
+    private func manifestData(_ sizes: [String: Int]) throws -> Data {
+        let entries = sizes.mapValues { ["sha256": "a", "bytes": $0] as [String: Any] }
+        return try JSONSerialization.data(withJSONObject: ["schema": 1, "dbVersion": 2, "files": entries])
+    }
+
     func testTheDigestIsSha256InLowercaseHex() {
         XCTAssertEqual(sha256Hex(Data("abc".utf8)), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
     }

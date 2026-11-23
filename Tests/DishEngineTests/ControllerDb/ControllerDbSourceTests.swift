@@ -156,6 +156,25 @@ final class ControllerDbSourceTests: XCTestCase {
         XCTAssertEqual(source.state.lastCheckResult, .invalid)
     }
 
+    func testAManifestNamingAPathOutsideTheCacheIsInvalidAndNothingIsRequestedOrWritten() async throws {
+        let escape = "../../escaped.txt"
+        let outside = directory.appendingPathComponent(escape).standardizedFileURL
+        defer { try? FileManager.default.removeItem(at: outside) }
+        let served = try ServedVersion(dbVersion: 2)
+        var files = served.files
+        files[escape] = Data("written outside the cache".utf8)
+        let entries = files.mapValues { ["sha256": sha256Hex($0), "bytes": $0.count] as [String: Any] }
+        let manifest = try JSONSerialization.data(withJSONObject: ["schema": 1, "dbVersion": 2, "files": entries])
+        gateway.manifest = .body(manifest, etag: nil)
+        gateway.files = files
+        let source = try source()
+        await check(source)
+        XCTAssertEqual(source.state.lastCheckResult, .invalid)
+        XCTAssertEqual(gateway.requests, [.manifest(etag: nil)], "no file is requested")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outside.path))
+        XCTAssertEqual(source.index.state.source, .bundled)
+    }
+
     func testACacheNoNewerThanTheBundledCopyIsNotInForce() throws {
         let served = try ServedVersion(dbVersion: 1)
         var files = served.files
