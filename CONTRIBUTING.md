@@ -21,8 +21,8 @@ scripts/setup-hooks.sh
 scripts/ci-local.sh
 ```
 
-`scripts/ci-local.sh` downloads the same SwiftFormat 0.61.1 and SwiftLint
-0.65.0 release binaries CI pins (verified by SHA-256, into `.build/tools`),
+`scripts/ci-local.sh` downloads the same SwiftFormat 0.64.7 and SwiftLint
+0.65.1 release binaries CI pins (verified by SHA-256, into `.build/tools`),
 then runs the format check, the strict lint, the debug build, the test build,
 `swift test`, the release build and `bundle.sh`. A green run there is a green
 `macos-ci.yml` run; `--quick` skips the release build and `--no-tests` skips

@@ -9,10 +9,10 @@
 #  (VersionConsistencyTests pins the two).
 # ============================================================================
 
-SWIFTFORMAT_VERSION="0.61.1"
-SWIFTFORMAT_SHA256="b990400779aceb7d7020796eb9ba814d4480543f671d38fc0ff48cb72f04c584"
-SWIFTLINT_VERSION="0.65.0"
-SWIFTLINT_SHA256="d6cb0aa7a2f5f1ef306fc9e37bcb54dc9a26facc8f7784ac0c3dd3eccf5c6ba6"
+SWIFTFORMAT_VERSION="0.64.7"
+SWIFTFORMAT_SHA256="e82e224325cbd3403fc7b68caf6c917926dc106de3af875fca4b87e3c4634038"
+SWIFTLINT_VERSION="0.65.1"
+SWIFTLINT_SHA256="c1e429b0599cf1b516f369a2d9ec04eaf0e436f3c12b637df8851fa52ff694d0"
 
 TOOLS="${TOOLS:-.build/tools}"
 

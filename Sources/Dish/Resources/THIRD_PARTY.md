@@ -17,8 +17,8 @@ is first-party code with its own independently written crypto.
 | Component | Version | SPDX | How it reaches the user | Attribution obligation |
 |---|---|---|---|---|
 | Apple system frameworks (Foundation, Combine, SwiftUI, AppKit, Network, Security, CryptoKit, GameController, CoreHaptics, IOKit, os) | the macOS the app runs on | Apple SDK license | Dynamically linked against the user's macOS. Nothing is bundled. | None for redistributors of the app |
-| [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | 0.61.1 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
-| [SwiftLint](https://github.com/realm/SwiftLint) | 0.65.0 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
+| [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | 0.64.7 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
+| [SwiftLint](https://github.com/realm/SwiftLint) | 0.65.1 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
 | [sentry-cocoa](https://github.com/getsentry/sentry-cocoa) | 9.30.1 | `MIT` | Compiled into the app from the pinned Swift package; armed only by an official release build (the one kind that carries a reporting address) with *Share crash reports* on. See [`PRIVACY.md`](PRIVACY.md), section 3. | Keep the copyright and permission notice below |
 | [ENet](https://github.com/cgutman/enet) (cgutman fork, commit `44c85e1`) | the fork Wolf pins | `MIT` | No C is compiled. The client subset of its reliable-UDP protocol is ported to Swift under `Sources/DishCore/Moonlight/Enet/`; section 2c. | Keep the copyright and permission notice below |
 
