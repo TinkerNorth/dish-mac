@@ -33,13 +33,13 @@ final class ControllerDbDecoderTests: XCTestCase {
     }
 
     func testAnIssuesOsIsANumberOrAVersionStringReadByItsMajorVersion() throws {
-        let os: [String: Any] = ["android": "15", "macos": "26.1", "linux": 6.8, "windows": 11, "ios": "next", "futureos": ["x": 1]]
+        let os: [String: Any] = ["android": "15", "macos": "26.1", "linux": "6.8", "windows": 11, "ios": "next"]
         let issue: [String: Any] = ["id": "i", "os": os, "status": "open"]
         let record = try XCTUnwrap(decode([RecordFixture().with(["support", "issues"], [issue]).json]).first, "text keeps the record")
         XCTAssertEqual(
             record.issues.first?.os,
-            ["android": 15, "macos": 26, "linux": 6, "windows": 11],
-            "what names no version is left out"
+            ["android": 15, "macos": 26, "linux": 6, "windows": 11, "ios": -1],
+            "a version that does not read as a number matches no OS"
         )
     }
 

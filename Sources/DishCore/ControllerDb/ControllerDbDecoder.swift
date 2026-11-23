@@ -121,10 +121,26 @@ private struct RecordFile: Decodable {
     struct Issue: Decodable {
         let id: String
         let device: String?
-        let os: [String: IssueOs]?
+        let os: [String: OsVersion]?
         let transport: String?
         let lane: String?
         let status: String?
+    }
+
+    /// A platform's version, a number or a string such as "15" or "26.1":
+    /// its major version, or nil for one that does not read as a number.
+    struct OsVersion: Decodable {
+        let major: Int?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let number = try? container.decode(Int.self) {
+                major = number
+                return
+            }
+            let text = try container.decode(String.self)
+            major = text.split(separator: ".").first.flatMap { Int($0) }
+        }
     }
 
     struct Support: Decodable {
@@ -214,31 +230,13 @@ private func controllerIssue(_ issue: RecordFile.Issue) -> ControllerIssue {
     ControllerIssue(
         id: issue.id,
         device: issue.device,
-        os: (issue.os ?? [:]).compactMapValues(\.major),
+        os: (issue.os ?? [:]).mapValues { $0.major ?? unreadableOsVersion },
         transport: issue.transport.flatMap(ControllerTransport.init(rawValue:)),
         lane: issue.lane,
         status: issue.status
     )
 }
 
-/// A platform's version in an issue's `os`: a number, or a version string
-/// read by its major version ("26.1" is 26). Anything else names no
-/// version, and that platform's key is left out rather than the record.
-private struct IssueOs: Decodable {
-    let major: Int?
-
-    init(from decoder: Decoder) throws {
-        let container = try decoder.singleValueContainer()
-        let number = try? container.decode(Double.self)
-        let text = try? container.decode(String.self)
-        major = number.flatMap(majorVersion) ?? text.flatMap(majorVersion)
-    }
-}
-
-private func majorVersion(_ number: Double) -> Int? {
-    Int(exactly: number.rounded(.down))
-}
-
-private func majorVersion(_ text: String) -> Int? {
-    Int(text.prefix { $0.isASCII && $0.isNumber })
-}
+/// What a version that does not read as a number becomes: no OS has it, so
+/// the issue never matches on that platform rather than on every version.
+private let unreadableOsVersion = -1
