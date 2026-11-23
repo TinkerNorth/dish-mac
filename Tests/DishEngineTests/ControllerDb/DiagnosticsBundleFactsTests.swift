@@ -166,7 +166,7 @@ final class DiagnosticsBundleFactsTests: XCTestCase {
             hostVersions: snapshot.hostVersions
         )
         let capture = try XCTUnwrap(diagnosticsBundleFacts(snapshot).pads.first?.capture)
-        XCTAssertEqual(capture.device, [0x12, 0x01], "its device descriptor")
+        XCTAssertNil(capture.device, "the Mac's device descriptor is rebuilt from the registry, not the bus's bytes")
         XCTAssertEqual(capture.configuration, [[0x09, 0x02]])
     }
 

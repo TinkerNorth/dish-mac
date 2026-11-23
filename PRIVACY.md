@@ -230,8 +230,7 @@ The file holds:
   when the last check ran and how it ended;
 - for each attached controller, its identity and hardware facts: the USB or
   Bluetooth ids, the product and maker names the controller reports, its
-  version number, on USB a fingerprint (SHA-256) of its USB descriptors and
-  its interfaces' numbers, classes and endpoint addresses as macOS lists
+  version number, on USB its interfaces' numbers, classes and endpoint addresses as macOS lists
   them, its USB audio function's channel count and whether macOS refused
   it, how it is
   connected, how Dish reads it, the controller database record it matched,
@@ -265,8 +264,8 @@ The file holds:
 - the app's flight recorder, the lines Diagnostics shows, with every host
   named by its alias;
 - only if you ran "Help support this controller" this session, that
-  controller's capture: its ids, names and connection, on USB its device
-  and configuration descriptors (which describe the model, never its serial
+  controller's capture: its ids, names and connection, on USB its
+  configuration descriptors (which describe the model, never its serial
   number), its HID report descriptor, the first twenty reports it sent while
   at rest with when each arrived, and the reports it sent as you pressed
   each control, also as the page showed them; in a report, only when it is

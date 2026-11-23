@@ -563,8 +563,10 @@ rebuilt from the `IOUSBHostDevice`'s registry fields and every configuration
 descriptor through IOUSBLib's device interface, which hands them over as
 received from the bus without the device being opened (IOUSBHost's own
 objects need an exclusive session, which macOS's drivers hold for a pad).
-Their SHA-256 is `descriptorSha256`, a HID pad's interrupt endpoints come
-from the configuration in force, and the configurations ride the capture.
+A HID pad's interrupt endpoints come from the configuration in force, and
+the configurations ride the capture. `descriptorSha256` and the capture's
+`device` are null: the rebuilt device descriptor is not yet proven equal to
+the bus's (`Tests/PARITY.md`).
 The IOKit classes read for the file are `IOHIDDevice` (properties),
 `IOUSBHostDevice` and `IOUSBHostInterface` (registry entries),
 `IOUSBDeviceInterface100` (IOUSBLib, never opened) and

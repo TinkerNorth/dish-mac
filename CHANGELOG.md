@@ -142,20 +142,22 @@ the repos share a version number.
 - **A controller's hardware, as IOKit gives it.** Each controller's
   `hardware` carries `bcdDevice` (`kIOHIDVersionNumberKey`), its USB
   device's interfaces from the IORegistry's `IOUSBHostInterface` entries,
-  `descriptorSha256`, the SHA-256 of its raw USB descriptors (the device
-  descriptor rebuilt from the registry's fields, then every configuration
-  descriptor as IOUSBLib hands it over without opening the device), and its
-  endpoints: an XUSB pad's pipes, a HID pad's interrupt IN and OUT from its
-  configuration descriptor. The controller carries `rateHz` and its USB
-  audio function's channels and refusal. `firmware` and `probe` are null,
-  with the reasons in `Tests/PARITY.md`. Nothing opens the pad to read them.
+  and its endpoints: an XUSB pad's pipes, a HID pad's interrupt IN and OUT
+  from its configuration descriptor. The controller carries `rateHz` and its
+  USB audio function's channels and refusal. `firmware`, `probe` and
+  `descriptorSha256` are null: the fleet's hash covers the device descriptor
+  as the bus delivered it, the Mac can only rebuild that one from the
+  registry's fields, and a rebuild not yet proven byte for byte against the
+  bus could read as other firmware; the reasons are in `Tests/PARITY.md`.
+  Nothing opens the pad to read them.
 - **The support capture rides the file as `usb-descriptors-v1`.** The pad's
-  last Help-support capture carries `device` and `configuration` (its USB
-  device and configuration descriptors as hex), `strings` (the manufacturer
-  and product as text, never the serial number), `guided` (the guided
-  capture's text, each step's reports), its HID report descriptor with
-  `source` `os` (IOKit's copy) and its interface number, and `restReports`:
-  its first twenty reports, repeats included, with when each arrived, taken
+  last Help-support capture carries `configuration` (its USB configuration
+  descriptors as hex, from IOUSBLib), `device` as null for the same reason
+  as the hash, `strings` (the manufacturer and product as text, never the
+  serial number), `guided` (the guided capture's text, each step's
+  reports), its HID report descriptor with `source` `os` (IOKit's copy) and
+  its interface number, and `restReports`: its first twenty reports,
+  repeats included, with when each arrived, taken
   as the person moves on from "At rest".
 
 ### Changed

@@ -48,14 +48,18 @@ final class DescriptorFingerprintTests: XCTestCase {
         return device
     }
 
-    func testAUsbPadsFingerprintIsTheSha256OfItsRawDescriptorsReadOncePerDevice() throws {
+    /// The fingerprint covers the device descriptor as the bus delivered it;
+    /// the Mac rebuilds that one from the registry's fields, never proven
+    /// byte for byte against the bus, so it writes none rather than a hash
+    /// that may read as other firmware (`Tests/PARITY.md`).
+    func testAUsbPadsDescriptorsAreReadOncePerDeviceAndItsFingerprintIsNull() throws {
         reader.descriptors = [42: raw]
         census.present = [gameControllerPad(usbDeviceId: 42)]
         source.useSlots { [ControllerSlot(id: "pad", name: "DualSense Wireless Controller")] }
         source.start()
         source.refresh()
         let pad = try XCTUnwrap(source.state.pads.first)
-        XCTAssertEqual(pad.hardwareDetail?.descriptorSha256, sha256Hex(Data([0x12, 0x01, 0x00, 0x02, 0x09, 0x02, 0x29, 0x00])))
+        XCTAssertNil(pad.hardwareDetail?.descriptorSha256)
         XCTAssertEqual(pad.usbDescriptors, raw, "the capture's configuration comes from them")
         XCTAssertEqual(reader.asked, [42], "the descriptors do not change while the device stays")
     }
@@ -104,7 +108,7 @@ final class DescriptorFingerprintTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(source.state.pads.first).usbDescriptors, raw)
     }
 
-    func testADirectPadIsFingerprintedByTheUsbDeviceOfTheInterfaceItReads() throws {
+    func testADirectPadReadsTheUsbDeviceOfTheInterfaceItReadsAndCarriesNoFingerprint() throws {
         reader.descriptors = [7: raw]
         var path = SlotInputPath(source: .direct, reason: .macOSCannotRead)
         path.hardwareId = HidHardwareId(vendorId: 0x2DC8, productId: 0x310B)
@@ -115,7 +119,8 @@ final class DescriptorFingerprintTests: XCTestCase {
         source.useInputPaths(paths, tick: {})
         source.start()
         let pad = try XCTUnwrap(source.state.pads.first)
-        XCTAssertEqual(pad.hardwareDetail?.descriptorSha256, sha256Hex(Data(raw.bytes)))
+        XCTAssertEqual(pad.usbDescriptors, raw)
+        XCTAssertNil(pad.hardwareDetail?.descriptorSha256)
         XCTAssertEqual(pad.hardwareDetail?.versionNumber, 0x0114)
     }
 }

@@ -246,15 +246,17 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
         return snapshot
     }
 
-    /// The pad with its USB device's raw descriptors and their fingerprint:
-    /// the device of the Direct interface it reads, else what the devices
-    /// matched to it by name agree on (twins of a model share theirs).
+    /// The pad with its USB device's raw descriptors: the device of the
+    /// Direct interface it reads, else what the devices matched to it by
+    /// name agree on (twins of a model share theirs). No fingerprint: it
+    /// covers the device descriptor as the bus delivered it, and the Mac's is
+    /// rebuilt from the registry, never proven equal (`Tests/PARITY.md`).
     private func withDescriptors(_ pad: PadDiagnostics, devices: [HidDeviceFacts]) -> PadDiagnostics {
         let ids = usbDeviceIds(of: pad, devices: devices)
         let read = agreed(ids.map { $0.flatMap(rawDescriptors) }).flatMap(\.self)
         var known = pad
         known.usbDescriptors = read
-        known.hardwareDetail?.descriptorSha256 = read.map { sha256Hex(Data($0.bytes)) }
+        known.hardwareDetail?.descriptorSha256 = nil
         known.hardwareDetail?.endpoints = pad.hardwareDetail?.endpoints ?? hidEndpoints(read, detail: pad.hardwareDetail)
         return known
     }

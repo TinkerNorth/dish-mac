@@ -220,10 +220,11 @@ func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: Finis
     )
 }
 
-/// The capture with the descriptors of the pad's USB device: the capture
+/// The capture with the configuration descriptors of the pad's USB device,
+/// never its device descriptor, which the Mac rebuilds: the capture
 /// itself reads the HID side only.
 func capturedWithDescriptors(_ capture: FinishedCapture, pad: PadDiagnostics) -> BundleCapture? {
-    capture.capture?.with(usbDevice: pad.usbDescriptors?.device, configurations: pad.usbDescriptors?.configurations)
+    capture.capture?.with(usbDevice: nil, configurations: pad.usbDescriptors?.configurations)
 }
 
 /// The pad's ids, names and what IOKit said of its hardware.
