@@ -121,7 +121,7 @@ private struct RecordFile: Decodable {
     struct Issue: Decodable {
         let id: String
         let device: String?
-        let os: [String: Int]?
+        let os: [String: IssueOs]?
         let transport: String?
         let lane: String?
         let status: String?
@@ -214,9 +214,31 @@ private func controllerIssue(_ issue: RecordFile.Issue) -> ControllerIssue {
     ControllerIssue(
         id: issue.id,
         device: issue.device,
-        os: issue.os ?? [:],
+        os: (issue.os ?? [:]).compactMapValues(\.major),
         transport: issue.transport.flatMap(ControllerTransport.init(rawValue:)),
         lane: issue.lane,
         status: issue.status
     )
+}
+
+/// A platform's version in an issue's `os`: a number, or a version string
+/// read by its major version ("26.1" is 26). Anything else names no
+/// version, and that platform's key is left out rather than the record.
+private struct IssueOs: Decodable {
+    let major: Int?
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let number = try? container.decode(Double.self)
+        let text = try? container.decode(String.self)
+        major = number.flatMap(majorVersion) ?? text.flatMap(majorVersion)
+    }
+}
+
+private func majorVersion(_ number: Double) -> Int? {
+    Int(exactly: number.rounded(.down))
+}
+
+private func majorVersion(_ text: String) -> Int? {
+    Int(text.prefix { $0.isASCII && $0.isNumber })
 }
