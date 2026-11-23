@@ -1068,6 +1068,7 @@ Tagged, never published: its release workflow was refused before it started.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[Unreleased]: https://github.com/TinkerNorth/dish-mac/compare/1.4.0...HEAD
 [1.4.0]: https://github.com/TinkerNorth/dish-mac/compare/1.3.1...1.4.0
 [1.3.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.1
 [1.3.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.0

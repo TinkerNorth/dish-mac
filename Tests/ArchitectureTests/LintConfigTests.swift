@@ -47,6 +47,6 @@ final class LintConfigTests: XCTestCase {
         XCTAssertTrue(workflow.contains("run: scripts/check-format.sh"), "CI runs the one format-and-lint script")
         let script = try RepoFiles.read("scripts/check-format.sh")
         XCTAssertTrue(script.contains("swiftlint\" lint --strict"), "CI must run SwiftLint in strict mode")
-        XCTAssertTrue(script.contains("swiftformat\" --lint"), "CI must run SwiftFormat in lint mode")
+        XCTAssertTrue(script.contains("swiftformat\" --config .swiftformat --lint"), "CI must run SwiftFormat in lint mode")
     }
 }
