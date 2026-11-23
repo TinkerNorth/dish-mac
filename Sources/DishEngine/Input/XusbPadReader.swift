@@ -150,7 +150,9 @@ final class XusbReadLoop: @unchecked Sendable {
         guard status == kIOReturnSuccess else { return failed(lane.slotId, status) }
         lane.receive(pipe.received(length), nowNs: DispatchTime.now().uptimeNanoseconds)
         let next = pipe.read(completion)
-        if next != kIOReturnSuccess { failed(lane.slotId, next) }
+        if next != kIOReturnSuccess {
+            failed(lane.slotId, next)
+        }
     }
 }
 
@@ -232,8 +234,8 @@ final class XusbPadReader: HidPadReading, @unchecked Sendable {
     /// An interface the model table names is opened at once; the paths hear
     /// of it either way, read or refused.
     private func arrived(_ arrival: XusbInterfaceArrival) {
-        guard !entries.knows(arrival.registryId), let wiring else { return }
-        guard let classified = xusbPadCandidate(arrival.properties, served: served) else { return }
+        guard !entries.knows(arrival.registryId), let wiring,
+              let classified = xusbPadCandidate(arrival.properties, served: served) else { return }
         let candidate = classified.with(usbDevice: arrival.usbDevice)
         let taken = Set(entries.reading.map(\.lane.slotId))
         let slotId = lowestFreeSlotId(base: directSlotBase(vendorId: candidate.vendorId, productId: candidate.productId), taken: taken)

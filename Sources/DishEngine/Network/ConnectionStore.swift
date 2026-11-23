@@ -61,7 +61,9 @@ final class ConnectionStore {
     /// secret (it rides every REST call in `X-Device-Id`) — UserDefaults is
     /// the right home; the pairing key is what moved to the Keychain.
     func getOrCreateDeviceId() -> String {
-        if let existing = defaults.string(forKey: deviceIdKey) { return existing }
+        if let existing = defaults.string(forKey: deviceIdKey) {
+            return existing
+        }
         let fresh = UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         defaults.set(fresh, forKey: deviceIdKey)
         return fresh
@@ -86,7 +88,9 @@ final class ConnectionStore {
     /// - when a known box comes back under a new IP, its TOFU cert pin
     ///   follows it (`migratePinOnAddressChange`).
     func remember(_ server: DiscoveredServer) {
-        if isBlank(server.machineId), refreshKnownBox(server) { return }
+        if isBlank(server.machineId), refreshKnownBox(server) {
+            return
+        }
 
         let id = server.id
         if !isBlank(server.machineId) {
@@ -121,7 +125,9 @@ final class ConnectionStore {
 
         for server in discovered {
             // A result without a machineId never re-points a remembered row.
-            if isBlank(server.machineId) { continue }
+            if isBlank(server.machineId) {
+                continue
+            }
             var eligible = knownIds.contains(server.id)
             if !eligible {
                 // Or a legacy ip:port row this stable server is the upgrade of.
@@ -129,7 +135,9 @@ final class ConnectionStore {
                     isBlank(row.machineId) && row.ip == server.ip && row.udpPort == server.udpPort
                 }
             }
-            if eligible { remember(server) }
+            if eligible {
+                remember(server)
+            }
         }
     }
 

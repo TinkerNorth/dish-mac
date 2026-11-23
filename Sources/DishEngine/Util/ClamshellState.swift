@@ -51,6 +51,8 @@ final class LidWatch {
     func noteWake() {
         let tellTheUser = streamPausedByLid
         streamPausedByLid = false
-        if tellTheUser { lidPausedStreaming.send(()) }
+        if tellTheUser {
+            lidPausedStreaming.send(())
+        }
     }
 }

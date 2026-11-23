@@ -73,7 +73,9 @@ struct WelcomeView: View {
     }
 
     private func goBack() {
-        if let previous = state.previousPage { page = previous }
+        if let previous = state.previousPage {
+            page = previous
+        }
     }
 
     /// Next turns the page; on the last page it is Finish.
@@ -87,6 +89,8 @@ struct WelcomeView: View {
     }
 
     private func open(_ url: URL?) {
-        if let url { openURL(url) }
+        if let url {
+            openURL(url)
+        }
     }
 }

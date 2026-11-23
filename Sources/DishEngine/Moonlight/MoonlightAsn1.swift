@@ -63,7 +63,9 @@ enum Asn1 {
     static let null = Data([0x05, 0x00])
 
     static func lengthField(_ count: Int) -> Data {
-        if count < 0x80 { return Data([UInt8(count)]) }
+        if count < 0x80 {
+            return Data([UInt8(count)])
+        }
         var bytes: [UInt8] = []
         var value = count
         while value > 0 {

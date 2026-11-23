@@ -204,9 +204,15 @@ public func chooseProfileLayout(productCategory: String, vendorName: String?, el
     let categoryNamesN64 = productCategory.lowercased().contains(n64Marker)
     let vendorNamesN64 = vendorName?.lowercased().contains(n64Marker) == true
     let carriesACButton = elementNames.contains { name in cButtonMarkers.contains { name.lowercased().hasPrefix($0) } }
-    if categoryNamesN64 { return ProfileLayoutChoice(kind: .n64, evidence: .productCategory) }
-    if vendorNamesN64 { return ProfileLayoutChoice(kind: .n64, evidence: .vendorName) }
-    if carriesACButton { return ProfileLayoutChoice(kind: .n64, evidence: .elementName) }
+    if categoryNamesN64 {
+        return ProfileLayoutChoice(kind: .n64, evidence: .productCategory)
+    }
+    if vendorNamesN64 {
+        return ProfileLayoutChoice(kind: .n64, evidence: .vendorName)
+    }
+    if carriesACButton {
+        return ProfileLayoutChoice(kind: .n64, evidence: .elementName)
+    }
     return ProfileLayoutChoice(kind: .generic, evidence: .none)
 }
 
@@ -308,7 +314,9 @@ public struct ProfileSample: Equatable, Sendable {
 
 /// Full deflection one way, the other, or centred when both or neither are held.
 func stickRail(positive: Bool, negative: Bool) -> Float {
-    if positive == negative { return 0 }
+    if positive == negative {
+        return 0
+    }
     return positive ? 1 : -1
 }
 

@@ -25,9 +25,13 @@ final class EnetClientTests: XCTestCase {
     private func hostDatagram(sentTime: UInt16? = 0x1234, session: UInt8 = 2, peer: UInt16 = 0, _ commands: [UInt8]...) -> Data {
         var writer = ByteWriter(capacity: 64)
         var word = peer | UInt16(session) << 12
-        if sentTime != nil { word |= 0x8000 }
+        if sentTime != nil {
+            word |= 0x8000
+        }
         writer.u16BE(word)
-        if let sentTime { writer.u16BE(sentTime) }
+        if let sentTime {
+            writer.u16BE(sentTime)
+        }
         for command in commands {
             writer.append(Data(command))
         }

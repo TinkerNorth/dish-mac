@@ -92,7 +92,9 @@ public func decidePath(_ facts: PadPathFacts) -> PathDecision {
 private func decideByModel(_ facts: PadPathFacts) -> PathDecision {
     let offersStandard = facts.model?.offersStandard == true
     let pickedStandard = facts.stored == .standard && offersStandard
-    if facts.fellBackToStandard { return .forward(.standard, pickedStandard ? .userPicked : .dishCouldNotRead) }
+    if facts.fellBackToStandard {
+        return .forward(.standard, pickedStandard ? .userPicked : .dishCouldNotRead)
+    }
     guard pickedStandard else { return .forward(.direct, .directByModel) }
     switch facts.gameController {
     case .pending: return .awaitGameController
@@ -106,7 +108,9 @@ private func decideByModel(_ facts: PadPathFacts) -> PathDecision {
 /// `whenMacOSCannot`: Direct at once, or, for an opt-in model, the offer.
 private func decideBySupport(_ facts: PadPathFacts, whenMacOSCannot: PathDecision) -> PathDecision {
     let pickedDirect = facts.stored == .direct && facts.decodable
-    if pickedDirect { return .forward(.direct, .userPicked) }
+    if pickedDirect {
+        return .forward(.direct, .userPicked)
+    }
     switch facts.gameController {
     case .pending: return .awaitGameController
     case .shows: return .forward(.standard, facts.stored == .standard ? .userPicked : .macOSReads)

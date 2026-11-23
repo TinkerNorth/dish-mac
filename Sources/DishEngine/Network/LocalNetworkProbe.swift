@@ -48,7 +48,9 @@ enum LocalNetworkProbe {
     /// local-network policy, the way a platform that enforces the permission
     /// at the browse reports a denial.
     static func isLocalNetworkDenial(_ error: NWError) -> Bool {
-        if case let .dns(code) = error { return Int(code) == kDNSServiceErr_PolicyDenied }
+        if case let .dns(code) = error {
+            return Int(code) == kDNSServiceErr_PolicyDenied
+        }
         return false
     }
 
@@ -70,7 +72,9 @@ enum LocalNetworkProbe {
         func start(timeoutMs: Int) {
             connection.stateUpdateHandler = { state in self.handle(state) }
             connection.pathUpdateHandler = { path in
-                if LocalNetworkProbe.isLocalNetworkDenial(path) { self.settle(denied: true) }
+                if LocalNetworkProbe.isLocalNetworkDenial(path) {
+                    self.settle(denied: true)
+                }
             }
             connection.start(queue: .global(qos: .userInitiated))
             DispatchQueue.global().asyncAfter(deadline: .now() + .milliseconds(timeoutMs)) {
@@ -86,7 +90,9 @@ enum LocalNetworkProbe {
                 let path = connection.currentPath
                 let summary = "\(String(describing: error)); path \(String(describing: path))"
                 LocalNetworkProbe.log.warning("local network probe waiting: \(summary, privacy: .public)")
-                if LocalNetworkProbe.isLocalNetworkDenial(path) { settle(denied: true) }
+                if LocalNetworkProbe.isLocalNetworkDenial(path) {
+                    settle(denied: true)
+                }
             case .failed, .cancelled:
                 settle(denied: false)
             case .setup, .preparing:
@@ -102,7 +108,9 @@ enum LocalNetworkProbe {
             settled = true
             lock.unlock()
             guard first else { return }
-            if denied { LocalNetworkProbe.log.warning("local network probe refused: macOS denies this app the local network") }
+            if denied {
+                LocalNetworkProbe.log.warning("local network probe refused: macOS denies this app the local network")
+            }
             connection.stateUpdateHandler = nil
             connection.pathUpdateHandler = nil
             connection.cancel()

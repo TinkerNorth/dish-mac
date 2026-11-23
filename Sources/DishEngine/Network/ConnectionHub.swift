@@ -76,7 +76,9 @@ final class ConnectionHub: ObservableObject {
             .sink { [weak self] slotId in self?.release(slotId: slotId) }
             .store(in: &cancellables)
 
-        if let moonlight { observeMoonlight(moonlight) }
+        if let moonlight {
+            observeMoonlight(moonlight)
+        }
     }
 
     /// The hosts' rows follow the pool (and each connection's phase and
@@ -254,7 +256,9 @@ extension ConnectionHub {
         current[slotId] = connectionId
         bindings = current
         rebuild()
-        if toHost { moonlight?.rememberInterest(hostId: connectionId) }
+        if toHost {
+            moonlight?.rememberInterest(hostId: connectionId)
+        }
         remember(slotId: slotId, connectionId: connectionId)
         return true
     }
@@ -319,7 +323,9 @@ extension ConnectionHub {
             wifi.typeOverrides.clear(key)
         }
         remember(slotId: slotId, connectionId: connectionId)
-        if Self.isMoonlight(connectionId) { return }
+        if Self.isMoonlight(connectionId) {
+            return
+        }
         let resolved = wifi.resolveControllerType(for: connectionId, slotId: slotId, family: family)
         wifi.get(connectionId)?.setControllerType(resolved, for: slotId)
     }

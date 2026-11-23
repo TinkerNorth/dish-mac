@@ -26,7 +26,9 @@ final class BonjourScanTests: XCTestCase {
             (id: name, found: address)
         }
 
-        if outcome.localNetworkDenied { throw XCTSkip("macOS refuses this process the local network") }
+        if outcome.localNetworkDenied {
+            throw XCTSkip("macOS refuses this process the local network")
+        }
         XCTAssertEqual(
             outcome.found,
             [ProxiedDualStackHost.ipv4],

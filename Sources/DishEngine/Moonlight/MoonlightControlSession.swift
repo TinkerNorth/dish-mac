@@ -160,8 +160,12 @@ final class MoonlightControlSession: @unchecked Sendable {
                 lock.unlock()
                 return
             }
-            if enet.state == .connected { return settleHandshake(connected: true) }
-            if enet.state == .disconnected || now() >= deadline { return settleHandshake(connected: false) }
+            if enet.state == .connected {
+                return settleHandshake(connected: true)
+            }
+            if enet.state == .disconnected || now() >= deadline {
+                return settleHandshake(connected: false)
+            }
             let retransmits = enet.tick()
             lock.unlock()
             retransmits.forEach(transport.send)
@@ -174,7 +178,9 @@ final class MoonlightControlSession: @unchecked Sendable {
         let continuation = handshakeContinuation
         handshakeContinuation = nil
         enter(connected ? .connected : .closed)
-        if connected { lastPingMs = now() }
+        if connected {
+            lastPingMs = now()
+        }
         lock.unlock()
         continuation?.resume(returning: connected)
     }
@@ -246,7 +252,9 @@ final class MoonlightControlSession: @unchecked Sendable {
         if stateValue == .connected, let termination, let datagram = enet.sendReliable(termination) {
             out.append(datagram)
         }
-        if let disconnect = enet.disconnect() { out.append(disconnect) }
+        if let disconnect = enet.disconnect() {
+            out.append(disconnect)
+        }
         enter(.closed)
         let continuation = handshakeContinuation
         handshakeContinuation = nil
@@ -317,13 +325,21 @@ final class MoonlightControlSession: @unchecked Sendable {
         let out = enet.tick()
         let time = now()
         let keepaliveDue = time - lastPingMs >= Self.pingIntervalMs && enet.state == .connected
-        if keepaliveDue { lastPingMs = time }
+        if keepaliveDue {
+            lastPingMs = time
+        }
         let gaveUp = enet.state == .disconnected
-        if gaveUp { enter(.closed) }
+        if gaveUp {
+            enter(.closed)
+        }
         lock.unlock()
         out.forEach(transport.send)
-        if keepaliveDue { sendPlaintext(MoonlightInput.periodicPing()) }
-        if gaveUp { onClosed() }
+        if keepaliveDue {
+            sendPlaintext(MoonlightInput.periodicPing())
+        }
+        if gaveUp {
+            onClosed()
+        }
     }
 
     /// A forged or garbled packet is dropped, never acted on.

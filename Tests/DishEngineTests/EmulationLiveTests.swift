@@ -69,7 +69,9 @@ final class EmulationLiveTests: XCTestCase {
     private func waitUntil(timeout: TimeInterval = 8, _ predicate: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if predicate() { return true }
+            if predicate() {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         return predicate()

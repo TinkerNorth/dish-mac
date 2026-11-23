@@ -106,8 +106,8 @@ private func servedOffersStandard(_ decoder: DirectDecoder) -> Bool {
 /// family no Direct reader takes from data, and a rule its reader cannot
 /// follow.
 public func servedDirectModel(_ record: ControllerRecord, vendorId: UInt16, productId: UInt16, name: String) -> DirectModel? {
-    guard !recordIsInert(record), let family = record.family, servedDirectFamilies.contains(family) else { return nil }
-    guard let decoder = servedDecoder(record) else { return nil }
+    guard !recordIsInert(record), let family = record.family, servedDirectFamilies.contains(family),
+          let decoder = servedDecoder(record) else { return nil }
     let rule = macDirectRule(record.directRule)
     guard readerFollows(decoder, rule: rule) else { return nil }
     let nintendo = vendorId == DirectVendor.nintendo
@@ -173,7 +173,9 @@ public func directModel(vendorId: UInt16, productId: UInt16, served: ServedDirec
 /// "057e:2009" as its two ids; nil for anything else.
 public func parseUsbPathKey(_ key: String) -> (UInt16, UInt16)? {
     let parts = key.split(separator: ":")
-    guard parts.count == 2, parts.allSatisfy({ $0.count == 4 }) else { return nil }
-    guard let vendorId = UInt16(parts[0], radix: 16), let productId = UInt16(parts[1], radix: 16) else { return nil }
+    guard parts.count == 2, parts.allSatisfy({ $0.count == 4 }), let vendorId = UInt16(parts[0], radix: 16), let productId = UInt16(
+        parts[1],
+        radix: 16
+    ) else { return nil }
     return (vendorId, productId)
 }

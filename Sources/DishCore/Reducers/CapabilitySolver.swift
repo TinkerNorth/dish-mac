@@ -169,9 +169,15 @@ func solveCapability(_ feature: CapFeature, _ inputs: CapabilityInputs) -> Capab
 /// Input before link before type; a row that reaches here with all three
 /// carrying fails at the host.
 func firstFailingLayer(inputOk: Bool, linkOk: Bool, typeOk: Bool) -> CapLayer {
-    if !inputOk { return .input }
-    if !linkOk { return .link }
-    if !typeOk { return .type }
+    if !inputOk {
+        return .input
+    }
+    if !linkOk {
+        return .link
+    }
+    if !typeOk {
+        return .type
+    }
     return .host
 }
 

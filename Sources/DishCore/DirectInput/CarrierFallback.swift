@@ -29,6 +29,8 @@ public enum CarrierStanding: Equatable, Sendable {
 /// Sticky once it leaves `waiting`; a lane seen at the deadline still counts.
 public func standCarrier(_ standing: CarrierStanding, lanesOfModel: Int, windowClosed: Bool) -> CarrierStanding {
     guard standing == .waiting else { return standing }
-    if lanesOfModel > 0 { return .followsLanes }
+    if lanesOfModel > 0 {
+        return .followsLanes
+    }
     return windowClosed ? .fellBack : .waiting
 }

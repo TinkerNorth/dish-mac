@@ -73,13 +73,17 @@ final class PadActuators {
     /// A pad that drives its own rumble report takes it; any other rides its
     /// controller's engines.
     private func rumble(_ slotId: String, strong: UInt16, weak: UInt16, durationMs: UInt16) {
-        if let output = outputs[slotId] { return output.rumble(strong: strong, weak: weak, durationMs: durationMs) }
+        if let output = outputs[slotId] {
+            return output.rumble(strong: strong, weak: weak, durationMs: durationMs)
+        }
         rumbler(for: slotId)?.apply(left: strong, right: weak, durationMs: durationMs)
     }
 
     /// A pad without haptics takes no actuator and its rumble is dropped.
     private func rumbler(for slotId: String) -> RumbleActuator? {
-        if let existing = rumblers[slotId] { return existing }
+        if let existing = rumblers[slotId] {
+            return existing
+        }
         guard let controller = controllers[slotId], let fresh = RumbleActuator(controller: controller, at: .handles) else { return nil }
         rumblers[slotId] = fresh
         return fresh
@@ -87,7 +91,9 @@ final class PadActuators {
 
     /// A pad whose haptics name no trigger motors takes no actuator.
     private func triggerRumbler(for slotId: String) -> RumbleActuator? {
-        if let existing = triggerRumblers[slotId] { return existing }
+        if let existing = triggerRumblers[slotId] {
+            return existing
+        }
         guard let controller = controllers[slotId], let fresh = RumbleActuator(controller: controller, at: .triggers) else { return nil }
         triggerRumblers[slotId] = fresh
         return fresh

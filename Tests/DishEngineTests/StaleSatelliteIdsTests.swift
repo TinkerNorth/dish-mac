@@ -172,7 +172,9 @@ final class StaleSatelliteIdsTests: XCTestCase {
     ) {
         let deadline = Date().addingTimeInterval(1.0)
         while Date() < deadline {
-            if hub.summary(id)?.live == target { return }
+            if hub.summary(id)?.live == target {
+                return
+            }
             RunLoop.main.run(mode: .default, before: Date().addingTimeInterval(0.01))
         }
         XCTAssertEqual(

@@ -191,7 +191,9 @@ public struct SupportCaptureState: Equatable, Sendable {
     }
 
     public var phase: SupportPhase {
-        if step == nil { return .finished }
+        if step == nil {
+            return .finished
+        }
         return device == nil ? .searching : .stepping
     }
 }

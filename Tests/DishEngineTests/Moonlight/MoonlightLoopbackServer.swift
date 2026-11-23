@@ -111,8 +111,12 @@ final class MoonlightLoopbackServer: @unchecked Sendable {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
             guard let self else { return }
             var buffer = buffered
-            if let data { buffer.append(data) }
-            if error != nil || isComplete { return }
+            if let data {
+                buffer.append(data)
+            }
+            if error != nil || isComplete {
+                return
+            }
             guard let headEnd = buffer.range(of: Data("\r\n\r\n".utf8)) else {
                 receive(connection, buffered: buffer)
                 return

@@ -115,13 +115,17 @@ struct ShellView: View {
     /// setup walk's Destination step, so a satellite that asks to pair brings
     /// the page up unless the walk draws the card itself.
     private func showPairing(_ serverId: String?) {
-        if serverId != nil { navigation.send(.pairingCardOpened) }
+        if serverId != nil {
+            navigation.send(.pairingCardOpened)
+        }
     }
 
     /// The Moonlight PIN lives on its host's row, so a host that minted one
     /// brings the Moonlight hosts page up.
     private func showMoonlightPin(_ hostId: String?) {
-        if hostId != nil { navigation.send(.external(.showPage(.moonlightHosts))) }
+        if hostId != nil {
+            navigation.send(.external(.showPage(.moonlightHosts)))
+        }
     }
 }
 

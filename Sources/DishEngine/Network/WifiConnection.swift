@@ -132,7 +132,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
     }
 
     func markConnecting() {
-        if hasLiveSession { return }
+        if hasLiveSession {
+            return
+        }
         state = .linking
     }
 
@@ -145,7 +147,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
         let before = slotTable.descriptorsByIndex()
         var table = slotTable
         let result = edit(&table)
-        if table != slotTable { slotTable = table }
+        if table != slotTable {
+            slotTable = table
+        }
         convergeIndices(changedIndices(before, table.descriptorsByIndex()))
         return result
     }
@@ -222,7 +226,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: interval)
                 guard !Task.isCancelled, let self else { return }
-                if self.aliveTick() == .sessionEnded { return }
+                if self.aliveTick() == .sessionEnded {
+                    return
+                }
             }
         }
     }
@@ -274,8 +280,12 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private func publishLatency(_ live: SatelliteClient) {
         let snapshot = live.latencySnapshot()
         let rounded = snapshot.p50OneWayMs.map { ($0 * 10).rounded() / 10 }
-        if rounded != latencyOneWayMs { latencyOneWayMs = rounded }
-        if snapshot.samples != latencySamples { latencySamples = snapshot.samples }
+        if rounded != latencyOneWayMs {
+            latencyOneWayMs = rounded
+        }
+        if snapshot.samples != latencySamples {
+            latencySamples = snapshot.samples
+        }
     }
 
     private func evaluateReconcile() {
@@ -316,7 +326,9 @@ package final class WifiConnection: ObservableObject, Identifiable {
     private func teardown(parkedOn endState: SessionState) {
         let existing = clientRef.get()
         let nothingToTearDown = state == .idle && existing == nil && endState == .idle
-        if nothingToTearDown { return }
+        if nothingToTearDown {
+            return
+        }
         aliveTask?.cancel()
         aliveTask = nil
         isRegisteringController = false

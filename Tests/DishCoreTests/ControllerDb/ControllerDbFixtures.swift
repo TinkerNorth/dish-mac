@@ -65,7 +65,9 @@ private func setting(_ object: [String: Any], _ path: [String], _ value: Any?) -
 
 func databaseData(schema: Any? = 1, dbVersion: Int = 1, records: [[String: Any]]) throws -> Data {
     var json: [String: Any] = ["dbVersion": dbVersion, "records": records]
-    if let schema { json["schema"] = schema }
+    if let schema {
+        json["schema"] = schema
+    }
     return try JSONSerialization.data(withJSONObject: json)
 }
 

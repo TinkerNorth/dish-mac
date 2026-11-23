@@ -17,7 +17,9 @@ public struct PlayerNumbers: Equatable, Sendable {
 
     /// The pad's number: the one it holds, or the lowest free one.
     public mutating func connect(_ padId: String) -> Int {
-        if let held = numbers[padId] { return held }
+        if let held = numbers[padId] {
+            return held
+        }
         let taken = Set(numbers.values)
         var free = PlayerNumbers.first
         while taken.contains(free) {

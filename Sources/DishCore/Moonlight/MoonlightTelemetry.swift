@@ -92,7 +92,9 @@ public struct MoonlightMotionGate: Equatable, Sendable {
     public mutating func shouldSend(controller: UInt8, type: UInt8, nowNs: Int64) -> Bool {
         guard let index = streams.firstIndex(where: { $0.controller == controller && $0.type == type }) else { return false }
         let interval = 1_000_000_000 / Int64(streams[index].rateHz)
-        if let last = streams[index].lastSentNs, nowNs - last < interval { return false }
+        if let last = streams[index].lastSentNs, nowNs - last < interval {
+            return false
+        }
         streams[index].lastSentNs = nowNs
         return true
     }

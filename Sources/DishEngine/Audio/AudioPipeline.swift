@@ -72,7 +72,9 @@ final class AudioPipeline {
     /// answered; a refusal reads back through the permission chip.
     func requestMicrophoneLeave() {
         permission.refresh()
-        if !permission.state { permission.request() }
+        if !permission.state {
+            permission.request()
+        }
     }
 
     /// One pad's audio for the Diagnostics window.

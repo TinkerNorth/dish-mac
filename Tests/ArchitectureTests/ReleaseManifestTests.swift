@@ -110,8 +110,7 @@ final class ReleaseManifestTests: XCTestCase {
 
     /// Digits only, no leading zero unless the number is zero.
     private static func strictNumber(_ part: Substring) -> Int? {
-        guard !part.isEmpty, part.allSatisfy(\.isNumber) else { return nil }
-        guard part.count == 1 || part.first != "0" else { return nil }
+        guard !part.isEmpty, part.allSatisfy(\.isNumber), part.count == 1 || part.first != "0" else { return nil }
         return Int(part)
     }
 }

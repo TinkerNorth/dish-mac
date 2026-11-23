@@ -45,8 +45,7 @@ enum MoonlightHttpFraming {
     /// The reply's head once the blank line has arrived; nil while it has
     /// not. CRLF or bare LF both end a line; header names read lowercase.
     static func parseHead(_ buffer: Data) -> Head? {
-        guard let end = headEnd(buffer) else { return nil }
-        guard let text = String(bytes: buffer.prefix(end.headLength), encoding: .utf8) else { return nil }
+        guard let end = headEnd(buffer), let text = String(bytes: buffer.prefix(end.headLength), encoding: .utf8) else { return nil }
         var lines = text.split(whereSeparator: \.isNewline).map(String.init).filter { !$0.isEmpty }
         guard !lines.isEmpty, let status = parseStatus(lines.removeFirst()) else { return nil }
         var headers: [String: String] = [:]
@@ -64,8 +63,12 @@ enum MoonlightHttpFraming {
     }
 
     static func framing(_ head: Head) -> Framing {
-        if head.headers["transfer-encoding"]?.lowercased().contains("chunked") == true { return .chunked }
-        if let length = head.headers["content-length"].flatMap(Int.init) { return .contentLength(max(0, min(length, maxBodyBytes))) }
+        if head.headers["transfer-encoding"]?.lowercased().contains("chunked") == true {
+            return .chunked
+        }
+        if let length = head.headers["content-length"].flatMap(Int.init) {
+            return .contentLength(max(0, min(length, maxBodyBytes)))
+        }
         return .untilClose
     }
 
@@ -91,7 +94,9 @@ enum MoonlightHttpFraming {
             let line = String(bytes: bytes[cursor ..< lineEnd], encoding: .utf8) ?? ""
             let sizeText = line.split(separator: ";").first.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
             guard let size = Int(sizeText, radix: 16) else { return (out, true) }
-            if size == 0 { return (out, true) }
+            if size == 0 {
+                return (out, true)
+            }
             let chunkStart = bytes.index(after: lineEnd)
             guard bytes.distance(from: chunkStart, to: bytes.endIndex) >= size + 2 else { return (
                 out + bytes[chunkStart...].prefix(size),
@@ -104,8 +109,12 @@ enum MoonlightHttpFraming {
     }
 
     private static func headEnd(_ buffer: Data) -> (headLength: Int, bodyStart: Int)? {
-        if let range = buffer.range(of: Data([0x0D, 0x0A, 0x0D, 0x0A])) { return (range.lowerBound, range.upperBound) }
-        if let range = buffer.range(of: Data([0x0A, 0x0A])) { return (range.lowerBound, range.upperBound) }
+        if let range = buffer.range(of: Data([0x0D, 0x0A, 0x0D, 0x0A])) {
+            return (range.lowerBound, range.upperBound)
+        }
+        if let range = buffer.range(of: Data([0x0A, 0x0A])) {
+            return (range.lowerBound, range.upperBound)
+        }
         return nil
     }
 

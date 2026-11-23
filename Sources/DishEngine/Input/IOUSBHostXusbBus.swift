@@ -53,7 +53,9 @@ final class IOUSBHostXusbBus: XusbBus, @unchecked Sendable {
         for iterator in iterators {
             IOObjectRelease(iterator)
         }
-        if let port { IONotificationPortDestroy(port) }
+        if let port {
+            IONotificationPortDestroy(port)
+        }
     }
 
     func start(queue: DispatchQueue, events: XusbBusEvents) {

@@ -106,7 +106,9 @@ extension WifiConnectionManager {
         let benignDrift = appliedMatchesDesired(desired: conn.desiredSlots(), applied: applied)
         if benignDrift {
             conn.setLastAppliedEpoch(view.epoch)
-            if view.mouseControl.granted != conn.wantsMouseControl { await rekeySession(conn) }
+            if view.mouseControl.granted != conn.wantsMouseControl {
+                await rekeySession(conn)
+            }
             return
         }
         conn.markDisconnected()
@@ -128,7 +130,9 @@ extension WifiConnectionManager {
     /// suppression and a user connect each supersede the armed task.
     func scheduleRetry(_ id: String) {
         var state = retry[id] ?? RetryState()
-        if state.suppressed { return }
+        if state.suppressed {
+            return
+        }
         state.attempt += 1
         let delayMs = backoffDelayMs(attempt: state.attempt)
         state.nextRetryAtMs = Self.nowMs() + Int64(delayMs)
@@ -143,8 +147,7 @@ extension WifiConnectionManager {
 
     private func fireRetry(_ id: String) {
         retryTasks[id] = nil
-        guard retry[id]?.suppressed != true else { return }
-        guard let conn = connections[id], conn.state == .idle || conn.state == .stale else { return }
+        guard retry[id]?.suppressed != true, let conn = connections[id], conn.state == .idle || conn.state == .stale else { return }
         connect(to: conn.server, intent: .retryAfterDeath)
     }
 

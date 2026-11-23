@@ -88,7 +88,9 @@ extension MoonlightConnectionManager {
         for pad in pads {
             switch MoonlightPadRules.placement(held: conn.pad(for: pad.slotId)?.announced, wanted: pad.announced) {
             case .acquire:
-                if conn.acquirePad(pad.slotId, as: pad.announced) == nil { events.send(.hostFull(host)) }
+                if conn.acquirePad(pad.slotId, as: pad.announced) == nil {
+                    events.send(.hostFull(host))
+                }
             case .reannounce:
                 _ = conn.reannouncePad(pad.slotId, as: pad.announced)
             case .keep:
@@ -218,7 +220,9 @@ extension MoonlightConnectionManager {
     private func launchEvent(_ conn: MoonlightConnection) async -> MoonlightSessionEvent {
         let host = conn.host
         guard let attempt = attempts[host.id] else { return .launchFailed }
-        if attempt.appId.isEmpty, let refusal = settleApp(attempt, host: host) { return refusal }
+        if attempt.appId.isEmpty, let refusal = settleApp(attempt, host: host) {
+            return refusal
+        }
         let launch = MoonlightLaunchRequest(appId: attempt.appId, rikey: attempt.rikey, rikeyId: attempt.rikeyId)
         let request = conn.machine.resuming
             ? MoonlightUrls.resume(host.endpoint, uniqueId: uniqueId, launch: launch, nonce: nonce())
@@ -232,7 +236,9 @@ extension MoonlightConnectionManager {
             attempt.launched = true
             return .launchOk
         }
-        if let status, status.appAlreadyRunning { return .launchBusy(resumable: status.resume) }
+        if let status, status.appAlreadyRunning {
+            return .launchBusy(resumable: status.resume)
+        }
         return .launchFailed
     }
 

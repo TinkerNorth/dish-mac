@@ -50,7 +50,9 @@ struct FlowLayout: Layout {
             current.height = max(current.height, size.height)
             current.members.append(index)
         }
-        if !current.members.isEmpty { rows.append(current) }
+        if !current.members.isEmpty {
+            rows.append(current)
+        }
         return rows
     }
 }

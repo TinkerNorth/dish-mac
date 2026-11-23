@@ -146,7 +146,9 @@ struct HidParseState {
     /// Only an Input item carries fields this parse wants; every Main item
     /// clears the Local state.
     private mutating func applyMain(_ item: HidItem) {
-        if item.tag == HidTag.input { applyInput(item) }
+        if item.tag == HidTag.input {
+            applyInput(item)
+        }
         usages = []
         haveRange = false
         usageMin = 0
@@ -175,7 +177,9 @@ struct HidParseState {
     private mutating func applyLocal(_ item: HidItem) {
         switch item.tag {
         case HidTag.usage:
-            if usages.count < HidParseLimits.maxUsages { usages.append(item.data) }
+            if usages.count < HidParseLimits.maxUsages {
+                usages.append(item.data)
+            }
         case HidTag.usageMinimum:
             usageMin = item.data
             haveRange = true
@@ -197,8 +201,12 @@ struct HidParseState {
         lockedReportId = locked
         layout.reportId = locked
         guard currentReportId == locked else { return }
-        if usagePage == HidUsagePage.button { takeButtons(startBit) }
-        if let roles = hidFieldRoles[usagePage] { takeFields(startBit, roles: roles) }
+        if usagePage == HidUsagePage.button {
+            takeButtons(startBit)
+        }
+        if let roles = hidFieldRoles[usagePage] {
+            takeFields(startBit, roles: roles)
+        }
     }
 
     /// The first button field wins: the layout carries one run.
@@ -226,7 +234,9 @@ struct HidParseState {
     }
 
     private func usage(at index: UInt32) -> UInt32? {
-        if haveRange { return usageMin &+ index }
+        if haveRange {
+            return usageMin &+ index
+        }
         guard let last = usages.last else { return nil }
         return index < usages.count ? usages[Int(index)] : last
     }

@@ -53,7 +53,9 @@ final class ShellMappersTests: XCTestCase {
         XCTAssertEqual(pageTitle(NavigationState(destination: .controllers, path: [.checkButtons(slotId: "a")])), "Check the buttons")
         let capture = NavigationState(destination: .settings, path: [.helpSupport(deviceKey: "057e:2019")])
         XCTAssertEqual(pageTitle(capture), "Help support this controller")
-        if case .note = shellSubline(capture, connections: []) { XCTFail("the capture carries the dashboard's line") }
+        if case .note = shellSubline(capture, connections: []) {
+            XCTFail("the capture carries the dashboard's line")
+        }
     }
 
     func testTheSetupWalkAndHelpAreTitledAndCarryTheirOwnLines() {

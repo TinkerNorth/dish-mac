@@ -166,7 +166,9 @@ final class LockLawTests: XCTestCase {
         let giveUp = Date().addingTimeInterval(LockLawRun.limitSeconds)
         while tick < LockLawRun.mainTicks || group.wait(timeout: .now()) == .timedOut, Date() < giveUp {
             rig.refreshRouting()
-            if tick % LockLawRun.tallyEvery == 0 { tallied = rig.reportsCounted() }
+            if tick % LockLawRun.tallyEvery == 0 {
+                tallied = rig.reportsCounted()
+            }
             RunLoop.main.run(until: Date().addingTimeInterval(LockLawRun.mainTickSeconds))
             tick += 1
         }
@@ -419,8 +421,12 @@ private func nestingCycle(_ edges: [LockPair]) -> [String]? {
         visiting.insert(node)
         path.append(node)
         for target in next[node] ?? [] {
-            if visiting.contains(target) { return Array(path.drop { $0 != target }) + [target] }
-            if !done.contains(target), let found = visit(target) { return found }
+            if visiting.contains(target) {
+                return Array(path.drop { $0 != target }) + [target]
+            }
+            if !done.contains(target), let found = visit(target) {
+                return found
+            }
         }
         path.removeLast()
         visiting.remove(node)
@@ -428,7 +434,9 @@ private func nestingCycle(_ edges: [LockPair]) -> [String]? {
         return nil
     }
     for node in next.keys.sorted() where !done.contains(node) {
-        if let found = visit(node) { return found }
+        if let found = visit(node) {
+            return found
+        }
     }
     return nil
 }

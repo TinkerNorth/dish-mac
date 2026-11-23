@@ -7,7 +7,9 @@ extension ConnectionFailure {
     /// The generic "the satellite answered without a grant" failure, whatever
     /// detail it carried.
     var isSessionRefused: Bool {
-        if case .sessionRefused = self { return true }
+        if case .sessionRefused = self {
+            return true
+        }
         return false
     }
 }

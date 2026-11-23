@@ -131,7 +131,11 @@ func supportReportPageState(
     let preparing = facts.reportPreparation.isLoading
     let page = diagnosticsPageState(facts: facts, locale: locale, timeZone: timeZone, words: words)
     let summary = diagnosticsMailSummaryText(page, hosts: facts.diagnostics.hosts, words: words)
-    let slotId: String? = if case let .slot(id) = selection { id } else { nil }
+    let slotId: String? = if case let .slot(id) = selection {
+        id
+    } else {
+        nil
+    }
     return SupportReportPageState(
         intro: words.supportReportDetail,
         categoryLabel: words.reportCategory,

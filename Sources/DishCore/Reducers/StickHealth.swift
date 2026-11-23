@@ -265,7 +265,9 @@ public struct StickBench: Hashable, Sendable {
     }
 
     public var phase: StickTestPhase {
-        if running != nil { return .running }
+        if running != nil {
+            return .running
+        }
         return result != nil ? .done : .idle
     }
 

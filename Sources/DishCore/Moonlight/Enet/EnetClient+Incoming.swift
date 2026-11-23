@@ -151,8 +151,8 @@ extension EnetClient {
     private func receiveReliable(sequence: UInt16, payload: Data) {
         let window = sequence / EnetProtocol.reliableWindowSize + (sequence < incomingReliableSequence ? EnetProtocol.reliableWindows : 0)
         let currentWindow = incomingReliableSequence / EnetProtocol.reliableWindowSize
-        guard window >= currentWindow, window < currentWindow + EnetProtocol.freeReliableWindows - 1 else { return }
-        guard sequence != incomingReliableSequence, heldReliable[sequence] == nil else { return }
+        guard window >= currentWindow, window < currentWindow + EnetProtocol.freeReliableWindows - 1, sequence != incomingReliableSequence,
+              heldReliable[sequence] == nil else { return }
         let distance = sequence &- incomingReliableSequence
         guard distance <= 0x7FFF else { return }
         if distance > 1 {

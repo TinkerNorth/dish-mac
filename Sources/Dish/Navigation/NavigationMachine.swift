@@ -198,7 +198,9 @@ private func toggledRail(_ state: NavigationState) -> NavigationStep {
 private func guardChanged(_ state: NavigationState, armed: Bool) -> NavigationStep {
     var next = state
     next.leaveGuarded = armed
-    if !armed { next.pendingLeaveGuard = nil }
+    if !armed {
+        next.pendingLeaveGuard = nil
+    }
     return NavigationStep(state: next, effects: [])
 }
 

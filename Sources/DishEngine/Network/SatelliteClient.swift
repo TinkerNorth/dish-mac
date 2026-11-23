@@ -203,7 +203,9 @@ final class SatelliteClient {
     /// The receive loop's step before a dispatch: one relaxed load while no
     /// handler changed.
     func refreshReceiveHandlers() {
-        if let fresh = handlerMail.take() { receiveHandlers = fresh.handlers }
+        if let fresh = handlerMail.take() {
+            receiveHandlers = fresh.handlers
+        }
     }
 
     // MARK: - Lifecycle
@@ -255,7 +257,9 @@ final class SatelliteClient {
             boundPort = 0
             return Int32(truncatingIfNeeded: fdWord.exchange(-1))
         }
-        if retired >= 0 { close(retired) }
+        if retired >= 0 {
+            close(retired)
+        }
     }
 
     deinit {
@@ -280,7 +284,9 @@ final class SatelliteClient {
             let same = open && host == boundHost && udpPort == boundPort
             return (same, open && !same)
         }
-        if alreadyBound { return true }
+        if alreadyBound {
+            return true
+        }
 
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
@@ -288,7 +294,9 @@ final class SatelliteClient {
         guard inet_pton(AF_INET, host, &addr.sin_addr) == 1 else { return false }
 
         let fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)
-        if fd < 0 { return false }
+        if fd < 0 {
+            return false
+        }
 
         // DSCP EF (Expedited Forwarding). Best-effort: some Wi-Fi drivers
         // silently strip TOS but never error — matching the sibling clients.
@@ -304,7 +312,9 @@ final class SatelliteClient {
         // Endpoint swap on an open client: the loops must stop and the
         // receive loop must be JOINED before its fd closes — the same
         // ordering `closeSocket` upholds (no recv on a reused fd).
-        if replacing { closeSocket() }
+        if replacing {
+            closeSocket()
+        }
 
         let stale = gate.hold { () -> Int32 in
             dest = addr
@@ -312,7 +322,9 @@ final class SatelliteClient {
             boundPort = udpPort
             return Int32(truncatingIfNeeded: fdWord.exchange(Int64(fd)))
         }
-        if stale >= 0 { close(stale) }
+        if stale >= 0 {
+            close(stale)
+        }
         return true
     }
 
@@ -407,7 +419,9 @@ final class SatelliteClient {
     /// Pairs the ack the receive loop left, if any; the caller holds `latencyLock`.
     private func pairPendingAck() {
         let ackMs = pendingAckMs.exchange(0)
-        if ackMs != 0 { latencyWindow.ackReceived(nowMs: ackMs) }
+        if ackMs != 0 {
+            latencyWindow.ackReceived(nowMs: ackMs)
+        }
     }
 
     /// Monotonic milliseconds for the latency clock (never 0 in practice, so

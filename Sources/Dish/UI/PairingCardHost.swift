@@ -29,7 +29,9 @@ struct PairingCardHost: View {
     /// Typing and pasting land in one field; only the digits stay, four at most.
     private func clip(_ raw: String) {
         let clipped = clippedPin(raw)
-        if clipped != raw { typed = clipped }
+        if clipped != raw {
+            typed = clipped
+        }
     }
 
     private func submit() {

@@ -213,8 +213,12 @@ func emulatedTypeName(_ emulation: SlotEmulation?, words: L10n = .app) -> String
 /// The line under the picker: what Auto sends, or nothing while the user's
 /// own pick speaks for itself. An empty catalog still waits on the type.
 func emulateDetail(_ emulation: SlotEmulation, words: L10n = .app) -> String {
-    if emulation.offered.isEmpty { return words.waitingOnTheType }
-    if emulation.isOverride { return "" }
+    if emulation.offered.isEmpty {
+        return words.waitingOnTheType
+    }
+    if emulation.isOverride {
+        return ""
+    }
     return words.autoSends(emulatedTypeName(emulation, words: words))
 }
 

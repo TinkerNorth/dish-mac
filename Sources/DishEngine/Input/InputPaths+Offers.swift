@@ -44,9 +44,15 @@ struct OfferLanes: Equatable {
 /// None once a lane is a pad on the page; a refusal before the offer, and
 /// the offer before a receiver waiting for its controller.
 func offerStanding(_ lanes: OfferLanes) -> DirectOfferStanding? {
-    if lanes.shown { return nil }
-    if let refusal = lanes.refusal { return .refused(refusal) }
-    if lanes.offered { return .offered(asksInputMonitoring: lanes.asksInputMonitoring) }
+    if lanes.shown {
+        return nil
+    }
+    if let refusal = lanes.refusal {
+        return .refused(refusal)
+    }
+    if lanes.offered {
+        return .offered(asksInputMonitoring: lanes.asksInputMonitoring)
+    }
     return lanes.reading ? .waitingForController : nil
 }
 
@@ -61,8 +67,8 @@ extension InputPaths {
 
     private func modelOffer(_ keys: [String]) -> DirectOffer? {
         let sorted = keys.sorted()
-        guard let first = sorted.first, let candidate = pads[first]?.arrival?.candidate else { return nil }
-        guard let standing = offerStanding(offerLanes(sorted)) else { return nil }
+        guard let first = sorted.first, let candidate = pads[first]?.arrival?.candidate,
+              let standing = offerStanding(offerLanes(sorted)) else { return nil }
         return DirectOffer(id: first, name: candidate.name, standing: standing)
     }
 

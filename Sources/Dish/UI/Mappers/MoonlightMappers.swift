@@ -150,7 +150,9 @@ func moonlightTypeName(_ type: UInt8, words: L10n = .app) -> String {
 /// Under the picker: what Auto sends for this pad, or what a pick asks of the host.
 func moonlightEmulateDetail(_ slot: ControllerSlot, words: L10n = .app) -> String {
     guard let emulation = slot.emulation, let host = slot.boundStatus.map(connectionTitle) else { return words.waitingOnTheType }
-    if emulation.isOverride { return words.dishAsksHostToPlugIn(host) }
+    if emulation.isOverride {
+        return words.dishAsksHostToPlugIn(host)
+    }
     let resolved = MoonlightPadRules.resolveType(
         picked: UInt8(truncatingIfNeeded: emulation.type),
         sourceHasMotion: slot.capabilities.hasMotion

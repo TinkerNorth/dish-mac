@@ -147,7 +147,9 @@ public func decodeSwitchBattery(_ batCon: UInt8) -> PadBattery {
     let stepIsKnown = step <= SwitchBatteryLayout.fullStep
     let level = stepIsKnown ? SwitchBatteryLayout.stepPercent[Int(step)] : ProtocolConstants.batteryLevelUnknown
     let toppedOffOnTheCable = hostPowered && step == SwitchBatteryLayout.fullStep
-    if charging { return PadBattery(level: level, status: .charging) }
+    if charging {
+        return PadBattery(level: level, status: .charging)
+    }
     return PadBattery(level: level, status: toppedOffOnTheCable ? .full : .discharging)
 }
 

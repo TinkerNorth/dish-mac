@@ -150,7 +150,9 @@ public enum MicIndicatorState: Equatable, Sendable {
 }
 
 public func micIndicator(armed: Int, delivering: Int) -> MicIndicatorState {
-    if armed == 0 { return .hidden }
+    if armed == 0 {
+        return .hidden
+    }
     return delivering > 0 ? .live : .muted
 }
 

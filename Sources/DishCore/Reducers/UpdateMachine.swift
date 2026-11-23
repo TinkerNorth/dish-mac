@@ -98,7 +98,9 @@ public enum UpdateSchedule {
         var delay = backoffBaseMs
         for _ in 1 ..< failures {
             delay *= 2
-            if delay >= backoffCapMs { return backoffCapMs }
+            if delay >= backoffCapMs {
+                return backoffCapMs
+            }
         }
         return delay
     }
@@ -191,8 +193,12 @@ private func prefsChanged(_ status: UpdateStatus, checksEnabled: Bool, skippedVe
 /// The reachability gate answers without touching the network, so a captive
 /// portal never gets a request.
 private func checkRequested(_ status: UpdateStatus, trigger: UpdateTrigger) -> UpdateReduction {
-    if status.phase == .disabled || status.phase == .checking { return UpdateReduction(next: status) }
-    if !status.online { return settleFailure(status, .offline) }
+    if status.phase == .disabled || status.phase == .checking {
+        return UpdateReduction(next: status)
+    }
+    if !status.online {
+        return settleFailure(status, .offline)
+    }
     var next = status
     next.phase = .checking
     return UpdateReduction(next: next, effects: [.fetchManifest(manual: trigger == .manual)])
@@ -220,7 +226,9 @@ private func manifestArrived(_ status: UpdateStatus, _ manifest: UpdateManifest)
     next.phase = .available
     next.availableVersion = manifest.version
     next.notesUrl = manifest.releaseNotesUrl
-    if next.required { effects.append(.notify(.unsupported, version: manifest.version)) }
+    if next.required {
+        effects.append(.notify(.unsupported, version: manifest.version))
+    }
     effects.append(.notify(.available, version: manifest.version))
     effects.append(.scheduleNextCheck(delayMs: UpdateSchedule.periodicIntervalMs))
     return UpdateReduction(next: next, effects: effects)
@@ -228,7 +236,9 @@ private func manifestArrived(_ status: UpdateStatus, _ manifest: UpdateManifest)
 
 /// A required update cannot be skipped: the build is already unsupported.
 private func skipRequested(_ status: UpdateStatus, version: String) -> UpdateReduction {
-    if status.required || version.isEmpty { return UpdateReduction(next: status) }
+    if status.required || version.isEmpty {
+        return UpdateReduction(next: status)
+    }
     var next = status
     next.skippedVersion = version
     if status.availableVersion == version {

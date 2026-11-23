@@ -111,7 +111,13 @@ public struct BundleVoice: Equatable, Sendable {
 
 /// A refusal outranks the plan: the system would not open the endpoint.
 public func bundleVoice(open: Bool, refused: Bool, routed: Bool, frames: Int) -> BundleVoice {
-    let state: BundleVoiceState = if refused { .refused } else if open { .open } else { .closed }
+    let state: BundleVoiceState = if refused {
+        .refused
+    } else if open {
+        .open
+    } else {
+        .closed
+    }
     return BundleVoice(voice: state, device: routed ? "pad" : nil, frames: frames)
 }
 

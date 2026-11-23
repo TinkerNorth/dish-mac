@@ -160,7 +160,9 @@ private final class Downlink: @unchecked Sendable {
 
     func learn(_ address: sockaddr_in) {
         os_unfair_lock_lock(&lock)
-        if client == nil { client = address }
+        if client == nil {
+            client = address
+        }
         os_unfair_lock_unlock(&lock)
     }
 
@@ -180,7 +182,9 @@ private final class Downlink: @unchecked Sendable {
                 }
             }
         }
-        if written == datagram.count { delivered += 1 }
+        if written == datagram.count {
+            delivered += 1
+        }
     }
 }
 

@@ -50,7 +50,9 @@ final class DiscoveryScanTests: XCTestCase {
     private func waitUntil(timeout: TimeInterval = 5, _ predicate: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if predicate() { return true }
+            if predicate() {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         return predicate()

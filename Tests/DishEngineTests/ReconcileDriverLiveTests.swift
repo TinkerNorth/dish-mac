@@ -70,7 +70,9 @@ final class ReconcileDriverLiveTests: XCTestCase {
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if predicate() { return true }
+            if predicate() {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         return predicate()
@@ -159,7 +161,9 @@ final class ReconcileDriverLiveTests: XCTestCase {
         XCTAssertTrue(reaped)
         XCTAssertNil(manager.retry[server.id], "terminal auth stops the retry curve")
         let quiet = !events.contains {
-            if case let .failure(failure) = $0 { return failure == .repairNeeded }
+            if case let .failure(failure) = $0 {
+                return failure == .repairNeeded
+            }
             return false
         }
         XCTAssertTrue(quiet, "nobody asked for the reconcile — the funnel stays quiet")

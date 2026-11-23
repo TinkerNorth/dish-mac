@@ -222,7 +222,9 @@ final class FakeXusbPort: XusbPort, @unchecked Sendable {
 
     func open(queue: DispatchQueue) throws -> XusbOpenInterface {
         opensBox.mutate { $0 += 1 }
-        if let refusal { throw NSError(domain: "IOUSBHostErrorDomain", code: Int(refusal)) }
+        if let refusal {
+            throw NSError(domain: "IOUSBHostErrorDomain", code: Int(refusal))
+        }
         let opened = FakeXusbInterface(queue: queue, refusingReads: refusingReads)
         interfaceBox.set(opened)
         return opened

@@ -227,7 +227,9 @@ public func steamLeftAxes(fingerOnPad: Bool, interleaved: Bool) -> SteamLeftAxes
 
 /// Nil for a packet that is neither a state packet nor a receiver's event.
 public func decodeSteamControllerPacket(_ packet: UnsafeBufferPointer<UInt8>, hold: inout SteamStickHold) -> SteamReading? {
-    if let link = steamControllerLink(packet) { return .link(link) }
+    if let link = steamControllerLink(packet) {
+        return .link(link)
+    }
     guard isSteamStatePacket(packet) else { return nil }
     return steamControllerState(packet, hold: &hold)
 }
@@ -261,7 +263,9 @@ private func steamControllerState(_ packet: UnsafeBufferPointer<UInt8>, hold: in
     let axes = steamLeftAxes(fingerOnPad: fingerOnPad, interleaved: interleaved)
     holdLeftStick(packet, axes, hold: &hold)
     var buttons = steamButtons(held, steamControllerButtonBits)
-    if leftThumbHeld(held, axes) { buttons.insert(.leftThumb) }
+    if leftThumbHeld(held, axes) {
+        buttons.insert(.leftThumb)
+    }
     let report = GamepadReport(
         buttons: buttons.rawValue,
         lt: steamTrigger(packet[SteamPacketLayout.leftTrigger]),

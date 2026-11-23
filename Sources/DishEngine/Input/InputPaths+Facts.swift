@@ -21,7 +21,9 @@ struct OutputCarriage: Equatable {
 /// controller of the pad's kind and exactly one pad of its model are
 /// connected: anything else could drive the wrong pad's motors.
 func outputCarriage(model: DirectModel?, carriers: [CarrierSeat], padsOfModel: Int) -> OutputCarriage {
-    if model?.drivesItsOwnRumble == true { return OutputCarriage(carrierId: nil, rumble: .ownReport) }
+    if model?.drivesItsOwnRumble == true {
+        return OutputCarriage(carrierId: nil, rumble: .ownReport)
+    }
     guard let model, model.gameControllerCarriesOutput else { return OutputCarriage(carrierId: nil, rumble: .notCarried) }
     guard let only = carriers.first else { return OutputCarriage(carrierId: nil, rumble: .noCarrier) }
     let unambiguous = carriers.count == 1 && padsOfModel == 1
@@ -32,7 +34,9 @@ func outputCarriage(model: DirectModel?, carriers: [CarrierSeat], padsOfModel: I
 /// A running check with its whole seconds left, else the last one's
 /// verdict, else nothing.
 func checkPhase(_ check: PadCheck?, outcome: CheckOutcome?, nowMs: Int64) -> InputCheckPhase {
-    if let check { return .running(secondsLeft: checkSecondsLeft(check, nowMs: nowMs)) }
+    if let check {
+        return .running(secondsLeft: checkSecondsLeft(check, nowMs: nowMs))
+    }
     guard let outcome else { return .idle }
     return .concluded(outcome.verdict, offer: outcome.offer)
 }

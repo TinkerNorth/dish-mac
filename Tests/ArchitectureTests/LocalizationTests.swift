@@ -120,7 +120,9 @@ final class LocalizationTests: XCTestCase {
             for (code, forms) in entry.plural {
                 XCTAssertNotNil(forms["one"], "\(entry.key) in \(code) lacks the singular")
                 XCTAssertNotNil(forms["other"], "\(entry.key) in \(code) lacks the plural")
-                if code == "bs" { XCTAssertNotNil(forms["few"], "\(entry.key): Bosnian has a paucal form") }
+                if code == "bs" {
+                    XCTAssertNotNil(forms["few"], "\(entry.key): Bosnian has a paucal form")
+                }
                 for (form, value) in forms {
                     XCTAssertFalse(value.isEmpty, "\(entry.key) is blank in \(code)/\(form)")
                 }
@@ -182,7 +184,9 @@ final class LocalizationTests: XCTestCase {
         literalEntryPoints.contains { entry in
             var rest = line[...]
             while let range = rest.range(of: entry) {
-                if rest[range.upperBound...].first != "\"" { return true }
+                if rest[range.upperBound...].first != "\"" {
+                    return true
+                }
                 rest = rest[range.upperBound...]
             }
             return false

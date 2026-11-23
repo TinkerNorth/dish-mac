@@ -96,6 +96,8 @@ struct SupportPage: View {
     }
 
     private func open(_ url: URL?) {
-        if let url { openURL(url) }
+        if let url {
+            openURL(url)
+        }
     }
 }

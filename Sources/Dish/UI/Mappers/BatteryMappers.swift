@@ -24,7 +24,9 @@ private let batterySymbolSteps: [(below: Int, symbol: String)] = [
 /// The bolt while charging, a half bar for an unknown level, else the bar
 /// that matches the level.
 func batterySymbol(_ reading: BatteryReading) -> String {
-    if batteryIsCharging(reading) { return "battery.100.bolt" }
+    if batteryIsCharging(reading) {
+        return "battery.100.bolt"
+    }
     guard let level = reading.level else { return "battery.50" }
     return batterySymbolSteps.first { level < $0.below }?.symbol ?? "battery.100"
 }
@@ -42,7 +44,9 @@ private let batteryTintSteps: [(below: Int, color: Color)] = [
 
 /// Green while charging, red then amber as the level drops, muted otherwise.
 func batteryTint(_ reading: BatteryReading) -> Color {
-    if batteryIsCharging(reading) { return DishTheme.success }
+    if batteryIsCharging(reading) {
+        return DishTheme.success
+    }
     guard let level = reading.level else { return DishTheme.muted }
     return batteryTintSteps.first { level < $0.below }?.color ?? DishTheme.muted
 }

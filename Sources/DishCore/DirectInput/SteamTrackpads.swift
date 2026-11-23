@@ -156,8 +156,12 @@ private func routeAsStick(_ pads: SteamPads, _ report: GamepadReport) -> SteamRo
     var routed = report
     routed.rx = pads.right.active ? pads.right.x : 0
     routed.ry = pads.right.active ? pads.right.y : 0
-    if pads.right.clicked { routed.buttons |= WireButton.rightThumb.bit }
-    if pads.left.clicked { routed.extButtons |= ProtocolConstants.extButtonLeftPadClick }
+    if pads.right.clicked {
+        routed.buttons |= WireButton.rightThumb.bit
+    }
+    if pads.left.clicked {
+        routed.extButtons |= ProtocolConstants.extButtonLeftPadClick
+    }
     return SteamRouted(report: routed, surface: .lifted)
 }
 
@@ -187,7 +191,11 @@ private func routeAsMouse(_ pads: SteamPads, _ report: GamepadReport, scroll: in
 
 private func routeAsOff(_ pads: SteamPads, _ report: GamepadReport) -> SteamRouted {
     var routed = report
-    if pads.left.clicked { routed.extButtons |= ProtocolConstants.extButtonLeftPadClick }
-    if pads.right.clicked { routed.extButtons |= ProtocolConstants.extButtonRightPadClick }
+    if pads.left.clicked {
+        routed.extButtons |= ProtocolConstants.extButtonLeftPadClick
+    }
+    if pads.right.clicked {
+        routed.extButtons |= ProtocolConstants.extButtonRightPadClick
+    }
     return SteamRouted(report: routed, surface: .lifted)
 }

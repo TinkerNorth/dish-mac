@@ -118,7 +118,9 @@ public struct MoonlightPadTable: Equatable, Sendable {
     /// number it has seen, so a live number is never handed out twice); nil
     /// when the session carries its four.
     public mutating func acquire(_ slotId: String, as wanted: MoonlightAnnouncedPad) -> Pad? {
-        if let held = pad(for: slotId) { return held }
+        if let held = pad(for: slotId) {
+            return held
+        }
         guard let number = slots.assign(slotId) else { return nil }
         announced[slotId] = wanted
         return Pad(slotId: slotId, number: number, announced: wanted)

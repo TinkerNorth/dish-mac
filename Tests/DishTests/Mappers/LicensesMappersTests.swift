@@ -76,7 +76,14 @@ final class LicensesMappersTests: XCTestCase {
         let notice = try XCTUnwrap(thirdPartyNotice(in: Bundle.module), "THIRD_PARTY.md ships in the resource bundle")
         let blocks = licenseBlocks(notice)
         XCTAssertEqual(blocks.first.map(plain), "h1 Third-party notices")
-        XCTAssertGreaterThanOrEqual(blocks.filter { if case .code = $0 { true } else { false } }.count, 3, "each licence text stays whole")
+        let codeBlocks = blocks.filter {
+            if case .code = $0 {
+                true
+            } else {
+                false
+            }
+        }
+        XCTAssertGreaterThanOrEqual(codeBlocks.count, 3, "each licence text stays whole")
     }
 
     func testATopHeadingIsATitleAndATablesHeaderStandsOut() {

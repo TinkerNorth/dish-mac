@@ -54,6 +54,8 @@ struct SetupDestinationStepView: View {
     }
 
     private func getApp() {
-        if let url = step.getApp.url { openURL(url) }
+        if let url = step.getApp.url {
+            openURL(url)
+        }
     }
 }

@@ -69,7 +69,9 @@ final class GamepadInputProcessor: @unchecked Sendable {
     /// The device's feed, made with its dead zones and its route on first use.
     func feed(for deviceId: DeviceId) -> PadFeed {
         registry.mutate { registry in
-            if let feed = registry.feeds[deviceId] { return feed }
+            if let feed = registry.feeds[deviceId] {
+                return feed
+            }
             let feed = PadFeed(deviceId: deviceId, lastInputMs: lastInputMs, sent: sent)
             feed.useDeadzones(registry.deadzones[deviceId] ?? Deadzones())
             feed.post(route: registry.resolve(deviceId))
@@ -156,8 +158,12 @@ final class GamepadInputProcessor: @unchecked Sendable {
         for (deviceId, feed) in registry.get().feeds {
             let reports = feed.record.reportCount
             let motion = feed.record.motionCount
-            if reports > 0 { tally.reports[deviceId] = reports }
-            if motion > 0 { tally.motion[deviceId] = motion }
+            if reports > 0 {
+                tally.reports[deviceId] = reports
+            }
+            if motion > 0 {
+                tally.motion[deviceId] = motion
+            }
         }
         return tally
     }
@@ -234,11 +240,23 @@ func gcTouchpadAxisToWire(x: Float, y: Float) -> (x: Int16, y: Int16) {
 func applyDeadzones(_ report: GamepadReport, _ zones: GamepadInputProcessor.Deadzones) -> GamepadReport {
     var out = report
     let stickFlat = Int32(zones.stickFlat)
-    if abs(Int32(out.lx)) <= stickFlat { out.lx = 0 }
-    if abs(Int32(out.ly)) <= stickFlat { out.ly = 0 }
-    if abs(Int32(out.rx)) <= stickFlat { out.rx = 0 }
-    if abs(Int32(out.ry)) <= stickFlat { out.ry = 0 }
-    if out.lt <= zones.triggerFlat { out.lt = 0 }
-    if out.rt <= zones.triggerFlat { out.rt = 0 }
+    if abs(Int32(out.lx)) <= stickFlat {
+        out.lx = 0
+    }
+    if abs(Int32(out.ly)) <= stickFlat {
+        out.ly = 0
+    }
+    if abs(Int32(out.rx)) <= stickFlat {
+        out.rx = 0
+    }
+    if abs(Int32(out.ry)) <= stickFlat {
+        out.ry = 0
+    }
+    if out.lt <= zones.triggerFlat {
+        out.lt = 0
+    }
+    if out.rt <= zones.triggerFlat {
+        out.rt = 0
+    }
     return out
 }

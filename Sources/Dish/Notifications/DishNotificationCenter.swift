@@ -99,8 +99,7 @@ final class DishNotificationCenter: StateSource<[DishNotification]> {
     // MARK: - Internals
 
     private func replacePriorPost(withKey key: String?) {
-        guard let key, !key.isEmpty else { return }
-        guard let priorId = state.first(where: { $0.key == key })?.id else { return }
+        guard let key, !key.isEmpty, let priorId = state.first(where: { $0.key == key })?.id else { return }
         cancelDismissTask(id: priorId)
         updateState { $0.filter { $0.key != key } }
     }

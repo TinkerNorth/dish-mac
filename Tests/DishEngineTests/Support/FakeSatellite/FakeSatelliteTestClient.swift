@@ -166,10 +166,14 @@ final class FakeSatelliteUdpScriptClient {
         connection.receiveMessage { [weak self] data, _, _, error in
             guard let self else { return }
             self.condition.lock()
-            if let data, !data.isEmpty { self.inbox.append(data) }
+            if let data, !data.isEmpty {
+                self.inbox.append(data)
+            }
             self.condition.broadcast()
             self.condition.unlock()
-            if error == nil { self.receiveLoop() }
+            if error == nil {
+                self.receiveLoop()
+            }
         }
     }
 
@@ -204,7 +208,9 @@ final class FakeSatelliteUdpScriptClient {
         condition.lock()
         defer { condition.unlock() }
         while inbox.isEmpty {
-            if !condition.wait(until: deadline) { break }
+            if !condition.wait(until: deadline) {
+                break
+            }
         }
         guard !inbox.isEmpty else { return nil }
         return inbox.removeFirst()

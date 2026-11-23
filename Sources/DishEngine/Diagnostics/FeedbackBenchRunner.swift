@@ -30,7 +30,9 @@ final class FeedbackBenchRunner: StateSource<[String: FeedbackTest]> {
         guard state[slotId] == nil else { return }
         let program = benchProgram(test)
         let pad = feedback.pad(for: slotId)
-        if let surface = program.surface { pad.benchTake(surface) }
+        if let surface = program.surface {
+            pad.benchTake(surface)
+        }
         for step in program.steps {
             scheduler.after(ms: Int(step.atMs)) { pad.bench(step.action) }
         }
@@ -43,7 +45,9 @@ final class FeedbackBenchRunner: StateSource<[String: FeedbackTest]> {
     }
 
     private func finish(_ test: FeedbackTest, program: BenchProgram, slotId: String) {
-        if let surface = program.surface { feedback.pad(for: slotId).benchRelease(surface) }
+        if let surface = program.surface {
+            feedback.pad(for: slotId).benchRelease(surface)
+        }
         updateState { var next = $0
             next.removeValue(forKey: slotId)
             return next

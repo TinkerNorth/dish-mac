@@ -206,9 +206,13 @@ private func stickY(_ value: Int16, inverted: Bool) -> Int16 {
 /// held from the step before, or let go, is not a fresh choice.
 public func rawCapture(rest: HidRawState, previous: HidRawState, now: HidRawState) -> RawCapture? {
     let pressed = now.buttons & ~previous.buttons
-    if pressed != 0 { return RawCapture(kind: .button, index: pressed.trailingZeroBitCount) }
+    if pressed != 0 {
+        return RawCapture(kind: .button, index: pressed.trailingZeroBitCount)
+    }
     let newDirections = now.dpad & ~previous.dpad
-    if captureHatPasses(newDirections) { return RawCapture(kind: .hat, index: RemapDefaults.hat) }
+    if captureHatPasses(newDirections) {
+        return RawCapture(kind: .hat, index: RemapDefaults.hat)
+    }
     return axisCapture(rest: rest, previous: previous, now: now)
 }
 
@@ -217,7 +221,9 @@ private func axisCapture(rest: HidRawState, previous: HidRawState, now: HidRawSt
         let travel = Int(now.axes[slot]) - Int(rest.axes[slot])
         let travelled = Int(previous.axes[slot]) - Int(rest.axes[slot])
         let crossedOut = captureAxisPasses(travel) && !captureAxisPasses(travelled)
-        if crossedOut { return RawCapture(kind: .axis, index: slot, travel: travel) }
+        if crossedOut {
+            return RawCapture(kind: .axis, index: slot, travel: travel)
+        }
     }
     return nil
 }

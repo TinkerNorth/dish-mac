@@ -178,7 +178,9 @@ func setupSubStepPips(_ walk: SetupWizardState) -> [StepPip] {
 }
 
 private func pipPhase(_ index: Int, current: Int) -> StepPipPhase {
-    if index == current { return .current }
+    if index == current {
+        return .current
+    }
     return index < current ? .done : .upcoming
 }
 

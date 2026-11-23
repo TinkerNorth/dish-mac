@@ -201,7 +201,9 @@ private func readSteamBleChunk(
 /// so none of the wired pad's shared-axes rules apply.
 private func steamBleReading(_ held: SteamBleHeld) -> SteamReading {
     var buttons = steamButtons(held.buttons, steamControllerButtonBits)
-    if held.buttons & SteamButtonMask.stickButton != 0 { buttons.insert(.leftThumb) }
+    if held.buttons & SteamButtonMask.stickButton != 0 {
+        buttons.insert(.leftThumb)
+    }
     let report = GamepadReport(
         buttons: buttons.rawValue,
         lt: steamTrigger(held.leftTrigger),

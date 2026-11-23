@@ -60,7 +60,9 @@ final class FakeSatelliteIdentity {
     func secIdentity() -> SecIdentity? {
         lock.lock()
         defer { lock.unlock() }
-        if identityResolved { return cachedIdentity }
+        if identityResolved {
+            return cachedIdentity
+        }
         identityResolved = true
         guard let keychain else { return nil }
         let certAdd: [CFString: Any] = [
@@ -206,7 +208,9 @@ enum FakeSatelliteCertificateMint {
 private enum Asn1 {
 
     static func lengthField(_ count: Int) -> Data {
-        if count < 0x80 { return Data([UInt8(count)]) }
+        if count < 0x80 {
+            return Data([UInt8(count)])
+        }
         var bytes: [UInt8] = []
         var value = count
         while value > 0 {
@@ -281,7 +285,9 @@ enum FakeSatelliteThrowawayKeychain {
     static var shared: SecKeychain? {
         lock.lock()
         defer { lock.unlock() }
-        if resolved { return keychain }
+        if resolved {
+            return keychain
+        }
         resolved = true
         keychain = create()
         return keychain

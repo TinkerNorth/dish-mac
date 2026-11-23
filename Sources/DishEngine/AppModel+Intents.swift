@@ -74,7 +74,9 @@ package extension AppModel {
         case .touchpad: slotPreferences.setTouchpad(on, for: slotId)
         case .mic:
             slotPreferences.setMic(on, for: slotId)
-            if on { audio.requestMicrophoneLeave() }
+            if on {
+                audio.requestMicrophoneLeave()
+            }
         case .speaker: slotPreferences.setSpeaker(on, for: slotId)
         }
     }

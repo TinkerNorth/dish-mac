@@ -69,7 +69,9 @@ func extractBits(_ payload: UnsafeBufferPointer<UInt8>, bitOffset: UInt32, bits:
         let byte = Int(bit >> 3)
         guard byte < payload.count else { break }
         let set = (payload[byte] >> UInt8(bit & 7)) & 1 != 0
-        if set { value |= 1 << index }
+        if set {
+            value |= 1 << index
+        }
     }
     return value
 }

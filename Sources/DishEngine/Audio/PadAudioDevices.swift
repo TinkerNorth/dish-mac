@@ -67,8 +67,12 @@ package func padAudioFunctions(in devices: [AudioDeviceFacts]) -> [PadAudioFunct
 /// The product strings the two Sony pads present on their audio functions.
 func padFamily(ofAudioDeviceNamed name: String) -> PadFamily? {
     let lowered = name.lowercased()
-    if lowered.contains("dualsense") { return .dualSense }
-    if lowered.contains("dualshock") || lowered == "wireless controller" || lowered.hasPrefix("wireless controller ") { return .dualShock4 }
+    if lowered.contains("dualsense") {
+        return .dualSense
+    }
+    if lowered.contains("dualshock") || lowered == "wireless controller" || lowered.hasPrefix("wireless controller ") {
+        return .dualShock4
+    }
     return nil
 }
 

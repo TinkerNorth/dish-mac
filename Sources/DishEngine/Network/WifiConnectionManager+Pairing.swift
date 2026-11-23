@@ -119,7 +119,9 @@ extension WifiConnectionManager {
             pin: pin,
             protocolVersion: conn.offeredProtocolVersion
         )
-        if Task.isCancelled { return }
+        if Task.isCancelled {
+            return
+        }
         switch PairingClient.classify(pair) {
         case let .success(sharedKey):
             await adoptPinPairing(sharedKey, conn: conn, server: server)

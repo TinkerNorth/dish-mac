@@ -40,7 +40,9 @@ final class PadGate: @unchecked Sendable {
     /// report changed something, and answers whether to publish it.
     func pass(_ source: InputSource, changed: Bool) -> Bool {
         let forwards = GateWord.forwarded(word.load()) == source
-        if changed, take(GateWord.tell(source)) { notify(key, source) }
+        if changed, take(GateWord.tell(source)) {
+            notify(key, source)
+        }
         return forwards
     }
 
@@ -96,7 +98,9 @@ final class PadGate: @unchecked Sendable {
     private func take(_ bit: Int64) -> Bool {
         var seen = word.load()
         while seen & bit != 0 {
-            if word.compareExchange(expected: seen, desired: seen & ~bit) { return true }
+            if word.compareExchange(expected: seen, desired: seen & ~bit) {
+                return true
+            }
             seen = word.load()
         }
         return false

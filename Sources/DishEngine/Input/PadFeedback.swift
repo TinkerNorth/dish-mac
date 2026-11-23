@@ -54,7 +54,9 @@ final class PadFeedback {
     }
 
     func pad(for slotId: String) -> FeedbackPad {
-        if let pad = pads[slotId] { return pad }
+        if let pad = pads[slotId] {
+            return pad
+        }
         let pad = FeedbackPad(slotId: slotId, queue: queue, actuators: actuators, tally: FeedbackTally(clockMs: clockMs))
         pads[slotId] = pad
         return pad
@@ -157,8 +159,7 @@ final class FeedbackPad {
 
     private func drainPlayer() {
         let word = playerWord.exchange(0)
-        guard word & Self.pending != 0 else { return }
-        guard let shown = playerSurface.gameSent(Int(Int32(truncatingIfNeeded: word))) else { return }
+        guard word & Self.pending != 0, let shown = playerSurface.gameSent(Int(Int32(truncatingIfNeeded: word))) else { return }
         actuators.playerLeds(slotId, shown)
     }
 

@@ -54,7 +54,9 @@ struct TrackedLock<Primitive: LockPrimitive> {
         let role = thread.noteAttempt(id)
         let requestedNs = lockStatsNow()
         let contended = !primitive.lockIfFree()
-        if contended { primitive.lock() }
+        if contended {
+            primitive.lock()
+        }
         thread.noteAcquired(id, role: role, requestedNs: requestedNs, contended: contended)
     }
 

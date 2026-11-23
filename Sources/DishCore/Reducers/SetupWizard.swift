@@ -154,7 +154,9 @@ private func pickedDestination(_ state: SetupWizardState, _ id: String, kind: Se
     next.draft = reduce(draft, .chooseDestination(id))
     let moved = draft.current.connectionId != id
     next.hostKind = kind
-    if moved { next.hostWasLive = false }
+    if moved {
+        next.hostWasLive = false
+    }
     return next
 }
 
@@ -206,7 +208,9 @@ private func padPresence(_ state: SetupWizardState, _ present: Bool) -> SetupWiz
 private func hostLink(_ state: SetupWizardState, _ live: Bool) -> SetupWizardState {
     guard !state.applied else { return state }
     var next = state
-    if live { next.hostWasLive = true }
+    if live {
+        next.hostWasLive = true
+    }
     let lost = next.hostWasLive && !live
     return blocked(next, .connectionLost, when: lost)
 }

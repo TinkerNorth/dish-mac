@@ -82,6 +82,8 @@ private func welcomeWords(_ page: WelcomePage, words: L10n) -> WelcomeWords {
 
 /// The dots light the page on screen; the ones before it are passed.
 private func welcomeDot(_ index: Int, current: Int) -> StepPipPhase {
-    if index == current { return .current }
+    if index == current {
+        return .current
+    }
     return index < current ? .done : .upcoming
 }

@@ -126,7 +126,9 @@ private final class MoonlightHttpExchange: @unchecked Sendable {
         switch state {
         case .ready:
             connection.send(content: MoonlightHttpFraming.requestHead(request), completion: .contentProcessed { [weak self] error in
-                if error != nil { self?.complete(.unreachable) }
+                if error != nil {
+                    self?.complete(.unreachable)
+                }
             })
             receive()
         case .failed, .cancelled, .waiting:
@@ -143,7 +145,9 @@ private final class MoonlightHttpExchange: @unchecked Sendable {
     private func receive() {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
             guard let self else { return }
-            if let data { buffer.append(data) }
+            if let data {
+                buffer.append(data)
+            }
             if error != nil {
                 complete(.unreachable)
                 return

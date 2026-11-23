@@ -277,7 +277,9 @@ private func inputChanged(
     let closed = concludeIfDue(state, forwarded: forwarded, nowMs: nowMs)
     var next = closed.next
     let onForwarded = changed == forwarded
-    if onForwarded { next.proven = true }
+    if onForwarded {
+        next.proven = true
+    }
     guard var check = next.check else { return InputSourceReduction(next: next, effects: closed.effects) }
     switch changed {
     case .standard: check.sawStandard = true
@@ -301,8 +303,12 @@ private func conclude(_ state: InputSourceState, _ check: PadCheck, forwarded: I
 /// have decoded the pad, and a pad to support when it could not.
 public func checkVerdict(_ check: PadCheck, forwarded: InputSource, decodable: Bool) -> (CheckVerdict, CheckOffer) {
     let other: InputSource = forwarded == .standard ? .direct : .standard
-    if check.saw(forwarded) { return (verdictFor(forwarded), .none) }
-    if check.saw(other) { return (verdictFor(other), other == .direct ? .useDirect : .none) }
+    if check.saw(forwarded) {
+        return (verdictFor(forwarded), .none)
+    }
+    if check.saw(other) {
+        return (verdictFor(other), other == .direct ? .useDirect : .none)
+    }
     return decodable ? (.nothingAtAll, .connectionHint) : (.noDecoder, .helpSupport)
 }
 

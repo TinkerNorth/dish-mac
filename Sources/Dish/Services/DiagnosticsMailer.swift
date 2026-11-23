@@ -37,7 +37,9 @@ private func saveWithPanel(_ file: URL) -> URL? {
     panel.nameFieldStringValue = file.lastPathComponent
     guard panel.runModal() == .OK, let target = panel.url else { return nil }
     do {
-        if FileManager.default.fileExists(atPath: target.path) { try FileManager.default.removeItem(at: target) }
+        if FileManager.default.fileExists(atPath: target.path) {
+            try FileManager.default.removeItem(at: target)
+        }
         try FileManager.default.copyItem(at: file, to: target)
         return target
     } catch {

@@ -123,9 +123,15 @@ func moonlightHostLines(_ host: HostDiagnostics, locale: Locale = .current, word
         FactLine(key: words.session, value: moonlightPhaseText(facts.phase, summary: host.summary, words: words))
     ]
     if let info = facts.info {
-        if !info.hostname.isEmpty { lines.append(FactLine(key: words.hostName, value: info.hostname)) }
-        if let version = info.appVersion, !version.isEmpty { lines.append(FactLine(key: words.hostApp, value: version)) }
-        if let version = info.gfeVersion, !version.isEmpty { lines.append(FactLine(key: words.gfeVersion, value: version)) }
+        if !info.hostname.isEmpty {
+            lines.append(FactLine(key: words.hostName, value: info.hostname))
+        }
+        if let version = info.appVersion, !version.isEmpty {
+            lines.append(FactLine(key: words.hostApp, value: version))
+        }
+        if let version = info.gfeVersion, !version.isEmpty {
+            lines.append(FactLine(key: words.gfeVersion, value: version))
+        }
         lines.append(FactLine(key: words.runningApp, value: moonlightRunningAppText(facts, info: info, words: words)))
     }
     lines.append(FactLine(key: words.controlRoundTrip, value: moonlightRoundTripText(facts.controlRoundTripMs, words: words)))
@@ -146,7 +152,9 @@ func moonlightPhaseText(_ phase: MoonlightSessionPhase, summary: ConnectionSumma
 /// The app our session settled on; else the host's own current game, by its
 /// id, since the host names no title in /serverinfo; else none.
 func moonlightRunningAppText(_ facts: MoonlightHostDiagnostics, info: MoonlightServerInfo, words: L10n = .app) -> String {
-    if let app = facts.appName, !app.isEmpty { return app }
+    if let app = facts.appName, !app.isEmpty {
+        return app
+    }
     return info.currentGame == 0 ? words.none : String(info.currentGame)
 }
 

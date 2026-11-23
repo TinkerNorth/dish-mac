@@ -55,7 +55,9 @@ public enum Log2Histogram {
         var seen: UInt64 = 0
         for (index, count) in histogram.enumerated() {
             seen += count
-            if seen >= rank { return upperBound(index) }
+            if seen >= rank {
+                return upperBound(index)
+            }
         }
         return upperBound(histogram.count - 1)
     }

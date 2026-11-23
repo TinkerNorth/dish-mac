@@ -61,8 +61,12 @@ final class LaneTally: @unchecked Sendable {
     func count(nowNs: UInt64) {
         reports.storeRelaxed(reports.loadRelaxed() &+ 1)
         let sinceOpen = nowNs &- openedNs
-        if firstReportSinceOpen.loadRelaxed() == 0 { firstReportSinceOpen.store(Int64(bitPattern: sinceOpen) &+ 1) }
-        if sinceOpen < Self.firstWindowNs { reportsFirstSecond.storeRelaxed(reportsFirstSecond.loadRelaxed() &+ 1) }
+        if firstReportSinceOpen.loadRelaxed() == 0 {
+            firstReportSinceOpen.store(Int64(bitPattern: sinceOpen) &+ 1)
+        }
+        if sinceOpen < Self.firstWindowNs {
+            reportsFirstSecond.storeRelaxed(reportsFirstSecond.loadRelaxed() &+ 1)
+        }
     }
 
     func snapshot() -> LaneTallySnapshot {
@@ -224,7 +228,11 @@ final class HidPadLane: @unchecked Sendable {
     /// Whether the pad streams only after the start sequence: the Switch
     /// family, whose decoder reads only full 0x30 reports.
     var startsWithSwitchSequence: Bool {
-        if case .switchReport = candidate.decoder { true } else { false }
+        if case .switchReport = candidate.decoder {
+            true
+        } else {
+            false
+        }
     }
 
     /// One report off the wire, on the reader's thread.
@@ -240,7 +248,9 @@ final class HidPadLane: @unchecked Sendable {
     /// or not the lane is forwarded.
     private func receivePad(_ report: UnsafeBufferPointer<UInt8>, nowNs: UInt64) {
         guard let reading = decode(report) else { return }
-        if startsWithSwitchSequence { lastFullReportNs = nowNs }
+        if startsWithSwitchSequence {
+            lastFullReportNs = nowNs
+        }
         deliver(reading)
     }
 
@@ -314,7 +324,9 @@ final class HidPadLane: @unchecked Sendable {
     /// A report from a receiver's slot means its controller is there, a
     /// connect event missed or not.
     private func steamState(_ reading: LaneReading) {
-        if !linked { linkUp() }
+        if !linked {
+            linkUp()
+        }
         deliver(reading)
     }
 
@@ -355,12 +367,18 @@ final class HidPadLane: @unchecked Sendable {
     /// the declared sources once, for the table and the walk alike.
     private func decodeGamepad(_ layout: HidGamepadLayout, _ report: UnsafeBufferPointer<UInt8>) -> LaneReading? {
         let capturing = gate.capturing
-        if let fresh = remapMail.take() { remap = fresh.table }
+        if let fresh = remapMail.take() {
+            remap = fresh.table
+        }
         let table = remap
-        if !capturing { captureRest = nil }
+        if !capturing {
+            captureRest = nil
+        }
         guard capturing || table != nil else { return gamepadReading(layout.decode(report)) }
         guard let raw = layout.decodeRaw(report) else { return nil }
-        if capturing { watchCapture(raw) }
+        if capturing {
+            watchCapture(raw)
+        }
         guard let table else { return gamepadReading(layout.decode(report)) }
         return gamepadReading(table.apply(raw))
     }
@@ -395,8 +413,12 @@ final class HidPadLane: @unchecked Sendable {
             return
         }
         publishIfChanged(reading.report)
-        if let motion = reading.motion { currentFeed().publishMotion(motion) }
-        if let battery = reading.battery { postBatteryIfChanged(battery) }
+        if let motion = reading.motion {
+            currentFeed().publishMotion(motion)
+        }
+        if let battery = reading.battery {
+            postBatteryIfChanged(battery)
+        }
     }
 
     private func publishIfChanged(_ report: GamepadReport) {
@@ -406,7 +428,9 @@ final class HidPadLane: @unchecked Sendable {
     }
 
     private func currentFeed() -> PadFeed {
-        if let fresh = feedMail.take() { feed = fresh }
+        if let fresh = feedMail.take() {
+            feed = fresh
+        }
         return feed
     }
 

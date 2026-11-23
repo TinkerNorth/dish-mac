@@ -81,7 +81,9 @@ package extension AppModel {
     /// A failure the open card shows is not told twice; one for a satellite
     /// whose card is closed is told like any other.
     internal func reportPairingFailure(serverId: String, _ failure: ConnectionFailure) {
-        if pairingTarget?.id == serverId { return }
+        if pairingTarget?.id == serverId {
+            return
+        }
         report(failure)
     }
 

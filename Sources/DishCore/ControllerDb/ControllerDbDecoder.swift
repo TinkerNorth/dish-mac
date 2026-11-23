@@ -165,9 +165,9 @@ private func controllerRecord(_ file: RecordFile) -> ControllerRecord? {
     let schemaFits = file.schema.map { $0 == ControllerDbSchema.version } ?? true
     guard schemaFits, !file.id.isEmpty else { return nil }
     let ruleWord = file.platforms?[ControllerDbSchema.platform]?.direct?.rule ?? file.input.direct.rule
-    guard let rule = ControllerDirectRule(rawValue: ruleWord) else { return nil }
-    guard let verification = ControllerVerification(rawValue: file.support.verification.state) else { return nil }
-    guard let mapping = recordMapping(file.input.mapping), let route = recordRoute(file.output?.route) else { return nil }
+    guard let rule = ControllerDirectRule(rawValue: ruleWord),
+          let verification = ControllerVerification(rawValue: file.support.verification.state),
+          let mapping = recordMapping(file.input.mapping), let route = recordRoute(file.output?.route) else { return nil }
     return ControllerRecord(
         id: file.id,
         requiredFamilies: file.requires?.families ?? [],

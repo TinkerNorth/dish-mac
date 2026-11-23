@@ -89,7 +89,9 @@ struct SetupPage: View {
     }
 
     private func dismissedQuestion(_ shown: Bool) {
-        if !shown, navigation.state.pendingLeaveGuard != nil { stay() }
+        if !shown, navigation.state.pendingLeaveGuard != nil {
+            stay()
+        }
     }
 
     private func armGuard(_ guarded: Bool) {
@@ -118,7 +120,9 @@ struct SetupPage: View {
     private func closeOverlay() {
         let landed = state.landed
         model.dismissApply()
-        if landed { navigation.send(.setupEnded(.applied)) }
+        if landed {
+            navigation.send(.setupEnded(.applied))
+        }
     }
 }
 

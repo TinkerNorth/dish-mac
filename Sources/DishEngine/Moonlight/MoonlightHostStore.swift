@@ -173,7 +173,9 @@ final class MoonlightHostStore {
     func uniqueId() -> String {
         lock.lock()
         defer { lock.unlock() }
-        if let stored = defaults.string(forKey: Self.uniqueIdKey), stored.count == Self.uniqueIdLength { return stored }
+        if let stored = defaults.string(forKey: Self.uniqueIdKey), stored.count == Self.uniqueIdLength {
+            return stored
+        }
         let fresh = String(UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased().prefix(Self.uniqueIdLength))
         defaults.set(fresh, forKey: Self.uniqueIdKey)
         return fresh

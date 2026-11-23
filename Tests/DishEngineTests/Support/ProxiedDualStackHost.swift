@@ -64,8 +64,12 @@ final class ProxiedDualStackHost {
     func advertised(within timeout: TimeInterval) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if replies.confirmed >= Self.confirmations { return true }
-            if replies.failed { return false }
+            if replies.confirmed >= Self.confirmations {
+                return true
+            }
+            if replies.failed {
+                return false
+            }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         return replies.confirmed >= Self.confirmations
@@ -73,8 +77,12 @@ final class ProxiedDualStackHost {
 
     /// Takes the service and its records off the air.
     func stop() {
-        if let records { DNSServiceRefDeallocate(records) }
-        if let service { DNSServiceRefDeallocate(service) }
+        if let records {
+            DNSServiceRefDeallocate(records)
+        }
+        if let service {
+            DNSServiceRefDeallocate(service)
+        }
         records = nil
         service = nil
     }
@@ -101,7 +109,9 @@ final class ProxiedDualStackHost {
     }
 
     private static func check(_ code: DNSServiceErrorType, _ step: String) throws {
-        if Int(code) != kDNSServiceErr_NoError { throw Failure(step: step, code: code) }
+        if Int(code) != kDNSServiceErr_NoError {
+            throw Failure(step: step, code: code)
+        }
     }
 
     private static let serviceReply: DNSServiceRegisterReply = { _, _, errorCode, _, _, _, context in
@@ -133,7 +143,11 @@ final class ProxiedDualStackHost {
         func note(_ errorCode: DNSServiceErrorType) {
             lock.lock()
             defer { lock.unlock() }
-            if Int(errorCode) == kDNSServiceErr_NoError { count += 1 } else { failure = true }
+            if Int(errorCode) == kDNSServiceErr_NoError {
+                count += 1
+            } else {
+                failure = true
+            }
         }
 
         static func from(_ context: UnsafeMutableRawPointer?) -> Replies? {

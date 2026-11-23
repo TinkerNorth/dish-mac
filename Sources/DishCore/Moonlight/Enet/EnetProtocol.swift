@@ -138,7 +138,9 @@ package enum EnetWire {
         var writer = ByteWriter(capacity: 64)
         let assigned = outgoingPeerId < EnetProtocol.maximumPeerId
         var word = outgoingPeerId & EnetProtocol.maximumPeerId
-        if assigned { word |= (UInt16(outgoingSessionId) << EnetProtocol.headerSessionShift) & EnetProtocol.headerSessionMask }
+        if assigned {
+            word |= (UInt16(outgoingSessionId) << EnetProtocol.headerSessionShift) & EnetProtocol.headerSessionMask
+        }
         word |= EnetProtocol.headerFlagSentTime
         writer.u16BE(word)
         writer.u16BE(sentTime)

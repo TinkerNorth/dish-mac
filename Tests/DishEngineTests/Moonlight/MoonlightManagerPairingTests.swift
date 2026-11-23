@@ -40,7 +40,9 @@ final class MoonlightManagerPairingTests: MoonlightManagerTestCase {
         let pins = pins
         manager.events
             .sink { event in
-                if case let .pairingPinReady(_, pin) = event { pins.mutate { $0.append(pin) } }
+                if case let .pairingPinReady(_, pin) = event {
+                    pins.mutate { $0.append(pin) }
+                }
             }
             .store(in: &pinBag)
     }
@@ -49,7 +51,9 @@ final class MoonlightManagerPairingTests: MoonlightManagerTestCase {
 
     private func failures() -> [MoonlightPairingFailure] {
         seen.compactMap { event in
-            if case let .pairingFailed(_, reason) = event { return reason }
+            if case let .pairingFailed(_, reason) = event {
+                return reason
+            }
             return nil
         }
     }
@@ -156,7 +160,13 @@ final class MoonlightManagerPairingTests: MoonlightManagerTestCase {
         let paired = await pairing.value
         XCTAssertFalse(paired)
         XCTAssertNil(store.host(id: host.id), "the host is not remembered")
-        XCTAssertFalse(seen.contains { if case .paired = $0 { true } else { false } })
+        XCTAssertFalse(seen.contains {
+            if case .paired = $0 {
+                true
+            } else {
+                false
+            }
+        })
     }
 
     func testACompletedPairingRecordsTheUniqueIdOfTheMachineItPairedWith() async {

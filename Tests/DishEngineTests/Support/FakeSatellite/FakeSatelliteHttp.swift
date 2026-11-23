@@ -23,8 +23,10 @@ enum FakeSatelliteHttp {
     /// Parses one complete request off the front of `buffer`; nil when more
     /// bytes are needed. Returns the request and the consumed byte count.
     static func parseRequest(_ buffer: Data) -> (Request, Int)? {
-        guard let headEnd = buffer.range(of: Data("\r\n\r\n".utf8)) else { return nil }
-        guard let head = String(bytes: buffer[buffer.startIndex ..< headEnd.lowerBound], encoding: .utf8) else { return nil }
+        guard let headEnd = buffer.range(of: Data("\r\n\r\n".utf8)), let head = String(
+            bytes: buffer[buffer.startIndex ..< headEnd.lowerBound],
+            encoding: .utf8
+        ) else { return nil }
         var lines = head.components(separatedBy: "\r\n")
         guard !lines.isEmpty else { return nil }
         let requestLine = lines.removeFirst().split(separator: " ")

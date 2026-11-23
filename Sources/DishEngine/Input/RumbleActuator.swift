@@ -42,7 +42,9 @@ final class RumbleActuator {
         self.controller = controller
         leftMotor = haptics.createEngine(withLocality: pair.left).flatMap(HapticMotor.init(engine:))
         rightMotor = haptics.createEngine(withLocality: pair.right).flatMap(HapticMotor.init(engine:))
-        if leftMotor == nil, rightMotor == nil { return nil }
+        if leftMotor == nil, rightMotor == nil {
+            return nil
+        }
     }
 
     func shutdown() {

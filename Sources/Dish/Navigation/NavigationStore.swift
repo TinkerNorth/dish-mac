@@ -46,7 +46,9 @@ final class NavigationStore: ObservableObject {
     }
 
     private func columnVisibilityChanged(_ visibility: NavigationSplitViewVisibility) {
-        if visibility != .all { send(.toggleRail) }
+        if visibility != .all {
+            send(.toggleRail)
+        }
     }
 
     /// The stack's path; a pop the stack makes itself is a `pop` event.
@@ -57,7 +59,11 @@ final class NavigationStore: ObservableObject {
     private func pathChanged(_ path: [Page]) {
         let shorter = path.count < state.path.count
         let longer = path.count > state.path.count
-        if shorter { send(path.isEmpty ? .popToRoot : .pop) }
-        if longer, let page = path.last { send(.push(page)) }
+        if shorter {
+            send(path.isEmpty ? .popToRoot : .pop)
+        }
+        if longer, let page = path.last {
+            send(.push(page))
+        }
     }
 }

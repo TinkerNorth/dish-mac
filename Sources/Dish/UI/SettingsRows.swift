@@ -116,7 +116,9 @@ struct LinkRow: View {
     }
 
     private func open() {
-        if let url = URL(string: destination) { openURL(url) }
+        if let url = URL(string: destination) {
+            openURL(url)
+        }
     }
 }
 
