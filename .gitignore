@@ -48,3 +48,6 @@ DerivedData/
 *.pem
 *.cer
 *.mobileprovision
+
+# Coverage profiles an instrumented run leaves behind
+*.profraw
