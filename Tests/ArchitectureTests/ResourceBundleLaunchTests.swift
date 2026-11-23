@@ -83,6 +83,17 @@ final class ResourceBundleLaunchTests: XCTestCase {
         XCTAssertNotEqual(permissions & 0o111, 0, "the workflows run the script directly")
     }
 
+    /// macOS shows this the first time either use opens a pad's microphone:
+    /// the mic switch's sending, or the inspector's test, which sends nothing.
+    func testTheMicrophonePromptDescribesBothUsesOfTheMicrophone() throws {
+        let script = try RepoFiles.read(Self.bundleScriptPath)
+        let key = try XCTUnwrap(script.range(of: "<key>NSMicrophoneUsageDescription</key>"))
+        let sentence = try XCTUnwrap(script[key.upperBound...].split(separator: "\n").first)
+        XCTAssertTrue(sentence.contains("mic switch is on"), "the switch's use")
+        XCTAssertTrue(sentence.contains("microphone test"), "the inspector's use")
+        XCTAssertTrue(sentence.contains("sends nothing"), "and that the test sends nothing")
+    }
+
     private static func namesTheModuleBundle(_ line: String) -> Bool {
         line.contains("Bundle.module") || line.contains("bundle: .module") || line.contains("?? .module")
     }

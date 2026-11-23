@@ -68,7 +68,7 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>NSLocalNetworkUsageDescription</key>
         <string>Dish discovers Satellite servers on your local network.</string>
     <key>NSMicrophoneUsageDescription</key>
-        <string>Dish captures a controller’s own microphone and sends it to the satellite you paired with, only while that controller’s mic switch is on.</string>
+        <string>Dish captures a controller’s own microphone: it sends it to the satellite you paired with only while that controller’s mic switch is on, and the inspector’s microphone test shows its level on this Mac and sends nothing.</string>
     <key>NSBonjourServices</key>
         <array><string>_satellite._udp</string><string>_nvstream._tcp</string></array>
     <!-- The crash-reporting address, from the release secret; empty means the
