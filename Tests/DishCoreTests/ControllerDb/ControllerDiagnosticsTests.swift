@@ -129,8 +129,90 @@ final class ControllerDiagnosticsTests: XCTestCase {
     func testTheTestIdsAreTheBundlesWords() {
         XCTAssertEqual(
             InspectorTest.allCases.map(\.rawValue),
-            ["rumble.weak", "rumble.strong", "rumble.both", "tone.play", "mic.level", "stick.drift", "stick.range"]
+            [
+                "rumble.weak", "rumble.strong", "rumble.both",
+                "triggerRumble.left", "triggerRumble.right", "triggerRumble.both",
+                "lightbar.cycle", "playerLeds.cycle", "trigger.pulse",
+                "tone.play", "haptics.play", "mic.level", "stick.drift", "stick.range"
+            ]
         )
         XCTAssertEqual(OutcomeResult.allCases.map(\.rawValue), ["worked", "didNotWork"])
+    }
+
+    /// The contract's list against the Mac's: the lamp is the one item no
+    /// Mac path carries (Tests/PARITY.md says why).
+    func testTheMacRunsEveryTestTheContractNamesButTheLamps() {
+        let contract = [
+            "rumble.weak", "rumble.strong", "rumble.both", "triggerRumble.left", "triggerRumble.right", "triggerRumble.both",
+            "lightbar.cycle", "playerLeds.cycle", "trigger.pulse", "lamp.on", "lamp.pulse", "tone.play", "haptics.play",
+            "mic.level", "stick.drift", "stick.range"
+        ]
+        let mac = Set(InspectorTest.allCases.map(\.rawValue))
+        XCTAssertEqual(contract.filter { !mac.contains($0) }, ["lamp.on", "lamp.pulse"])
+        XCTAssertTrue(mac.isSubset(of: contract))
+    }
+
+    // MARK: - One answer per run
+
+    func testATestAsksOnlyOnceItHasEnded() {
+        var ledger = PadTestLedger()
+        ledger.started(.lightbarCycle)
+        XCTAssertEqual(ledger.running, .lightbarCycle)
+        XCTAssertNil(ledger.asking)
+        ledger.ended(.lightbarCycle, atMs: 1200)
+        XCTAssertNil(ledger.running)
+        XCTAssertEqual(ledger.asking, EndedTest(test: .lightbarCycle, atMs: 1200))
+    }
+
+    func testTheAnswerCarriesTheTimeTheTestEnded() {
+        var ledger = PadTestLedger()
+        ledger.started(.triggerPulse)
+        ledger.ended(.triggerPulse, atMs: 2000)
+        ledger.answered(worked: false)
+        XCTAssertNil(ledger.asking)
+        XCTAssertEqual(ledger.answers, [TestOutcome(test: .triggerPulse, result: .didNotWork, atMs: 2000)])
+    }
+
+    func testANewRunReplacesAQuestionStillUnanswered() {
+        var ledger = PadTestLedger()
+        ledger.started(.rumbleWeak)
+        ledger.ended(.rumbleWeak, atMs: 400)
+        ledger.started(.tone)
+        XCTAssertNil(ledger.asking, "the new run's question waits for its own end")
+        ledger.ended(.tone, atMs: 900)
+        ledger.answered(worked: true)
+        XCTAssertEqual(ledger.answers, [TestOutcome(test: .tone, result: .worked, atMs: 900)])
+    }
+
+    func testTheEndOfARunAnotherRunReplacedAsksNothing() {
+        var ledger = PadTestLedger()
+        ledger.started(.rumbleStrong)
+        ledger.started(.playerLedsCycle)
+        ledger.ended(.rumbleStrong, atMs: 400)
+        XCTAssertEqual(ledger.running, .playerLedsCycle)
+        XCTAssertNil(ledger.asking)
+    }
+
+    func testAnAnswerWithNoQuestionWaitingIsNothing() {
+        var ledger = PadTestLedger()
+        ledger.answered(worked: true)
+        ledger.started(.microphone)
+        ledger.answered(worked: true)
+        XCTAssertEqual(ledger, {
+            var running = PadTestLedger()
+            running.started(.microphone)
+            return running
+        }())
+        XCTAssertEqual(ledger.answers, [])
+    }
+
+    func testTheLedgerKeepsTheNewestTwentyAnswers() {
+        var ledger = PadTestLedger()
+        for at in 1 ... 22 {
+            ledger.started(.stickDrift)
+            ledger.ended(.stickDrift, atMs: Int64(at))
+            ledger.answered(worked: true)
+        }
+        XCTAssertEqual(ledger.answers.map(\.atMs), Array(3 ... 22).map(Int64.init))
     }
 }

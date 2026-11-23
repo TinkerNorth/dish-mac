@@ -7,8 +7,10 @@
 // and played into the pad's device at its own width (the haptics lanes on
 // channels 3 and 4, never upmixed), and the pad's microphone is captured in
 // 20 ms windows, encoded and sent while every gate is open. Mute is
-// enforced here: a muted controller delivers nothing. The decisions are
-// `audioPlan` in the core; this is the IO that follows them.
+// enforced here: a muted controller delivers nothing. A pad no host
+// carries keeps its route, so the inspector's tone and meter reach it
+// from this Mac alone. The decisions are `audioPlan` in the core; this is
+// the IO that follows them.
 
 import Combine
 import CoreAudio
@@ -16,16 +18,17 @@ import DishCore
 import DishKernel
 import Foundation
 
-/// What one bound controller's audio needs: where its frames go (its
-/// satellite and the controller index it holds there) and what decides them.
+/// What one controller's audio needs: where its frames go (its satellite and
+/// the controller index it holds there, none for a pad no host carries) and
+/// what decides them.
 package struct AudioBinding {
     package let slotId: String
-    package let connection: WifiConnection
+    package let connection: WifiConnection?
     package let controllerIndex: Int
     package let route: PadAudioFunction?
     package let facts: AudioFacts
 
-    package init(slotId: String, connection: WifiConnection, controllerIndex: Int, route: PadAudioFunction?, facts: AudioFacts) {
+    package init(slotId: String, connection: WifiConnection?, controllerIndex: Int, route: PadAudioFunction?, facts: AudioFacts) {
         self.slotId = slotId
         self.connection = connection
         self.controllerIndex = controllerIndex
@@ -34,14 +37,21 @@ package struct AudioBinding {
     }
 }
 
+/// Where the inspector's test tone plays: the pad's speaker pair, or its
+/// haptics lanes.
+package enum ToneLane: Hashable {
+    case speaker
+    case haptics
+}
+
 /// What one controller's audio is doing, for the chips and the diagnostics.
 package struct ControllerAudioState: Hashable {
     package var plan = AudioPlan.silent
     /// The lamp state the game asked for, rendered by the UI: the DualSense
     /// lamp itself is beyond GameController on a Mac.
     package var micLed: MicLedState?
-    /// The inspector's test tone is on the pad's speaker right now.
-    package var tonePlaying = false
+    /// The lane the inspector's test tone plays on right now, nil while none.
+    package var tone: ToneLane?
     /// The inspector's microphone meter, while it listens.
     package var micMeter: MicLevel?
     /// The system refused the pad's output, or its microphone, at the
@@ -52,14 +62,14 @@ package struct ControllerAudioState: Hashable {
     package init(
         plan: AudioPlan = .silent,
         micLed: MicLedState? = nil,
-        tonePlaying: Bool = false,
+        tone: ToneLane? = nil,
         micMeter: MicLevel? = nil,
         playbackRefused: Bool = false,
         captureRefused: Bool = false
     ) {
         self.plan = plan
         self.micLed = micLed
-        self.tonePlaying = tonePlaying
+        self.tone = tone
         self.micMeter = micMeter
         self.playbackRefused = playbackRefused
         self.captureRefused = captureRefused
@@ -105,7 +115,7 @@ package final class ControllerAudioEngine: StateSource<[String: ControllerAudioS
             ControllerAudioState(
                 plan: $0.plan,
                 micLed: $0.micLed,
-                tonePlaying: $0.tonePlaying,
+                tone: $0.tone,
                 micMeter: $0.micMeter,
                 playbackRefused: $0.playbackRefused,
                 captureRefused: $0.captureRefused
@@ -113,11 +123,12 @@ package final class ControllerAudioEngine: StateSource<[String: ControllerAudioS
         })
     }
 
-    /// The inspector's tone on the pad's speaker: false when the pad has no
-    /// speaker route, or a tone is already playing.
-    package func playTone(for slotId: String) -> Bool {
+    /// The inspector's tone on the pad's speaker or its haptics lanes: false
+    /// when the pad has no route to the lane, or a tone already plays.
+    /// `ended` runs once the tone has played out.
+    package func playTone(for slotId: String, on lane: ToneLane, ended: @escaping () -> Void) -> Bool {
         guard let slot = slots[slotId] else { return false }
-        let playing = slot.playTone(onChange: { [weak self] in self?.publish() })
+        let playing = slot.playTone(on: lane, onChange: { [weak self] in self?.publish() }, ended: ended)
         // A refused output is news even when no tone plays: the descriptor follows it.
         publish()
         return playing
@@ -125,10 +136,11 @@ package final class ControllerAudioEngine: StateSource<[String: ControllerAudioS
 
     /// The inspector's microphone meter, listening for `meterMs` without
     /// sending a byte: false when the pad has no microphone route or the
-    /// system withholds the microphone.
-    package func startMicMeter(for slotId: String) -> Bool {
+    /// system withholds the microphone. `ended` runs when the meter stops,
+    /// on its own or by `stopMicMeter`.
+    package func startMicMeter(for slotId: String, ended: @escaping () -> Void) -> Bool {
         guard let slot = slots[slotId] else { return false }
-        let listening = slot.startMicMeter(meterMs: meterMs, onChange: { [weak self] in self?.publish() })
+        let listening = slot.startMicMeter(meterMs: meterMs, onChange: { [weak self] in self?.publish() }, ended: ended)
         // A refused microphone is news even when no meter listens: the descriptor follows it.
         publish()
         return listening
@@ -171,10 +183,9 @@ package struct AudioCounters: Equatable {
     }
 }
 
-/// Where the test tone is in its sweep; the timer's closure carries it.
+/// Where the test tone is; the timer's closure carries it.
 private final class ToneCursor {
     var index = 0
-    var phase: Float = 0
 }
 
 /// One controller's voices and microphone.
@@ -189,12 +200,15 @@ private final class SlotAudio {
     private var route: PadAudioFunction?
     private var facts = AudioFacts()
     var micLed: MicLedState?
-    private(set) var tonePlaying = false
+    private(set) var tone: ToneLane?
     private(set) var micMeter: MicLevel?
     private(set) var toneWindows = 0
     private var toneTimer: DispatchSourceTimer?
     private var meterTimer: DispatchSourceTimer?
     private var metering = false
+    /// What runs when the tone has played out, and when the meter stops.
+    private var toneEnded: (() -> Void)?
+    private var meterEnded: (() -> Void)?
 
     private let playout: LanePlayout
     private let capture: MicCapture
@@ -258,6 +272,8 @@ private final class SlotAudio {
         let moved = connection !== binding.connection || controllerIndex != binding.controllerIndex
         if moved {
             releaseHandlers()
+            input?.stop()
+            input = nil
             connection = binding.connection
             controllerIndex = binding.controllerIndex
             playout.restart()
@@ -270,12 +286,15 @@ private final class SlotAudio {
         plan = planNow()
     }
 
+    /// A test cut short by the pad's audio going away asks nothing.
     func close() {
         releaseHandlers()
         applyWatch = nil
         toneTimer?.cancel()
         toneTimer = nil
-        tonePlaying = false
+        tone = nil
+        toneEnded = nil
+        meterEnded = nil
         stopMicMeter()
         output?.stop()
         output = nil
@@ -288,49 +307,52 @@ private final class SlotAudio {
 
     // MARK: - The inspector's tests
 
-    /// The tone rides the speaker lane's ring one window every 20 ms, the
-    /// output opened for it if no voice holds it, and closed again after the
-    /// last window has had time to play.
-    func playTone(onChange: @escaping () -> Void) -> Bool {
-        guard let route, route.hasSpeaker, !tonePlaying else { return false }
-        tonePlaying = true
+    /// The tone rides its lane's ring one window every 20 ms, the output
+    /// opened at the device's width for it if no voice holds it, and closed
+    /// again after the last window has had time to play.
+    func playTone(on lane: ToneLane, onChange: @escaping () -> Void, ended: @escaping () -> Void) -> Bool {
+        guard let route, routeCarries(route, lane), tone == nil else { return false }
+        tone = lane
         toneWindows = 0
         reconcileOutput(plan)
         guard output != nil else {
-            tonePlaying = false
+            tone = nil
             plan = planNow()
             return false
         }
+        toneEnded = ended
         let cursor = ToneCursor()
         let source = DispatchSource.makeTimerSource(queue: .main)
         source.schedule(deadline: .now(), repeating: .milliseconds(AudioWire.frameMs))
         source.setEventHandler { [weak self] in
-            MainActor.assumeIsolated { self?.toneTick(cursor, onChange: onChange) }
+            MainActor.assumeIsolated { self?.toneTick(cursor, lane: lane, onChange: onChange) }
         }
         source.resume()
         toneTimer = source
         return true
     }
 
-    /// Two windows of grace after the sweep, so the cushion and the tail
-    /// play out before the output closes.
-    private func toneTick(_ cursor: ToneCursor, onChange: () -> Void) {
+    /// Two windows of grace after the tone, so the cushion and the tail play
+    /// out before the output closes.
+    private func toneTick(_ cursor: ToneCursor, lane: ToneLane, onChange: () -> Void) {
         if cursor.index < TestTone.windows {
-            playout.enqueueLocal(.speaker, TestTone.window(at: cursor.index, phase: &cursor.phase))
+            playout.enqueueLocal(playoutLane(lane), TestTone.window(at: cursor.index))
             toneWindows += 1
         }
         cursor.index += 1
         guard cursor.index >= TestTone.windows + 3 else { return }
         toneTimer?.cancel()
         toneTimer = nil
-        tonePlaying = false
+        tone = nil
         reconcileOutput(plan)
         onChange()
+        toneEnded?()
+        toneEnded = nil
     }
 
     /// The meter opens the microphone whether or not the host is being sent
     /// anything, and sends nothing itself: the levels stay on this Mac.
-    func startMicMeter(meterMs: Int, onChange: @escaping () -> Void) -> Bool {
+    func startMicMeter(meterMs: Int, onChange: @escaping () -> Void, ended: @escaping () -> Void) -> Bool {
         guard let route, route.hasMic, facts.micPermitted, !metering else { return false }
         metering = true
         capture.setMetering(true)
@@ -340,14 +362,13 @@ private final class SlotAudio {
                 onChange()
             }
         }
-        if let connection {
-            reconcileInput(connection, plan)
-        }
+        reconcileInput(connection, plan)
         guard input != nil else {
             stopMicMeter()
             plan = planNow()
             return false
         }
+        meterEnded = ended
         let source = DispatchSource.makeTimerSource(queue: .main)
         source.schedule(deadline: .now() + .milliseconds(meterMs))
         source.setEventHandler { [weak self] in
@@ -368,16 +389,20 @@ private final class SlotAudio {
         capture.setMetering(false)
         capture.onLevel = nil
         micMeter = nil
-        if let connection {
-            reconcileInput(connection, plan)
-        }
+        reconcileInput(connection, plan)
+        meterEnded?()
+        meterEnded = nil
     }
 
     /// The lanes start over each time the satellite confirms the slot plugged
     /// again: that is a fresh pad on its side, with its sequence numbers
     /// started over. The handlers sit on the pad's own index, so another pad
-    /// on the same satellite keeps its own.
-    private func installHandlers(_ connection: WifiConnection) {
+    /// on the same satellite keeps its own; a pad no host carries has none.
+    private func installHandlers(_ connection: WifiConnection?) {
+        guard let connection else {
+            applyWatch = nil
+            return
+        }
         let playout = playout
         applyWatch = connection.applyCountPublisher(of: slotId).dropFirst().sink { _ in playout.restart() }
         let slotId = slotId
@@ -398,7 +423,7 @@ private final class SlotAudio {
     /// wanted, or the test tone plays, and closes when none is; a lane the
     /// plan refuses stays silent in the ring.
     private func reconcileOutput(_ next: AudioPlan) {
-        let wantsOutput = next.speakerVoice || next.hapticVoice || tonePlaying
+        let wantsOutput = next.speakerVoice || next.hapticVoice || tone != nil
         guard let route, wantsOutput else {
             output?.stop()
             output = nil
@@ -422,8 +447,9 @@ private final class SlotAudio {
 
     /// The microphone captures while the plan says so, or the meter listens;
     /// the mute flag is read per window, so a mute lands within one, and the
-    /// meter never delivers.
-    private func reconcileInput(_ connection: WifiConnection, _ next: AudioPlan) {
+    /// meter never delivers. A pad no host carries has nowhere to send; the
+    /// input sends to the host it opened for, so a move opens it again.
+    private func reconcileInput(_ connection: WifiConnection?, _ next: AudioPlan) {
         guard let route, next.micArmed || metering else {
             input?.stop()
             input = nil
@@ -434,7 +460,7 @@ private final class SlotAudio {
         guard input == nil else { return }
         let capture = capture
         let controllerIndex = controllerIndex
-        capture.onWindow = { opus in connection.sendMicAudio(opus: opus, controllerIndex: controllerIndex) }
+        capture.onWindow = { opus in connection?.sendMicAudio(opus: opus, controllerIndex: controllerIndex) }
         input = ports.makeInput(device: route.device.id, channels: AudioWire.micChannels) { buffer, frames in
             capture.push(buffer, frames: frames)
         }
@@ -448,4 +474,20 @@ private final class SlotAudio {
 private struct RefusedEndpoint: Equatable {
     let device: AudioObjectID
     let channels: Int
+}
+
+/// The route reaches the lane: a speaker pair, or the haptics lanes.
+private func routeCarries(_ route: PadAudioFunction, _ lane: ToneLane) -> Bool {
+    switch lane {
+    case .speaker: route.hasSpeaker
+    case .haptics: route.hasHapticLanes
+    }
+}
+
+/// The playout ring a tone on the lane rides.
+private func playoutLane(_ lane: ToneLane) -> LanePlayout.Lane {
+    switch lane {
+    case .speaker: .speaker
+    case .haptics: .haptic
+    }
 }

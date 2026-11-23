@@ -4,6 +4,7 @@
 // The downloaded controller data, on disk under Application Support: one
 // file per published path. A new version is written beside the old one and
 // renamed over it whole, so a crash mid-write leaves the previous version.
+// Nothing but the manifest, the database and a locale's strings is written.
 
 import DishCore
 import DishKernel
@@ -28,7 +29,8 @@ final class ControllerDbCache: Repository, @unchecked Sendable {
     }
 
     func get(_ key: String) -> Data? {
-        lock.mutate { _ in try? Data(contentsOf: url(key)) }
+        guard isCachePath(key) else { return nil }
+        return lock.mutate { _ in try? Data(contentsOf: url(key)) }
     }
 
     func all() -> [Data] {
@@ -36,10 +38,12 @@ final class ControllerDbCache: Repository, @unchecked Sendable {
     }
 
     func put(_ value: Data, for key: String) {
+        guard isCachePath(key) else { return }
         lock.mutate { _ in write(value, to: url(key)) }
     }
 
     func remove(_ key: String) {
+        guard isCachePath(key) else { return }
         lock.mutate { _ in removeIfThere(url(key)) }
     }
 
@@ -59,9 +63,11 @@ final class ControllerDbCache: Repository, @unchecked Sendable {
     }
 
     /// The whole set replaced at once: written into a sibling folder, then
-    /// renamed over the old one. False leaves the old set as it was.
+    /// renamed over the old one. False leaves the old set as it was; a path
+    /// that is not the database's refuses the whole set.
     func replaceAll(_ files: [String: Data]) -> Bool {
-        lock.mutate { _ in swapIn(files) }
+        guard files.keys.allSatisfy(isCachePath) else { return false }
+        return lock.mutate { _ in swapIn(files) }
     }
 
     /// The cached set, verified against the manifest it came with; nil for
@@ -113,4 +119,9 @@ final class ControllerDbCache: Repository, @unchecked Sendable {
         }
         return (try? FileManager.default.replaceItemAt(directory, withItemAt: staging)) != nil
     }
+}
+
+/// The manifest, which the cache keeps beside the files, or a database path.
+private func isCachePath(_ path: String) -> Bool {
+    path == ControllerDbFiles.manifest || isControllerDbPath(path)
 }

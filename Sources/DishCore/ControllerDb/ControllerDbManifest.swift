@@ -4,7 +4,9 @@
 // The published set's manifest and the check that turns downloaded bytes
 // into a set: every file the manifest names, its SHA-256 and its size
 // against the manifest, then parsed, then schema 1, and only then a set the
-// cache may take. Signing the manifest is the next integrity step
+// cache may take. A manifest names the paths the cache writes under, so it
+// may name nothing but the database and a locale's strings. Signing the
+// manifest is the next integrity step
 // (section 11); schema 1 relies on HTTPS and these digests.
 
 import CryptoKit
@@ -43,6 +45,17 @@ public enum ControllerDbFiles {
     }
 }
 
+public enum ControllerDbLimits {
+    /// No served file is larger; today's `controllers.json` is about 370 KB.
+    public static let maxFileBytes = 4 * 1024 * 1024
+}
+
+/// The database, or one locale's strings: a path that cannot reach outside
+/// the folder it is written under.
+public func isControllerDbPath(_ path: String) -> Bool {
+    path.wholeMatch(of: #/controllers\.json|strings\/[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})?\.json/#) != nil
+}
+
 private struct ManifestFile: Decodable {
     struct Entry: Decodable {
         let sha256: String
@@ -55,12 +68,17 @@ private struct ManifestFile: Decodable {
     let files: [String: Entry]?
 }
 
-/// A manifest with no `controllers.json` or a version below 1 is not one.
+/// A manifest of version 1 or above that names the database and English,
+/// nothing outside the database's paths, and no file over the cap.
 public func decodeControllerDbManifest(_ data: Data) -> Result<ControllerDbManifest, ControllerDbError> {
     guard let file = try? JSONDecoder().decode(ManifestFile.self, from: data) else { return .failure(.badJson) }
     guard file.schema == ControllerDbSchema.version else { return .failure(.unsupportedSchema) }
     guard let dbVersion = file.dbVersion, dbVersion >= 1, let entries = file.files else { return .failure(.badJson) }
-    guard entries[ControllerDbFiles.controllers] != nil else { return .failure(.badJson) }
+    let namesTheDatabase = entries[ControllerDbFiles.controllers] != nil
+    let namesEnglish = entries[ControllerDbFiles.strings(ControllerStrings.fallbackLocale)] != nil
+    let namesOnlyDatabasePaths = entries.keys.allSatisfy(isControllerDbPath)
+    let fitsTheCap = entries.values.allSatisfy { (0 ... ControllerDbLimits.maxFileBytes).contains($0.bytes) }
+    guard namesTheDatabase, namesEnglish, namesOnlyDatabasePaths, fitsTheCap else { return .failure(.badJson) }
     let files = entries.mapValues { ControllerDbFileEntry(sha256: $0.sha256.lowercased(), bytes: $0.bytes) }
     return .success(ControllerDbManifest(dbVersion: dbVersion, publishedAt: file.publishedAt, files: files))
 }

@@ -9,7 +9,8 @@
 // "points to the data as received from the USB bus" and "the device does
 // not have to be open to use", and the device descriptor is rebuilt from
 // the fields the IORegistry publishes for the IOUSBHostDevice, each one the
-// descriptor's own.
+// descriptor's own. The rebuild is not yet proven byte for byte against the
+// bus, so the file carries the configurations only (`Tests/PARITY.md`).
 
 import DishCore
 import Foundation

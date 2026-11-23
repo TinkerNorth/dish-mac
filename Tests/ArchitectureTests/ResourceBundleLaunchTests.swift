@@ -20,6 +20,11 @@ final class ResourceBundleLaunchTests: XCTestCase {
     private static let smokeScriptPath = "scripts/launch-smoke.sh"
     private static let smokeStep = "run: scripts/launch-smoke.sh Dish.app"
     private static let bundleStep = "run: ./bundle.sh release"
+    fileprivate static let databaseCheckPath = "scripts/check-bundled-db.sh"
+    private static let coreBundle = "Contents/Resources/Dish_DishCore.bundle"
+    /// The manifest and the seven data files it names.
+    private static let publishedFiles = ["manifest.json", "controllers.json"] + ["en", "bs", "de", "es", "fr", "pt-BR"]
+        .map { "strings/\($0).json" }
 
     func testOnlyTheResolverAsksSwiftPMForTheModuleBundle() throws {
         let offenders = try RepoFiles.swiftFiles(under: "Sources")
@@ -74,16 +79,128 @@ final class ResourceBundleLaunchTests: XCTestCase {
         let script = try RepoFiles.read(Self.smokeScriptPath)
         XCTAssertTrue(script.contains("mv .build \"$HIDDEN_BUILD\""), "the native accessor's fallback is the build tree")
         XCTAssertTrue(script.contains("trap restore_build EXIT"), "the build tree comes back however the launch ends")
+        XCTAssertTrue(script.contains("CFFIXED_USER_HOME="), "the app's support files, logs and caches land in a throwaway home")
         XCTAssertTrue(
-            script.contains("__CFPREFERENCES_AVOID_DAEMON=1 CFFIXED_USER_HOME="),
-            "a launch reads and writes no preferences but its own: through the daemon a fixed home redirects reads alone"
+            script.contains("/usr/libexec/PlistBuddy -c \"Set :CFBundleIdentifier $SMOKE_ID\" \"$SMOKE_APP/Contents/Info.plist\""),
+            "macOS 27 writes preferences through the daemon whatever the environment says, so the launch is a copy under its own domain"
         )
+        XCTAssertTrue(script.contains("SMOKE_ID=\"com.tinkernorth.dish.mac.launch-smoke\""))
+        XCTAssertTrue(script.contains("defaults delete \"$SMOKE_ID\""), "and that domain is deleted however the launch ends")
+        XCTAssertTrue(script.contains("SMOKE_EXECUTABLE=\"$SMOKE_APP/Contents/MacOS/Dish\""), "the copy is what runs")
+        XCTAssertFalse(script.contains("\"$EXECUTABLE\" > \"$LAUNCH_LOG\""), "never the app under the owner's own domain")
         let attributes = try FileManager.default.attributesOfItem(atPath: RepoFiles.url(Self.smokeScriptPath).path)
         let permissions = try XCTUnwrap(attributes[.posixPermissions] as? NSNumber).intValue
         XCTAssertNotEqual(permissions & 0o111, 0, "the workflows run the script directly")
     }
 
+    // MARK: - The bundled controller database
+
+    /// A build that ships a broken copy launches on the empty set, so the
+    /// gate checks the built app's copy before it launches it.
+    func testTheLaunchChecksTheBuiltAppsControllerDatabaseFirst() throws {
+        let script = try RepoFiles.read(Self.smokeScriptPath)
+        let check = try XCTUnwrap(script.range(of: "\(Self.databaseCheckPath) \"$APP/\(Self.coreBundle)\""))
+        let launch = try XCTUnwrap(script.range(of: "\"$SMOKE_EXECUTABLE\" > \"$LAUNCH_LOG\""))
+        XCTAssertTrue(check.lowerBound < launch.lowerBound, "checked before it launches")
+    }
+
+    /// The build system CI's Xcode uses lays a resource bundle out flat; the
+    /// newer one puts its resources under `Contents/Resources`. The app asks
+    /// Foundation, which answers for both, so the check looks in both.
+    func testTheDatabaseCheckPassesTheCopyInABundleThatKeepsItsResourcesAtItsRoot() throws {
+        let copy = try DatabaseCopy(resources: "")
+        defer { copy.remove() }
+        XCTAssertEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckPassesTheCopyInABundleThatKeepsThemUnderContentsResources() throws {
+        let copy = try DatabaseCopy(resources: "Contents/Resources")
+        defer { copy.remove() }
+        XCTAssertEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckFailsABundleWithNoDatabase() throws {
+        let copy = try DatabaseCopy()
+        defer { copy.remove() }
+        try FileManager.default.removeItem(at: copy.folder)
+        XCTAssertNotEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckFailsAFileWithOneByteMore() throws {
+        let copy = try DatabaseCopy()
+        defer { copy.remove() }
+        let handle = try FileHandle(forWritingTo: copy.folder.appendingPathComponent("strings/de.json"))
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data([0x0A]))
+        try handle.close()
+        XCTAssertNotEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckFailsAMissingFile() throws {
+        for path in Self.publishedFiles {
+            let copy = try DatabaseCopy()
+            defer { copy.remove() }
+            try FileManager.default.removeItem(at: copy.folder.appendingPathComponent(path))
+            XCTAssertNotEqual(try copy.check(), 0, path)
+        }
+    }
+
+    func testTheDatabaseCheckFailsAChangedByteOfTheSameSize() throws {
+        let copy = try DatabaseCopy()
+        defer { copy.remove() }
+        let file = copy.folder.appendingPathComponent("controllers.json")
+        var body = try Data(contentsOf: file)
+        body[body.index(before: body.endIndex)] ^= 0x01
+        try body.write(to: file)
+        XCTAssertNotEqual(try copy.check(), 0)
+    }
+
+    /// macOS shows this the first time either use opens a pad's microphone:    /// macOS shows this the first time either use opens a pad's
+    /// microphone:
+    /// the mic switch's sending, or the inspector's test, which sends nothing.
+    func testTheMicrophonePromptDescribesBothUsesOfTheMicrophone() throws {
+        let script = try RepoFiles.read(Self.bundleScriptPath)
+        let key = try XCTUnwrap(script.range(of: "<key>NSMicrophoneUsageDescription</key>"))
+        let sentence = try XCTUnwrap(script[key.upperBound...].split(separator: "\n").first)
+        XCTAssertTrue(sentence.contains("mic switch is on"), "the switch's use")
+        XCTAssertTrue(sentence.contains("microphone test"), "the inspector's use")
+        XCTAssertTrue(sentence.contains("sends nothing"), "and that the test sends nothing")
+    }
+
     private static func namesTheModuleBundle(_ line: String) -> Bool {
         line.contains("Bundle.module") || line.contains("bundle: .module") || line.contains("?? .module")
+    }
+}
+
+/// The bundled database copied into a scratch resource bundle, and the
+/// gate's check run over that bundle.
+private struct DatabaseCopy {
+    private let scratch: URL
+    private let bundle: URL
+    let folder: URL
+
+    /// `resources` is where the bundle keeps its resources, from its root.
+    init(resources: String = "Contents/Resources") throws {
+        scratch = FileManager.default.temporaryDirectory.appendingPathComponent("dish-db-check-\(UUID().uuidString)")
+        bundle = scratch.appendingPathComponent("Dish_DishCore.bundle")
+        let home = resources.isEmpty ? bundle : bundle.appendingPathComponent(resources)
+        folder = home.appendingPathComponent("controllers-v1")
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: RepoFiles.url("Sources/DishCore/Resources/controllers-v1"), to: folder)
+    }
+
+    func check() throws -> Int32 {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [RepoFiles.url(ResourceBundleLaunchTests.databaseCheckPath).path, bundle.path]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        return process.terminationStatus
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: scratch)
     }
 }

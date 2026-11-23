@@ -113,12 +113,21 @@ public func ioReturnName(_ status: Int32) -> String {
 
 // MARK: - Pad: the person's answer
 
-/// The inspector's tests, by the ids the bundle carries.
+/// The inspector's tests, by the ids the bundle carries, in the contract's
+/// order. The contract's `lamp.on` and `lamp.pulse` are not here: no Mac
+/// path reaches a pad's mic lamp.
 public enum InspectorTest: String, CaseIterable, Equatable, Sendable {
     case rumbleWeak = "rumble.weak"
     case rumbleStrong = "rumble.strong"
     case rumbleBoth = "rumble.both"
+    case triggerRumbleLeft = "triggerRumble.left"
+    case triggerRumbleRight = "triggerRumble.right"
+    case triggerRumbleBoth = "triggerRumble.both"
+    case lightbarCycle = "lightbar.cycle"
+    case playerLedsCycle = "playerLeds.cycle"
+    case triggerPulse = "trigger.pulse"
     case tone = "tone.play"
+    case haptics = "haptics.play"
     case microphone = "mic.level"
     case stickDrift = "stick.drift"
     case stickRange = "stick.range"
@@ -151,4 +160,49 @@ public enum TestOutcomeLimits {
 /// The answers oldest first, the newest kept when the list is full.
 public func appendingOutcome(_ outcomes: [TestOutcome], _ outcome: TestOutcome, limit: Int = TestOutcomeLimits.perPad) -> [TestOutcome] {
     Array((outcomes + [outcome]).suffix(max(limit, 0)))
+}
+
+/// A test that ran to its end and waits for its answer.
+public struct EndedTest: Equatable, Sendable {
+    public let test: InspectorTest
+    /// Milliseconds since the Unix epoch.
+    public let atMs: Int64
+
+    public init(test: InspectorTest, atMs: Int64) {
+        self.test = test
+        self.atMs = atMs
+    }
+}
+
+/// "Did it work?" on one pad, one answer per run (the contract's bench,
+/// rule 4): the test running now, the one that ended and waits for its
+/// answer, and the answers, each stamped with the time its test ended.
+public struct PadTestLedger: Equatable, Sendable {
+    public private(set) var running: InspectorTest?
+    public private(set) var asking: EndedTest?
+    /// Oldest first, the newest twenty.
+    public private(set) var answers: [TestOutcome] = []
+
+    public init() {}
+
+    /// A new run replaces any question still unanswered.
+    public mutating func started(_ test: InspectorTest) {
+        running = test
+        asking = nil
+    }
+
+    /// The end of a run another run replaced asks nothing.
+    public mutating func ended(_ test: InspectorTest, atMs: Int64) {
+        guard running == test else { return }
+        running = nil
+        asking = EndedTest(test: test, atMs: atMs)
+    }
+
+    /// Nothing while no question waits.
+    public mutating func answered(worked: Bool) {
+        guard let asking else { return }
+        let outcome = TestOutcome(test: asking.test, result: worked ? .worked : .didNotWork, atMs: asking.atMs)
+        answers = appendingOutcome(answers, outcome)
+        self.asking = nil
+    }
 }

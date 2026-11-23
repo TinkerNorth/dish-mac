@@ -194,12 +194,21 @@ final class GameControllerInput: ObservableObject {
             hasMotion: controller.motion != nil,
             hasTouchpad: touchpadInputs(pad) != nil,
             hasRumble: controller.haptics != nil,
+            hasTriggerRumble: hasTriggerMotors(controller.haptics?.supportedLocalities ?? []),
             hasLightbar: controller.light != nil,
             hasBattery: true,
             hasTriggerEffects: dualSense,
             hasPlayerLeds: dualSense,
             hasExtendedButtons: !paddles.isEmpty
         )
+    }
+
+    /// The framework names a motor in each trigger, as it does for an Xbox
+    /// Wireless Controller's impulse triggers.
+    nonisolated static func hasTriggerMotors(_ localities: Set<GCHapticsLocality>) -> Bool {
+        let left = localities.contains(.leftTrigger)
+        let right = localities.contains(.rightTrigger)
+        return left && right
     }
 
     /// The pad's family from the framework's product category; a category
@@ -227,7 +236,8 @@ final class GameControllerInput: ObservableObject {
         vendorName=\(controller.vendorName ?? "none", privacy: .public) family=\(String(describing: family), privacy: .public) \
         extendedGamepad=\(extended, privacy: .public) motion=\(capabilities.hasMotion) touchpad=\(capabilities.hasTouchpad) \
         rumble=\(capabilities.hasRumble) lightbar=\(capabilities.hasLightbar) battery=\(capabilities.hasBattery) \
-        triggerEffects=\(capabilities.hasTriggerEffects) playerLeds=\(capabilities.hasPlayerLeds) \
+        triggerRumble=\(capabilities.hasTriggerRumble) triggerEffects=\(capabilities.hasTriggerEffects) \
+        playerLeds=\(capabilities.hasPlayerLeds) \
         extendedButtons=\(capabilities.hasExtendedButtons) \(profile, privacy: .public)
         """)
     }

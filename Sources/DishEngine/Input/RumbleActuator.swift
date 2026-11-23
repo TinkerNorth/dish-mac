@@ -5,11 +5,22 @@ import CoreHaptics
 import Foundation
 import GameController
 
+/// The two actuators one command drives, left and right: the motors in the
+/// handles (the strong, low-frequency one in the left) or the ones in the
+/// triggers.
+struct HapticPair: Equatable {
+    let left: GCHapticsLocality
+    let right: GCHapticsLocality
+
+    static let handles = HapticPair(left: .leftHandle, right: .rightHandle)
+    static let triggers = HapticPair(left: .leftTrigger, right: .rightTrigger)
+}
+
 /// Per-controller haptic actuator: `GCController.haptics` and two
-/// `CHHapticEngine`s, the strong (low-frequency) motor at `.leftHandle` and
-/// the weak one at `.rightHandle`, so one satellite rumble drives both.
-/// Vibration only: the light bar has its own return path. It runs on the
-/// feedback queue, which owns it.
+/// `CHHapticEngine`s, one per side of the pair, so one satellite rumble
+/// drives both handles and one bench buzz the triggers it names. Vibration
+/// only: the light bar has its own return path. It runs on the feedback
+/// queue, which owns it.
 ///
 /// Engines are kept started: starting one per command adds ~5–10 ms. Each
 /// motor keeps the player for the level it is playing and restarts that same
@@ -18,26 +29,27 @@ import GameController
 /// zero level stops the motor at once.
 ///
 /// A controller that exposes no haptics (legacy MFi pads, some PS3
-/// adapters) makes `init?` fail, and the caller skips actuation.
+/// adapters), or none at the pair's localities, makes `init?` fail, and the
+/// caller skips actuation.
 final class RumbleActuator {
     private let controller: GCController
-    private var strongMotor: HapticMotor?
-    private var weakMotor: HapticMotor?
+    private var leftMotor: HapticMotor?
+    private var rightMotor: HapticMotor?
 
-    /// Nil when the controller vends no engine at either handle.
-    init?(controller: GCController) {
+    /// Nil when the controller vends no engine at either locality.
+    init?(controller: GCController, at pair: HapticPair) {
         guard let haptics = controller.haptics else { return nil }
         self.controller = controller
-        strongMotor = haptics.createEngine(withLocality: .leftHandle).flatMap(HapticMotor.init(engine:))
-        weakMotor = haptics.createEngine(withLocality: .rightHandle).flatMap(HapticMotor.init(engine:))
-        if strongMotor == nil, weakMotor == nil { return nil }
+        leftMotor = haptics.createEngine(withLocality: pair.left).flatMap(HapticMotor.init(engine:))
+        rightMotor = haptics.createEngine(withLocality: pair.right).flatMap(HapticMotor.init(engine:))
+        if leftMotor == nil, rightMotor == nil { return nil }
     }
 
     func shutdown() {
-        strongMotor?.shutdown()
-        weakMotor?.shutdown()
-        strongMotor = nil
-        weakMotor = nil
+        leftMotor?.shutdown()
+        rightMotor?.shutdown()
+        leftMotor = nil
+        rightMotor = nil
     }
 
     /// The longest one packet may run the motors. The satellite owns a held
@@ -53,12 +65,13 @@ final class RumbleActuator {
         return TimeInterval(capped) / 1000.0
     }
 
-    /// `strong` drives the low-frequency motor and `weak` the high-frequency
-    /// one, each normalised from the wire's 0...65535 to CoreHaptics' 0...1.
-    func apply(strong: UInt16, weak: UInt16, durationMs: UInt16) {
+    /// Each side's level, normalised from the wire's 0...65535 to
+    /// CoreHaptics' 0...1: a rumble's strong level on the left handle and its
+    /// weak level on the right.
+    func apply(left: UInt16, right: UInt16, durationMs: UInt16) {
         let duration = Self.holdSeconds(durationMs: durationMs)
-        strongMotor?.drive(magnitude: strong, duration: duration)
-        weakMotor?.drive(magnitude: weak, duration: duration)
+        leftMotor?.drive(magnitude: left, duration: duration)
+        rightMotor?.drive(magnitude: right, duration: duration)
     }
 }
 

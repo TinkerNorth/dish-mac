@@ -292,4 +292,10 @@ final class DiagnosticsReportBundleTests: XCTestCase {
         XCTAssertFalse(text.contains(Forbidden.hostName))
         XCTAssertFalse(text.contains(Forbidden.address))
     }
+
+    func testAnyTextTakesTheFilesAliasesLongestNameFirst() {
+        let text = "PC-2 at 10.0.0.2 bound PC at 10.0.0.1"
+        let aliased = aliasingHostNames(text, hostNames: [["PC", "10.0.0.1", ""], ["PC-2", "10.0.0.2"]])
+        XCTAssertEqual(aliased, "Host 2 at Host 2 bound Host 1 at Host 1")
+    }
 }

@@ -99,29 +99,64 @@ final class InspectorMappersTests: XCTestCase {
         XCTAssertEqual(stickTestResultText(StickTestResult(kind: .range, samples: 0)), "The controller sent nothing during the test.")
     }
 
-    func testTheBenchesSayWhatCanRunAndWhatIsRunning() {
-        let bare = ControllerSlot(id: "pad", name: "Pad")
-        XCTAssertEqual(rumbleBenchNote(bare), "This controller has no rumble motors on the path it is on now.")
-        XCTAssertEqual(toneNote(bare), "No audio output for this controller.")
-        XCTAssertEqual(micMeterNote(bare, micPermitted: true), "No audio endpoints on this path.")
-        var full = ControllerSlot(
-            id: "pad",
-            name: "DualSense",
-            capabilities: ControllerCapabilities(hasRumble: true, hasMic: true, hasSpeaker: true)
-        )
-        XCTAssertEqual(rumbleBenchNote(full), "A short buzz straight to the controller, whatever its rumble switch says.")
-        XCTAssertNil(toneNote(full), "ready says nothing")
-        XCTAssertNil(micMeterNote(full, micPermitted: true))
+    func testTheMicrophoneLineSaysWhyItCannotListenOrWhatItHears() {
+        var full = ControllerSlot(id: "pad", name: "DualSense", capabilities: ControllerCapabilities(hasMic: true))
+        XCTAssertNil(micMeterNote(full, micPermitted: true), "ready says nothing")
         XCTAssertEqual(
             micMeterNote(full, micPermitted: false),
             "Microphone permission is off for Dish. Turn it on in system settings to use the controller microphone."
         )
-        full.audio = ControllerAudioState(tonePlaying: true, micMeter: MicLevel(levelPercent: 0, peakPercent: 0))
-        XCTAssertEqual(toneNote(full), "Playing…")
+        full.audio = ControllerAudioState(micMeter: MicLevel(levelPercent: 0, peakPercent: 0))
         XCTAssertEqual(micMeterNote(full, micPermitted: true), "Listening… speak into the microphone.")
         full.audio = ControllerAudioState(micMeter: MicLevel(levelPercent: 21, peakPercent: 30))
         XCTAssertEqual(micMeterNote(full, micPermitted: true), "Level 21% · peak 30%")
+    }
+
+    func testEachFeedbackItemHasItsRowAndItsTests() {
         XCTAssertEqual(BuzzMotor.allCases.map { buzzMotorText($0) }, ["Weak", "Strong", "Both"])
+        XCTAssertEqual(TriggerMotor.allCases.map { triggerMotorText($0) }, ["Left", "Right", "Both"])
+        let rows = BenchItem.allCases.compactMap { feedbackRow($0) }
+        XCTAssertEqual(rows.map(\.label), ["Rumble", "Trigger rumble", "Light bar", "Player LEDs", "Adaptive triggers"])
+        XCTAssertEqual(rows.map { $0.tests.map(\.test) }, [
+            [.rumble(.weak), .rumble(.strong), .rumble(.both)],
+            [.triggerRumble(.left), .triggerRumble(.right), .triggerRumble(.both)],
+            [.lightbarCycle],
+            [.playerCycle],
+            [.triggerPulse]
+        ])
+        XCTAssertEqual(rows.map { $0.tests.map(\.title) }, [
+            ["Weak", "Strong", "Both"], ["Left", "Right", "Both"], ["Cycle"], ["Cycle"], ["Pulse resistance"]
+        ])
+    }
+
+    func testTheAudioItemsHaveNoFeedbackRow() {
+        XCTAssertNil(feedbackRow(.speaker))
+        XCTAssertNil(feedbackRow(.haptics))
+        XCTAssertNil(feedbackRow(.microphone))
+    }
+
+    func testTheFeedbackCardSaysWhatItsTestsDoOrThatThePathTakesNone() {
+        XCTAssertEqual(
+            feedbackBench([.rumble], running: nil).note,
+            "Each test goes straight to the controller, whatever its switches say, and what the game set comes back when it ends."
+        )
+        let none = feedbackBench([.speaker, .microphone], running: nil)
+        XCTAssertEqual(none.rows, [])
+        XCTAssertEqual(none.note, "This controller takes no feedback on the path it is on now.")
+    }
+
+    func testTheFeedbackTestsWaitWhileOneRunsOnThePad() {
+        XCTAssertTrue(feedbackBench([.rumble, .lightbar], running: nil).enabled)
+        XCTAssertFalse(feedbackBench([.rumble, .lightbar], running: .lightbarCycle).enabled)
+    }
+
+    func testAToneWaitsWhileEitherPlaysAndTheOnePlayingSaysSo() {
+        XCTAssertEqual(toneRow("Speaker", lane: .speaker, playing: nil), ToneRowState(label: "Speaker", enabled: true, note: nil))
+        XCTAssertEqual(
+            toneRow("Speaker", lane: .speaker, playing: .speaker),
+            ToneRowState(label: "Speaker", enabled: false, note: "Playing…")
+        )
+        XCTAssertEqual(toneRow("Haptics", lane: .haptics, playing: .speaker), ToneRowState(label: "Haptics", enabled: false, note: nil))
     }
 }
 
@@ -201,35 +236,71 @@ final class InspectorPageMappersTests: XCTestCase {
         XCTAssertEqual(running.stickTestStatus, stickTestText(InputInspection(slotId: "pad", bench: bench, secondsLeft: 3)))
     }
 
-    func testAReadyPadOffersEveryBench() throws {
-        let benches = try XCTUnwrap(state([full]).benches)
-        XCTAssertTrue(benches.rumbleEnabled)
-        XCTAssertTrue(benches.toneEnabled)
-        XCTAssertEqual(benches.mic, .start(enabled: true))
-        XCTAssertNil(benches.micLevel)
+    /// A USB DualSense on GameController: everything but trigger rumble.
+    private let dualSense = ControllerSlot(
+        id: "pad",
+        name: "DualSense",
+        capabilities: ControllerCapabilities(
+            hasRumble: true,
+            hasLightbar: true,
+            hasTriggerEffects: true,
+            hasPlayerLeds: true,
+            hasMic: true,
+            hasSpeaker: true,
+            hasHapticLanes: true
+        )
+    )
+
+    func testAPadOffersEveryItemItsPathCarriesAndNoOther() throws {
+        let benches = try XCTUnwrap(state([dualSense]).benches)
+        XCTAssertEqual(benches.feedback.rows.map(\.id), [.rumble, .lightbar, .playerLeds, .adaptiveTriggers], "no trigger motors, no row")
+        XCTAssertTrue(benches.feedback.enabled)
+        XCTAssertEqual(benches.audio.speaker, ToneRowState(label: "Speaker", enabled: true, note: nil))
+        XCTAssertEqual(benches.audio.haptics, ToneRowState(label: "Haptics", enabled: true, note: nil))
+        XCTAssertEqual(benches.audio.mic, MicRowState(label: "Microphone", button: .start(enabled: true), note: nil, level: nil))
+        XCTAssertNil(benches.audio.emptyNote)
     }
 
-    func testABarePadOffersNoBench() throws {
+    func testAnXboxPadOffersItsTriggerMotors() throws {
+        let xbox = ControllerSlot(id: "pad", name: "Xbox", capabilities: ControllerCapabilities(hasRumble: true, hasTriggerRumble: true))
+        let benches = try XCTUnwrap(state([xbox]).benches)
+        XCTAssertEqual(benches.feedback.rows.map(\.id), [.rumble, .triggerRumble])
+    }
+
+    func testABarePadOffersNoItemAndSaysSo() throws {
         let benches = try XCTUnwrap(state([ControllerSlot(id: "pad", name: "Pad")]).benches)
-        XCTAssertFalse(benches.rumbleEnabled)
-        XCTAssertFalse(benches.toneEnabled)
-        XCTAssertEqual(benches.mic, .start(enabled: false))
-        XCTAssertEqual(benches.rumbleNote, rumbleBenchNote(ControllerSlot(id: "pad", name: "Pad")))
+        XCTAssertEqual(benches.feedback.rows, [])
+        XCTAssertEqual(benches.feedback.note, "This controller takes no feedback on the path it is on now.")
+        XCTAssertNil(benches.audio.speaker)
+        XCTAssertNil(benches.audio.haptics)
+        XCTAssertNil(benches.audio.mic)
+        XCTAssertEqual(benches.audio.emptyNote, "No audio endpoints on this path.")
     }
 
     func testAMicrophoneTheSystemWithholdsCannotStart() throws {
-        let benches = try XCTUnwrap(state([full], micPermitted: false).benches)
-        XCTAssertEqual(benches.mic, .start(enabled: false))
-        XCTAssertEqual(benches.micNote, micMeterNote(full, micPermitted: false))
+        let benches = try XCTUnwrap(state([dualSense], micPermitted: false).benches)
+        XCTAssertEqual(benches.audio.mic?.button, .start(enabled: false))
+        XCTAssertEqual(benches.audio.mic?.note, micMeterNote(dualSense, micPermitted: false))
     }
 
     func testAPlayingToneWaitsAndAListeningMeterStops() throws {
-        var busy = full
-        busy.audio = ControllerAudioState(tonePlaying: true, micMeter: MicLevel(levelPercent: 40, peakPercent: 60))
+        var busy = dualSense
+        busy.audio = ControllerAudioState(tone: .haptics, micMeter: MicLevel(levelPercent: 40, peakPercent: 60))
         let benches = try XCTUnwrap(state([busy]).benches)
-        XCTAssertFalse(benches.toneEnabled)
-        XCTAssertEqual(benches.toneNote, "Playing…")
-        XCTAssertEqual(benches.mic, .stop)
-        XCTAssertEqual(benches.micLevel, 0.4)
+        XCTAssertEqual(benches.audio.speaker?.enabled, false)
+        XCTAssertEqual(benches.audio.haptics?.note, "Playing…")
+        XCTAssertEqual(benches.audio.mic?.button, .stop)
+        XCTAssertEqual(benches.audio.mic?.level, 0.4)
+    }
+
+    func testTheFeedbackTestsWaitWhileTheBenchRunsOneOnThisPad() {
+        var facts = ShellFacts()
+        facts.inspection = InputInspection(slotId: "pad")
+        facts.benchRuns = ["pad": .triggerPulse]
+        let busy = inspectorPageState(slotId: "pad", slots: [dualSense], facts: facts, micPermitted: true, locale: english)
+        XCTAssertEqual(busy.benches?.feedback.enabled, false)
+        facts.benchRuns = ["other": .triggerPulse]
+        let free = inspectorPageState(slotId: "pad", slots: [dualSense], facts: facts, micPermitted: true, locale: english)
+        XCTAssertEqual(free.benches?.feedback.enabled, true, "another pad's test is its own")
     }
 }

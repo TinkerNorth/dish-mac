@@ -110,14 +110,91 @@ final class SupportReportMappersTests: XCTestCase {
         XCTAssertTrue(mail.subject.hasPrefix("Dish support: A question · "))
     }
 
+    func testTheMailNamesHostsByTheFilesAliasesAndCarriesNoAddressPortOrHostName() throws {
+        let facts = HostsOnTheDesk().facts
+        var form = SupportReportForm(category: .connection)
+        form.text = "Stutters."
+        let body = try state(form, facts).mail.body
+        XCTAssertTrue(body.contains("Hosts\nHost 1\n"), "the satellite is the file's first host")
+        XCTAssertTrue(body.contains("\nHost 2\n"), "the Moonlight host its second")
+        XCTAssertTrue(body.contains("Host 1 · Satellite"), "the pad's binding names its host by the alias")
+        for leak in HostsOnTheDesk.identifying {
+            XCTAssertFalse(body.contains(leak), "the mail carries \(leak)")
+        }
+        XCTAssertFalse(body.contains(words.address + ":"))
+        XCTAssertFalse(body.contains(words.hostName + ":"))
+    }
+
+    func testThePageItselfStillShowsTheRealNames() throws {
+        let page = try diagnosticsPageState(facts: HostsOnTheDesk().facts, locale: english, timeZone: utc())
+        guard case let .cards(hosts) = page.hosts else { return XCTFail("no host cards") }
+        XCTAssertEqual(hosts.map(\.title), ["CANARY-PC-NAME", "fe80::c0ff:ee77"])
+    }
+
     func testTheDraftCarriesTheCategoryAndTheWordsAsTyped() throws {
         var form = SupportReportForm(category: .connection)
         form.text = "Lag"
         XCTAssertEqual(try state(form, facts()).draft, SupportReportDraft(category: .connection, text: "Lag", slotId: nil))
     }
 
+    func testWithNoMailAppTheClipboardTakesTheSubjectThenTheBody() {
+        let mail = DiagnosticsMailState(
+            recipient: "support@tinkernorth.com",
+            subject: "Dish support: A question",
+            body: "Hello.\n\nSummary"
+        )
+        XCTAssertEqual(supportReportMailText(mail), "Dish support: A question\n\nHello.\n\nSummary")
+    }
+
+    func testWithNoMailAppTheNoteSaysWhereTheFileWasSavedAndWhereTheWordsWait() {
+        let file = URL(fileURLWithPath: "/Users/someone/Desktop/dish-diagnostics.json")
+        XCTAssertEqual(
+            noMailNote(savedAt: file, recipient: "support@tinkernorth.com"),
+            "No mail app took the message. The file is saved at /Users/someone/Desktop/dish-diagnostics.json. "
+                + "Your message is on the clipboard: paste it into an email to support@tinkernorth.com. Attach the file to it."
+        )
+    }
+
+    func testWithNoMailAppAndTheSaveClosedTheNoteSaysTheFileWasNotSaved() {
+        XCTAssertEqual(
+            noMailNote(savedAt: nil, recipient: "support@tinkernorth.com"),
+            "No mail app took the message. The file was not saved. "
+                + "Your message is on the clipboard: paste it into an email to support@tinkernorth.com."
+        )
+    }
+
     func testThePreviewButtonSaysWhatItWillDo() {
         XCTAssertEqual(previewToggleText(showing: false), words.previewFile)
         XCTAssertEqual(previewToggleText(showing: true), words.hideFile)
+    }
+}
+
+/// A satellite with a name and a port, a Moonlight host known only by its
+/// address and calling itself something else, and a pad bound to the first.
+private struct HostsOnTheDesk {
+    static let identifying = ["CANARY-PC-NAME", "192.0.2.77", "7777", "fe80::c0ff:ee77", "CANARY-PC-NAME-ML"]
+    static let serverInfo = "<root status_code=\"200\"><hostname>CANARY-PC-NAME-ML</hostname><appversion>7.1.431.-1</appversion></root>"
+
+    var facts: ShellFacts {
+        let satelliteSummary = ConnectionSummary(
+            id: "sat",
+            name: "CANARY-PC-NAME",
+            address: "192.0.2.77",
+            udpPort: 7777,
+            live: .connected,
+            boundSlotId: "pad"
+        )
+        let satellite = HostDiagnostics(summary: satelliteSummary, facts: HostSessionFacts.resting(id: "sat"))
+        let moonlight = HostDiagnostics(
+            summary: ConnectionSummary(id: "ml", name: "", address: "fe80::c0ff:ee77", live: .saved, boundSlotId: nil, kind: .moonlight),
+            facts: HostSessionFacts.resting(id: "ml"),
+            moonlight: .resting(info: MoonlightXml.serverInfo(Self.serverInfo))
+        )
+        var slot = ControllerSlot(id: "pad", name: "DualSense")
+        slot.boundStatus = satelliteSummary
+        var facts = ShellFacts()
+        facts.diagnostics = DiagnosticsSnapshot(hosts: [satellite, moonlight], pads: [PadDiagnostics(slot: slot, wire: nil)])
+        facts.reportPreparation = ReportPreparationState.idle.toSuccess(ReportPreparation(snapshots: [:], conditions: .unknown))
+        return facts
     }
 }

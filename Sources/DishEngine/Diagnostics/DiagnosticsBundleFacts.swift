@@ -160,10 +160,15 @@ extension BundlePadFacts {
 }
 
 /// The name, the address and what a Moonlight host calls itself: each is
-/// only ever replaced by the host's alias.
+/// only ever replaced by the host's alias, in the file and in the mail.
+package func diagnosticsHostNames(_ host: HostDiagnostics) -> [String] {
+    let summary = host.summary
+    return [summary.name, summary.address, summary.recordName, host.moonlight?.info?.hostname ?? ""]
+}
+
 func bundleHostFacts(_ host: HostDiagnostics, versions: [String: String]) -> BundleHostFacts {
     let summary = host.summary
-    let names = [summary.name, summary.address, summary.recordName, host.moonlight?.info?.hostname ?? ""]
+    let names = diagnosticsHostNames(host)
     switch summary.kind {
     case .moonlight:
         return BundleHostFacts(
@@ -209,16 +214,17 @@ func bundlePadFacts(_ pad: PadDiagnostics, outcomes: PadOutcomes, capture: Finis
         hardware: hardware,
         expectMismatches: pad.inputPath?.expectMismatches ?? [],
         lastWrite: pad.inputPath?.lastWrite,
-        outcomes: outcomes.answers[pad.slot.id] ?? [],
+        outcomes: outcomes.answers(pad.slot.id),
         capture: capture.flatMap { captured(pad, by: $0) ? capturedWithDescriptors($0, pad: pad) : nil },
         audio: bundleAudio(pad.audio)
     )
 }
 
-/// The capture with the descriptors of the pad's USB device: the capture
+/// The capture with the configuration descriptors of the pad's USB device,
+/// never its device descriptor, which the Mac rebuilds: the capture
 /// itself reads the HID side only.
 func capturedWithDescriptors(_ capture: FinishedCapture, pad: PadDiagnostics) -> BundleCapture? {
-    capture.capture?.with(usbDevice: pad.usbDescriptors?.device, configurations: pad.usbDescriptors?.configurations)
+    capture.capture?.with(usbDevice: nil, configurations: pad.usbDescriptors?.configurations)
 }
 
 /// The pad's ids, names and what IOKit said of its hardware.

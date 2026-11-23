@@ -51,6 +51,7 @@ struct DiagnosticsMailSection: View {
     private func save() {
         guard let file = model.writeDiagnosticsBundle() else { return failed = true }
         failed = false
-        mailer.save(file)
+        // Where the person saved it is theirs to know; this file goes nowhere else.
+        _ = mailer.save(file)
     }
 }

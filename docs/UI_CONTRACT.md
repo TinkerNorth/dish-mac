@@ -385,14 +385,27 @@ until picked) and draws `supportReportPageState`. Preview file shows
 `supportReportPreview`; Continue in Mail, held while the hosts are asked,
 writes `writeSupportReport` and hands it with `supportReportMail` (the words
 first) to the scene's `diagnosticsMailer` value, `NSSharingService(named:
-.composeEmail)`, or to a save panel. Save diagnostics writes
+.composeEmail)`; with no mail app the message goes to the clipboard
+(`supportReportMailText`), the file to a save panel, and the page says
+where each went and that it goes to support (`noMailNote`). Save diagnostics writes
 `writeDiagnosticsBundle`, with no report, to a save panel.
 A controller database card shows the bundled version, the version in force
 and the last check; a pad's card adds its record, the record's chip, its
 issues, and for a Direct pad its hardware check and last write
-(`recordLines`). The inspector ends with "Did it work?" (`outcomesState`,
-`answerTestOutcome`). Settings' controller database section words the switch
-and Check now as the privacy policy does.
+(`recordLines`). The inspector's bench is two cards, Feedback tests and
+Audio tests, drawn from `inspectorBenches`: the core's `benchItems` over the
+pad's capabilities (`ControllerCapabilities.benchCarriage`) decides which
+items the path carries, and an item it cannot carry has no row, never a
+button that does nothing. A feedback row is a label and a button per test
+(`BenchRowState`, `runFeedbackTest`); every feedback button waits while the
+pad runs one (`ShellFacts.benchRuns`), and the card says why when no row
+shows. The audio card has a row each for the speaker's tone
+(`playTestTone`), the haptics lanes' (`playHapticsTone`) and the
+microphone meter (`startMicMeter`, `stopMicMeter`), each where the pad's
+route reaches it; a tone waits while either plays. The inspector ends with
+"Did it work?" (`outcomesState`, `answerTestOutcome`), asked once the test
+has ended. Settings' controller database section words the switch and Check
+now as the privacy policy does.
 
 ## The setup walk
 

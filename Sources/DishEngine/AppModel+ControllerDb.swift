@@ -149,7 +149,8 @@ extension AppModel {
     }
 
     /// The index follows the data in force into the Direct path and
-    /// Diagnostics; the status and the answers into the shell's facts.
+    /// Diagnostics; the status, the answers and the feedback tests running
+    /// into the shell's facts.
     func observeControllerDb() {
         diagnostics.useControllerData(
             index: { [weak self] in self?.controllerDb.index.state ?? ControllerIndex(BundledControllerDb.empty, source: .bundled) },
@@ -163,6 +164,9 @@ extension AppModel {
             .store(in: &cancellables)
         outcomes.statePublisher
             .sink { [weak self] outcomes in self?.shellFacts.outcomes = outcomes }
+            .store(in: &cancellables)
+        bench.statePublisher
+            .sink { [weak self] runs in self?.shellFacts.benchRuns = runs }
             .store(in: &cancellables)
     }
 }

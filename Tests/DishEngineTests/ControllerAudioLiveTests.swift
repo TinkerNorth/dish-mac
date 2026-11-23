@@ -231,6 +231,29 @@ final class ControllerAudioLiveTests: XCTestCase {
         XCTAssertTrue(hidden, "no session, no microphone")
     }
 
+    /// The inspector's meter opens the mic for a pad no host carries; a host
+    /// that binds the pad with its mic switch on during those seconds gets
+    /// the pad's microphone, then and after the meter ends.
+    func testAHostThatBindsThePadWhileTheMeterListensGetsItsMicrophone() async throws {
+        satellite.controllerAudioEnabled = true
+        var hostless = facts()
+        hostless.host = .none
+        hostless.live = false
+        engine.apply([AudioBinding(slotId: "slot-a", connection: nil, controllerIndex: 0, route: dualSense, facts: hostless)])
+        XCTAssertTrue(engine.startMicMeter(for: "slot-a") {})
+        let conn = try await bindAndGoLive()
+        engine.apply([AudioBinding(slotId: "slot-a", connection: conn, controllerIndex: 0, route: dualSense, facts: facts())])
+        try XCTUnwrap(audioPorts.inputs.last).push(tone())
+        let whileMetering = await waitUntil { self.satellite.micFrames.count == 1 }
+        XCTAssertTrue(whileMetering, "the host gets the window the meter also read")
+        engine.stopMicMeter(for: "slot-a")
+        let input = try XCTUnwrap(audioPorts.inputs.last)
+        XCTAssertTrue(input.started)
+        input.push(tone())
+        let afterwards = await waitUntil { self.satellite.micFrames.count == 2 }
+        XCTAssertTrue(afterwards, "and keeps getting it once the meter ends")
+    }
+
     /// The largest packet the datagram ceiling allows must arrive whole: a
     /// receive buffer shorter than the ceiling truncates it and the AEAD
     /// then rejects every full-size frame.

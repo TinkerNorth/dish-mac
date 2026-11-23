@@ -247,7 +247,11 @@ light-bar switch) and posts it to the pad's `FeedbackPad`, where the newest
 command of each kind waits. One serial queue, `dish.feedback`, at the input
 queue's quality, takes it and drives the actuators it owns (`PadActuators`:
 each slot's controller, its haptic engines and their players, its light, its
-triggers and its player index); the main actor is not on the way. The audio
+triggers and its player index); the main actor is not on the way. The queue
+also keeps the game's newest light bar, player and trigger effect per pad
+(`BenchSurfaceState`), so an inspector test that holds one of those
+surfaces (`FeedbackBenchRunner`) leaves the game's values waiting and puts
+the newest back when it ends. The audio
 messages find their pad the same way, through the connection's
 `PadAudioTable`, one locked lookup per frame by the frame's index.
 
@@ -559,8 +563,10 @@ rebuilt from the `IOUSBHostDevice`'s registry fields and every configuration
 descriptor through IOUSBLib's device interface, which hands them over as
 received from the bus without the device being opened (IOUSBHost's own
 objects need an exclusive session, which macOS's drivers hold for a pad).
-Their SHA-256 is `descriptorSha256`, a HID pad's interrupt endpoints come
-from the configuration in force, and the configurations ride the capture.
+A HID pad's interrupt endpoints come from the configuration in force, and
+the configurations ride the capture. `descriptorSha256` and the capture's
+`device` are null: the rebuilt device descriptor is not yet proven equal to
+the bus's (`Tests/PARITY.md`).
 The IOKit classes read for the file are `IOHIDDevice` (properties),
 `IOUSBHostDevice` and `IOUSBHostInterface` (registry entries),
 `IOUSBDeviceInterface100` (IOUSBLib, never opened) and
@@ -683,9 +689,11 @@ Each entry names the decided shape, so a change lands on it.
   redacted by `CrashReport` in the core and sent only by the user's browser.
 - **Diagnostics shows the facts it holds.** The page reads what the engine
   already acts on; the input inspector (pushed from a controller's card)
-  adds the live input, the stick drift and range tests, the rumble bench and
-  the audio tests, and the HID census lists the game devices GameController
-  does not claim. The radios section the desktops show is not there yet.
+  adds the live input, the stick drift and range tests and the bench, every
+  feedback and audio item the pad's path carries and nothing it cannot
+  (`benchItems` over the pad's capabilities), and the HID census lists the
+  game devices GameController does not claim. The radios section the
+  desktops show is not there yet.
 - **A pad neither path can read is listed, not read.** The census shows it
   in Diagnostics, with "Help support this controller" to record what it
   sends for an issue. A pad GameController does not vend is read Direct when

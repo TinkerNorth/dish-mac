@@ -12,13 +12,16 @@ import XCTest
 final class InputInspectorTests: XCTestCase {
 
     private var clock: Int64 = 1000
+    private var wallMs: Int64 = 1_763_586_000_000
     private var processor: GamepadInputProcessor!
+    private var outcomes: PadOutcomesStore!
     private var inspector: InputInspector!
 
     override func setUp() {
         super.setUp()
         processor = GamepadInputProcessor()
-        inspector = InputInspector(processor: processor, now: { [unowned self] in self.clock }, pollMs: 10000)
+        outcomes = PadOutcomesStore { [unowned self] in self.wallMs }
+        inspector = InputInspector(processor: processor, outcomes: outcomes, now: { [unowned self] in self.clock }, pollMs: 10000)
     }
 
     override func tearDown() {
@@ -112,6 +115,37 @@ final class InputInspectorTests: XCTestCase {
         XCTAssertEqual(result?.samples, 4, "one sample per poll, the start included")
         XCTAssertEqual(result?.driftLeft ?? 0, 0.1, accuracy: 0.001, "the dead zone zeroed it for the host, not for the test")
         XCTAssertEqual(result?.suggestedDeadzone ?? 0, 0.15, accuracy: 0.0001)
+    }
+
+    func testAStickTestAsksOnlyOnceThePollThatEndsItHasRun() {
+        inspector.arm("pad")
+        processor.publish(deviceId: "pad", state: report(lx: 3277))
+        inspector.startStickTest(.drift)
+        XCTAssertEqual(outcomes.state.ledgers["pad"]?.running, .stickDrift)
+        XCTAssertNil(outcomes.state.asking("pad"), "no question while the test runs")
+        clock += 2000
+        wallMs += 2000
+        inspector.tick()
+        XCTAssertNil(outcomes.state.asking("pad"))
+        clock += 1000
+        wallMs += 1000
+        inspector.tick()
+        XCTAssertEqual(outcomes.state.asking("pad"), EndedTest(test: .stickDrift, atMs: 1_763_586_003_000))
+        inspector.tick()
+        XCTAssertEqual(outcomes.state.asking("pad")?.atMs, 1_763_586_003_000, "a poll after the end asks nothing new")
+    }
+
+    func testARangeTestAsksAsTheRangeTest() {
+        inspector.arm("pad")
+        inspector.startStickTest(.range)
+        clock += StickHealth.rangeCaptureMs
+        inspector.tick()
+        XCTAssertEqual(outcomes.state.asking("pad")?.test, .stickRange)
+    }
+
+    func testAStickTestWithNothingArmedTellsTheOutcomesNothing() {
+        inspector.startStickTest(.drift)
+        XCTAssertEqual(outcomes.state, PadOutcomes())
     }
 
     func testDisarmingClearsTheStateAndArmingAnotherSlotDropsTheTest() {

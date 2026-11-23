@@ -154,12 +154,42 @@ struct DiagnosticsMailState: Equatable {
 
 /// The page's cards as plain text: each card's title, then its lines.
 func diagnosticsSummaryText(_ page: DiagnosticsPageState, words: L10n = .app) -> String {
+    summaryText(page, hosts: page.hosts, words: words)
+}
+
+/// The summary the mail carries: each host titled by the alias the file
+/// gives it, with no address and no host name, and every other mention of a
+/// host's name or address replaced by that alias. The page keeps the names.
+func diagnosticsMailSummaryText(_ page: DiagnosticsPageState, hosts: [HostDiagnostics], words: L10n = .app) -> String {
+    let summary = summaryText(page, hosts: mailHostCards(page.hosts, words: words), words: words)
+    return aliasingHostNames(summary, hostNames: hosts.map(diagnosticsHostNames))
+}
+
+private func summaryText(_ page: DiagnosticsPageState, hosts: DiagnosticsCards, words: L10n) -> String {
     let sections = [
         (words.controllerDatabase, DiagnosticsCards.cards([page.controllerDb])),
-        (words.hosts, page.hosts),
+        (words.hosts, hosts),
         (words.controllers, page.pads)
     ]
     return sections.map { title, cards in summarySection(title, cards) }.joined(separator: "\n\n")
+}
+
+/// The host cards in the file's order, which is the page's.
+private func mailHostCards(_ cards: DiagnosticsCards, words: L10n) -> DiagnosticsCards {
+    guard case let .cards(hosts) = cards else { return cards }
+    return .cards(hosts.enumerated().map { position, card in mailHostCard(card, alias: hostAlias(position), words: words) })
+}
+
+private func mailHostCard(_ card: DiagnosticsCardState, alias: String, words: L10n) -> DiagnosticsCardState {
+    let identifying: Set<String> = [words.address, words.hostName]
+    return DiagnosticsCardState(
+        id: card.id,
+        title: alias,
+        dot: card.dot,
+        chip: card.chip,
+        lines: card.lines.filter { !identifying.contains($0.key) },
+        inspects: card.inspects
+    )
 }
 
 private func summarySection(_ title: String, _ cards: DiagnosticsCards) -> String {
@@ -176,10 +206,17 @@ private func summarySection(_ title: String, _ cards: DiagnosticsCards) -> Strin
 
 func inspectorTestText(_ test: InspectorTest, words: L10n = .app) -> String {
     switch test {
-    case .rumbleWeak: buzzMotorText(.weak, words: words)
-    case .rumbleStrong: buzzMotorText(.strong, words: words)
-    case .rumbleBoth: buzzMotorText(.both, words: words)
+    case .rumbleWeak: words.rumbleWeakTest
+    case .rumbleStrong: words.rumbleStrongTest
+    case .rumbleBoth: words.rumbleBothTest
+    case .triggerRumbleLeft: words.triggerRumbleLeftTest
+    case .triggerRumbleRight: words.triggerRumbleRightTest
+    case .triggerRumbleBoth: words.triggerRumbleBothTest
+    case .lightbarCycle: words.lightbarCycleTest
+    case .playerLedsCycle: words.playerLedsCycleTest
+    case .triggerPulse: words.triggerPulseTest
     case .tone: words.testTone
+    case .haptics: words.hapticsToneTest
     case .microphone: words.microphone
     case .stickDrift: words.driftTest
     case .stickRange: words.rangeTest
@@ -203,11 +240,10 @@ struct OutcomesState: Equatable {
     let hint: String?
 }
 
-func outcomesState(slotId: String, outcomes: PadOutcomes, stickTestRunning: Bool, words: L10n = .app) -> OutcomesState {
-    let asking = outcomes.asking[slotId]
-    let waitsForTheStickTest = stickTestRunning && (asking == .stickDrift || asking == .stickRange)
-    let question = waitsForTheStickTest ? nil : asking.map { words.didTestWork(inspectorTestText($0, words: words)) }
-    let answers = (outcomes.answers[slotId] ?? []).reversed().map { outcome in
+/// A test asks only once it has ended: the outcomes hold it back while it runs.
+func outcomesState(slotId: String, outcomes: PadOutcomes, words: L10n = .app) -> OutcomesState {
+    let question = outcomes.asking(slotId).map { words.didTestWork(inspectorTestText($0.test, words: words)) }
+    let answers = outcomes.answers(slotId).reversed().map { outcome in
         words.answeredTest(inspectorTestText(outcome.test, words: words), outcomeResultText(outcome.result, words: words))
     }
     return OutcomesState(question: question, answers: answers, hint: answers.isEmpty ? words.outcomesHint : nil)

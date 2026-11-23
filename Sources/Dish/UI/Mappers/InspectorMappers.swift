@@ -168,24 +168,76 @@ func buzzMotorText(_ motor: BuzzMotor, words: L10n = .app) -> String {
     }
 }
 
-func rumbleBenchNote(_ slot: ControllerSlot, words: L10n = .app) -> String {
-    slot.capabilities.hasRumble ? words.rumbleTestNote : words.noRumbleOnThisPath
+func triggerMotorText(_ motor: TriggerMotor, words: L10n = .app) -> String {
+    switch motor {
+    case .left: words.leftTriggerMotor
+    case .right: words.rightTriggerMotor
+    case .both: words.bothMotors
+    }
 }
 
-/// What the tone button's line says: why it cannot play, that it plays, or
-/// nothing while it is ready.
-func toneNote(_ slot: ControllerSlot, words: L10n = .app) -> String? {
-    guard slot.capabilities.hasSpeaker else { return words.noAudioOutput }
-    return slot.audio?.tonePlaying == true ? words.tonePlayingWord : nil
+/// An item's row of feedback tests; nil for an audio item, which the audio
+/// card draws.
+func feedbackRow(_ item: BenchItem, words: L10n = .app) -> BenchRowState? {
+    switch item {
+    case .rumble:
+        BenchRowState(id: item, label: words.rumble, tests: BuzzMotor.allCases.map { motor in
+            BenchTestButton(test: .rumble(motor), title: buzzMotorText(motor, words: words))
+        })
+    case .triggerRumble:
+        BenchRowState(id: item, label: words.triggerRumble, tests: TriggerMotor.allCases.map { motor in
+            BenchTestButton(test: .triggerRumble(motor), title: triggerMotorText(motor, words: words))
+        })
+    case .lightbar: BenchRowState(id: item, label: words.lightBar, tests: [BenchTestButton(test: .lightbarCycle, title: words.cycleWord)])
+    case .playerLeds: BenchRowState(id: item, label: words.playerLeds, tests: [BenchTestButton(test: .playerCycle, title: words.cycleWord)])
+    case .adaptiveTriggers:
+        BenchRowState(id: item, label: words.adaptiveTriggers, tests: [BenchTestButton(test: .triggerPulse, title: words.pulseResistance)])
+    case .speaker, .haptics, .microphone: nil
+    }
+}
+
+/// A row per feedback item the path carries, or the word for none; every
+/// test waits while one runs on the pad.
+func feedbackBench(_ items: [BenchItem], running: FeedbackTest?, words: L10n = .app) -> FeedbackBenchState {
+    let rows = items.compactMap { feedbackRow($0, words: words) }
+    let note = rows.isEmpty ? words.noFeedbackOnThisPath : words.feedbackTestsNote
+    return FeedbackBenchState(rows: rows, note: note, enabled: running == nil)
+}
+
+/// A tone waits while one plays on either lane; the lane it plays on says so.
+func toneRow(_ label: String, lane: ToneLane, playing: ToneLane?, words: L10n = .app) -> ToneRowState {
+    ToneRowState(label: label, enabled: playing == nil, note: playing == lane ? words.tonePlayingWord : nil)
 }
 
 /// What the microphone meter's line says: why it cannot listen, the level
 /// while it listens, or nothing while it is ready.
 func micMeterNote(_ slot: ControllerSlot, micPermitted: Bool, words: L10n = .app) -> String? {
-    guard slot.capabilities.hasMic else { return words.noAudioEndpoints }
     guard micPermitted else { return words.micPermissionOff }
     guard let meter = slot.audio?.micMeter else { return nil }
     return meter.peakPercent == 0 ? words.micListening : words.micLevel(meter.levelPercent, meter.peakPercent)
+}
+
+/// A meter starts only on a microphone the system lets Dish hear, and a
+/// listening one stops.
+func micRow(_ slot: ControllerSlot, micPermitted: Bool, words: L10n = .app) -> MicRowState {
+    let meter = slot.audio?.micMeter
+    return MicRowState(
+        label: words.microphone,
+        button: meter == nil ? .start(enabled: micPermitted) : .stop,
+        note: micMeterNote(slot, micPermitted: micPermitted, words: words),
+        level: meter.map { Double($0.levelPercent) / 100 }
+    )
+}
+
+/// The tone on the speaker and on the haptics lanes and the meter, each
+/// where the pad's route reaches it, or the word for none.
+func audioBench(_ items: [BenchItem], slot: ControllerSlot, micPermitted: Bool, words: L10n = .app) -> AudioBenchState {
+    let playing = slot.audio?.tone
+    let speaker = items.contains(.speaker) ? toneRow(words.speaker, lane: .speaker, playing: playing, words: words) : nil
+    let haptics = items.contains(.haptics) ? toneRow(words.haptics, lane: .haptics, playing: playing, words: words) : nil
+    let mic = items.contains(.microphone) ? micRow(slot, micPermitted: micPermitted, words: words) : nil
+    let carriesNone = speaker == nil && haptics == nil && mic == nil
+    return AudioBenchState(speaker: speaker, haptics: haptics, mic: mic, emptyNote: carriesNone ? words.noAudioEndpoints : nil)
 }
 
 // MARK: - The page
@@ -226,16 +278,60 @@ struct TriggerReadoutState: Equatable {
     let text: String
 }
 
-/// The rumble, tone and microphone benches: what each can do and says.
+/// The feedback and audio benches of an attached pad: only the items its
+/// path carries (the contract's bench, rule 1).
 struct InspectorBenchState: Equatable {
-    let rumbleNote: String
-    let rumbleEnabled: Bool
-    let toneEnabled: Bool
-    let toneNote: String?
-    let mic: MicTestButton
-    let micNote: String?
+    let feedback: FeedbackBenchState
+    let audio: AudioBenchState
+}
+
+struct FeedbackBenchState: Equatable {
+    let rows: [BenchRowState]
+    /// What the tests do, or that the path takes no feedback.
+    let note: String
+    /// False while a feedback test runs on the pad.
+    let enabled: Bool
+}
+
+struct BenchRowState: Equatable, Identifiable {
+    let id: BenchItem
+    let label: String
+    let tests: [BenchTestButton]
+}
+
+struct BenchTestButton: Equatable, Identifiable {
+    let test: FeedbackTest
+    let title: String
+
+    var id: FeedbackTest {
+        test
+    }
+}
+
+struct AudioBenchState: Equatable {
+    /// Nil where the pad's route has no speaker pair.
+    let speaker: ToneRowState?
+    /// Nil where it has no haptics lanes.
+    let haptics: ToneRowState?
+    /// Nil where it has no microphone.
+    let mic: MicRowState?
+    /// Shown when the route reaches none of the three.
+    let emptyNote: String?
+}
+
+struct ToneRowState: Equatable {
+    let label: String
+    let enabled: Bool
+    /// "Playing…" while the tone plays on this lane.
+    let note: String?
+}
+
+struct MicRowState: Equatable {
+    let label: String
+    let button: MicTestButton
+    let note: String?
     /// The meter's level as a fraction while it listens.
-    let micLevel: Double?
+    let level: Double?
 }
 
 /// The microphone bench's one button: stop a meter that listens, or start one.
@@ -264,14 +360,9 @@ func inspectorPageState(
         pointer: pointerText(snapshot?.touch, words: words),
         stickTestsEnabled: inspection.bench.phase != .running,
         stickTestStatus: stickTestText(inspection, words: words),
-        benches: slot.map { inspectorBenches($0, micPermitted: micPermitted, words: words) },
+        benches: slot.map { inspectorBenches($0, running: facts.benchRuns[slotId], micPermitted: micPermitted, words: words) },
         path: padPathState(facts.inputPaths[slotId], words: words),
-        outcomes: outcomesState(
-            slotId: slotId,
-            outcomes: facts.outcomes,
-            stickTestRunning: inspection.bench.phase == .running,
-            words: words
-        )
+        outcomes: outcomesState(slotId: slotId, outcomes: facts.outcomes, words: words)
     )
 }
 
@@ -286,18 +377,12 @@ func liveInput(_ snapshot: InputSnapshot, reportsHz: Int, words: L10n = .app) ->
     )
 }
 
-/// A tone plays only through a speaker route and not over one already
-/// playing; a meter starts only on a microphone the system lets Dish hear.
-func inspectorBenches(_ slot: ControllerSlot, micPermitted: Bool, words: L10n = .app) -> InspectorBenchState {
-    let meter = slot.audio?.micMeter
-    let tonePlaying = slot.audio?.tonePlaying == true
+/// The items the pad's path carries, from its capabilities; the feedback
+/// tests wait while one runs on the pad.
+func inspectorBenches(_ slot: ControllerSlot, running: FeedbackTest?, micPermitted: Bool, words: L10n = .app) -> InspectorBenchState {
+    let items = benchItems(slot.capabilities.benchCarriage)
     return InspectorBenchState(
-        rumbleNote: rumbleBenchNote(slot, words: words),
-        rumbleEnabled: slot.capabilities.hasRumble,
-        toneEnabled: slot.capabilities.hasSpeaker && !tonePlaying,
-        toneNote: toneNote(slot, words: words),
-        mic: meter == nil ? .start(enabled: slot.capabilities.hasMic && micPermitted) : .stop,
-        micNote: micMeterNote(slot, micPermitted: micPermitted, words: words),
-        micLevel: meter.map { Double($0.levelPercent) / 100 }
+        feedback: feedbackBench(items, running: running, words: words),
+        audio: audioBench(items, slot: slot, micPermitted: micPermitted, words: words)
     )
 }

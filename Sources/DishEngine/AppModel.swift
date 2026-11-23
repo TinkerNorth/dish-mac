@@ -49,7 +49,9 @@ package final class AppModel: ObservableObject {
     package let controllerDb: ControllerDbSource
     package let controllerDbPreferences: ControllerDbPreferenceStore
     /// "Did it work?" after each inspector test.
-    package let outcomes = PadOutcomesStore()
+    package let outcomes: PadOutcomesStore
+    /// The inspector's feedback tests, run from this Mac alone.
+    let bench: FeedbackBenchRunner
     /// A support report's preparation: each live host asked, the Mac read.
     let reportPreparation: ReportPreparationSource
     /// The Mac's model and macOS, for the issue match and the bundle.
@@ -205,7 +207,7 @@ package final class AppModel: ObservableObject {
         returnPaths = ReturnPathRouter(feedback: input.feedback)
         moonlightFeedback = MoonlightFeedbackRouter(actuators: .live(input), gate: gate, table: routing.table)
         audio = Self.audioPipeline(hub: hub, wifi: wifi, input: input, slots: prefs.slots, dependencies: audioDependencies)
-        inspector = InputInspector(processor: input.processor)
+        (outcomes, bench, inspector) = Self.inspectorTests(input)
         crashReporting = CrashReportingController(defaults: defaults, uploader: crashUploader)
         lidWatch = LidWatch(clamshell: clamshell ?? IOKitClamshellState())
         wireObservers(pipeline: pipeline, lifecycle: lifecycle)
@@ -270,6 +272,14 @@ package final class AppModel: ObservableObject {
             census: census ?? IOKitHidCensus(),
             issueHost: IssueHost(model: machine.model, osMajor: machine.osMajor)
         )
+    }
+
+    /// The inspector and the feedback bench, telling one outcomes store when
+    /// each test starts and ends.
+    private static func inspectorTests(_ input: GameControllerInput) -> (PadOutcomesStore, FeedbackBenchRunner, InputInspector) {
+        let outcomes = PadOutcomesStore()
+        let bench = FeedbackBenchRunner(feedback: input.feedback, outcomes: outcomes)
+        return (outcomes, bench, InputInspector(processor: input.processor, outcomes: outcomes))
     }
 
     /// Controller audio over the live HAL, or the ports a test hands in.

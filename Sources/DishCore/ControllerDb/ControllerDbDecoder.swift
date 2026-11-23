@@ -121,10 +121,26 @@ private struct RecordFile: Decodable {
     struct Issue: Decodable {
         let id: String
         let device: String?
-        let os: [String: Int]?
+        let os: [String: OsVersion]?
         let transport: String?
         let lane: String?
         let status: String?
+    }
+
+    /// A platform's version, a number or a string such as "15" or "26.1":
+    /// its major version, or nil for one that does not read as a number.
+    struct OsVersion: Decodable {
+        let major: Int?
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.singleValueContainer()
+            if let number = try? container.decode(Int.self) {
+                major = number
+                return
+            }
+            let text = try container.decode(String.self)
+            major = text.split(separator: ".").first.flatMap { Int($0) }
+        }
     }
 
     struct Support: Decodable {
@@ -214,9 +230,13 @@ private func controllerIssue(_ issue: RecordFile.Issue) -> ControllerIssue {
     ControllerIssue(
         id: issue.id,
         device: issue.device,
-        os: issue.os ?? [:],
+        os: (issue.os ?? [:]).mapValues { $0.major ?? unreadableOsVersion },
         transport: issue.transport.flatMap(ControllerTransport.init(rawValue:)),
         lane: issue.lane,
         status: issue.status
     )
 }
+
+/// What a version that does not read as a number becomes: no OS has it, so
+/// the issue never matches on that platform rather than on every version.
+private let unreadableOsVersion = -1

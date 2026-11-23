@@ -7,11 +7,17 @@
 #  back to the absolute build directory of the machine that compiled the app,
 #  so an app launched where that directory still exists can hide a missing
 #  resource bundle: releases 1.0.2 to 1.2.0 crashed at launch everywhere else.
-#  This moves .build aside, runs the app with a throwaway preferences home
-#  and without the preferences daemon (through cfprefsd a fixed home redirects
-#  reads alone, and the launch's first-run writes would reach the developer's
-#  own preferences), and fails when the app has quit before DISH_SMOKE_SECONDS
-#  (default 8).
+#  This moves .build aside and runs a copy of the app under its own bundle
+#  identifier, with a throwaway home for its support files, logs and caches,
+#  and fails when the app has quit before DISH_SMOKE_SECONDS (default 8).
+#  The copy is what keeps the developer's own preferences out of it: on macOS
+#  27.2 preferences are written through cfprefsd into the real
+#  ~/Library/Preferences whatever CFFIXED_USER_HOME and
+#  __CFPREFERENCES_AVOID_DAEMON say (measured), so the copy writes into its
+#  own domain, which is deleted however the launch ends. The login keychain
+#  is not redirected: the launch reads, or on a Mac without one mints, the
+#  Moonlight identity there, as any launch does. First it checks the controller database the app ships
+#  (check-bundled-db.sh), which a broken copy would otherwise pass silently.
 #
 #  Usage: scripts/launch-smoke.sh [path/to/Dish.app]
 # ============================================================================
@@ -26,24 +32,35 @@ EXECUTABLE="$APP/Contents/MacOS/Dish"
 HIDDEN_BUILD=".build-hidden-for-launch-smoke"
 PREFERENCES_HOME="$(mktemp -d)"
 LAUNCH_LOG="$PREFERENCES_HOME/launch.log"
+SMOKE_ID="com.tinkernorth.dish.mac.launch-smoke"
+SMOKE_APP="$PREFERENCES_HOME/Dish.app"
+SMOKE_EXECUTABLE="$SMOKE_APP/Contents/MacOS/Dish"
 
 if [ ! -x "$EXECUTABLE" ]; then
     echo "No app at $EXECUTABLE — run ./bundle.sh first." >&2
     exit 1
 fi
 
+scripts/check-bundled-db.sh "$APP/Contents/Resources/Dish_DishCore.bundle"
+
 restore_build() {
     if [ -d "$HIDDEN_BUILD" ]; then
         mv "$HIDDEN_BUILD" .build
     fi
+    defaults delete "$SMOKE_ID" > /dev/null 2>&1 || true
+    rm -f "$HOME/Library/Preferences/$SMOKE_ID.plist"
 }
 trap restore_build EXIT
+
+cp -R "$APP" "$SMOKE_APP"
+/usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier $SMOKE_ID" "$SMOKE_APP/Contents/Info.plist"
+codesign --force --sign - "$SMOKE_APP" 2> /dev/null
 
 if [ -d .build ]; then
     mv .build "$HIDDEN_BUILD"
 fi
 
-__CFPREFERENCES_AVOID_DAEMON=1 CFFIXED_USER_HOME="$PREFERENCES_HOME" "$EXECUTABLE" > "$LAUNCH_LOG" 2>&1 &
+CFFIXED_USER_HOME="$PREFERENCES_HOME" "$SMOKE_EXECUTABLE" > "$LAUNCH_LOG" 2>&1 &
 APP_PID=$!
 sleep "$ALIVE_SECONDS"
 

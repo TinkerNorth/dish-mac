@@ -104,6 +104,8 @@ let package = Package(
             name: "DishEngineTests",
             dependencies: ["DishEngine", "DishKernelProbes", "LegacyFileKeychain"],
             path: "Tests/DishEngineTests",
+            // Read by path, byte for byte: a resource copy would only add a bundle.
+            exclude: ["ControllerDb/Fixtures"],
             swiftSettings: warningsAreErrors
         ),
         .testTarget(

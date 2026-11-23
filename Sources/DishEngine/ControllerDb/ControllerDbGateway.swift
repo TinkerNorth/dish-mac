@@ -3,7 +3,8 @@
 //
 // The website's controller data over HTTPS: the manifest with
 // `If-None-Match`, then each file it names. No query, no identifier, the
-// platform's default user agent, nothing in the request but the path.
+// platform's default user agent, one language for every Mac, nothing in the
+// request but the path.
 
 import DishCore
 import Foundation
@@ -28,7 +29,7 @@ final class OfflineControllerDbGateway: ControllerDbGateway {
 
 final class ControllerDbHTTPClient: ControllerDbGateway {
     private let session: URLSession
-    private let base: URL
+    let base: URL
 
     init(base: URL, session: URLSession = ControllerDbHTTPClient.ephemeral()) {
         self.base = base
@@ -39,20 +40,22 @@ final class ControllerDbHTTPClient: ControllerDbGateway {
         session.finishTasksAndInvalidate()
     }
 
-    /// No cookies, no cache of its own: the ETag is ours to send.
+    /// No cookies, no cache of its own: the ETag is ours to send. A gap of 15
+    /// seconds ends a request, and so does a whole minute, so a server that
+    /// trickles bytes cannot hold the check open.
     static func ephemeral() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.httpCookieAcceptPolicy = .never
         configuration.httpShouldSetCookies = false
         configuration.timeoutIntervalForRequest = 15
+        configuration.timeoutIntervalForResource = 60
         configuration.waitsForConnectivity = false
         return URLSession(configuration: configuration)
     }
 
     func fetchManifest(etag: String?) async -> ManifestReply {
-        var request = URLRequest(url: base.appendingPathComponent(ControllerDbFiles.manifest))
-        if let etag { request.setValue(etag, forHTTPHeaderField: "If-None-Match") }
+        let request = manifestRequest(etag: etag)
         guard let (data, response) = try? await session.data(for: request), let http = response as? HTTPURLResponse else {
             return .unreachable
         }
@@ -60,9 +63,26 @@ final class ControllerDbHTTPClient: ControllerDbGateway {
     }
 
     func fetchFile(_ path: String) async -> Data? {
-        let request = URLRequest(url: base.appendingPathComponent(path))
+        let request = fileRequest(path)
         guard let (data, response) = try? await session.data(for: request) else { return nil }
         return (response as? HTTPURLResponse)?.statusCode == 200 ? data : nil
+    }
+}
+
+extension ControllerDbHTTPClient {
+    /// One value for every Mac: the system's would name the person's languages.
+    static let acceptLanguage = "*"
+
+    func manifestRequest(etag: String?) -> URLRequest {
+        var request = fileRequest(ControllerDbFiles.manifest)
+        if let etag { request.setValue(etag, forHTTPHeaderField: "If-None-Match") }
+        return request
+    }
+
+    func fileRequest(_ path: String) -> URLRequest {
+        var request = URLRequest(url: base.appendingPathComponent(path))
+        request.setValue(Self.acceptLanguage, forHTTPHeaderField: "Accept-Language")
+        return request
     }
 }
 

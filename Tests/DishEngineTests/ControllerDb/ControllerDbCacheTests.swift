@@ -58,6 +58,18 @@ final class ControllerDbCacheTests: XCTestCase {
         XCTAssertNil(cache.load(), "a file changed on disk is not loaded")
     }
 
+    func testASwapNamingAPathOutsideTheDatabaseWritesNothing() {
+        let cache = ControllerDbCache(directory: directory.appendingPathComponent("controllers-v1"))
+        let escape = "../../escaped.txt"
+        let outside = directory.appendingPathComponent("controllers-v1").appendingPathComponent(escape).standardizedFileURL
+        defer { try? FileManager.default.removeItem(at: outside) }
+        XCTAssertFalse(cache.replaceAll(["controllers.json": Data("1".utf8), escape: Data("x".utf8)]))
+        cache.put(Data("x".utf8), for: escape)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outside.path), "nothing lands outside the cache")
+        XCTAssertNil(cache.get(escape))
+        XCTAssertEqual(cache.files(), [:], "and the refused set left nothing behind")
+    }
+
     func testAnEmptyCacheLoadsNothing() {
         XCTAssertNil(ControllerDbCache(directory: directory).load())
     }

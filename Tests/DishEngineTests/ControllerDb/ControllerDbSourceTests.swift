@@ -156,6 +156,25 @@ final class ControllerDbSourceTests: XCTestCase {
         XCTAssertEqual(source.state.lastCheckResult, .invalid)
     }
 
+    func testAManifestNamingAPathOutsideTheCacheIsInvalidAndNothingIsRequestedOrWritten() async throws {
+        let escape = "../../escaped.txt"
+        let outside = directory.appendingPathComponent(escape).standardizedFileURL
+        defer { try? FileManager.default.removeItem(at: outside) }
+        let served = try ServedVersion(dbVersion: 2)
+        var files = served.files
+        files[escape] = Data("written outside the cache".utf8)
+        let entries = files.mapValues { ["sha256": sha256Hex($0), "bytes": $0.count] as [String: Any] }
+        let manifest = try JSONSerialization.data(withJSONObject: ["schema": 1, "dbVersion": 2, "files": entries])
+        gateway.manifest = .body(manifest, etag: nil)
+        gateway.files = files
+        let source = try source()
+        await check(source)
+        XCTAssertEqual(source.state.lastCheckResult, .invalid)
+        XCTAssertEqual(gateway.requests, [.manifest(etag: nil)], "no file is requested")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: outside.path))
+        XCTAssertEqual(source.index.state.source, .bundled)
+    }
+
     func testACacheNoNewerThanTheBundledCopyIsNotInForce() throws {
         let served = try ServedVersion(dbVersion: 1)
         var files = served.files
@@ -185,5 +204,23 @@ final class ControllerDbSourceTests: XCTestCase {
         XCTAssertEqual(configuration.requestCachePolicy, .reloadIgnoringLocalCacheData)
         XCTAssertFalse(configuration.httpShouldSetCookies)
         XCTAssertEqual(configuration.httpCookieAcceptPolicy, .never)
+    }
+
+    func testTheWholeTransferIsBoundedSoACheckCannotHangForDays() {
+        let configuration = ControllerDbHTTPClient.ephemeral().configuration
+        XCTAssertEqual(configuration.timeoutIntervalForRequest, 15, "an idle gap")
+        XCTAssertEqual(configuration.timeoutIntervalForResource, 60, "and the whole transfer, a trickle included")
+    }
+
+    func testEveryRequestCarriesOneNeutralLanguageNotThePersons() throws {
+        let client = try ControllerDbHTTPClient(base: XCTUnwrap(URL(string: ControllerDbSchedule.baseURLString)))
+        let manifest = client.manifestRequest(etag: "\"v1\"")
+        let file = client.fileRequest(ControllerDbFiles.strings("de"))
+        XCTAssertEqual(manifest.value(forHTTPHeaderField: "Accept-Language"), "*")
+        XCTAssertEqual(file.value(forHTTPHeaderField: "Accept-Language"), "*")
+        XCTAssertEqual(manifest.url?.absoluteString, "https://dish.tinkernorth.com/controllers/v1/manifest.json")
+        XCTAssertEqual(manifest.value(forHTTPHeaderField: "If-None-Match"), "\"v1\"")
+        XCTAssertEqual(file.url?.absoluteString, "https://dish.tinkernorth.com/controllers/v1/strings/de.json")
+        XCTAssertNil(file.value(forHTTPHeaderField: "If-None-Match"))
     }
 }

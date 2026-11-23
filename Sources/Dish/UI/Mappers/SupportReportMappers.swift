@@ -87,8 +87,8 @@ func reportHolds(words: L10n = .app) -> [String] {
     [words.holdsYourWords, words.holdsThisMac, words.holdsControllers, words.holdsHosts, words.holdsLogAndCapture].map { "• \($0)" }
 }
 
-/// The mail: the person's words first, then the Diagnostics summary and the
-/// sentence on the file; the subject names the category in their language.
+/// The mail: the person's words first, then the Diagnostics summary with
+/// its hosts aliased and the sentence on the file; the subject names the category in their language.
 func supportReportMail(
     _ form: SupportReportForm,
     summary: String,
@@ -104,6 +104,20 @@ func supportReportMail(
     )
 }
 
+/// The mail as one text for the clipboard when no mail app takes it: the
+/// subject, then the body with the person's words first.
+func supportReportMailText(_ mail: DiagnosticsMailState) -> String {
+    mail.subject + "\n\n" + mail.body
+}
+
+/// What the page says when no mail app took the message: where the file
+/// went, or that it was not saved, and that the message waits on the
+/// clipboard for an email to support.
+func noMailNote(savedAt file: URL?, recipient: String, words: L10n = .app) -> String {
+    guard let file else { return paragraph(words.noMailApp, words.fileNotSaved, words.messageOnTheClipboard(recipient)) }
+    return paragraph(words.noMailApp, words.fileSavedAt(file.path), words.messageOnTheClipboard(recipient), words.attachTheFile)
+}
+
 func supportReportPageState(
     form: SupportReportForm,
     facts: ShellFacts,
@@ -115,7 +129,8 @@ func supportReportPageState(
     let pads = facts.diagnostics.pads
     let selection = reportControllerSelection(form.controller, pads: pads)
     let preparing = facts.reportPreparation.isLoading
-    let summary = diagnosticsSummaryText(diagnosticsPageState(facts: facts, locale: locale, timeZone: timeZone, words: words), words: words)
+    let page = diagnosticsPageState(facts: facts, locale: locale, timeZone: timeZone, words: words)
+    let summary = diagnosticsMailSummaryText(page, hosts: facts.diagnostics.hosts, words: words)
     let slotId: String? = if case let .slot(id) = selection { id } else { nil }
     return SupportReportPageState(
         intro: words.supportReportDetail,
