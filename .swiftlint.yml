@@ -91,9 +91,12 @@ type_name:
     warning: 50
     error: 60
 
+# A fleet style choice, shared with dish-ios: SwiftFormat's
+# wrapMultilineStatementBraces puts the `{` of a multi-line `guard` or `if`
+# condition on its own line, which this rule reads as a misplaced brace (the
+# rule's ignore_multiline_* options do not cover `guard ... else`; 20 sites).
 disabled_rules:
-  - trailing_comma # SwiftFormat owns this
-  - opening_brace  # SwiftFormat owns this
+  - opening_brace
 
 opt_in_rules:
   - empty_count
