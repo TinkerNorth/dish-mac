@@ -205,4 +205,22 @@ final class ControllerDbSourceTests: XCTestCase {
         XCTAssertFalse(configuration.httpShouldSetCookies)
         XCTAssertEqual(configuration.httpCookieAcceptPolicy, .never)
     }
+
+    func testTheWholeTransferIsBoundedSoACheckCannotHangForDays() {
+        let configuration = ControllerDbHTTPClient.ephemeral().configuration
+        XCTAssertEqual(configuration.timeoutIntervalForRequest, 15, "an idle gap")
+        XCTAssertEqual(configuration.timeoutIntervalForResource, 60, "and the whole transfer, a trickle included")
+    }
+
+    func testEveryRequestCarriesOneNeutralLanguageNotThePersons() throws {
+        let client = try ControllerDbHTTPClient(base: XCTUnwrap(URL(string: ControllerDbSchedule.baseURLString)))
+        let manifest = client.manifestRequest(etag: "\"v1\"")
+        let file = client.fileRequest(ControllerDbFiles.strings("de"))
+        XCTAssertEqual(manifest.value(forHTTPHeaderField: "Accept-Language"), "*")
+        XCTAssertEqual(file.value(forHTTPHeaderField: "Accept-Language"), "*")
+        XCTAssertEqual(manifest.url?.absoluteString, "https://dish.tinkernorth.com/controllers/v1/manifest.json")
+        XCTAssertEqual(manifest.value(forHTTPHeaderField: "If-None-Match"), "\"v1\"")
+        XCTAssertEqual(file.url?.absoluteString, "https://dish.tinkernorth.com/controllers/v1/strings/de.json")
+        XCTAssertNil(file.value(forHTTPHeaderField: "If-None-Match"))
+    }
 }

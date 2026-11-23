@@ -171,7 +171,8 @@ when anything does not match. A downloaded list is kept under
 
 `dish.tinkernorth.com` is an Amazon S3 bucket behind Amazon CloudFront,
 operated for TinkerNorth by Amazon Web Services. The requests carry no
-identifier, no cookie and no query, and use the system's default user agent;
+identifier, no cookie and no query, name the same language on every Mac
+rather than yours, and use the system's default user agent;
 the manifest request repeats the ETag the website last gave, so an unchanged
 manifest is answered with "not modified". What the host's access logs can
 see is what any web server sees: the IP address the request came from, and
