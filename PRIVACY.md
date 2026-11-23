@@ -195,7 +195,10 @@ itself before anything moves. *Continue in Mail* writes one file,
 `dish-diagnostics-dish-mac-<date>-<time>.json`, to a temporary folder and
 hands it to your own mail app, in a new message addressed to
 `support@tinkernorth.com` with your words first and the page's summary
-after them. Nothing is sent until you press Send in your mail app, and you
+after them. That summary names each host by the alias the file gives it,
+"Host 1", "Host 2", and carries no host's address, port or name, in its
+hosts and in its controllers alike; the page itself keeps showing your
+hosts' real names. Nothing is sent until you press Send in your mail app, and you
 can read the file or remove it first. The message then travels like any
 email you send, through your own mail provider. When no mail app takes it,
 the file is saved where you pick instead. *Save diagnostics* saves a file

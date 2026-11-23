@@ -154,12 +154,42 @@ struct DiagnosticsMailState: Equatable {
 
 /// The page's cards as plain text: each card's title, then its lines.
 func diagnosticsSummaryText(_ page: DiagnosticsPageState, words: L10n = .app) -> String {
+    summaryText(page, hosts: page.hosts, words: words)
+}
+
+/// The summary the mail carries: each host titled by the alias the file
+/// gives it, with no address and no host name, and every other mention of a
+/// host's name or address replaced by that alias. The page keeps the names.
+func diagnosticsMailSummaryText(_ page: DiagnosticsPageState, hosts: [HostDiagnostics], words: L10n = .app) -> String {
+    let summary = summaryText(page, hosts: mailHostCards(page.hosts, words: words), words: words)
+    return aliasingHostNames(summary, hostNames: hosts.map(diagnosticsHostNames))
+}
+
+private func summaryText(_ page: DiagnosticsPageState, hosts: DiagnosticsCards, words: L10n) -> String {
     let sections = [
         (words.controllerDatabase, DiagnosticsCards.cards([page.controllerDb])),
-        (words.hosts, page.hosts),
+        (words.hosts, hosts),
         (words.controllers, page.pads)
     ]
     return sections.map { title, cards in summarySection(title, cards) }.joined(separator: "\n\n")
+}
+
+/// The host cards in the file's order, which is the page's.
+private func mailHostCards(_ cards: DiagnosticsCards, words: L10n) -> DiagnosticsCards {
+    guard case let .cards(hosts) = cards else { return cards }
+    return .cards(hosts.enumerated().map { position, card in mailHostCard(card, alias: hostAlias(position), words: words) })
+}
+
+private func mailHostCard(_ card: DiagnosticsCardState, alias: String, words: L10n) -> DiagnosticsCardState {
+    let identifying: Set<String> = [words.address, words.hostName]
+    return DiagnosticsCardState(
+        id: card.id,
+        title: alias,
+        dot: card.dot,
+        chip: card.chip,
+        lines: card.lines.filter { !identifying.contains($0.key) },
+        inspects: card.inspects
+    )
 }
 
 private func summarySection(_ title: String, _ cards: DiagnosticsCards) -> String {

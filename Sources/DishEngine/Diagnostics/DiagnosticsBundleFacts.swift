@@ -160,10 +160,15 @@ extension BundlePadFacts {
 }
 
 /// The name, the address and what a Moonlight host calls itself: each is
-/// only ever replaced by the host's alias.
+/// only ever replaced by the host's alias, in the file and in the mail.
+package func diagnosticsHostNames(_ host: HostDiagnostics) -> [String] {
+    let summary = host.summary
+    return [summary.name, summary.address, summary.recordName, host.moonlight?.info?.hostname ?? ""]
+}
+
 func bundleHostFacts(_ host: HostDiagnostics, versions: [String: String]) -> BundleHostFacts {
     let summary = host.summary
-    let names = [summary.name, summary.address, summary.recordName, host.moonlight?.info?.hostname ?? ""]
+    let names = diagnosticsHostNames(host)
     switch summary.kind {
     case .moonlight:
         return BundleHostFacts(

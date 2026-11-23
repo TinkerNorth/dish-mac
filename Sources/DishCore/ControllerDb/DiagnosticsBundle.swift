@@ -306,11 +306,6 @@ public enum DiagnosticsBundleFormat {
     public static let recipient = "support@tinkernorth.com"
 }
 
-/// "Host 1" for the first host, and so on.
-public func hostAlias(_ position: Int) -> String {
-    "Host \(position + 1)"
-}
-
 /// The file's bytes: sorted keys, so two bundles of one state are equal.
 public func diagnosticsBundleJSON(_ facts: DiagnosticsBundleFacts) -> Data {
     let encoder = JSONEncoder()
@@ -321,7 +316,7 @@ public func diagnosticsBundleJSON(_ facts: DiagnosticsBundleFacts) -> Data {
 /// The file's shape, every host aliased and every log line scrubbed of the
 /// names and addresses those hosts go by.
 func diagnosticsBundle(_ facts: DiagnosticsBundleFacts) -> BundleFile {
-    let aliases = hostAliases(facts.hosts)
+    let aliases = hostAliases(facts.hosts.map(\.names))
     return BundleFile(
         bundle: DiagnosticsBundleFormat.version,
         createdAt: isoTimestamp(facts.createdAtMs),
@@ -350,23 +345,6 @@ private func bundleDevice(_ device: BundleDeviceFacts, conditions: BundleDeviceC
             )
         }
     )
-}
-
-private struct HostAliasing {
-    let name: String
-    let alias: String
-}
-
-/// Longest first, so a name that contains another is replaced whole.
-private func hostAliases(_ hosts: [BundleHostFacts]) -> [HostAliasing] {
-    let pairs = hosts.enumerated().flatMap { position, host in
-        host.names.filter { !$0.isEmpty }.map { HostAliasing(name: $0, alias: hostAlias(position)) }
-    }
-    return pairs.sorted { $0.name.count > $1.name.count }
-}
-
-private func scrub(_ text: String, _ aliases: [HostAliasing]) -> String {
-    aliases.reduce(text) { scrubbed, aliasing in scrubbed.replacingOccurrences(of: aliasing.name, with: aliasing.alias) }
 }
 
 private func bundleControllerDb(_ status: ControllerDbStatus) -> BundleFile.ControllerDb {
