@@ -41,7 +41,7 @@ if [ ! -x "$EXECUTABLE" ]; then
     exit 1
 fi
 
-scripts/check-bundled-db.sh "$APP/Contents/Resources/Dish_DishCore.bundle/Contents/Resources/controllers-v1"
+scripts/check-bundled-db.sh "$APP/Contents/Resources/Dish_DishCore.bundle"
 
 restore_build() {
     if [ -d "$HIDDEN_BUILD" ]; then

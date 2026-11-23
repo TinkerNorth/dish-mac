@@ -21,7 +21,7 @@ final class ResourceBundleLaunchTests: XCTestCase {
     private static let smokeStep = "run: scripts/launch-smoke.sh Dish.app"
     private static let bundleStep = "run: ./bundle.sh release"
     fileprivate static let databaseCheckPath = "scripts/check-bundled-db.sh"
-    private static let bundledDatabase = "Contents/Resources/Dish_DishCore.bundle/Contents/Resources/controllers-v1"
+    private static let coreBundle = "Contents/Resources/Dish_DishCore.bundle"
     /// The manifest and the seven data files it names.
     private static let publishedFiles = ["manifest.json", "controllers.json"] + ["en", "bs", "de", "es", "fr", "pt-BR"]
         .map { "strings/\($0).json" }
@@ -99,15 +99,31 @@ final class ResourceBundleLaunchTests: XCTestCase {
     /// gate checks the built app's copy before it launches it.
     func testTheLaunchChecksTheBuiltAppsControllerDatabaseFirst() throws {
         let script = try RepoFiles.read(Self.smokeScriptPath)
-        let check = try XCTUnwrap(script.range(of: "\(Self.databaseCheckPath) \"$APP/\(Self.bundledDatabase)\""))
+        let check = try XCTUnwrap(script.range(of: "\(Self.databaseCheckPath) \"$APP/\(Self.coreBundle)\""))
         let launch = try XCTUnwrap(script.range(of: "\"$SMOKE_EXECUTABLE\" > \"$LAUNCH_LOG\""))
         XCTAssertTrue(check.lowerBound < launch.lowerBound, "checked before it launches")
     }
 
-    func testTheDatabaseCheckPassesTheCopyAsPublished() throws {
-        let copy = try DatabaseCopy()
+    /// The build system CI's Xcode uses lays a resource bundle out flat; the
+    /// newer one puts its resources under `Contents/Resources`. The app asks
+    /// Foundation, which answers for both, so the check looks in both.
+    func testTheDatabaseCheckPassesTheCopyInABundleThatKeepsItsResourcesAtItsRoot() throws {
+        let copy = try DatabaseCopy(resources: "")
         defer { copy.remove() }
         XCTAssertEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckPassesTheCopyInABundleThatKeepsThemUnderContentsResources() throws {
+        let copy = try DatabaseCopy(resources: "Contents/Resources")
+        defer { copy.remove() }
+        XCTAssertEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckFailsABundleWithNoDatabase() throws {
+        let copy = try DatabaseCopy()
+        defer { copy.remove() }
+        try FileManager.default.removeItem(at: copy.folder)
+        XCTAssertNotEqual(try copy.check(), 0)
     }
 
     func testTheDatabaseCheckFailsAFileWithOneByteMore() throws {
@@ -156,20 +172,27 @@ final class ResourceBundleLaunchTests: XCTestCase {
     }
 }
 
-/// The bundled database copied to a scratch folder, and the gate's check
-/// run over it.
+/// The bundled database copied into a scratch resource bundle, and the
+/// gate's check run over that bundle.
 private struct DatabaseCopy {
+    private let scratch: URL
+    private let bundle: URL
     let folder: URL
 
-    init() throws {
-        folder = FileManager.default.temporaryDirectory.appendingPathComponent("dish-db-check-\(UUID().uuidString)")
+    /// `resources` is where the bundle keeps its resources, from its root.
+    init(resources: String = "Contents/Resources") throws {
+        scratch = FileManager.default.temporaryDirectory.appendingPathComponent("dish-db-check-\(UUID().uuidString)")
+        bundle = scratch.appendingPathComponent("Dish_DishCore.bundle")
+        let home = resources.isEmpty ? bundle : bundle.appendingPathComponent(resources)
+        folder = home.appendingPathComponent("controllers-v1")
+        try FileManager.default.createDirectory(at: home, withIntermediateDirectories: true)
         try FileManager.default.copyItem(at: RepoFiles.url("Sources/DishCore/Resources/controllers-v1"), to: folder)
     }
 
     func check() throws -> Int32 {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/bash")
-        process.arguments = [RepoFiles.url(ResourceBundleLaunchTests.databaseCheckPath).path, folder.path]
+        process.arguments = [RepoFiles.url(ResourceBundleLaunchTests.databaseCheckPath).path, bundle.path]
         process.standardOutput = FileHandle.nullDevice
         process.standardError = FileHandle.nullDevice
         try process.run()
@@ -178,6 +201,6 @@ private struct DatabaseCopy {
     }
 
     func remove() {
-        try? FileManager.default.removeItem(at: folder)
+        try? FileManager.default.removeItem(at: scratch)
     }
 }

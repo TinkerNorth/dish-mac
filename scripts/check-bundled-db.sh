@@ -10,12 +10,23 @@
 #  seven and no other, and that each one's size and SHA-256 are the
 #  manifest's. launch-smoke.sh runs it on the built app before launching it.
 #
-#  Usage: scripts/check-bundled-db.sh <path/to/controllers-v1>
+#  It takes the resource bundle, not the folder, because where a bundle keeps
+#  its resources depends on what built it: the build system CI's Xcode uses
+#  lays the bundle out flat, the newer one puts them under Contents/Resources.
+#  The app asks Foundation (Bundle.resourceURL), which answers for both, so
+#  this looks where Foundation does.
+#
+#  Usage: scripts/check-bundled-db.sh <path/to/Dish_DishCore.bundle>
 # ============================================================================
 
 set -euo pipefail
 
-FOLDER="${1:?usage: check-bundled-db.sh <controllers-v1 folder>}"
+BUNDLE="${1:?usage: check-bundled-db.sh <Dish_DishCore.bundle>}"
+if [ -d "$BUNDLE/Contents/Resources" ]; then
+    FOLDER="$BUNDLE/Contents/Resources/controllers-v1"
+else
+    FOLDER="$BUNDLE/controllers-v1"
+fi
 
 python3 -I - "$FOLDER" << 'PY'
 import hashlib, json, os, sys
