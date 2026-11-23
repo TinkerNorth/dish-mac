@@ -20,6 +20,11 @@ final class ResourceBundleLaunchTests: XCTestCase {
     private static let smokeScriptPath = "scripts/launch-smoke.sh"
     private static let smokeStep = "run: scripts/launch-smoke.sh Dish.app"
     private static let bundleStep = "run: ./bundle.sh release"
+    fileprivate static let databaseCheckPath = "scripts/check-bundled-db.sh"
+    private static let bundledDatabase = "Contents/Resources/Dish_DishCore.bundle/Contents/Resources/controllers-v1"
+    /// The manifest and the seven data files it names.
+    private static let publishedFiles = ["manifest.json", "controllers.json"] + ["en", "bs", "de", "es", "fr", "pt-BR"]
+        .map { "strings/\($0).json" }
 
     func testOnlyTheResolverAsksSwiftPMForTheModuleBundle() throws {
         let offenders = try RepoFiles.swiftFiles(under: "Sources")
@@ -83,7 +88,54 @@ final class ResourceBundleLaunchTests: XCTestCase {
         XCTAssertNotEqual(permissions & 0o111, 0, "the workflows run the script directly")
     }
 
-    /// macOS shows this the first time either use opens a pad's microphone:
+    // MARK: - The bundled controller database
+
+    /// A build that ships a broken copy launches on the empty set, so the
+    /// gate checks the built app's copy before it launches it.
+    func testTheLaunchChecksTheBuiltAppsControllerDatabaseFirst() throws {
+        let script = try RepoFiles.read(Self.smokeScriptPath)
+        let check = try XCTUnwrap(script.range(of: "\(Self.databaseCheckPath) \"$APP/\(Self.bundledDatabase)\""))
+        let launch = try XCTUnwrap(script.range(of: "\"$EXECUTABLE\" > \"$LAUNCH_LOG\""))
+        XCTAssertTrue(check.lowerBound < launch.lowerBound, "checked before it launches")
+    }
+
+    func testTheDatabaseCheckPassesTheCopyAsPublished() throws {
+        let copy = try DatabaseCopy()
+        defer { copy.remove() }
+        XCTAssertEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckFailsAFileWithOneByteMore() throws {
+        let copy = try DatabaseCopy()
+        defer { copy.remove() }
+        let handle = try FileHandle(forWritingTo: copy.folder.appendingPathComponent("strings/de.json"))
+        try handle.seekToEnd()
+        try handle.write(contentsOf: Data([0x0A]))
+        try handle.close()
+        XCTAssertNotEqual(try copy.check(), 0)
+    }
+
+    func testTheDatabaseCheckFailsAMissingFile() throws {
+        for path in Self.publishedFiles {
+            let copy = try DatabaseCopy()
+            defer { copy.remove() }
+            try FileManager.default.removeItem(at: copy.folder.appendingPathComponent(path))
+            XCTAssertNotEqual(try copy.check(), 0, path)
+        }
+    }
+
+    func testTheDatabaseCheckFailsAChangedByteOfTheSameSize() throws {
+        let copy = try DatabaseCopy()
+        defer { copy.remove() }
+        let file = copy.folder.appendingPathComponent("controllers.json")
+        var body = try Data(contentsOf: file)
+        body[body.index(before: body.endIndex)] ^= 0x01
+        try body.write(to: file)
+        XCTAssertNotEqual(try copy.check(), 0)
+    }
+
+    /// macOS shows this the first time either use opens a pad's microphone:    /// macOS shows this the first time either use opens a pad's
+    /// microphone:
     /// the mic switch's sending, or the inspector's test, which sends nothing.
     func testTheMicrophonePromptDescribesBothUsesOfTheMicrophone() throws {
         let script = try RepoFiles.read(Self.bundleScriptPath)
@@ -96,5 +148,31 @@ final class ResourceBundleLaunchTests: XCTestCase {
 
     private static func namesTheModuleBundle(_ line: String) -> Bool {
         line.contains("Bundle.module") || line.contains("bundle: .module") || line.contains("?? .module")
+    }
+}
+
+/// The bundled database copied to a scratch folder, and the gate's check
+/// run over it.
+private struct DatabaseCopy {
+    let folder: URL
+
+    init() throws {
+        folder = FileManager.default.temporaryDirectory.appendingPathComponent("dish-db-check-\(UUID().uuidString)")
+        try FileManager.default.copyItem(at: RepoFiles.url("Sources/DishCore/Resources/controllers-v1"), to: folder)
+    }
+
+    func check() throws -> Int32 {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [RepoFiles.url(ResourceBundleLaunchTests.databaseCheckPath).path, folder.path]
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        return process.terminationStatus
+    }
+
+    func remove() {
+        try? FileManager.default.removeItem(at: folder)
     }
 }

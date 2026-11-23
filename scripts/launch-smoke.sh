@@ -11,7 +11,8 @@
 #  and without the preferences daemon (through cfprefsd a fixed home redirects
 #  reads alone, and the launch's first-run writes would reach the developer's
 #  own preferences), and fails when the app has quit before DISH_SMOKE_SECONDS
-#  (default 8).
+#  (default 8). First it checks the controller database the app ships
+#  (check-bundled-db.sh), which a broken copy would otherwise pass silently.
 #
 #  Usage: scripts/launch-smoke.sh [path/to/Dish.app]
 # ============================================================================
@@ -31,6 +32,8 @@ if [ ! -x "$EXECUTABLE" ]; then
     echo "No app at $EXECUTABLE — run ./bundle.sh first." >&2
     exit 1
 fi
+
+scripts/check-bundled-db.sh "$APP/Contents/Resources/Dish_DishCore.bundle/Contents/Resources/controllers-v1"
 
 restore_build() {
     if [ -d "$HIDDEN_BUILD" ]; then
