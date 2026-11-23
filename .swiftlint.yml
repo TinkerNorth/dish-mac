@@ -1,4 +1,4 @@
-# Dish Mac — SwiftLint configuration
+# Dish Mac: SwiftLint configuration
 # Tuned for a single-window SwiftUI gamepad controller app.
 
 included:

@@ -1,5 +1,5 @@
-# Dish Mac — SwiftFormat configuration
-# Paired with .swiftlint.yml — SwiftFormat handles whitespace / mechanical
+# Dish Mac: SwiftFormat configuration
+# Paired with .swiftlint.yml: SwiftFormat handles whitespace / mechanical
 # reformatting, SwiftLint handles lint rules and smells.
 
 # Target Swift version
