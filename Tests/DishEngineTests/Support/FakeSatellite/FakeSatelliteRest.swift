@@ -119,11 +119,11 @@ final class FakeSatelliteRest {
                 connection.cancel()
                 return
             }
-            self.connectionsLock.lock()
-            self.connections.append(connection)
-            self.connectionsLock.unlock()
-            connection.start(queue: self.queue)
-            self.receive(on: connection, buffered: Data())
+            connectionsLock.lock()
+            connections.append(connection)
+            connectionsLock.unlock()
+            connection.start(queue: queue)
+            receive(on: connection, buffered: Data())
         }
         let boundPort = try FakeSatelliteNet.startAndAwaitReady(listener, queue: queue)
         self.listener = listener
@@ -140,14 +140,14 @@ final class FakeSatelliteRest {
             while let (request, consumed) = FakeSatelliteHttp.parseRequest(buffer) {
                 buffer.removeFirst(consumed)
                 // nil = the response was parked by the hold knob.
-                guard let response = self.route(request, on: connection) else { continue }
+                guard let response = route(request, on: connection) else { continue }
                 connection.send(content: FakeSatelliteHttp.serialize(response), completion: .contentProcessed { _ in })
             }
             if error != nil || isComplete {
                 connection.cancel()
                 return
             }
-            self.receive(on: connection, buffered: buffer)
+            receive(on: connection, buffered: buffer)
         }
     }
 

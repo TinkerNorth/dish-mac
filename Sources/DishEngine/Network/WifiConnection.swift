@@ -226,7 +226,7 @@ package final class WifiConnection: ObservableObject, Identifiable {
             while !Task.isCancelled {
                 try? await Task.sleep(nanoseconds: interval)
                 guard !Task.isCancelled, let self else { return }
-                if self.aliveTick() == .sessionEnded {
+                if aliveTick() == .sessionEnded {
                     return
                 }
             }

@@ -128,7 +128,7 @@ extension GameControllerInput {
         timer.schedule(deadline: delay, repeating: .seconds(kBatteryPollIntervalSec))
         timer.setEventHandler { [weak self, weak controller] in
             guard let self, let controller else { return }
-            self.emitBattery(deviceId: deviceId, controller: controller, force: true)
+            emitBattery(deviceId: deviceId, controller: controller, force: true)
         }
         timer.resume()
         batteryTimers[deviceId] = timer
@@ -143,7 +143,7 @@ extension GameControllerInput {
         )
         watch.setEventHandler { [weak self, weak controller] in
             guard let self, let controller else { return }
-            self.emitBattery(deviceId: deviceId, controller: controller, force: false)
+            emitBattery(deviceId: deviceId, controller: controller, force: false)
         }
         watch.resume()
         batteryStateTimers[deviceId] = watch

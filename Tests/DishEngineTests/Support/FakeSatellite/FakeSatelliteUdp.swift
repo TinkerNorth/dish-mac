@@ -36,9 +36,9 @@ final class FakeSatelliteUdp {
                 connection.cancel()
                 return
             }
-            self.track(connection)
-            connection.start(queue: self.queue)
-            self.receiveLoop(connection)
+            track(connection)
+            connection.start(queue: queue)
+            receiveLoop(connection)
         }
         port = try FakeSatelliteNet.startAndAwaitReady(listener, queue: queue)
         self.listener = listener
@@ -65,10 +65,10 @@ final class FakeSatelliteUdp {
         connection.receiveMessage { [weak self] data, _, _, error in
             guard let self else { return }
             if let data, !data.isEmpty {
-                self.handleDatagram(data, on: connection)
+                handleDatagram(data, on: connection)
             }
             if error == nil {
-                self.receiveLoop(connection)
+                receiveLoop(connection)
             } else {
                 connection.cancel()
             }

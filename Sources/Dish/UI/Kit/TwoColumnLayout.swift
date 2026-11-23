@@ -19,13 +19,13 @@ struct TwoColumnLayout: Layout {
 
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache _: inout Void) -> CGSize {
         let width = proposal.width ?? breakpoint
-        let columns = self.columns(subviews, width: width)
+        let columns = columns(subviews, width: width)
         let heights = columns.map { stackHeight($0, width: columnWidth(width, count: columns.count)) }
         return CGSize(width: width, height: heights.max() ?? 0)
     }
 
     func placeSubviews(in bounds: CGRect, proposal _: ProposedViewSize, subviews: Subviews, cache _: inout Void) {
-        let columns = self.columns(subviews, width: bounds.width)
+        let columns = columns(subviews, width: bounds.width)
         let width = columnWidth(bounds.width, count: columns.count)
         for (index, column) in columns.enumerated() {
             let x = bounds.minX + CGFloat(index) * (width + spacing)

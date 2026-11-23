@@ -32,16 +32,16 @@ struct CatalogDTO: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.locale = try container.decodeIfPresent(String.self, forKey: .locale) ?? ""
-        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
+        locale = try container.decodeIfPresent(String.self, forKey: .locale) ?? ""
+        protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
             ?? ProtocolConstants.protocolVersionWhenAbsent
-        self.catalogVersion = try container.decodeIfPresent(Int.self, forKey: .catalogVersion)
+        catalogVersion = try container.decodeIfPresent(Int.self, forKey: .catalogVersion)
             ?? ProtocolConstants.catalogVersionWhenAbsent
-        self.serverVersion = try container.decodeIfPresent(String.self, forKey: .serverVersion) ?? ""
-        self.controllerTypes = try container.decodeIfPresent(
+        serverVersion = try container.decodeIfPresent(String.self, forKey: .serverVersion) ?? ""
+        controllerTypes = try container.decodeIfPresent(
             [CatalogControllerType].self, forKey: .controllerTypes
         ) ?? []
-        self.hostFeatures = try container.decodeIfPresent(CatalogHostFeatures.self, forKey: .hostFeatures)
+        hostFeatures = try container.decodeIfPresent(CatalogHostFeatures.self, forKey: .hostFeatures)
             ?? CatalogHostFeatures()
     }
 }
@@ -67,15 +67,15 @@ struct CatalogControllerType: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decodeIfPresent(Int.self, forKey: .id)
+        id = try container.decodeIfPresent(Int.self, forKey: .id)
             ?? Int(ProtocolConstants.controllerTypeXbox)
-        self.slug = try container.decodeIfPresent(String.self, forKey: .slug) ?? ""
-        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-        self.shortName = try container.decodeIfPresent(String.self, forKey: .shortName) ?? ""
-        self.description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
-        self.features = try container.decodeIfPresent(CatalogFeatures.self, forKey: .features) ?? CatalogFeatures()
-        self.image = try container.decodeIfPresent(CatalogImage.self, forKey: .image) ?? CatalogImage()
-        self.emulates = try container.decodeIfPresent(CatalogEmulates.self, forKey: .emulates)
+        slug = try container.decodeIfPresent(String.self, forKey: .slug) ?? ""
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        shortName = try container.decodeIfPresent(String.self, forKey: .shortName) ?? ""
+        description = try container.decodeIfPresent(String.self, forKey: .description) ?? ""
+        features = try container.decodeIfPresent(CatalogFeatures.self, forKey: .features) ?? CatalogFeatures()
+        image = try container.decodeIfPresent(CatalogImage.self, forKey: .image) ?? CatalogImage()
+        emulates = try container.decodeIfPresent(CatalogEmulates.self, forKey: .emulates)
     }
 }
 
@@ -97,8 +97,8 @@ struct CatalogEmulates: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.sdlType = try container.decodeIfPresent(String.self, forKey: .sdlType) ?? ""
-        self.usb = (try? container.decodeIfPresent([String].self, forKey: .usb)) ?? []
+        sdlType = try container.decodeIfPresent(String.self, forKey: .sdlType) ?? ""
+        usb = (try? container.decodeIfPresent([String].self, forKey: .usb)) ?? []
     }
 }
 
@@ -131,17 +131,17 @@ struct CatalogFeatures: Decodable, Equatable {
         func feature(_ key: CodingKeys) throws -> CatalogFeature {
             try container.decodeIfPresent(CatalogFeature.self, forKey: key) ?? CatalogFeature()
         }
-        self.rumble = try feature(.rumble)
-        self.analogTriggers = try feature(.analogTriggers)
-        self.motion = try feature(.motion)
-        self.lightbar = try feature(.lightbar)
-        self.touchpad = try feature(.touchpad)
-        self.triggerEffects = try feature(.triggerEffects)
-        self.playerLeds = try feature(.playerLeds)
-        self.mic = try feature(.mic)
-        self.speaker = try feature(.speaker)
-        self.hapticAudio = try feature(.hapticAudio)
-        self.extendedButtons = try feature(.extendedButtons)
+        rumble = try feature(.rumble)
+        analogTriggers = try feature(.analogTriggers)
+        motion = try feature(.motion)
+        lightbar = try feature(.lightbar)
+        touchpad = try feature(.touchpad)
+        triggerEffects = try feature(.triggerEffects)
+        playerLeds = try feature(.playerLeds)
+        mic = try feature(.mic)
+        speaker = try feature(.speaker)
+        hapticAudio = try feature(.hapticAudio)
+        extendedButtons = try feature(.extendedButtons)
     }
 }
 
@@ -165,10 +165,10 @@ struct CatalogFeature: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
-        self.modes = try container.decodeIfPresent([String].self, forKey: .modes) ?? []
-        self.buttons = try container.decodeIfPresent([String].self, forKey: .buttons) ?? []
-        self.requires = try nonEmpty(container.decodeIfPresent(String.self, forKey: .requires))
+        supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
+        modes = try container.decodeIfPresent([String].self, forKey: .modes) ?? []
+        buttons = try container.decodeIfPresent([String].self, forKey: .buttons) ?? []
+        requires = try nonEmpty(container.decodeIfPresent(String.self, forKey: .requires))
     }
 }
 
@@ -183,8 +183,8 @@ struct CatalogImage: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.href = try container.decodeIfPresent(String.self, forKey: .href) ?? ""
-        self.etag = try container.decodeIfPresent(String.self, forKey: .etag) ?? ""
+        href = try container.decodeIfPresent(String.self, forKey: .href) ?? ""
+        etag = try container.decodeIfPresent(String.self, forKey: .etag) ?? ""
     }
 }
 
@@ -201,9 +201,9 @@ struct CatalogHostFeatures: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.mouseControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .mouseControl) ?? CatalogFeature()
-        self.keyboardControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .keyboardControl)
+        mouseControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .mouseControl) ?? CatalogFeature()
+        keyboardControl = try container.decodeIfPresent(CatalogFeature.self, forKey: .keyboardControl)
             ?? CatalogFeature()
-        self.rumble = try container.decodeIfPresent(CatalogFeature.self, forKey: .rumble) ?? CatalogFeature()
+        rumble = try container.decodeIfPresent(CatalogFeature.self, forKey: .rumble) ?? CatalogFeature()
     }
 }

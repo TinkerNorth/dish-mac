@@ -45,7 +45,7 @@ extension MoonlightConnectionManager {
     }
 
     private func converge() {
-        let desired = self.desired
+        let desired = desired
         serialized { [weak self] in await self?.convergeAll(desired) }
     }
 

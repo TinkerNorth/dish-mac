@@ -165,14 +165,14 @@ final class FakeSatelliteUdpScriptClient {
     private func receiveLoop() {
         connection.receiveMessage { [weak self] data, _, _, error in
             guard let self else { return }
-            self.condition.lock()
+            condition.lock()
             if let data, !data.isEmpty {
-                self.inbox.append(data)
+                inbox.append(data)
             }
-            self.condition.broadcast()
-            self.condition.unlock()
+            condition.broadcast()
+            condition.unlock()
             if error == nil {
-                self.receiveLoop()
+                receiveLoop()
             }
         }
     }

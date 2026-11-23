@@ -141,7 +141,7 @@ extension WifiConnectionManager {
         retryTasks[id] = Task { [weak self] in
             try? await Task.sleep(nanoseconds: UInt64(delayMs) * 1_000_000)
             guard !Task.isCancelled, let self else { return }
-            self.fireRetry(id)
+            fireRetry(id)
         }
     }
 

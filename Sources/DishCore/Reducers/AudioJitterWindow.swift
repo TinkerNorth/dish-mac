@@ -42,7 +42,7 @@ public struct AudioJitterWindow: Equatable, Sendable {
 
     public mutating func push(_ frame: AudioFrame) -> [PlayoutEvent] {
         guard let next else {
-            self.next = frame.seq &+ 1
+            next = frame.seq &+ 1
             played += 1
             return [.packet(frame.opus)]
         }

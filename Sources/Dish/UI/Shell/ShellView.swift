@@ -133,8 +133,7 @@ private extension View {
     /// A page fills the content column under the shell header, which draws
     /// its own back chevron.
     func shellPage() -> some View {
-        self
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             .background(DishTheme.background)
             .navigationBarBackButtonHidden(true)
     }

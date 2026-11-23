@@ -136,8 +136,8 @@ extension SatelliteClient {
         drained.enter()
         ackQueue.async { [weak self] in
             defer { drained.leave() }
-            while let self, self.ackRunning.get() {
-                self.receiveOne()
+            while let self, ackRunning.get() {
+                receiveOne()
             }
         }
     }

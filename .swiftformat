@@ -39,6 +39,6 @@
 --ifdef no-indent
 --stripunusedargs closure-only
 
-# Disabled rules (SwiftLint owns them, or they conflict with code style we
-# want to preserve — e.g. explicit `self.` in closures that capture state).
---disable redundantSelf,unusedArguments,blankLinesAtStartOfScope
+# One rule is switched off, as a style the fleet shares with dish-ios (CONTRIBUTING,
+# "Style"): scopes open with a blank line, as in every file of the tree.
+--disable blankLinesAtStartOfScope

@@ -179,8 +179,7 @@ struct RowText: View {
 
 extension View {
     func settingsCard() -> some View {
-        self
-            .padding(12)
+        padding(12)
             .background(DishTheme.surface)
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(DishTheme.cardStroke, lineWidth: 1))
             .clipShape(RoundedRectangle(cornerRadius: 8))

@@ -73,15 +73,15 @@ package final class FeatureSettings: ObservableObject {
         self.defaults = defaults
         // `object(forKey:)` is nil on first launch — fall back to the
         // documented default (everything on, light bar follows the game).
-        self.motionEnabled = (defaults.object(forKey: Keys.motion) as? Bool) ?? true
-        self.rumbleEnabled = (defaults.object(forKey: Keys.rumble) as? Bool) ?? true
-        self.touchpadEnabled = (defaults.object(forKey: Keys.touchpad) as? Bool) ?? true
+        motionEnabled = (defaults.object(forKey: Keys.motion) as? Bool) ?? true
+        rumbleEnabled = (defaults.object(forKey: Keys.rumble) as? Bool) ?? true
+        touchpadEnabled = (defaults.object(forKey: Keys.touchpad) as? Bool) ?? true
         if let raw = defaults.string(forKey: Keys.lightbar),
            let mode = LightbarMode(rawValue: raw)
         {
-            self.lightbarMode = mode
+            lightbarMode = mode
         } else {
-            self.lightbarMode = .followGame
+            lightbarMode = .followGame
         }
     }
 

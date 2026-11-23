@@ -20,8 +20,8 @@ final class InputInspectorTests: XCTestCase {
     override func setUp() {
         super.setUp()
         processor = GamepadInputProcessor()
-        outcomes = PadOutcomesStore { [unowned self] in self.wallMs }
-        inspector = InputInspector(processor: processor, outcomes: outcomes, now: { [unowned self] in self.clock }, pollMs: 10000)
+        outcomes = PadOutcomesStore { [unowned self] in wallMs }
+        inspector = InputInspector(processor: processor, outcomes: outcomes, now: { [unowned self] in clock }, pollMs: 10000)
     }
 
     override func tearDown() {
