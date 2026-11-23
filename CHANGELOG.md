@@ -40,6 +40,15 @@ the repos share a version number.
   identity becomes the shared workflow's, `_release_harden.yml@refs/tags/X.Y.Z`;
   `SECURITY.md` has the recipe for both forms, run against 1.4.0. The app
   checks no signature, so already-installed versions are not affected.
+- **The release's bill of materials names what the app carries.** Syft does
+  not look inside `dish-mac.zip`, so the product SBOM named nothing but the
+  product itself. `scripts/write-sbom.sh`, called by `stage-zip.sh` on pull
+  requests and tags alike, writes `dish-mac-components.spdx.json` from the
+  tree the build used (sentry-cocoa from `Package.resolved`, the ENet commit
+  the Swift port follows, the bundled controller database), and the shared
+  `_release_harden.yml`, now the fleet's newer copy, folds it into the
+  product SBOM and has Grype scan that SBOM. A test fails when the document
+  misses a component `THIRD_PARTY.md` says reaches the user.
 - SwiftLint's `trailing_comma` and SwiftFormat's `redundantSelf` and
   `unusedArguments` rules are on. Two rules stay off as fleet style choices
   (`opening_brace`, `blankLinesAtStartOfScope`), each with its reason in the

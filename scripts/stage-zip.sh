@@ -11,6 +11,10 @@
 #  the website read by name, so it never changes shape, signed or not (the
 #  Windows client's dish-setup.exe rule).
 #
+#  Beside the zips it writes dish-mac-components.spdx.json (write-sbom.sh),
+#  the bill of materials the hardening folds into the product SBOM, since
+#  Syft does not look inside the zip.
+#
 #  Usage: scripts/stage-zip.sh <tag-or-version> <true | anything else = unsigned> [path/to/Dish.app]
 # ============================================================================
 
@@ -30,4 +34,5 @@ fi
 mkdir -p dist
 ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/dish-${TAG}${suffix}.zip"
 cp "dist/dish-${TAG}${suffix}.zip" "dist/dish-mac.zip"
+scripts/write-sbom.sh "dist/dish-mac-components.spdx.json" "${TAG}"
 ls -l dist/

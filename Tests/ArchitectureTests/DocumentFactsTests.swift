@@ -2,9 +2,9 @@
 // Copyright (C) 2026 Dish contributors.
 //
 // Facts a document repeats from code, tied to the code: the crash reporter's
-// version, the protocol number, the pinned tools and the Xcode the workflows
-// select. A bump that moves one copy fails here, and the message names the
-// file to edit.
+// version, the protocol number, the pinned tools, the Xcode the workflows
+// select, and the components SBOM against THIRD_PARTY.md. A bump that moves
+// one copy fails here, and the message names the file to edit.
 
 import XCTest
 
@@ -176,6 +176,62 @@ final class DocumentFactsTests: XCTestCase {
             XCTAssertFalse(text.contains("cosign sign-blob"), "signing is the shared workflow's, not inline")
             XCTAssertFalse(text.contains("TODO_REPLACE_WITH_UPSTREAM_SHA256"), "no unpinned-tool branch")
         }
+    }
+
+    // MARK: components SBOM
+
+    private func writtenComponents() throws -> [[String: Any]] {
+        let out = FileManager.default.temporaryDirectory
+            .appendingPathComponent("dish-mac-components-\(UUID().uuidString).spdx.json")
+        defer { try? FileManager.default.removeItem(at: out) }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [RepoFiles.url("scripts/write-sbom.sh").path, out.path, "0.0.0-test"]
+        process.standardOutput = FileHandle.nullDevice
+        try process.run()
+        process.waitUntilExit()
+        XCTAssertEqual(process.terminationStatus, 0, "scripts/write-sbom.sh failed")
+        let document = try XCTUnwrap(JSONSerialization.jsonObject(with: Data(contentsOf: out)) as? [String: Any])
+        return try XCTUnwrap(document["packages"] as? [[String: Any]])
+    }
+
+    func testTheComponentsSbomNamesEveryComponentThirdPartySaysReachesTheUser() throws {
+        let packages = try writtenComponents()
+        func versions(of name: String) -> [String] {
+            packages.filter { ($0["name"] as? String)?.lowercased() == name.lowercased() }
+                .compactMap { $0["versionInfo"] as? String }
+        }
+        let notice = try RepoFiles.read("THIRD_PARTY.md")
+        var shipped = 0
+        for line in notice.split(separator: "\n") where line.hasPrefix("| [") {
+            let cells = line.split(separator: "|", omittingEmptySubsequences: false).map { $0.trimmingCharacters(in: .whitespaces) }
+            guard cells.count > 4, !cells[4].contains("Not in the app") else { continue }
+            let name = try XCTUnwrap(firstMatch(#"^\[([^\]]+)\]"#, in: cells[1]))
+            shipped += 1
+            let named = versions(of: name)
+            XCTAssertFalse(named.isEmpty, "THIRD_PARTY.md says \(name) reaches the user: scripts/write-sbom.sh must name it")
+            if let commit = firstMatch(#"commit `([0-9a-f]{7,40})`"#, in: cells[1]) {
+                XCTAssertTrue(
+                    named.contains { $0.hasPrefix(commit) },
+                    "\(name) is at commit \(commit) (THIRD_PARTY.md), the SBOM says \(named)"
+                )
+            } else {
+                XCTAssertTrue(named.contains(cells[2]), "\(name) is \(cells[2]) in THIRD_PARTY.md, the SBOM says \(named)")
+            }
+        }
+        XCTAssertGreaterThanOrEqual(shipped, 2, "THIRD_PARTY.md's summary names sentry-cocoa and ENet as reaching the user")
+        let manifestData = try Data(contentsOf: RepoFiles.url("Sources/DishCore/Resources/controllers-v1/manifest.json"))
+        let manifest = try XCTUnwrap(JSONSerialization.jsonObject(with: manifestData) as? [String: Any])
+        let dbVersion = try XCTUnwrap(manifest["dbVersion"] as? Int)
+        XCTAssertEqual(versions(of: "dish-controller-database"), ["\(dbVersion)"], "the SBOM names the bundled controller database")
+    }
+
+    func testTheReleaseZipIsStagedWithItsComponentsSbom() throws {
+        let stage = try RepoFiles.read("scripts/stage-zip.sh")
+        XCTAssertTrue(
+            stage.contains("scripts/write-sbom.sh \"dist/dish-mac-components.spdx.json\""),
+            "stage-zip.sh writes the components SBOM into dist/, so the dry run and the tag both carry it"
+        )
     }
 
     // MARK: Xcode
