@@ -5,9 +5,9 @@ third-party component that is linked into `Dish.app`, embedded in it as a
 resource, or used only to build and test it, and states what someone
 redistributing the binary has to do.
 
-The app has no third-party code in it. `Package.swift` declares no package
-dependencies, so the binary links only Apple's system frameworks, and the
-in-process test satellite under `Tests/DishEngineTests/Support/FakeSatellite/`
+The app links one third-party package, sentry-cocoa (the crash reporter,
+section 2a), pinned exactly in `Package.swift` and `Package.resolved`; apart
+from it the binary links only Apple's system frameworks. The in-process test satellite under `Tests/DishEngineTests/Support/FakeSatellite/`
 is first-party code with its own independently written crypto.
 
 ---
@@ -19,7 +19,7 @@ is first-party code with its own independently written crypto.
 | Apple system frameworks (Foundation, Combine, SwiftUI, AppKit, Network, Security, CryptoKit, GameController, CoreHaptics, IOKit, os) | the macOS the app runs on | Apple SDK license | Dynamically linked against the user's macOS. Nothing is bundled. | None for redistributors of the app |
 | [SwiftFormat](https://github.com/nicklockwood/SwiftFormat) | 0.64.7 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
 | [SwiftLint](https://github.com/realm/SwiftLint) | 0.65.1 | `MIT` | Build and CI only, as a pinned release binary. Not in the app. | None for redistributors of the app |
-| [sentry-cocoa](https://github.com/getsentry/sentry-cocoa) | 9.30.1 | `MIT` | Compiled into the app from the pinned Swift package; armed only by an official release build (the one kind that carries a reporting address) with *Share crash reports* on. See [`PRIVACY.md`](PRIVACY.md), section 3. | Keep the copyright and permission notice below |
+| [sentry-cocoa](https://github.com/getsentry/sentry-cocoa) | 9.35.0 | `MIT` | Compiled into the app from the pinned Swift package; armed only by an official release build (the one kind that carries a reporting address) with *Share crash reports* on. See [`PRIVACY.md`](PRIVACY.md), section 3. | Keep the copyright and permission notice below |
 | [ENet](https://github.com/cgutman/enet) (cgutman fork, commit `44c85e1`) | the fork Wolf pins | `MIT` | No C is compiled. The client subset of its reliable-UDP protocol is ported to Swift under `Sources/DishCore/Moonlight/Enet/`; section 2c. | Keep the copyright and permission notice below |
 
 Everything under `Resources/` and `Sources/Dish/UI/BrandIcon.swift` is original
@@ -93,7 +93,7 @@ not copied as code, and one protocol is ported as adapted logic (section 2c):
 
 ## 2a. sentry-cocoa
 
-sentry-cocoa 9.30.1. SPDX `MIT`. Upstream:
+sentry-cocoa 9.35.0. SPDX `MIT`. Upstream:
 <https://github.com/getsentry/sentry-cocoa>.
 
 The crash reporter behind the *Share crash reports* switch, pinned exactly in

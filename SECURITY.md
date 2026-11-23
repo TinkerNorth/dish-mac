@@ -1,13 +1,15 @@
 # Security policy — TinkerNorth
 
-This file covers the five TinkerNorth repositories that ship the
-wireless-gamepad product end-to-end:
+This file covers the six TinkerNorth repositories that ship the
+wireless-gamepad product end-to-end, and the website that publishes it:
 
-- [`satellite`](https://github.com/TinkerNorth/satellite) — server (Windows / Linux / macOS)
-- [`dish-android`](https://github.com/TinkerNorth/dish-android) — Android client
-- [`dish-windows`](https://github.com/TinkerNorth/dish-windows) — Windows client (Qt6 / SDL2)
-- [`dish-linux`](https://github.com/TinkerNorth/dish-linux) — Linux client (Qt6 / SDL2)
-- [`dish-mac`](https://github.com/TinkerNorth/dish-mac) — macOS client (SwiftUI)
+- [`satellite`](https://github.com/TinkerNorth/satellite) — Satellite, the server (Windows / Linux / macOS)
+- [`dish-android`](https://github.com/TinkerNorth/dish-android) — Dish for Android
+- [`dish-ios`](https://github.com/TinkerNorth/dish-ios) — Dish for iOS (SwiftUI)
+- [`dish-mac`](https://github.com/TinkerNorth/dish-mac) — Dish for macOS (SwiftUI)
+- [`dish-windows`](https://github.com/TinkerNorth/dish-windows) — Dish for Windows (Qt6 / SDL2)
+- [`dish-linux`](https://github.com/TinkerNorth/dish-linux) — Dish for Linux (Qt6 / SDL2)
+- [`dish-website`](https://github.com/TinkerNorth/dish-website) — <https://dish.tinkernorth.com>
 
 Each repo has its own `CONTRIBUTING.md#security` section with
 ecosystem-specific local commands; this file is the single source of
@@ -50,9 +52,9 @@ date regardless. We'd rather know than not know.
 
 In scope:
 
-- All five repos above.
-- Release artifacts attached to GitHub Releases for any of the five repos.
-- The wire protocol (protocol 1 — the single source of truth is
+- All the repos above.
+- Release artifacts attached to GitHub Releases for any of the repos above.
+- The wire protocol (protocol 4, which every client here offers — the single source of truth is
   [`satellite/docs/contract.md`](https://github.com/TinkerNorth/satellite/blob/main/docs/contract.md)):
   the HTTPS `:9443` control plane (TOFU-pinned self-signed TLS, HMAC
   proof-of-key headers, declarative session PUT) and the UDP `:9876` data
@@ -79,6 +81,8 @@ Out of scope:
 |---|---|---|
 | `satellite` | latest minor on `main`; previous minor for 90 days | Windows is the canonical target; Linux is supported; macOS virtual pads require the virtual-HID entitlement (unentitled builds fall back to an inert backend) |
 | `dish-android` | latest minor on `main`; previous minor for 90 days | minSdk 24 |
+| `dish-ios` | latest minor on `main`; previous minor for 90 days | iOS 26+ |
+| `dish-windows` | latest minor on `main`; previous minor for 90 days | 64-bit Windows 10 (1809 or newer) and Windows 11 |
 | `dish-linux` | latest minor on `main`; previous minor for 90 days | tracks the oldest LTS the release CI builds against |
 | `dish-mac` | latest minor on `main`; previous minor for 90 days | macOS 13+ |
 
@@ -99,17 +103,19 @@ Each repo runs the same shape of gates:
 - OSV-Scanner — vendored components + manifest deps; ecosystem-specific
   scope (see each repo's `security.yml`).
 - Gitleaks — secret scanning over the worktree.
-- CodeQL — `cpp` for `satellite` / `dish-linux`, `swift` for `dish-mac`,
+- CodeQL — `cpp` for `satellite` / `dish-linux`, `swift` for `dish-mac` and `dish-ios`,
   `java-kotlin` + `cpp` for `dish-android`.
 
 **On every tagged release** (also blocking):
 
 - Re-run of every PR-time gate against the tagged commit.
-- Required-secrets gate — refuses to publish if the platform signing
-  secret is missing for a tag (Windows Authenticode, Apple Developer ID
-  + notarization, Android keystore). `workflow_dispatch` runs against
-  feature branches still produce `-unsigned` artifacts for testing the
-  pipeline.
+- Required-secrets gate — advisory by default. With the platform signing
+  secrets (Windows Authenticode, Apple Developer ID + notarization,
+  Android keystore) the artifact is signed; without them a stable tag
+  still ships `-unsigned` with a warning, unless the repository variable
+  `ENFORCE_RELEASE_SIGNING` is `true`, which fails the tag instead. Dish
+  for macOS has no Developer ID yet and ships unsigned that way, ad-hoc
+  signed, with Gatekeeper's Open Anyway steps in the release notes.
 - Artifact-level vulnerability scan — Anchore Grype, fails on
   CRITICAL/HIGH.
 - SBOM generation — Syft, both SPDX-JSON and CycloneDX-JSON.
@@ -144,7 +150,7 @@ go install github.com/slsa-framework/slsa-verifier/v2/cli/slsa-verifier@latest
 ### 1) Download every file from the Release
 
 For tag `X.Y.Z` of `<repo>` (one of `satellite`, `dish-android`,
-`dish-linux`, `dish-mac`):
+`dish-linux`, `dish-mac`, `dish-ios`):
 
 ```bash
 gh release download X.Y.Z -R TinkerNorth/<repo> -D ./release

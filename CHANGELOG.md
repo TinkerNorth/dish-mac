@@ -17,6 +17,28 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+### Changed
+
+- **Tools and CI at one pin, one path.** SwiftFormat 0.64.7 and SwiftLint
+  0.65.1 are pinned once, in `scripts/tools.sh`, which the local script and
+  the workflow share; `ci-local.sh` runs the same scripts as `macos-ci.yml`
+  (the bench's smoke run, coverage, the hardened-runtime signature and its
+  launch included; `--with-lock-stats` adds the lock-statistics lane). Every
+  workflow selects Xcode 26.6 by version, the end-to-end lane runs against
+  Satellite 2.3.0, CodeQL blocks and uploads, and the release is created as a
+  draft and published only after the measurements are on it.
+
+### Fixed
+
+- `THIRD_PARTY.md`, in the repository and in the app's Licenses page, names
+  sentry-cocoa 9.35.0 and says the app links one package; `SECURITY.md` names
+  protocol 4, the advisory signing gate and all six clients. A test now ties
+  each of those facts to the code.
+
+---
+
 ## [1.4.0] - 2026-11-23
 
 ### Added

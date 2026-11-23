@@ -21,15 +21,24 @@ scripts/setup-hooks.sh
 scripts/ci-local.sh
 ```
 
-`scripts/ci-local.sh` downloads the same SwiftFormat 0.64.7 and SwiftLint
-0.65.1 release binaries CI pins (verified by SHA-256, into `.build/tools`),
-then runs the format check, the strict lint, the debug build, the test build,
-`swift test`, the release build and `bundle.sh`. A green run there is a green
-`macos-ci.yml` run; `--quick` skips the release build and `--no-tests` skips
-the suite. Homebrew's SwiftFormat and SwiftLint track their latest and will
-flag rules the pins do not know; use the script's copies. A pin bump is a
-deliberate commit that reformats the tree with it, in `macos-ci.yml`,
-`scripts/ci-local.sh` and `THIRD_PARTY.md` together.
+`scripts/ci-local.sh` runs the same scripts `macos-ci.yml` calls, in the same
+order: `scripts/check-format.sh` (the SwiftFormat 0.64.7 and SwiftLint 0.65.1
+release binaries that `scripts/tools.sh` pins, verified by SHA-256 and kept in
+`.build/tools`), `scripts/build-and-test.sh` (the debug build with tests and
+coverage, then `swift test`), `scripts/build-app.sh` (the release build, the
+bench's smoke run, `bundle.sh`), `scripts/sign-app.sh -` (the hardened-runtime
+signature, ad hoc) and `scripts/launch-smoke.sh`. A green run there is a green
+`macos-ci.yml` run. `--quick` skips the release build and the bundle,
+`--no-tests` skips the suite, and `--with-lock-stats` adds the LOCK_STATS
+build and its tests (CI's second job; a separate build, so opt-in). Homebrew's
+SwiftFormat and SwiftLint track their latest and will flag rules the pins do
+not know; use the script's copies. A pin bump is a deliberate commit that
+reformats the tree with it, in `scripts/tools.sh` and `THIRD_PARTY.md`
+together; `VersionConsistencyTests` fails when they disagree.
+
+Local Xcode may be newer than the one CI selects (Xcode 26.6, picked by
+version in every macOS workflow, so an image update cannot change the
+toolchain silently); trust CI for the pinned toolchain.
 
 The pre-commit hook runs `swiftformat` (autofix, re-stages) and
 `swiftlint --strict` on staged Swift files and skips when the tools are not
@@ -307,16 +316,23 @@ shape.
 
 Build + style:
 
-- `macos-ci.yml`, on `macos-26`: `swiftformat --lint`, `swiftlint --strict`,
-  the debug build, `swift test --parallel`, the release build, a
-  `DishBench --smoke` run and `./bundle.sh release` (uploads `Dish.app` as an
-  artifact). Every target builds with warnings as errors. A second job builds
-  with `-Xswiftc -DLOCK_STATS` and runs the lock statistics tests, the lock
-  laws and the bench's smoke run on that build.
+- `macos-ci.yml`, on `macos-26` with Xcode 26.6 selected by version, two
+  jobs. `Build, test, lint, format` runs `scripts/check-format.sh`,
+  `scripts/build-and-test.sh` (the debug build with tests and coverage, then
+  `swift test --parallel`), `scripts/build-app.sh` (the release build, a
+  `DishBench --smoke` run and `./bundle.sh release`), `scripts/sign-app.sh -`
+  (the hardened-runtime signature with an ad-hoc identity, so the signing
+  command and the entitlement are exercised on every pull request),
+  `scripts/launch-smoke.sh` on the bundle (which first runs
+  `scripts/check-bundled-db.sh`) and again on the hardened bundle in place,
+  then uploads `Dish.app`. `Lock statistics build and tests` runs
+  `scripts/lock-stats.sh`: the `-Xswiftc -DLOCK_STATS` build, the lock
+  statistics tests, the lock laws and the bench's smoke run. Every target
+  builds with warnings as errors.
 - `measurements.yml`, on `macos-26`: on pull requests that touch `Sources/`,
-  by hand, and from `release.yml` before publish. It runs the bench on both
-  builds and attaches `measurements-<version>.md` and `.json` to the release;
-  see [`tools/bench/README.md`](tools/bench/README.md).
+  by hand, and from `release.yml` before the draft is created. It runs the
+  bench on both builds and attaches `measurements-<version>.md` and `.json` to
+  the release; see [`tools/bench/README.md`](tools/bench/README.md).
 - `version-consistency.yml`: `VERSION` is the source; `CHANGELOG.md`'s top
   heading and `bundle.sh`'s plist values must agree with it.
 - `e2e.yml`, on `macos-26`: checks out the satellite at the release tag the
@@ -337,7 +353,9 @@ Security gates (also blocking):
   security-and-quality query packs).
 
 If any step fails, the PR is blocked. `scripts/ci-local.sh` runs the build and
-style gates locally in the same order.
+style gates locally in the same order. Only the Developer ID signature,
+notarisation and the launch of the final signed bundle run in `release.yml`
+alone, because they need the Apple secrets.
 
 ## Security
 
@@ -404,9 +422,13 @@ The full cross-repo verification recipe lives in [`SECURITY.md`](SECURITY.md).
 `release.yml` runs on a bare `MAJOR.MINOR.PATCH` tag (no `v` prefix, e.g.
 `1.2.3`) or a `workflow_dispatch` with a tag input. It re-runs the security
 gates against the tagged commit, asserts the tag equals `VERSION`, builds
-Release, signs and notarizes `Dish.app` when the five Apple secrets are
-present, scans and signs every artifact, emits the SBOMs and the SLSA
-provenance, and publishes the GitHub Release. The signing gate is advisory,
+Release through the same `scripts/build-app.sh` as pull requests, signs and
+notarizes `Dish.app` when the five Apple secrets are present, launches the
+final bundle with `scripts/launch-smoke.sh`, scans and signs every artifact,
+emits the SBOMs and the SLSA provenance, runs the release measurements, and
+creates the GitHub Release as a draft with everything on it. A last job flips
+the draft to published, so `releases/latest/download/latest.json` never points
+at a half-published release. The signing gate is advisory,
 as the satellite's and the Windows client's are: without the secrets a stable
 tag still ships, unsigned, with a warning in the run and a note at the top of
 the release; the versioned zip then carries `-unsigned` while `dish-mac.zip`
@@ -414,6 +436,12 @@ keeps its name, because `latest.json` and the website read it by name. Set
 the repository variable `ENFORCE_RELEASE_SIGNING=true` to make missing
 secrets fail a stable tag again. Adding the secrets turns signing on with no
 change to the workflow.
+
+The fleet's order: the website is tagged first, and the clients are tagged
+once `https://dish.tinkernorth.com/controllers/v1/manifest.json` serves the
+new controller database. A client then ships the database it was built with,
+so refresh the bundled copy first when the website published a newer one (next
+section).
 
 Before you tag:
 
@@ -432,6 +460,22 @@ a signed and notarized build; an unsigned one is opened through System
 Settings › Privacy & Security › Open Anyway), launch it and pair once. The
 asset names `dish-X.Y.Z.zip`, `dish-mac.zip` and `SHA256SUMS` are a permanent
 API.
+
+### Refreshing the bundled controller database
+
+The app ships the website's controller database in
+`Sources/DishCore/Resources/controllers-v1/` and falls back to an empty set
+when that copy does not verify, so a bad copy launches green. To refresh it,
+download `manifest.json`, `controllers.json` and `strings/<locale>.json` for
+every locale from `https://dish.tinkernorth.com/controllers/v1/` into that
+folder, byte for byte. Then build the app and run
+`scripts/check-bundled-db.sh` on the built resource bundle
+(`Dish_DishCore.bundle`, under `Dish.app/Contents/Resources/` after
+`bundle.sh`): it checks that the folder holds the manifest and its data files
+and that every size and SHA-256 matches the manifest. `scripts/launch-smoke.sh`
+runs the same check before it launches the bundle. Where the resource bundle
+keeps its files depends on the build system (CI's Xcode lays it out flat, a
+newer one nests it under `Contents/Resources`); the script looks in both.
 
 ## Touching the hot path
 
