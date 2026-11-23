@@ -6,6 +6,8 @@
 #  A green run here is a green `macos-ci.yml` run: each gate is one script
 #  under scripts/ that the workflow calls too.
 #
+#    scripts/check-security.sh   action-pin lint, vulnerability allowlist,
+#                                OSV-Scanner (reads Package.resolved), gitleaks
 #    scripts/check-format.sh     SwiftFormat --lint and SwiftLint --strict at
 #                                the versions scripts/tools.sh pins
 #    scripts/build-and-test.sh   the debug build with tests and coverage, the
@@ -23,7 +25,10 @@
 #    --allow-missing     accepted for the fleet's interface; every tool this
 #                        script needs is fetched, so nothing can be missing
 #
-#  CI only, because each needs a runner secret or a Developer ID: the
+#  CI only: dependency review (the repository's Dependency graph setting is
+#  off), CodeQL, and the release-hardening dry run (a Linux job: Grype, Syft
+#  and cosign of the PR-built zip). Also CI only, because each needs a runner
+#  secret or a Developer ID: the
 #  Developer ID signature, notarisation and stapling, and the final-bundle
 #  launch in release.yml. CI also uploads the app and the coverage data.
 #  Local Xcode may be newer than the macos-26 image's Xcode 26.6: trust CI for
@@ -48,6 +53,9 @@ for arg in "$@"; do
 done
 
 log() { printf '\n=== %s ===\n' "$*"; }
+
+log "security gates"
+scripts/check-security.sh
 
 log "format and lint"
 scripts/check-format.sh
