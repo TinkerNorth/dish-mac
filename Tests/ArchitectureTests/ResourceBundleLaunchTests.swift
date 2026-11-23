@@ -79,10 +79,15 @@ final class ResourceBundleLaunchTests: XCTestCase {
         let script = try RepoFiles.read(Self.smokeScriptPath)
         XCTAssertTrue(script.contains("mv .build \"$HIDDEN_BUILD\""), "the native accessor's fallback is the build tree")
         XCTAssertTrue(script.contains("trap restore_build EXIT"), "the build tree comes back however the launch ends")
+        XCTAssertTrue(script.contains("CFFIXED_USER_HOME="), "the app's support files, logs and caches land in a throwaway home")
         XCTAssertTrue(
-            script.contains("__CFPREFERENCES_AVOID_DAEMON=1 CFFIXED_USER_HOME="),
-            "a launch reads and writes no preferences but its own: through the daemon a fixed home redirects reads alone"
+            script.contains("/usr/libexec/PlistBuddy -c \"Set :CFBundleIdentifier $SMOKE_ID\" \"$SMOKE_APP/Contents/Info.plist\""),
+            "macOS 27 writes preferences through the daemon whatever the environment says, so the launch is a copy under its own domain"
         )
+        XCTAssertTrue(script.contains("SMOKE_ID=\"com.tinkernorth.dish.mac.launch-smoke\""))
+        XCTAssertTrue(script.contains("defaults delete \"$SMOKE_ID\""), "and that domain is deleted however the launch ends")
+        XCTAssertTrue(script.contains("SMOKE_EXECUTABLE=\"$SMOKE_APP/Contents/MacOS/Dish\""), "the copy is what runs")
+        XCTAssertFalse(script.contains("\"$EXECUTABLE\" > \"$LAUNCH_LOG\""), "never the app under the owner's own domain")
         let attributes = try FileManager.default.attributesOfItem(atPath: RepoFiles.url(Self.smokeScriptPath).path)
         let permissions = try XCTUnwrap(attributes[.posixPermissions] as? NSNumber).intValue
         XCTAssertNotEqual(permissions & 0o111, 0, "the workflows run the script directly")
@@ -95,7 +100,7 @@ final class ResourceBundleLaunchTests: XCTestCase {
     func testTheLaunchChecksTheBuiltAppsControllerDatabaseFirst() throws {
         let script = try RepoFiles.read(Self.smokeScriptPath)
         let check = try XCTUnwrap(script.range(of: "\(Self.databaseCheckPath) \"$APP/\(Self.bundledDatabase)\""))
-        let launch = try XCTUnwrap(script.range(of: "\"$EXECUTABLE\" > \"$LAUNCH_LOG\""))
+        let launch = try XCTUnwrap(script.range(of: "\"$SMOKE_EXECUTABLE\" > \"$LAUNCH_LOG\""))
         XCTAssertTrue(check.lowerBound < launch.lowerBound, "checked before it launches")
     }
 
