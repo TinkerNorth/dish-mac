@@ -126,6 +126,8 @@ let package = Package(
         .testTarget(
             name: "ArchitectureTests",
             path: "Tests/ArchitectureTests",
+            // Read by path, byte for byte, as DishEngineTests reads its fixtures.
+            exclude: ["Fixtures"],
             swiftSettings: warningsAreErrors
         ),
         .testTarget(

@@ -109,7 +109,8 @@ missing. A new user-facing string needs its catalog
 entry and all five translations in the same commit: `LocalizationTests` fails
 on a key `L10n` uses that the catalog lacks, on a catalog entry no code uses,
 and on any language missing a translation, because a missing translation is
-not a blank, it is English shown to someone who does not read English.
+not a blank, it is English shown to someone who does not read English. The
+counts carry plural forms, Bosnian's `few` included.
 
 ## License headers
 

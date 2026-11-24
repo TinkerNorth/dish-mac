@@ -226,6 +226,30 @@ jq -S . dish-mac.sbom.spdx.json | less
 
 ---
 
+## Code signing policy
+
+Releases are not yet signed with an Apple Developer ID: the Apple Developer
+Program is a yearly fee the project has not taken on. Until it is,
+`dish-mac.zip` carries only an ad-hoc signature (identifier
+`com.tinkernorth.dish.mac`, no team) and is not notarized, so the first launch
+meets Gatekeeper; the README gives the steps.
+
+**Team.** Committers, reviewers and approvers: Emir Hasanbegovic
+([@emir-hasanbegovic](https://github.com/emir-hasanbegovic)), owner of the
+TinkerNorth organisation
+([organisation owners](https://github.com/orgs/TinkerNorth/people?query=role%3Aowner)).
+
+**What is signed, and when.** Only the release workflow,
+[`release.yml`](.github/workflows/release.yml), signs, only when it runs from
+a tagged commit of this repository, and only once the five Apple secrets exist:
+`Dish.app` is then signed with the Developer ID under the hardened runtime with
+[`packaging/Dish.entitlements`](packaging/Dish.entitlements) and notarized, with
+no change to the workflow. Nothing built locally, on a pull request or from a
+fork is ever signed with it. The artifact is the `Dish.app` bundle alone: one
+executable, its resource bundles and the icon.
+
+---
+
 ## Known gaps
 
 - **Vendored-header scanners.** `satellite/lib/` and

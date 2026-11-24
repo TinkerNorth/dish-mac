@@ -1,411 +1,132 @@
-# Dish Mac
+# Dish for macOS
 
-The native macOS client for the Satellite wireless-gamepad server, one of the
-four Dish clients beside [dish-android], [dish-windows] and [dish-linux]. It
-finds a Satellite on the LAN (mDNS, with the legacy UDP beacon as fallback),
-pairs with a PIN over TOFU-pinned TLS, declares its controllers to the server
-over REST, and streams their input over encrypted UDP (ChaCha20-Poly1305 under
-per-session HKDF keys), with rumble, the light bar, adaptive triggers and
-player LEDs flowing back. It offers **protocol 4** and still works with a
-protocol-1 satellite; see [Protocol](#protocol).
+Dish for macOS runs on your Mac and sends the controllers plugged into it, or paired with it over Bluetooth, to your gaming PC as wireless controllers.
 
-[dish-android]: https://github.com/TinkerNorth/dish-android
-[dish-windows]: https://github.com/TinkerNorth/dish-windows
-[dish-linux]: https://github.com/TinkerNorth/dish-linux
+Dish is made of two parts. The Dish apps run on the device that holds your controller, or that is the controller: Dish for Android, Dish for iOS, Dish for macOS, Dish for Windows and Dish for Linux. Satellite is the small server on the PC you play on, and it makes each Dish controller look to your games like a controller plugged into that PC. You need one of each. Everything is free and open source, the website is [dish.tinkernorth.com](https://dish.tinkernorth.com), and I maintain all of it on my own.
 
-## What it does
+## Download
 
-- Finds satellites over mDNS (`_satellite._udp`) and the legacy `:9879`
-  beacon, or takes an address typed in when both are blocked.
-- Pairs by asking the satellite's operator first: the satellite's row opens
-  into a pairing card that shows a four-digit code and files it with the
-  satellite, whose operator accepts it there (the request waits about two
-  minutes; a decline or an expiry offers a new code). The satellite's own
-  rotating four-digit PIN can be typed into the same card at the same time,
-  and whichever lands first pairs. Dish remembers the satellite by its stable
-  identity so a DHCP change keeps it paired.
-- Keeps several satellites paired at once and binds each controller to one
-  of them, up to four controllers on one satellite, each on its own slot
-  there. Bindings survive a restart: a remembered binding is made again as
-  soon as its controller is plugged in and its satellite or host is known.
-  The Connections page scans as it opens (once macOS's Local Network prompt
-  has been explained) and lists what it found, with Pair… on each row, above
-  a card per paired satellite that shows its address, latency, link chips
-  and every pad it carries, with Disconnect, Pair… or Connect and a Forget
-  that asks first and names the bindings it drops; a typed address reaches a
-  satellite discovery misses.
-- Finds Moonlight hosts (Sunshine, Apollo, Wolf) over mDNS (`_nvstream._tcp`)
-  or by a typed address on their own page, pairs with the PIN the dish shows
-  inside the host's row for you to type into the host, and streams
-  controller input into the host's own game-streaming session: up to four
-  controllers on one host, each plugged in as the Xbox, PlayStation or
-  Nintendo pad you pick or the one that fits it, with rumble and the light
-  bar coming back. The first controller bound to a host starts the app you
-  picked for it, or the first the host lists; no video or audio is received.
-- Forwards buttons (Guide included), sticks and triggers from every pad
-  GameController vends, including the ones it vends without the extended
-  profile, such as the Nintendo Switch Online N64 and SNES pads (the N64's C
-  buttons drive the right stick, Z and ZR the triggers, as on Android), and
-  keeps forwarding them while another app is in front. The Switch Pro, N64
-  and SNES Online pads, and gamepads GameController does not support, are
-  read Direct from their HID reports alongside macOS; a generic pad whose
-  layout is guessed can have its buttons corrected with "Check the buttons",
-  and "Help support this controller" records what a pad sends for a GitHub
-  issue you file yourself. A game device macOS does not hand to
-  GameController is listed under Other input devices in Diagnostics with its
-  hardware ID and connection. Plus motion (gyro and
-  accelerometer) and the touchpad from DualSense and DualShock 4 pads, and
-  the battery level; the touchpad reaches the host as the pad's own or,
-  picked per controller, as the host's mouse.
-- Plays rumble and sets the light bar as the host game asks, each gated by
-  its own switch in Settings and, for motion, rumble and the touchpad, by
-  the controller's own; on a DualSense it also plays the game's
-  adaptive-trigger effects and lights the player indicator.
-- Carries a DualSense's or DualShock 4's own audio over its USB audio
-  function: the pad's microphone to the host, off until you turn it on and
-  muted from one chip, and the host's voice chat and HD haptics to the pad's
-  speaker and actuators.
-- Keeps the Mac awake while a controller is being used or connected, your
-  choice in Settings with the display optional. When the Mac sleeps it
-  releases every held button and closes every session cleanly; when it wakes
-  it reopens them and scans the network again. A closed lid still puts the
-  Mac to sleep: `IOPMLib.h` calls `kIOPMAssertionTypePreventSystemSleep` "not
-  supported in any OS X releases", the idle-sleep assertions Dish holds do
-  not reach the lid, and Apple's clamshell mode needs a display and power
-  connected; when the lid closes mid-stream, Dish says so once on the wake.
-- Opens one window, the desktops' shell: a rail on the left (Home,
-  Controllers and Connections at the top, Support Dish and Settings at the
-  foot, collapsible to an icon strip that stays collapsed across launches)
-  and a content column whose header carries the page title, a back chevron
-  on a pushed page, the streaming pill with the keep-awake reach, the
-  app-wide microphone chip and the status line. Settings, Diagnostics, the
-  inspector, the crash report and the licenses are pages in that window,
-  not sheets or extra windows, so the window always moves; ⌘, opens
-  Settings, ⌘1 to ⌘3 the top destinations and ⌘[ goes back.
-- Keeps streaming when the window is closed, from a menu-bar item whose
-  Diagnostics item opens the window on that page; follows the system
-  appearance or a chosen light or dark theme.
-- Checks GitHub for a newer release at startup and every few hours, says so
-  once per version, and lets one switch turn the check off.
-- Draws Home as the signal path, the desktops' wiring diagram: a boxed row
-  per controller from the pad, along a wire captioned with its measured
-  report rate and the link's latency, to the host and the slot it holds
-  there ("slot 2 of 4"), with the binding printed underneath as chips (the emulated type,
-  then motion, touchpad, rumble, microphone, speaker and light bar, the
-  controller's own switches clickable in place) and an Edit button; a pad
-  with nowhere to go is a "Bind…" card, and the live events, sends and total
-  sit under the diagram. Controllers lists a card per pad with its family
-  and rate, its capability chips, the microphone's mute, its motion rate,
-  "Bound · host ›" and its dead zones.
-- Configures each binding on its own page: where the pad goes (paired
-  satellites and Moonlight hosts with their link chips), its motion,
-  rumble, touchpad, microphone and speaker switches, the type it is emulated
-  as (the satellite's catalog, or Auto / Xbox / PlayStation / Nintendo on a
-  Moonlight host) and what carries end to end, feature by feature, all held
-  as a draft until one Apply, which shows its steps and asks before you
-  leave with changes unapplied. Each pad's stick and trigger dead zones are
-  sliders of their own, kept per pad under the desktops' key.
-- Shows a Diagnostics page with each session's own account of itself, each
-  controller down to the wire, and a log of what changed; inspects one
-  controller live (its input as the host sees it, motion and touch, a drift
-  and a range test on the raw sticks, and a test of every item its path
-  carries: rumble, trigger rumble, the light bar, the player LEDs, the
-  adaptive triggers, a test tone on its speaker and on its haptics, and a
-  microphone meter); keeps a local crash log you review, redacted, before
-  choosing to send it, and, with "Share crash reports" on, sends an
-  anonymous crash report to Sentry like the other clients (official builds
-  only; the policy says what it holds).
-- Speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
+Dish for macOS 1.4.0 is the current release. Every link below always points at the newest one.
 
-What the other clients have that this one does not yet is tracked, row by
-row, in [`Tests/PARITY.md`](Tests/PARITY.md).
+A Mac with Apple silicon and macOS 13 Ventura or later: download **[dish-mac.zip](https://github.com/TinkerNorth/dish-mac/releases/latest/download/dish-mac.zip)**, open it, and move Dish to your Applications folder. Dish checks for a new version itself and tells you once when there is one; you download it the same way.
 
-## Requirements
+Intel Macs are not supported. The release is built for Apple silicon only.
 
-- macOS 13 (Ventura) or newer to run.
-- Xcode 26 (the Swift 6.2 toolchain) to build; CI builds on `macos-26`.
-- A compatible gamepad (Xbox, PlayStation, Nintendo Switch Pro, Joy-Con, the
-  Switch Online N64 and SNES pads, or any MFi controller). Its input
-  keeps flowing when another app is in front; macOS 15.4 broke that for every
-  app and macOS 15.5 fixed it.
-- A Satellite server reachable on your LAN.
+### Opening it the first time
 
-## Build and run
+I don't have an Apple Developer ID, so Dish isn't notarized, and macOS stops it the first time you open it. You let it through once, and after that it opens like any other app.
 
-```bash
-swift build
-swift run Dish
-```
+On macOS 15 Sequoia and later:
 
-For a signed-looking `.app` with its icon, `Info.plist` (versions from
-`VERSION`) and the compiled String Catalog:
+1. Open Dish. macOS says Apple could not verify that Dish is free of malware. Click Done.
+2. Open System Settings, then Privacy & Security, and scroll down to Security. Beside the message about Dish, click Open Anyway, then enter your login password and click OK. The button stays there for about an hour after you tried to open the app.
 
-```bash
-./bundle.sh release
-open Dish.app
-```
+On macOS 13 and 14, Control-click Dish in Finder, choose Open, and then click Open in the dialog.
+
+Apple describes the same steps in [Open a Mac app from an unknown developer](https://support.apple.com/guide/mac-help/open-a-mac-app-from-an-unknown-developer-mh40616/mac). Check the download against its checksum first; how is under Trust and privacy.
+
+All files and older versions are on the [releases page](https://github.com/TinkerNorth/dish-mac/releases).
+
+### Satellite and the Dish apps
+
+| App | Where to get it |
+|---|---|
+| Satellite (Windows, Linux) | [GitHub releases](https://github.com/TinkerNorth/satellite/releases/latest) |
+| Dish for Android | [Google Play](https://play.google.com/store/apps/details?id=com.tinkernorth.dish), or the APK from [GitHub releases](https://github.com/TinkerNorth/dish-android/releases/latest) |
+| Dish for iOS | Not yet released |
+| Dish for macOS | [GitHub releases](https://github.com/TinkerNorth/dish-mac/releases/latest) |
+| Dish for Windows | [GitHub releases](https://github.com/TinkerNorth/dish-windows/releases/latest) |
+| Dish for Linux | [GitHub releases](https://github.com/TinkerNorth/dish-linux/releases/latest) |
 
 ## Getting started
 
-The first launch opens a short welcome: what Dish is, how it reaches the host,
-and where to get Satellite for the host PC. Finish starts **Set up Dish**, a
-walk through the controller, the PC it drives, the type it plugs in as and how
-it feels, with nothing sent until its last step's Bind. Before the first scan
-for satellites, Dish says that macOS is about to ask for Local Network access,
-then asks; if the permission was refused, the empty list and its notice open
-Privacy & Security › Local Network. Set up is in the rail any time, in Settings
-▸ Setup & help beside Help & FAQ, and behind a controller's "Bind…" on Home.
+1. Install Satellite on the PC you play on and start it. Its dashboard shows a 4-digit PIN under Device Pairing, with a new one every five minutes.
+2. Install Dish on your Mac, plug your controller in or pair it in System Settings, Bluetooth, and open Dish. The Mac and the PC have to be on the same local network. The first launch shows a short welcome, and Finish starts Set up Dish.
+3. Pair them. Before Dish looks for the PC, it explains that macOS will ask for Local Network access; allow it. The PC shows up in Set up Dish and on Connections. Click Pair… beside it and type the PIN from the dashboard into the 4-digit field. Dish also shows a PIN of its own at the same time; you can approve that request on the dashboard instead. Dish remembers the PC, so you only pair once.
+4. Play. Set up Dish walks you through the controller, the PC, the type the game sees (Emulate as, from the types Satellite offers) and how it feels, and Bind on its last step makes it live. Set up in the sidebar runs it again, and Bind… on a controller on Home does the same for that one.
 
-Releases are not yet signed with an Apple Developer ID, so the first launch of
-a downloaded `Dish.app` meets Gatekeeper: on macOS 15 and later click Done on
-the "Apple could not verify" dialog, then open System Settings › Privacy &
-Security and choose Open Anyway; on macOS 13 and 14, Control-click `Dish.app`
-and choose Open. Check the download against the release's `SHA256SUMS` first.
-Releases sign and notarize themselves as soon as the Developer ID exists.
+Closing the window keeps your controllers streaming. Quit from the menu bar icon.
 
-## Architecture
+## What it does
 
-Four SwiftPM modules carry the layering, so the compiler enforces it:
+Dish reads each controller on your Mac and sends it to the PC you bound it to, where Satellite turns it into a virtual controller. Input travels over UDP on your own network, encrypted with a key the two computers agree on when they pair. Up to four controllers can go to one PC, and you can keep several PCs paired.
 
-```
-DishCore      the pure protocol core: wire codecs, HKDF/AEAD/proof, protocol
-              constants, policy reducers           (Foundation + CryptoKit)
-DishKernel    the dataflow primitives shared with the other Dish clients:
-              StateSource, Composer, Controller, Repository, AsyncState
-                                                     (Foundation + Combine)
-DishEngine    everything that does IO or owns state: discovery, pairing, the
-              REST control plane, the UDP data plane, the stores, the
-              GameController bridge, the hot-path routers and AppModel, the
-              one composition root            (depends on Core and Kernel;
-                                               no SwiftUI, no AppKit)
-Dish          the SwiftUI views, the theme tokens, the localized words, the
-              notification queue and the AppKit lifecycle glue
-                                                     (depends on all three)
-```
+Most controllers reach Dish through macOS's own game controller support, over USB or Bluetooth: Xbox and PlayStation controllers, the Switch Pro Controller and MFi pads. A few that macOS doesn't read properly, Dish reads itself:
 
-The rules behind it, and why each exists, are in
-[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md); `Tests/ArchitectureTests`
-fails the build when a file imports outside its module's allowlist, a
-dependency points the wrong way, a view holds a raw colour or an English
-literal, or a mutable static appears.
+| Controller | Connection | What Dish does |
+|---|---|---|
+| Switch Pro Controller, Switch Online N64 and SNES pads | USB | Reads them directly, the Pro's motion included |
+| 8BitDo Ultimate 2 in X-input mode, and other wired Xbox 360 style pads (Logitech F310, F510 and F710, PDP, Hori, PowerA, Razer and more) | USB | Reads them directly, because macOS has no driver for them |
+| Steam Controller (2015 and 2026) | USB or Bluetooth | Reads it directly once you press Use Direct for it, with its back buttons and both trackpads |
+| Other gamepads macOS doesn't support | USB | Guesses the layout; Check the buttons lets you correct it |
 
-The hot path never leaves the controller's queue and takes no lock: it
-builds a `GamepadReport`, applies the dead zones, sends through the route its
-pad's feed holds (its satellite's live client and the controller index it
-holds there, or its pad on a Moonlight host), seals the frame in a stack
-buffer and calls `sendto()`. No queue hop, no Combine, no async hop, no
-main-actor hop; the
-raw POSIX socket carries `IP_TOS = 0xB8` (DSCP EF) and `SO_NOSIGPIPE`.
-CryptoKit's `ChaChaPoly` produces the exact bytes libsodium produces on the
-server, pinned byte-for-byte by the cross-repo vectors in
-`Tests/DishCoreTests/SessionCryptoVectorTests.swift`.
+What goes to the PC: buttons, sticks and triggers, motion and the touchpad from a DualSense or DualShock 4, and the battery level. What comes back from the game: rumble, the light bar, and on a DualSense the adaptive triggers and player lights. Over USB, a DualSense or DualShock 4 can also carry your voice through its microphone and the PC's sound through its speaker, and a DualSense its HD haptics. An Xbox Elite Series 2's four paddles and a Steam Controller's back buttons reach the PC too, where a virtual DualSense Edge is the type that has back buttons to put them on.
 
-## Project layout
+Some of this is built but not yet confirmed on a real controller on a Mac: the controller's own microphone, speaker and HD haptics, both Steam Controllers, the 8BitDo Ultimate 2 and the other wired Xbox 360 style pads, the Elite's paddles, the SNES pad, and the layouts Dish guesses. A DualSense Edge works as a DualSense, but its back buttons aren't read yet.
 
-```
-dish-mac/
-├── Package.swift                 # four modules + five test targets; warnings are errors
-├── Sources/DishCore/             # ProtocolConstants, Wire/ (codecs, crypto), Reducers/
-├── Sources/DishKernel/           # StateSource, Composer, Controller, Repository, AsyncState
-├── Sources/DishCrashUpload/      # the Sentry SDK behind the crash-reporting switch, the one third-party import
-├── Sources/DishEngine/
-│   ├── AppModel.swift            # the composition root
-│   ├── Models/                   # the value types the UI binds
-│   ├── Network/                  # discovery, pairing, REST, UDP, TOFU, stores
-│   ├── Input/                    # the GameController bridge and the hot path
-│   ├── Audio/                    # the pad's own audio: routes, the engine, the codec, the HAL units
-│   ├── Update/                   # the release manifest check
-│   ├── Diagnostics/              # the session facts, the flight recorder, the page's source
-│   └── Util/                     # leaf helpers (the keep-awake pipeline, the crash handler, hex, locks)
-├── Sources/Dish/
-│   ├── DishApp.swift             # @main
-│   ├── L10n/                     # every word, and the one reader of the catalog
-│   ├── Resources/Localizable.xcstrings
-│   ├── Navigation/               # the navigation machine, its store, the keyboard commands
-│   ├── Notifications/            # the toast queue, the background notice
-│   └── UI/                       # Shell/ (rail, window), Pages/, Kit/, Mappers/, Theme.swift
-├── Tests/DishCoreTests/          # pinned interop vectors, reducer suites
-├── Tests/DishKernelTests/        # every kernel primitive
-├── Tests/DishEngineTests/        # unit and live suites; Support/FakeSatellite/
-├── Tests/DishTests/              # the funnel, the mappers, the AppKit glue
-├── Tests/ArchitectureTests/      # the rules a compiler cannot read
-├── Tests/Support/                # DishKernelProbes, LegacyFileKeychain
-├── Tests/PARITY.md               # what the other clients have, and what is decided
-├── Resources/Dish.svg            # the fleet's app mark; Dish.icns is rendered from it
-├── packaging/update-policy.json  # the oldest build the update check still supports
-├── .github/workflows/            # macos-ci, e2e (the real satellite), release, the security gates
-├── docs/ARCHITECTURE.md          # the module map and the dataflow rules
-├── docs/UI_CONTRACT.md           # the shell header, the pages, the kit rules
-├── docs/contract.md              # contract concept → file
-├── scripts/ci-local.sh           # the CI gate, locally
-├── scripts/e2e_local.sh          # loopback e2e against the real satellite binary
-└── scripts/render-icon.sh        # Resources/Dish.icns from Resources/Dish.svg (needs librsvg)
-```
+Dish carries the list of controllers the whole Dish family recognises and checks for a newer one, so a new controller doesn't have to wait for a new release.
 
-## Return paths
+Diagnostics shows what each connection and controller is doing. Its inspector tests what a controller's path carries: rumble, trigger rumble, the light bar, the player lights, the adaptive triggers, a tone on the speaker and on the haptics, the microphone and the sticks, all from your Mac alone, and asks after each test whether it worked. Between that and Satellite's own view, you can tell whether a problem is the controller, the Mac or the PC.
 
-Rumble and the light bar flow the opposite way to input. The satellite
-forwards what the host game writes to the virtual pad as `MSG_RUMBLE`
-(`0x0009`, 7 bytes: `ctrlIdx(1) + strong(2 BE) + weak(2 BE) + durationMs(2
-BE)`) and `MSG_LIGHTBAR` (`0x000D`, 4 bytes: `ctrlIdx(1) + R + G + B`) over
-the encrypted UDP socket. `DishCore` parses them as pure decoders; the
-receive loop resolves the connection and the command's controller index to
-the slot bound there, through the routes `ReturnPathRouter` hands each
-connection, and the feedback queue actuates `GCController.haptics` (one
-`CHHapticEngine` per handle, its player kept while the level repeats) and
-sets `GCController.light`. The two are gated and routed independently, so
-Rumble off in Settings leaves the light bar alone, and a pad without the
-hardware ignores the packet.
+Dish doesn't need Satellite to play on a Sunshine, Apollo or Wolf host. Connections has a page for Moonlight hosts that finds them on your network or takes an address, and Dish shows a PIN to type into the host. Dish is then the controller for that host; it never shows the stream. This path is tested against a stand-in host and not yet against a live one.
 
-Controller audio rides the same socket. `MSG_SPEAKER_AUDIO` (`0x0013`) and
-`MSG_HAPTIC_AUDIO` (`0x0015`) carry 20 ms Opus frames down to the pad's USB
-audio function, the haptics on channels 3–4 of a DualSense's four-channel
-stream; `MSG_MIC_AUDIO` (`0x0012`) carries the pad's microphone up while its
-switch is on and it is not muted; and `MSG_MIC_LED` (`0x0014`) reports the
-lamp the game asked for, shown as a chip. Each of these names its pad by
-controller index, so two pads on one satellite keep their own lanes. `ControllerAudioEngine` decodes
-through the fleet's jitter window and plays on a Core Audio HAL unit.
+Dish can keep the Mac awake while you play. A closed lid still puts the Mac to sleep; Dish closes its sessions cleanly before it sleeps and opens them again when it wakes. It follows the system's light or dark appearance, or the one you pick, and speaks English, Bosnian, German, Spanish, French and Brazilian Portuguese.
 
-## Protocol
+## Requirements
 
-This client offers **protocol 4** on every pairing and session request and
-settles each session on what the satellite speaks: an older satellite gets a
-working session at its own version and a soft "update recommended" chip; a
-satellite whose range does not overlap this client's gets a plain word about
-which end must update. A session settled on version 2 or later streams the
-19-byte pointer frame and receives the trigger-effect and player-LED return
-paths it advertised; one settled on version 4 streams the 17-byte input frame,
-the extended-buttons word (back paddles, the Steam Controller's "..." button,
-pad and trigger clicks, capacitive touches) behind the report, and a pad that
-sources those buttons says so with the `extendedButtons` cap. The client-server contract (REST surface, UDP streams,
-crypto, liveness, identity, versioning) lives in one place,
-[`satellite/docs/contract.md`][contract]; nothing here restates it, and when
-in doubt the contract wins. [`docs/contract.md`](docs/contract.md) maps each
-contract concept to the Swift file that implements it.
+A Mac with Apple silicon and macOS 13 Ventura or later. On macOS 15.4, a controller's input doesn't reach Dish while another app is in front; macOS 15.5 fixed that.
 
-- **Control plane**: HTTPS REST on `:9443` behind TOFU cert pinning. PIN
-  pairing mints a per-device 32-byte pairing key; every authenticated route
-  carries `X-Device-Id` and `X-Hmac-Proof`; topology is declarative, the
-  client PUTs its complete controller set and the server converges.
-- **Data plane**: UDP on `:9876`, ChaCha20-Poly1305-IETF under
-  `HKDF-SHA256(pairingKey, sessionSalt, token)`, minted per session PUT.
-  Streams only: input, heartbeat, motion, battery and touchpad up; heartbeat
-  ack, rumble, light bar and close-notify down.
+Dish is one app and installs nothing else. Its settings live in its own preferences, and the keys from pairing in your login keychain. macOS asks you for these permissions, each only when it's needed:
 
-[contract]: https://github.com/TinkerNorth/satellite/blob/main/docs/contract.md
+- Local Network, the first time Dish looks for a PC, to find Satellite and talk to it.
+- Microphone, the first time you turn on a controller's own microphone or test it in the inspector.
+- Input Monitoring, only when you press Use Direct for a Steam Controller (the 2026 one on a cable, or either one over Bluetooth), because it also acts as a keyboard and a mouse. Dish reads that controller and no other keyboard or mouse.
+- Notifications, for one notice the first time closing the window leaves Dish running.
 
-## Languages
+Dish asks for no Bluetooth permission: you pair a Bluetooth controller with macOS, and Dish reads it from there.
 
-Every word the app shows is a property of `L10n`
-(`Sources/Dish/L10n/`), read from the String Catalog
-`Sources/Dish/Resources/Localizable.xcstrings` in six languages. A new word
-is one property and one catalog entry with all five translations;
-`LocalizationTests` fails the build on a key the catalog lacks, an entry no
-code uses, a language missing a translation, a placeholder lost in
-translation, or an English literal in a view, and `L10nTests` reads every
-entry back from the compiled tables. The dashboard counts carry plural
-forms, Bosnian's paucal included.
+Network: the Mac and the PC on the same local network. Dish finds Satellite over mDNS and Satellite's older UDP beacon on port 9879, pairs and talks to it over HTTPS on TCP 9443, and streams on UDP 9876. If Dish can't find the PC, you can type its address on Connections.
 
-## Testing
+## Trust and privacy
+
+Every release has a `SHA256SUMS` file signed with cosign by the release workflow. To check a download on Linux, put `SHA256SUMS` beside it and run:
 
 ```bash
-swift test --parallel
+sha256sum --ignore-missing -c SHA256SUMS
 ```
 
-| Target | What it pins |
-|---|---|
-| `DishCoreTests` | The cross-repo interop vectors (HKDF, HMAC proof, AEAD, hex-exact with the satellite and the other clients) and every reducer: reconcile, backoff, close-notify, TOFU verdicts, latency window, REST outcomes. |
-| `DishKernelTests` | Every kernel primitive, with the shared `RepositoryContract`. |
-| `DishEngineTests` | Input mapping, dead zones, the return paths against satellite-sealed datagrams, pairing classification, the keep-awake pipeline, the preference stores, the update checker; and the live suites, which drive the real manager, connection and client against `Support/FakeSatellite/`, an in-process satellite over loopback sockets with its own independently written crypto, a configurable protocol range and every return path. |
-| `DishTests` | The funnel and the catalog in every language, every mapper flow, the AppKit signal mapping, the close-to-background rule. |
-| `ArchitectureTests` | Import boundaries, the package graph, license headers, no suppressions, no mutable statics, the lint thresholds, the version mirrors, the catalog and the tokens. |
+On a Mac, `shasum -a 256 --ignore-missing -c SHA256SUMS` does the same. [SECURITY.md](SECURITY.md) has the signature and build provenance checks, and how to report a vulnerability.
 
-For an end-to-end run against the **real** satellite binary (build headless,
-pair, stream, tear down over loopback), see
-[`scripts/e2e_local.sh`](scripts/e2e_local.sh); the suite it drives skips
-unless `DISH_E2E_LIVE=1`. CI runs the same script on every push and pull
-request (`e2e.yml`), against the satellite release the workflow pins.
+The app is not signed with an Apple Developer ID and not notarized, because I don't have one yet. It carries only an ad-hoc signature, which is why macOS asks you to let it through once (the steps are under Download). The versioned copy on the release page is named `dish-1.4.0-unsigned.zip`; it is the same file as `dish-mac.zip`. The checksum and its signature are how you can tell it came from this repository's release. Once a Developer ID exists, the release workflow signs and notarizes the app with no other change.
 
-## Development
+Dish for macOS works on your own network and has no account, no analytics and no ads. Three things can leave your Mac, and each has a switch in Settings: a check for a new version, which reads `latest.json` from this repository's releases on GitHub at startup and every few hours (Check for updates automatically); a check for a newer controller database at dish.tinkernorth.com (Check for controller updates automatically); and, if Dish crashes, one crash report to Sentry (Share crash reports). All three are on by default. The update check downloads nothing; it tells you there is a new version and opens the release page when you ask. Controller input and the controller's microphone go only to the PC you paired with. The diagnostics file is something you send yourself; Dish never sends it. [PRIVACY.md](PRIVACY.md) says exactly what is stored and sent.
 
-The whole CI gate, locally, with SwiftFormat and SwiftLint fetched once at
-the pinned versions and checksums CI uses:
+Dish for macOS is licensed under the GNU Lesser General Public License v3.0 or later ([LICENSE](LICENSE), with [COPYING.GPL3](COPYING.GPL3)). The third-party components and their licences are in [THIRD_PARTY.md](THIRD_PARTY.md).
+
+## For developers
+
+Dish for macOS is Swift, built with SwiftPM and Xcode 26 (the Swift 6.2 tools), with warnings as errors. The scripts are the ones CI calls:
 
 ```bash
-./scripts/ci-local.sh           # format, lint strict, build, tests, release build, bundle
-./scripts/ci-local.sh --quick   # skip the release build and the bundle
-./scripts/setup-hooks.sh        # pre-commit: format + lint on staged Swift files
+scripts/setup-hooks.sh       # once, with Xcode 26 installed: the pre-commit hook
+scripts/build-and-test.sh    # the debug build, then the tests
+scripts/ci-local.sh          # every macOS CI gate, in CI's order
 ```
 
-[`CONTRIBUTING.md`](CONTRIBUTING.md) holds the rules: zero warnings, the
-shape of the code, test-driven for every flow, where code goes, and how a
-release is cut. [`DESIGN.md`](DESIGN.md) lists the design tokens.
+`scripts/build-app.sh` builds `Dish.app` the way a release does, and `scripts/launch-smoke.sh` starts a copy of it under its own bundle id, so your own settings are left alone.
 
-## Contributing
+Where things are written down:
 
-Changes land on `main` through a pull request. `macOS CI` runs the format
-check, strict lint, the debug build, the tests, the release build and the
-bundle on every PR; `version-consistency` checks that `VERSION`, the
-changelog heading and the bundle script agree; the `Security` and `CodeQL`
-workflows run alongside (action-pin lint, OSV-Scanner, gitleaks, dependency
-review, CodeQL `swift`). The PR template asks for the shape rules, the tests
-and the bookkeeping.
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): the modules, the dataflow rules, the threads and the input hot path, the Direct reader and the project layout.
+- [docs/contract.md](docs/contract.md): where each part of the Satellite protocol lives in this tree.
+- [docs/UI_CONTRACT.md](docs/UI_CONTRACT.md): the window, the pages and the interface kit.
+- [Tests/PARITY.md](Tests/PARITY.md): what this client has compared with the others, and what is confirmed on hardware.
+- [CHANGELOG.md](CHANGELOG.md): what changed in each release.
 
-> Branch protection is not available for private repositories on the free
-> org plan this repo lives under, so direct pushes to `main` are not blocked
-> at the platform level. The PR flow is a convention, and the CI workflows
-> are the gate.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers setting up, where code goes, the interface, translations, the code style, the tests, branching, what CI runs, how a release is cut, and changing the hot path or the wire protocol. Please read it before opening a pull request.
 
-## Security
+## Getting help
 
-Vulnerability disclosure: [`SECURITY.md`](SECURITY.md). Every release ships
-cosign keyless signatures, SHA256SUMS, SBOMs (SPDX and CycloneDX) and SLSA L3
-provenance; the verification recipe is in
-[`CONTRIBUTING.md#security`](CONTRIBUTING.md#security).
+If something doesn't work, open an issue at [github.com/TinkerNorth/dish-mac/issues](https://github.com/TinkerNorth/dish-mac/issues/new/choose). The most useful thing you can attach is the diagnostics file: in Settings, open Diagnostics…, press Report a problem, say what happened and pick the controller, and press Continue in Mail; Preview file shows you the file first. The file leaves out pairing keys, addresses, Wi-Fi names and the names of your PCs; read it before you attach it, it's plain JSON. Continue in Mail starts a mail to support@tinkernorth.com with the file attached, so if you'd rather write to me than open an issue, send that mail; nothing leaves your Mac until you press Send.
 
-## Code signing policy
-
-Releases are not yet signed with an Apple Developer ID: the Apple Developer
-Program is a yearly fee the project has not taken on. Until it does,
-`dish-mac.zip` carries only an ad-hoc signature (identifier
-`com.tinkernorth.dish.mac`, no team) and is not notarized, so the first launch
-meets Gatekeeper; the steps are under *Getting started*. Verify a download
-against `SHA256SUMS`, its cosign signature and the SLSA provenance
-([CONTRIBUTING, "Verifying a release artifact"](CONTRIBUTING.md#verifying-a-release-artifact)).
-
-**Team.** Committers, reviewers and approvers: Emir Hasanbegovic
-([@emir-hasanbegovic](https://github.com/emir-hasanbegovic)), owner of the
-TinkerNorth organisation
-([organisation owners](https://github.com/orgs/TinkerNorth/people?query=role%3Aowner)).
-
-**What is signed, and when.** Only the release workflow,
-[`release.yml`](.github/workflows/release.yml), signs, only when it runs from
-a tagged commit of this repository, and only once the five Apple secrets exist:
-`Dish.app` is then signed with the Developer ID under the hardened runtime with
-[`packaging/Dish.entitlements`](packaging/Dish.entitlements) and notarized, with
-no change to the workflow. Nothing built locally, on a pull request or from a
-fork is ever signed with it. The artifact is the `Dish.app` bundle alone: one
-executable, its resource bundle and the icon.
-
-**Privacy.** [`PRIVACY.md`](PRIVACY.md) is the policy. Two things can leave
-the Mac: an update check against GitHub (one request for `latest.json` on this
-project's releases page, with no identifier attached) and, when the app
-crashes and *Share crash reports* is on, one crash report to Sentry from an
-official build (a locally built app carries no address). Both can be turned
-off in Settings. There is no analytics, no telemetry and no account. macOS
-asks for Local Network access on the first scan and for the microphone the
-first time a controller's microphone is switched on.
-
-**Third-party components in the bundle.** sentry-cocoa (MIT), linked
-statically for the crash reporter, which sends nothing unless *Share crash
-reports* is on and the build carries a Sentry address. The Moonlight protocol
-follows Wolf's reference (MIT) and the ENet client is a port of the fork
-Moonlight uses (MIT), both re-implemented in first-party Swift; everything else
-is Apple's frameworks. Versions and licences are in
-[`THIRD_PARTY.md`](THIRD_PARTY.md), which also ships inside the app under
-Settings › About › Licenses.
-
-## License
-
-GNU Lesser General Public License v3.0 or later. See [`LICENSE`](LICENSE)
-(the LGPL) and [`COPYING.GPL3`](COPYING.GPL3) (the GPL v3 it incorporates).
+Please also say which Dish for macOS version you run and how you installed it, your Mac and macOS version, which Satellite or Moonlight host and version you use, and which controller. If the problem is in Satellite rather than here, its own repository is the better place. For a security problem, don't open a public issue; [SECURITY.md](SECURITY.md) says how to report it privately.

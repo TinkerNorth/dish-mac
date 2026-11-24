@@ -40,6 +40,17 @@ the repos share a version number.
   identity becomes the shared workflow's, `_release_harden.yml@refs/tags/X.Y.Z`;
   `SECURITY.md` has the recipe for both forms, run against 1.4.0. The app
   checks no signature, so already-installed versions are not affected.
+- **The README is written for someone setting Dish up.** It starts with the
+  download, the exact steps to open an app without a Developer ID on macOS
+  15 and later and on 13 and 14, the four steps from Satellite to playing,
+  what works with which controller and what is not yet confirmed on a real
+  pad, the permissions macOS asks for, and the three things that can leave
+  the Mac. The developer material it carried moved: the project layout to
+  `docs/ARCHITECTURE.md` (corrected to seven modules and seven test
+  targets), the rumble and light bar return paths to `docs/contract.md`,
+  the code signing policy to `SECURITY.md`. `DocumentFactsTests` checks that
+  every relative link in it resolves, that it names the version in
+  `VERSION`, and that it carries the family's shared text word for word.
 - **The release's bill of materials names what the app carries.** Syft does
   not look inside `dish-mac.zip`, so the product SBOM named nothing but the
   product itself. `scripts/write-sbom.sh`, called by `stage-zip.sh` on pull

@@ -3,8 +3,9 @@
 //
 // Facts a document repeats from code, tied to the code: the crash reporter's
 // version, the protocol number, the pinned tools, the Xcode the workflows
-// select, and the components SBOM against THIRD_PARTY.md. A bump that moves
-// one copy fails here, and the message names the file to edit.
+// select, the components SBOM against THIRD_PARTY.md, and the README's
+// version, links and the family's shared text. A bump that moves one copy
+// fails here, and the message names the file to edit.
 
 import XCTest
 
@@ -232,6 +233,50 @@ final class DocumentFactsTests: XCTestCase {
             stage.contains("scripts/write-sbom.sh \"dist/dish-mac-components.spdx.json\""),
             "stage-zip.sh writes the components SBOM into dist/, so the dry run and the tag both carry it"
         )
+    }
+
+    // MARK: README
+
+    func testEveryRelativeLinkInTheReadmePointsAtAFileThatExists() throws {
+        let readme = try RepoFiles.read("README.md")
+        let targets = allMatches(#"\]\(([^)\s]+)\)"#, in: readme)
+        XCTAssertFalse(targets.isEmpty, "README.md links nothing")
+        for target in targets where !target.contains("://") && !target.hasPrefix("mailto:") && !target.hasPrefix("#") {
+            let path = String(target.split(separator: "#", maxSplits: 1)[0])
+            XCTAssertTrue(
+                FileManager.default.fileExists(atPath: RepoFiles.url(path).path),
+                "README.md links \(target), which is not in the repository"
+            )
+        }
+    }
+
+    func testTheReadmeNamesTheVersionInVersionFile() throws {
+        let version = try RepoFiles.read("VERSION").trimmingCharacters(in: .whitespacesAndNewlines)
+        let readme = try RepoFiles.read("README.md")
+        let named = try XCTUnwrap(
+            firstMatch(#"Dish for macOS ([0-9]+\.[0-9]+\.[0-9]+) is the current release\."#, in: readme),
+            "README.md must say \"Dish for macOS X.Y.Z is the current release.\""
+        )
+        XCTAssertEqual(named, version, "VERSION is \(version): edit README.md's Download line")
+        let mentioned = Set(allMatches(#"dish-([0-9]+\.[0-9]+\.[0-9]+)-unsigned\.zip"#, in: readme))
+        XCTAssertTrue(mentioned.isSubset(of: [version]), "README.md names a versioned zip other than \(version)")
+    }
+
+    func testTheReadmeCarriesTheFamilysSharedTextWordForWord() throws {
+        let fixture = try RepoFiles.read("Tests/ArchitectureTests/Fixtures/readme-shared.md")
+        let body = try XCTUnwrap(fixture.range(of: "-->\n")).upperBound
+        let blocks = fixture[body...]
+            .components(separatedBy: "\n%%%\n")
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        XCTAssertEqual(blocks.count, 6, "the fixture holds the six SHARED blocks this README carries")
+        let readme = try RepoFiles.read("README.md")
+        for block in blocks {
+            XCTAssertTrue(
+                readme.contains(block),
+                "README.md must carry the family's SHARED text verbatim (see Fixtures/readme-shared.md): \(block.prefix(80))…"
+            )
+        }
     }
 
     // MARK: Xcode
