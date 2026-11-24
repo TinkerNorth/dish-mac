@@ -6,7 +6,7 @@ Dish is made of two parts. The Dish apps run on the device that holds your contr
 
 ## Download
 
-Dish for macOS 1.4.0 is the current release. Every link below always points at the newest one.
+Dish for macOS 1.5.0 is the current release. Every link below always points at the newest one.
 
 A Mac with Apple silicon and macOS 13 Ventura or later: download **[dish-mac.zip](https://github.com/TinkerNorth/dish-mac/releases/latest/download/dish-mac.zip)**, open it, and move Dish to your Applications folder. Dish checks for a new version itself and tells you once when there is one; you download it the same way.
 
@@ -97,7 +97,7 @@ sha256sum --ignore-missing -c SHA256SUMS
 
 On a Mac, `shasum -a 256 --ignore-missing -c SHA256SUMS` does the same. [SECURITY.md](SECURITY.md) has the signature and build provenance checks, and how to report a vulnerability.
 
-The app is not signed with an Apple Developer ID and not notarized, because I don't have one yet. It carries only an ad-hoc signature, which is why macOS asks you to let it through once (the steps are under Download). The versioned copy on the release page is named `dish-1.4.0-unsigned.zip`; it is the same file as `dish-mac.zip`. The checksum and its signature are how you can tell it came from this repository's release. Once a Developer ID exists, the release workflow signs and notarizes the app with no other change.
+The app is not signed with an Apple Developer ID and not notarized, because I don't have one yet. It carries only an ad-hoc signature, which is why macOS asks you to let it through once (the steps are under Download). The versioned copy on the release page is named `dish-1.5.0-unsigned.zip`; it is the same file as `dish-mac.zip`. The checksum and its signature are how you can tell it came from this repository's release. Once a Developer ID exists, the release workflow signs and notarizes the app with no other change.
 
 Dish for macOS works on your own network and has no account, no analytics and no ads. Three things can leave your Mac, and each has a switch in Settings: a check for a new version, which reads `latest.json` from this repository's releases on GitHub at startup and every few hours (Check for updates automatically); a check for a newer controller database at dish.tinkernorth.com (Check for controller updates automatically); and, if Dish crashes, one crash report to Sentry (Share crash reports). All three are on by default. The update check downloads nothing; it tells you there is a new version and opens the release page when you ask. Controller input and the controller's microphone go only to the PC you paired with. The diagnostics file is something you send yourself; Dish never sends it. [PRIVACY.md](PRIVACY.md) says exactly what is stored and sent.
 
