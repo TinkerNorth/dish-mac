@@ -441,7 +441,9 @@ private final class SlotAudio {
             playout.render(into: buffer, frames: frames, channels: channels)
         }
         let started = output?.start() == true
-        if !started { output = nil }
+        if !started {
+            output = nil
+        }
         refusedOutput = started ? nil : RefusedEndpoint(device: route.device.id, channels: channels)
     }
 
@@ -465,7 +467,9 @@ private final class SlotAudio {
             capture.push(buffer, frames: frames)
         }
         let started = input?.start() == true
-        if !started { input = nil }
+        if !started {
+            input = nil
+        }
         refusedInputDevice = started ? nil : route.device.id
     }
 }

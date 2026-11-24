@@ -75,6 +75,8 @@ private struct ForgetConfirmation: ViewModifier {
 
     /// Escape and a click outside close the dialog without either button.
     private func dismissed(_ stillShown: Bool) {
-        if !stillShown { cancel() }
+        if !stillShown {
+            cancel()
+        }
     }
 }

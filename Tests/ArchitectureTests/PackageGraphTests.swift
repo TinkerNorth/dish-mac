@@ -75,8 +75,12 @@ final class PackageGraphTests: XCTestCase {
         var depth = 1
         var index = start
         while index < manifest.endIndex, depth > 0 {
-            if manifest[index] == "(" { depth += 1 }
-            if manifest[index] == ")" { depth -= 1 }
+            if manifest[index] == "(" {
+                depth += 1
+            }
+            if manifest[index] == ")" {
+                depth -= 1
+            }
             index = manifest.index(after: index)
         }
         return String(manifest[start ..< index])

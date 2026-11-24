@@ -222,8 +222,10 @@ final class IOKitHidPadReader: HidPadReading, @unchecked Sendable {
     /// first reference opens a lane.
     fileprivate func matched(_ device: IOHIDDevice) {
         let registryId = Self.registryId(of: device)
-        guard !entries.knows(registryId), let wiring, let events else { return }
-        guard let classified = hidPadCandidate(Self.properties(of: device), served: served) else { return }
+        guard !entries.knows(registryId), let wiring, let events, let classified = hidPadCandidate(
+            Self.properties(of: device),
+            served: served
+        ) else { return }
         let service = IOHIDDeviceGetService(device)
         let candidate = classified.with(usbDevice: usbDeviceListing(ofHidService: service, transport: classified.transport))
         let taken = Set(entries.reading.map(\.lane.slotId))

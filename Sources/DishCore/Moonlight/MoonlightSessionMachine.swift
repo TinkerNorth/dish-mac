@@ -147,7 +147,9 @@ public func shouldHandBackApp(launched: Bool, wentLive: Bool, lastControllerLeft
 /// Pure and total: every phase answers every event, and a stray late
 /// completion is ignored rather than allowed to corrupt the lifecycle.
 public func reduceMoonlightSession(_ state: MoonlightSessionMachineState, _ event: MoonlightSessionEvent) -> MoonlightSessionReduction {
-    if event == .stopRequested { return stopFrom(state) }
+    if event == .stopRequested {
+        return stopFrom(state)
+    }
     switch state.phase {
     case .idle, .failed: return fromIdle(event)
     case .checkingInfo: return fromCheckingInfo(state, event)
@@ -186,8 +188,12 @@ private func fromCheckingInfo(_ state: MoonlightSessionMachineState, _ event: Mo
     case let .serverInfoOk(paired, remembered, identityChanged):
         // A host with another identity is not the one the stored pairing anchors;
         // re-pairing is the only way back, so it is named before pairing is judged.
-        if identityChanged { return fail(state, .hostReplaced) }
-        if !paired { return fail(state, remembered ? .trustLost : .notPaired) }
+        if identityChanged {
+            return fail(state, .hostReplaced)
+        }
+        if !paired {
+            return fail(state, remembered ? .trustLost : .notPaired)
+        }
         var next = state
         next.phase = .launching
         // A running app is asked for with a /launch first, as every client

@@ -4,9 +4,13 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 5
     labels:
+      - "dependencies"
       - "ci"
+    commit-message:
+      prefix: "chore(deps)"
     # One PR per week for every action bump together (the way dish-android's
     # arrive): the bumps are independent one-liners, and with "require branches
     # to be up to date" on main, N separate PRs cost N full CI cycles.
@@ -19,6 +23,15 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+      day: "monday"
     open-pull-requests-limit: 10
     labels:
       - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      swift:
+        update-types:
+          - "minor"
+          - "patch"

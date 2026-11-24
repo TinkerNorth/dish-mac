@@ -60,9 +60,8 @@ struct DerReader {
     }
 
     mutating func element() -> (tag: UInt8, content: Data)? {
-        guard let tag = reader.u8(), let first = reader.u8() else { return nil }
-        guard let length = first < 0x80 ? Int(first) : longLength(bytes: Int(first & 0x7F)) else { return nil }
-        guard let content = reader.take(length) else { return nil }
+        guard let tag = reader.u8(), let first = reader.u8(), let length = first < 0x80 ? Int(first) : longLength(bytes: Int(first & 0x7F)),
+              let content = reader.take(length) else { return nil }
         return (tag, content)
     }
 

@@ -23,19 +23,17 @@ concurrency:
 
 permissions:
   contents: read
-  pull-requests: read
-  security-events: write
 
 jobs:
   shared:
+    # Exactly what _security.yml declares; a narrower grant fails the call at startup.
+    permissions:
+      contents: read
+      pull-requests: read
     uses: ./.github/workflows/_security.yml
     with:
-      # SwiftPM resolution lives in Package.resolved; OSV understands
-      # nothing C++/Kotlin specific here, but Package.resolved itself
-      # is recognised. Scan the worktree.
-      osv_scan_paths: |
-        .
-      gitleaks_enabled: true
+      # SwiftPM resolution lives in Package.resolved, which OSV-Scanner 2 reads.
+      osv_scan_paths: .
+      # The repository's Dependency graph and Dependabot alerts are on, so
+      # dependency review runs on every pull request.
       dependency_review_enabled: true
-      action_pin_lint_enabled: true
-      allowlist_expiry_enabled: true

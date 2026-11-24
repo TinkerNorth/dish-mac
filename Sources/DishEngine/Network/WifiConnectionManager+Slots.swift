@@ -65,7 +65,9 @@ extension WifiConnectionManager {
             return
         }
         let landed = resp.controller.map(\.slotIsLive) ?? false
-        if landed { conn.setLastAppliedEpoch(resp.epoch) }
+        if landed {
+            conn.setLastAppliedEpoch(resp.epoch)
+        }
         recordSlotOutcome(resp.controller, index: descriptor.ctrlIdx, conn: conn)
     }
 

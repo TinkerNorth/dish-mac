@@ -72,7 +72,9 @@ private struct MatchedArrivals {
         var previousNs: UInt64?
         latencies.reserveCapacity(arrivals.count)
         for arrival in arrivals {
-            if let previousNs { longestGapNs = max(longestGapNs, arrival.ns &- previousNs) }
+            if let previousNs {
+                longestGapNs = max(longestGapNs, arrival.ns &- previousNs)
+            }
             previousNs = arrival.ns
             let index = unwrapSequence(arrival.sequence, near: expected)
             guard sentNs.indices.contains(index) else { continue }

@@ -50,7 +50,9 @@ public struct PacingCheck: Equatable, Sendable {
         lateness.reserveCapacity(stampsNs.count)
         for (frame, stamp) in stampsNs.enumerated() {
             let due = schedule.deadline(UInt64(frame))
-            if stamp < due { early += 1 }
+            if stamp < due {
+                early += 1
+            }
             lateness.append(stamp > due ? stamp - due : 0)
         }
         lateness.sort()

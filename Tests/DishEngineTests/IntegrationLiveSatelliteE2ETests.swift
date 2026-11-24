@@ -100,7 +100,9 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if predicate() { return true }
+            if predicate() {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         return predicate()
@@ -145,7 +147,9 @@ final class IntegrationLiveSatelliteE2ETests: XCTestCase {
     ) async rethrows -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if try await check() { return true }
+            if try await check() {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 200_000_000)
         }
         return try await check()

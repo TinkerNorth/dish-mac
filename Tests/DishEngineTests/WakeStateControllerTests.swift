@@ -24,7 +24,9 @@ final class WakeStateControllerTests: XCTestCase {
         }
 
         func release() {
-            if held != .none { releases += 1 }
+            if held != .none {
+                releases += 1
+            }
             held = .none
         }
     }

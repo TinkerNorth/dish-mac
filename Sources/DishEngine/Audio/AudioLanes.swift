@@ -203,8 +203,12 @@ final class MicCapture: @unchecked Sendable {
     /// Capture queue: the meter reads the window, the host gets it encoded;
     /// each only while its gate is open at that moment.
     private func handle(_ samples: [Float]) {
-        if metering.get() { onLevel?(MicLevel.of(samples)) }
-        if delivering.get() { encodeAndSend(samples) }
+        if metering.get() {
+            onLevel?(MicLevel.of(samples))
+        }
+        if delivering.get() {
+            encodeAndSend(samples)
+        }
     }
 
     private func encodeAndSend(_ samples: [Float]) {

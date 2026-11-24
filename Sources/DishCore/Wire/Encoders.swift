@@ -109,9 +109,15 @@ public enum Encoders {
     ) {
         out[0] = controllerIndex
         var flags: UInt8 = 0
-        if sample.finger0.active { flags |= 0x01 }
-        if sample.finger1.active { flags |= 0x02 }
-        if sample.buttonPressed { flags |= 0x04 }
+        if sample.finger0.active {
+            flags |= 0x01
+        }
+        if sample.finger1.active {
+            flags |= 0x02
+        }
+        if sample.buttonPressed {
+            flags |= 0x04
+        }
         out[1] = flags
         out[2] = sample.finger0.id
         storeLE16(sample.finger0.x, into: out, at: 3)
@@ -163,15 +169,23 @@ public enum Encoders {
 
     private static func pointerFingerFlags(_ sample: TouchpadSample) -> UInt8 {
         var flags: UInt8 = 0
-        if sample.finger0.active { flags |= ProtocolConstants.pointerFinger0Active }
-        if sample.finger1.active { flags |= ProtocolConstants.pointerFinger1Active }
+        if sample.finger0.active {
+            flags |= ProtocolConstants.pointerFinger0Active
+        }
+        if sample.finger1.active {
+            flags |= ProtocolConstants.pointerFinger1Active
+        }
         return flags
     }
 
     private static func pointerButtons(_ sample: TouchpadSample) -> UInt8 {
         var buttons: UInt8 = 0
-        if sample.buttonPressed { buttons |= ProtocolConstants.pointerButtonLeft }
-        if sample.rightButtonPressed { buttons |= ProtocolConstants.pointerButtonRight }
+        if sample.buttonPressed {
+            buttons |= ProtocolConstants.pointerButtonLeft
+        }
+        if sample.rightButtonPressed {
+            buttons |= ProtocolConstants.pointerButtonRight
+        }
         return buttons
     }
 

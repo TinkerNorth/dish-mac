@@ -245,6 +245,21 @@ updates the rows above.
    Pro's player LEDs through its carrier. After it: a Moonlight host's
    trigger rumble onto the trigger motors where the framework names them,
    instead of folded into the body motors.
+6. The test suite's one deprecated-API call (a deferral, not a decision).
+   `Tests/Support/LegacyFileKeychain` builds a throwaway file keychain with
+   `SecKeychainCreate` and is compiled with `-suppress-warnings`, which the
+   maintainer's rule (a warning is fixed, not hidden) says should go. What
+   was tried: `SecIdentityCreateWithCertificate` matches only a key born in
+   a keychain; the data-protection keychain needs an entitlement an unsigned
+   `swift test` runner cannot carry; a key and certificate exported with
+   `SecItemExport` as PKCS#12 fail (-50) for an in-memory key; and
+   `SecPKCS12Import` with `kSecImportToMemoryOnly` does yield a `SecIdentity`
+   but only from a MAC-protected, 3DES- or AES-encrypted PKCS#12, which the
+   test would have to write by hand (the PKCS#12 key derivation, an ASN.1
+   container and a CommonCrypto cipher), or ship as a fixture, which defeats
+   the harness's fresh-key-per-instance design. Neither is a local, safe
+   change. The way forward is that hand-written PKCS#12 writer in the test
+   support, after which the target loses its flag and its file.
 
 ## 6. The Diagnostics bench, item by path
 

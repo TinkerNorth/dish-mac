@@ -73,7 +73,9 @@ final class WindowRing: @unchecked Sendable {
         }
         writeIndex = (writeIndex + windowSamples) % samples.count
         available += windowSamples
-        if !playing, available >= Self.startThresholdFrames * windowSamples { playing = true }
+        if !playing, available >= Self.startThresholdFrames * windowSamples {
+            playing = true
+        }
     }
 
     /// `count` samples out, silence while cushioning or empty.

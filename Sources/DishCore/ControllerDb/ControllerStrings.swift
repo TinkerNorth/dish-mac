@@ -39,7 +39,9 @@ public struct ControllerStrings: Equatable, Sendable {
     }
 
     private func table(for locale: String) -> [String: String]? {
-        if let exact = tables[locale] { return exact }
+        if let exact = tables[locale] {
+            return exact
+        }
         let language = languageOf(locale)
         let sameLanguage = tables.keys.sorted().first { languageOf($0) == language }
         return sameLanguage.flatMap { tables[$0] }

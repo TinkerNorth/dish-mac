@@ -89,7 +89,9 @@ extension SatelliteClient {
     /// immediately so a fresh session proves the data path without waiting a
     /// full interval.
     func startHeartbeat() {
-        if heartbeatRunning.get() { return }
+        if heartbeatRunning.get() {
+            return
+        }
         heartbeatRunning.set(true)
         missedAcks.set(0)
         connectionAlive.set(true)
@@ -126,14 +128,16 @@ extension SatelliteClient {
     // MARK: - Receive loop
 
     func startReceiveLoop() {
-        if ackRunning.get() { return }
+        if ackRunning.get() {
+            return
+        }
         ackRunning.set(true)
         let drained = receiveDrained
         drained.enter()
         ackQueue.async { [weak self] in
             defer { drained.leave() }
-            while let self, self.ackRunning.get() {
-                self.receiveOne()
+            while let self, ackRunning.get() {
+                receiveOne()
             }
         }
     }
@@ -141,7 +145,9 @@ extension SatelliteClient {
     /// Stop the loop and JOIN it (bounded by the 500 ms recv timeout) so the
     /// fd can close without racing a blocked `recvfrom` onto a reused fd.
     func stopReceiveLoop() {
-        if !ackRunning.get() { return }
+        if !ackRunning.get() {
+            return
+        }
         ackRunning.set(false)
         blockingRegion("satellite.receiveJoin")
         _ = receiveDrained.wait(timeout: .now() + 1.0)
@@ -153,7 +159,9 @@ extension SatelliteClient {
     /// frame in silence.
     private func receiveOne() {
         let fd = receiveFd
-        if fd < 0 { return }
+        if fd < 0 {
+            return
+        }
         let buffer = receiveBuffer
         var from = sockaddr_in()
         var fl = socklen_t(MemoryLayout<sockaddr_in>.size)
@@ -192,7 +200,9 @@ extension SatelliteClient {
         // advances after a successful open, so a forged header can't wedge
         // the stream (mirrors satellite_jni receiveAck).
         let lastRecv = UInt32(truncatingIfNeeded: lastRecvCounter.current())
-        if lastRecv != 0, header.counter <= lastRecv { return }
+        if lastRecv != 0, header.counter <= lastRecv {
+            return
+        }
 
         guard let plain = try? SessionCrypto.open(
             boxBytes: UnsafeRawBufferPointer(rebasing: datagram[ProtocolConstants.headerSize...]),

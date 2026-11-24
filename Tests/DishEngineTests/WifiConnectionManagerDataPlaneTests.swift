@@ -65,7 +65,9 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
     ) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if predicate() { return true }
+            if predicate() {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 50_000_000)
         }
         return predicate()
@@ -301,7 +303,11 @@ final class WifiConnectionManagerDataPlaneTests: XCTestCase {
             .store(in: &bag)
         var errors: [ConnectionFailure] = []
         manager.events
-            .sink { if case let .failure(failure) = $0 { errors.append(failure) } }
+            .sink {
+                if case let .failure(failure) = $0 {
+                    errors.append(failure)
+                }
+            }
             .store(in: &bag)
 
         // Partial success is a 200 (contract §Error model): the slot draws a

@@ -120,7 +120,9 @@ final class LocalizationTests: XCTestCase {
             for (code, forms) in entry.plural {
                 XCTAssertNotNil(forms["one"], "\(entry.key) in \(code) lacks the singular")
                 XCTAssertNotNil(forms["other"], "\(entry.key) in \(code) lacks the plural")
-                if code == "bs" { XCTAssertNotNil(forms["few"], "\(entry.key): Bosnian has a paucal form") }
+                if code == "bs" {
+                    XCTAssertNotNil(forms["few"], "\(entry.key): Bosnian has a paucal form")
+                }
                 for (form, value) in forms {
                     XCTAssertFalse(value.isEmpty, "\(entry.key) is blank in \(code)/\(form)")
                 }
@@ -182,7 +184,9 @@ final class LocalizationTests: XCTestCase {
         literalEntryPoints.contains { entry in
             var rest = line[...]
             while let range = rest.range(of: entry) {
-                if rest[range.upperBound...].first != "\"" { return true }
+                if rest[range.upperBound...].first != "\"" {
+                    return true
+                }
                 rest = rest[range.upperBound...]
             }
             return false
@@ -207,8 +211,10 @@ final class LocalizationTests: XCTestCase {
     /// there read tables only because CI compiles them first.
     func testCICompilesTheCatalogBeforeTheTestsRun() throws {
         let workflow = try RepoFiles.read(".github/workflows/macos-ci.yml")
-        let compile = try XCTUnwrap(workflow.range(of: "compile-catalog.sh"), "CI must compile the catalog")
-        let tests = try XCTUnwrap(workflow.range(of: "swift test"), "CI must run the tests")
+        XCTAssertTrue(workflow.contains("run: scripts/build-and-test.sh"), "CI builds and tests through the one script")
+        let script = try RepoFiles.read("scripts/build-and-test.sh")
+        let compile = try XCTUnwrap(script.range(of: "compile-catalog.sh"), "CI must compile the catalog")
+        let tests = try XCTUnwrap(script.range(of: "swift test --skip-build"), "CI must run the tests")
         XCTAssertLessThan(compile.lowerBound, tests.lowerBound, "the tables must exist before the tests read them")
     }
 }

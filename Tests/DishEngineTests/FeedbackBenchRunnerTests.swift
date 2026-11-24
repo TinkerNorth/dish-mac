@@ -26,7 +26,7 @@ final class FeedbackBenchRunnerTests: XCTestCase {
         log = BenchLog()
         feedback = PadFeedback(actuators: log.actuators)
         scheduler = ManualPathScheduler()
-        outcomes = PadOutcomesStore { [unowned self] in self.wallMs }
+        outcomes = PadOutcomesStore { [unowned self] in wallMs }
         runner = FeedbackBenchRunner(feedback: feedback, outcomes: outcomes, scheduler: scheduler)
     }
 

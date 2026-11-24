@@ -87,7 +87,9 @@ final class MoonlightPadLink: @unchecked Sendable {
         let live = sender
         let mask = table.activeMask
         lock.unlock()
-        if let pad, held == nil, let live { announce(pad, mask: mask, on: live) }
+        if let pad, held == nil, let live {
+            announce(pad, mask: mask, on: live)
+        }
         return pad
     }
 
@@ -102,7 +104,9 @@ final class MoonlightPadLink: @unchecked Sendable {
         let mask = table.activeMask
         let live = sender
         lock.unlock()
-        if let number, let live { live.sendControllerState(MoonlightInput.PadFrame(controller: number, activeMask: mask)) }
+        if let number, let live {
+            live.sendControllerState(MoonlightInput.PadFrame(controller: number, activeMask: mask))
+        }
         return remaining
     }
 
@@ -170,9 +174,13 @@ final class MoonlightPadLink: @unchecked Sendable {
             lock.unlock()
             return
         }
-        if out.replay != nil { sentByNumber[Int(out.controller)] += 1 }
+        if out.replay != nil {
+            sentByNumber[Int(out.controller)] += 1
+        }
         lock.unlock()
-        if let replay = out.replay { live.sendControllerState(replay) }
+        if let replay = out.replay {
+            live.sendControllerState(replay)
+        }
         for emission in out.emissions {
             live.sendControllerTouch(controller: out.controller, emission: emission)
         }

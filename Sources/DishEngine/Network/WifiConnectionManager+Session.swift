@@ -29,7 +29,9 @@ extension WifiConnectionManager {
     /// anything else is a refusal.
     nonisolated static func classifyOpen(_ resp: SessionResponse) -> OpenOutcome {
         let unauthorized = resp.unauthorized || resp.verdict == .unauthorized
-        if unauthorized { return .unauthorized }
+        if unauthorized {
+            return .unauthorized
+        }
         if resp.verdict == .versionMismatch {
             return .versionMismatch(supported: resp.supportedProtocol, supportedMin: resp.supportedProtocolMin)
         }
@@ -253,7 +255,9 @@ extension WifiConnectionManager {
     /// that let go meanwhile has nothing to record.
     func recordSlotOutcome(_ applied: ControllerApplyDto?, index: Int, conn: WifiConnection) {
         guard let slotId = conn.slotId(at: index) else { return }
-        if let applied { recordApplyAnswer(applied, connectionId: conn.id, slotId: slotId) }
+        if let applied {
+            recordApplyAnswer(applied, connectionId: conn.id, slotId: slotId)
+        }
         if let applied, applied.slotIsLive {
             conn.markSlotApplied(slotId)
             recordMotionStatus(applied, connectionId: conn.id, slotId: slotId)

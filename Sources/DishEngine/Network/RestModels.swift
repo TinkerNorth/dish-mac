@@ -47,15 +47,15 @@ struct ControllerApplyDto: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.ctrlIdx = try container.decodeIfPresent(Int.self, forKey: .ctrlIdx) ?? 0
-        self.result = try container.decodeIfPresent(String.self, forKey: .result) ?? ""
-        self.resultCode = ApplyResult(wireName: result)
-        self.appliedType = try container.decodeIfPresent(Int.self, forKey: .appliedType)
+        ctrlIdx = try container.decodeIfPresent(Int.self, forKey: .ctrlIdx) ?? 0
+        result = try container.decodeIfPresent(String.self, forKey: .result) ?? ""
+        resultCode = ApplyResult(wireName: result)
+        appliedType = try container.decodeIfPresent(Int.self, forKey: .appliedType)
             ?? Int(ProtocolConstants.controllerTypeXbox)
         let motion = try container.decodeIfPresent(MotionDto.self, forKey: .motion)
-        self.motionSinkSupportedForType = motion?.sinkSupportedForType ?? false
-        self.motionBackendOk = motion?.backendOk ?? false
-        self.backend = try container.decodeIfPresent(String.self, forKey: .backend)
+        motionSinkSupportedForType = motion?.sinkSupportedForType ?? false
+        motionBackendOk = motion?.backendOk ?? false
+        backend = try container.decodeIfPresent(String.self, forKey: .backend)
     }
 }
 
@@ -75,9 +75,9 @@ struct HostFeatureGrant: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.granted = try container.decodeIfPresent(Bool.self, forKey: .granted) ?? false
+        granted = try container.decodeIfPresent(Bool.self, forKey: .granted) ?? false
         let raw = try container.decodeIfPresent(String.self, forKey: .reason)
-        self.reason = (raw?.isEmpty ?? true) ? nil : raw
+        reason = (raw?.isEmpty ?? true) ? nil : raw
     }
 }
 
@@ -130,21 +130,21 @@ struct SessionResponse: Decodable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.connectionId = try nonEmpty(container.decodeIfPresent(String.self, forKey: .connectionId))
-        self.token = try nonEmpty(container.decodeIfPresent(String.self, forKey: .token))
-        self.sessionSalt = try nonEmpty(container.decodeIfPresent(String.self, forKey: .sessionSalt))
-        self.epoch = try container.decodeIfPresent(Int.self, forKey: .epoch) ?? 0
-        self.maxControllers = try container.decodeIfPresent(Int.self, forKey: .maxControllers)
+        connectionId = try nonEmpty(container.decodeIfPresent(String.self, forKey: .connectionId))
+        token = try nonEmpty(container.decodeIfPresent(String.self, forKey: .token))
+        sessionSalt = try nonEmpty(container.decodeIfPresent(String.self, forKey: .sessionSalt))
+        epoch = try container.decodeIfPresent(Int.self, forKey: .epoch) ?? 0
+        maxControllers = try container.decodeIfPresent(Int.self, forKey: .maxControllers)
             ?? ProtocolConstants.maxControllersPerConnection
-        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
+        protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
             ?? ProtocolConstants.protocolVersionWhenAbsent
-        self.supportedProtocol = try container.decodeIfPresent(Int.self, forKey: .supportedProtocol) ?? 0
-        self.supportedProtocolMin = try container.decodeIfPresent(Int.self, forKey: .supportedProtocolMin) ?? 0
-        self.controllers = try container.decodeIfPresent([ControllerApplyDto].self, forKey: .controllers) ?? []
+        supportedProtocol = try container.decodeIfPresent(Int.self, forKey: .supportedProtocol) ?? 0
+        supportedProtocolMin = try container.decodeIfPresent(Int.self, forKey: .supportedProtocolMin) ?? 0
+        controllers = try container.decodeIfPresent([ControllerApplyDto].self, forKey: .controllers) ?? []
         let hostFeatures = try container.decodeIfPresent(HostFeaturesDto.self, forKey: .hostFeatures)
-        self.mouseControl = hostFeatures?.mouseControl ?? HostFeatureGrant()
+        mouseControl = hostFeatures?.mouseControl ?? HostFeatureGrant()
         self.error = try nonEmpty(container.decodeIfPresent(String.self, forKey: .error))
-        self.code = try nonEmpty(container.decodeIfPresent(String.self, forKey: .code))
+        code = try nonEmpty(container.decodeIfPresent(String.self, forKey: .code))
     }
 }
 
@@ -169,10 +169,10 @@ struct ControllerPutResponse: Decodable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.epoch = try container.decodeIfPresent(Int.self, forKey: .epoch) ?? 0
-        self.controller = try container.decodeIfPresent(ControllerApplyDto.self, forKey: .controller)
+        epoch = try container.decodeIfPresent(Int.self, forKey: .epoch) ?? 0
+        controller = try container.decodeIfPresent(ControllerApplyDto.self, forKey: .controller)
         self.error = try nonEmpty(container.decodeIfPresent(String.self, forKey: .error))
-        self.code = try nonEmpty(container.decodeIfPresent(String.self, forKey: .code))
+        code = try nonEmpty(container.decodeIfPresent(String.self, forKey: .code))
     }
 }
 
@@ -189,11 +189,11 @@ struct SessionViewControllerDto: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.ctrlIdx = try container.decodeIfPresent(Int.self, forKey: .ctrlIdx) ?? 0
-        self.active = try container.decodeIfPresent(Bool.self, forKey: .active) ?? false
-        self.appliedType = try container.decodeIfPresent(Int.self, forKey: .appliedType)
+        ctrlIdx = try container.decodeIfPresent(Int.self, forKey: .ctrlIdx) ?? 0
+        active = try container.decodeIfPresent(Bool.self, forKey: .active) ?? false
+        appliedType = try container.decodeIfPresent(Int.self, forKey: .appliedType)
             ?? Int(ProtocolConstants.controllerTypeXbox)
-        self.touchpadMode = try container.decodeIfPresent(String.self, forKey: .touchpadMode) ?? ""
+        touchpadMode = try container.decodeIfPresent(String.self, forKey: .touchpadMode) ?? ""
     }
 }
 
@@ -220,15 +220,15 @@ struct SessionViewDto: Decodable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.connectionId = try nonEmpty(container.decodeIfPresent(String.self, forKey: .connectionId))
-        self.epoch = try container.decodeIfPresent(Int.self, forKey: .epoch) ?? 0
-        self.controllers = try container.decodeIfPresent(
+        connectionId = try nonEmpty(container.decodeIfPresent(String.self, forKey: .connectionId))
+        epoch = try container.decodeIfPresent(Int.self, forKey: .epoch) ?? 0
+        controllers = try container.decodeIfPresent(
             [SessionViewControllerDto].self, forKey: .controllers
         ) ?? []
         let hostFeatures = try container.decodeIfPresent(HostFeaturesDto.self, forKey: .hostFeatures)
-        self.mouseControl = hostFeatures?.mouseControl ?? HostFeatureGrant()
+        mouseControl = hostFeatures?.mouseControl ?? HostFeatureGrant()
         self.error = try nonEmpty(container.decodeIfPresent(String.self, forKey: .error))
-        self.code = try nonEmpty(container.decodeIfPresent(String.self, forKey: .code))
+        code = try nonEmpty(container.decodeIfPresent(String.self, forKey: .code))
     }
 }
 
@@ -247,9 +247,9 @@ struct PairStatusResponse: Decodable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.ok = try container.decodeIfPresent(Bool.self, forKey: .ok) ?? false
-        self.status = try container.decodeIfPresent(String.self, forKey: .status) ?? ""
-        self.sharedKey = try nonEmpty(container.decodeIfPresent(String.self, forKey: .sharedKey))
+        ok = try container.decodeIfPresent(Bool.self, forKey: .ok) ?? false
+        status = try container.decodeIfPresent(String.self, forKey: .status) ?? ""
+        sharedKey = try nonEmpty(container.decodeIfPresent(String.self, forKey: .sharedKey))
     }
 }
 

@@ -195,7 +195,9 @@ package final class WifiConnectionManager: ObservableObject {
     /// The pool entry for `server`, created and registered on first use.
     func pooledConnection(for server: DiscoveredServer) -> WifiConnection {
         let id = WifiConnection.idFor(server)
-        if let existing = connections[id] { return existing }
+        if let existing = connections[id] {
+            return existing
+        }
         let fresh = WifiConnection(id: id, server: server)
         register(fresh)
         return fresh
@@ -205,7 +207,9 @@ package final class WifiConnectionManager: ObservableObject {
 
     /// True when a scan may start; a second request while one runs is dropped.
     func markScanStarted() -> Bool {
-        if isScanning { return false }
+        if isScanning {
+            return false
+        }
         isScanning = true
         return true
     }
@@ -237,7 +241,9 @@ package final class WifiConnectionManager: ObservableObject {
     /// replaced-session suppression.
     func connect(to server: DiscoveredServer, intent: ConnectIntent = .userInitiated) {
         let id = WifiConnection.idFor(server)
-        if intent == .userInitiated { clearRetry(id) }
+        if intent == .userInitiated {
+            clearRetry(id)
+        }
         if let existing = connections[id], existing.hasSession {
             existing.updateServer(server)
             return
@@ -338,7 +344,9 @@ package final class WifiConnectionManager: ObservableObject {
     private func signOff(_ id: String, endpoint: SatelliteEndpoint?, close: SessionClose?) async {
         let proof = await proofFor(id)
         selfUnpair(endpoint, proof: proof)
-        if let close { sendClose(close, proof: proof) }
+        if let close {
+            sendClose(close, proof: proof)
+        }
         store.forgetKey(for: id)
     }
 

@@ -32,7 +32,9 @@ func controllerDbCheckText(
     timeZone: TimeZone = .current,
     words: L10n = .app
 ) -> String {
-    if status.checking { return words.checking }
+    if status.checking {
+        return words.checking
+    }
     guard let atMs = status.lastCheckAtMs, let result = status.lastCheckResult else { return words.neverChecked }
     return words.lastCheckAt(eventTimeText(atMs, locale: locale, timeZone: timeZone), controllerDbResultText(result, words: words))
 }

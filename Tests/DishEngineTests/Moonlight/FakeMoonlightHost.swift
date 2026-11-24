@@ -106,7 +106,9 @@ final class FakeMoonlightHost: @unchecked Sendable {
     /// Plain HTTP: /serverinfo for anyone (a PairStatus of 0, as Sunshine hands
     /// every plaintext caller) and the pairing phases.
     private func answerPlain(_ target: String) -> MoonlightLoopbackServer.Answer? {
-        if target.hasPrefix("/serverinfo") { return Self.http(serverInfo(pairStatus: 0)) }
+        if target.hasPrefix("/serverinfo") {
+            return Self.http(serverInfo(pairStatus: 0))
+        }
         guard target.hasPrefix("/pair") else { return nil }
         let request = MoonlightHttpRequest(host: "127.0.0.1", port: plainPort, tls: false, pathAndQuery: target)
         return pairing.answer(request).map(Self.http)
@@ -135,7 +137,9 @@ final class FakeMoonlightHost: @unchecked Sendable {
         lock.lock()
         launchTargets.append(target)
         lock.unlock()
-        if let rikey = ReferenceMoonlightHost.params(of: target)["rikey"].flatMap(hexDecode) { control.adopt(rikey: rikey) }
+        if let rikey = ReferenceMoonlightHost.params(of: target)["rikey"].flatMap(hexDecode) {
+            control.adopt(rikey: rikey)
+        }
         let body = "<root status_code=\"200\"><sessionUrl0>rtsp://127.0.0.1:\(rtsp.port)</sessionUrl0><gamesession>1</gamesession></root>"
         return MoonlightHttpReply(status: 200, body: body)
     }

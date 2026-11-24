@@ -32,7 +32,9 @@ func runBench(_ options: BenchOptions) async -> Int32 {
         }
     }
     print(latencyTable(results))
-    if lockStatsBuild { print("\n" + lockTable(results)) }
+    if lockStatsBuild {
+        print("\n" + lockTable(results))
+    }
     pacingNotes(results).forEach { print($0) }
     let record = BenchRecord(
         schema: BenchRecord.currentSchema,
@@ -41,8 +43,12 @@ func runBench(_ options: BenchOptions) async -> Int32 {
         scenarios: results
     )
     do {
-        if let json = options.json { try writeJSON(record, to: json) }
-        if let csv = options.csv { try writeText(csvRows(results), to: csv) }
+        if let json = options.json {
+            try writeJSON(record, to: json)
+        }
+        if let csv = options.csv {
+            try writeText(csvRows(results), to: csv)
+        }
     } catch {
         printError("could not write the results: \(error)")
         return BenchExit.failed

@@ -60,7 +60,9 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
     func secIdentity() -> SecIdentity? {
         lock.lock()
         defer { lock.unlock() }
-        if identityResolved { return resolvedIdentity }
+        if identityResolved {
+            return resolvedIdentity
+        }
         identityResolved = true
         var identity: SecIdentity?
         guard SecIdentityCreateWithCertificate(keychain, certificate, &identity) == errSecSuccess else { return nil }
@@ -84,7 +86,9 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
               let der = MoonlightCertificateMint.selfSigned(privateKey: key, now: now),
               let certificate = SecCertificateCreateWithData(nil, der as CFData) else { return nil }
         var add: [CFString: Any] = [kSecValueRef: certificate]
-        if let keychain { add[kSecUseKeychain] = keychain }
+        if let keychain {
+            add[kSecUseKeychain] = keychain
+        }
         let status = SecItemAdd(add as CFDictionary, nil)
         guard status == errSecSuccess || status == errSecDuplicateItem else { return nil }
         return MoonlightIdentityStore(privateKey: key, certificateDER: der, certificate: certificate, keychain: keychain)
@@ -98,7 +102,9 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
             kSecAttrKeyClass: kSecAttrKeyClassPrivate,
             kSecReturnRef: true
         ]
-        if let keychain { query[kSecMatchSearchList] = [keychain] }
+        if let keychain {
+            query[kSecMatchSearchList] = [keychain]
+        }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let item,
               CFGetTypeID(item) == SecKeyGetTypeID() else { return nil }
@@ -109,7 +115,9 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
         let keyAttributes = SecKeyCopyAttributes(key) as? [String: Any]
         guard let publicKeyHash = keyAttributes?[kSecAttrApplicationLabel as String] as? Data else { return nil }
         var query: [CFString: Any] = [kSecClass: kSecClassCertificate, kSecAttrPublicKeyHash: publicKeyHash, kSecReturnRef: true]
-        if let keychain { query[kSecMatchSearchList] = [keychain] }
+        if let keychain {
+            query[kSecMatchSearchList] = [keychain]
+        }
         var item: CFTypeRef?
         guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let item,
               CFGetTypeID(item) == SecCertificateGetTypeID() else { return nil }
@@ -126,7 +134,9 @@ final class MoonlightIdentityStore: MoonlightClientIdentity, MoonlightSignatureV
             kSecAttrApplicationTag: keyTag,
             kSecAttrLabel: keyLabel
         ]
-        if let keychain { attributes[kSecUseKeychain] = keychain }
+        if let keychain {
+            attributes[kSecUseKeychain] = keychain
+        }
         return SecKeyCreateRandomKey(attributes as CFDictionary, nil)
     }
 }

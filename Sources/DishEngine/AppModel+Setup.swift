@@ -20,7 +20,9 @@ package extension AppModel {
         shellFacts.setup = SetupWizardState(seed: seed, hostKind: seed.flatMap { hostKind(of: $0) })
         adoptBindingDraft(seed)
         followSetup(padIds: input.slots.map(\.id), rows: hub.connections)
-        if seed != nil { scanIfPrimed() }
+        if seed != nil {
+            scanIfPrimed()
+        }
     }
 
     func endSetup() {
@@ -100,7 +102,9 @@ package extension AppModel {
         guard state != shellFacts.setup else { return }
         let draftMoved = state.draft != shellFacts.setup?.draft
         shellFacts.setup = state
-        if draftMoved { adoptBindingDraft(state.draft) }
+        if draftMoved {
+            adoptBindingDraft(state.draft)
+        }
     }
 
     private func runSetupEffect(_ effect: SetupWizardEffect) {

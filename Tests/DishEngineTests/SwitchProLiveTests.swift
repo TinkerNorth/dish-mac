@@ -37,7 +37,9 @@ final class SwitchProLiveTests: XCTestCase {
 
     /// A skipped run never touches the pad.
     override func tearDownWithError() throws {
-        if Self.enabled { try handBack() }
+        if Self.enabled {
+            try handBack()
+        }
         try super.tearDownWithError()
     }
 

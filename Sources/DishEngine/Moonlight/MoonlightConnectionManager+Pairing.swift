@@ -117,9 +117,15 @@ extension MoonlightConnectionManager {
         case let .refused(failure): return .refused(failure)
         case let .proven(proved): der = proved
         }
-        if let failure = await phaseTwo(endpoint, pairing: &pairing) { return .refused(failure) }
-        if let failure = await phaseThree(endpoint, pairing: &pairing, identity: identity) { return .refused(failure) }
-        if let failure = await phaseFour(endpoint, pairing: &pairing) { return .refused(failure) }
+        if let failure = await phaseTwo(endpoint, pairing: &pairing) {
+            return .refused(failure)
+        }
+        if let failure = await phaseThree(endpoint, pairing: &pairing, identity: identity) {
+            return .refused(failure)
+        }
+        if let failure = await phaseFour(endpoint, pairing: &pairing) {
+            return .refused(failure)
+        }
         return await phaseFive(endpoint, certificateDER: der)
     }
 

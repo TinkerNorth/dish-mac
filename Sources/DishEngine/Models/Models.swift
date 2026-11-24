@@ -76,12 +76,12 @@ package struct DiscoveredServer: Codable, Hashable, Identifiable {
 
     package init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
-        self.ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
-        self.udpPort = try container.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
-        self.pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9443
-        self.httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9443
-        self.machineId = try container.decodeIfPresent(String.self, forKey: .machineId) ?? ""
+        name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+        ip = try container.decodeIfPresent(String.self, forKey: .ip) ?? ""
+        udpPort = try container.decodeIfPresent(Int.self, forKey: .udpPort) ?? 9876
+        pairPort = try container.decodeIfPresent(Int.self, forKey: .pairPort) ?? 9443
+        httpPort = try container.decodeIfPresent(Int.self, forKey: .httpPort) ?? 9443
+        machineId = try container.decodeIfPresent(String.self, forKey: .machineId) ?? ""
     }
 
     /// Manual "add by address" entry — the escape hatch when discovery is
@@ -142,14 +142,14 @@ struct PairResponse: Codable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.ok = try container.decodeIfPresent(Bool.self, forKey: .ok) ?? false
-        self.pending = try container.decodeIfPresent(Bool.self, forKey: .pending) ?? false
+        ok = try container.decodeIfPresent(Bool.self, forKey: .ok) ?? false
+        pending = try container.decodeIfPresent(Bool.self, forKey: .pending) ?? false
         self.error = try container.decodeIfPresent(String.self, forKey: .error)
-        self.sharedKey = try container.decodeIfPresent(String.self, forKey: .sharedKey)
-        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
+        sharedKey = try container.decodeIfPresent(String.self, forKey: .sharedKey)
+        protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
             ?? ProtocolConstants.protocolVersionWhenAbsent
-        self.supportedProtocol = try container.decodeIfPresent(Int.self, forKey: .supportedProtocol) ?? 0
-        self.supportedProtocolMin = try container.decodeIfPresent(Int.self, forKey: .supportedProtocolMin) ?? 0
+        supportedProtocol = try container.decodeIfPresent(Int.self, forKey: .supportedProtocol) ?? 0
+        supportedProtocolMin = try container.decodeIfPresent(Int.self, forKey: .supportedProtocolMin) ?? 0
     }
 
     init(
@@ -468,13 +468,13 @@ package struct RememberedWifi: Codable, Hashable, Identifiable {
     /// satellite on upgrade. Fall back to "" instead.
     package init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try container.decode(String.self, forKey: .id)
-        self.name = try container.decode(String.self, forKey: .name)
-        self.ip = try container.decode(String.self, forKey: .ip)
-        self.udpPort = try container.decode(Int.self, forKey: .udpPort)
-        self.pairPort = try container.decode(Int.self, forKey: .pairPort)
-        self.httpPort = try container.decode(Int.self, forKey: .httpPort)
-        self.machineId = try container.decodeIfPresent(String.self, forKey: .machineId) ?? ""
+        id = try container.decode(String.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        ip = try container.decode(String.self, forKey: .ip)
+        udpPort = try container.decode(Int.self, forKey: .udpPort)
+        pairPort = try container.decode(Int.self, forKey: .pairPort)
+        httpPort = try container.decode(Int.self, forKey: .httpPort)
+        machineId = try container.decodeIfPresent(String.self, forKey: .machineId) ?? ""
     }
 
     package func toDiscovered() -> DiscoveredServer {

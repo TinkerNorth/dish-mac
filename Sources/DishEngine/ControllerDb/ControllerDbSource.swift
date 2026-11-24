@@ -109,7 +109,9 @@ package final class ControllerDbSource: StateSource<ControllerDbStatus> {
             pendingCheckDelayMs = nil
             return
         }
-        if pendingCheck == nil { schedule(delayMs: ControllerDbSchedule.firstCheckDelayMs, enabled: enabled) }
+        if pendingCheck == nil {
+            schedule(delayMs: ControllerDbSchedule.firstCheckDelayMs, enabled: enabled)
+        }
     }
 
     /// Nothing is armed with the switch off, so no timer survives a disable.
@@ -157,7 +159,9 @@ package final class ControllerDbSource: StateSource<ControllerDbStatus> {
         let reply = await gateway.fetchManifest(etag: preferences.etag)
         switch manifestStep(reply, activeVersion: index.state.dbVersion) {
         case let .done(result):
-            if case let .body(_, etag) = reply, result == .upToDate { preferences.setEtag(etag) }
+            if case let .body(_, etag) = reply, result == .upToDate {
+                preferences.setEtag(etag)
+            }
             return result
         case let .download(manifest):
             return await download(manifest, served: servedManifest(reply))

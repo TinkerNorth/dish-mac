@@ -54,6 +54,10 @@ final class E2EWorkflowTests: XCTestCase {
         let seed = try XCTUnwrap(script.range(of: #""autoCheck": false"#), "no update check from a test lane")
         let launch = try XCTUnwrap(script.range(of: #"HOME="${E2E_HOME}" "${SATELLITE_BIN}""#))
         XCTAssertTrue(seed.lowerBound < launch.lowerBound, "seeded before the satellite starts")
+        XCTAssertTrue(
+            script.contains(#""controllerDbUpdates": false"#),
+            "satellite 2.3.0 asks dish.tinkernorth.com for a controller database ten seconds after start unless this is off"
+        )
     }
 
     /// The lane answers the pairing request as the operator would, through

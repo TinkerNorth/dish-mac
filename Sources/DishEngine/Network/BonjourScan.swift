@@ -130,7 +130,9 @@ enum BonjourScan {
             var txt: [String: String] = [:]
             if case let .bonjour(record) = result.metadata {
                 for key in txtKeys {
-                    if case let .string(value) = record.getEntry(for: key) { txt[key] = value }
+                    if case let .string(value) = record.getEntry(for: key) {
+                        txt[key] = value
+                    }
                 }
             }
             lock.lock()
@@ -152,7 +154,9 @@ enum BonjourScan {
                 pending -= 1
                 let done = browseWindowClosed && pending == 0
                 lock.unlock()
-                if done { finish() }
+                if done {
+                    finish()
+                }
             }
         }
 
@@ -224,7 +228,9 @@ enum BonjourScan {
             BonjourScan.log.warning(
                 "mDNS resolve waiting: \(String(describing: error), privacy: .public); path \(String(describing: path), privacy: .public)"
             )
-            if LocalNetworkProbe.isLocalNetworkDenial(path) { resolveRefused(reportOnce: reportOnce) }
+            if LocalNetworkProbe.isLocalNetworkDenial(path) {
+                resolveRefused(reportOnce: reportOnce)
+            }
         }
 
         private func resolveRefused(reportOnce: (String?) -> Void) {

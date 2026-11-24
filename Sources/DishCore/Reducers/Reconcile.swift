@@ -56,9 +56,15 @@ public func expectedBitmap(_ registered: [DesiredSlot]) -> UInt16 {
 /// unknown (skip the bitmap arm). Returns true when a GET-then-maybe-rePUT is
 /// warranted.
 public func reconcileNeeded(serverEpoch: Int, serverBitmap: Int, lastAppliedEpoch: Int, expectedBitmap: UInt16) -> Bool {
-    if serverEpoch < 0 { return false }
-    if serverEpoch != lastAppliedEpoch { return true }
-    if serverBitmap >= 0, UInt16(truncatingIfNeeded: serverBitmap) != expectedBitmap { return true }
+    if serverEpoch < 0 {
+        return false
+    }
+    if serverEpoch != lastAppliedEpoch {
+        return true
+    }
+    if serverBitmap >= 0, UInt16(truncatingIfNeeded: serverBitmap) != expectedBitmap {
+        return true
+    }
     return false
 }
 

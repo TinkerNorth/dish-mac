@@ -10,9 +10,10 @@ on:
         description: "Tag to release (must already exist)"
         required: true
 
-# Required secrets (optional — workflow falls back to unsigned/un-notarized
-# for workflow_dispatch on feature branches; tagged releases on main are
-# blocked by `required-secrets` if any are missing):
+# Signing secrets. They are advisory: with all five the app is signed and
+# notarized; without them a stable tag still ships UNSIGNED, with a warning,
+# unless the repository variable ENFORCE_RELEASE_SIGNING is "true", which makes
+# `required-secrets` fail a stable tag that lacks any of them:
 #
 #   DEVELOPER_ID_APPLICATION_CERT_BASE64  base64 of the .p12 Developer ID cert
 #   DEVELOPER_ID_PASSWORD                 .p12 password
@@ -25,9 +26,7 @@ on:
 # the .app is uploaded unsigned and tagged `-unsigned` in its filename.
 
 permissions:
-  contents: write
-  id-token: write
-  attestations: write
+  contents: read
 
 concurrency:
   group: release-${{ github.ref }}
@@ -36,20 +35,17 @@ concurrency:
 jobs:
   gates:
     name: PR-time gates against tag
-    # The shared workflow asks for these; a caller job that grants less is
-    # refused before the run starts (the 1.0.0 tag's first run did).
+    # Exactly what the shared workflow declares; a caller job that grants more
+    # or less is refused before the run starts (the 1.0.0 tag's first run did).
     permissions:
       contents: read
       pull-requests: read
-      security-events: write
     uses: ./.github/workflows/_security.yml
     with:
-      osv_scan_paths: |
-        .
-      gitleaks_enabled: true
-      dependency_review_enabled: false
-      action_pin_lint_enabled: true
-      allowlist_expiry_enabled: true
+      osv_scan_paths: .
+      # The Dependency graph is on; the job itself runs only on a pull
+      # request, so on a tag it is skipped.
+      dependency_review_enabled: true
 
   # ─────────────────────────────────────────────────────────────────────
   # Signing-secret gate. Advisory by default, as the satellite's and the
@@ -64,6 +60,7 @@ jobs:
     name: Required release secrets gate
     needs: [gates]
     runs-on: ubuntu-24.04
+    timeout-minutes: 5
     outputs:
       signed: ${{ steps.check.outputs.signed }}
     steps:
@@ -112,21 +109,25 @@ jobs:
     name: Build + sign Dish.app
     needs: [gates, required-secrets]
     runs-on: macos-26
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
       # VERSION is the one source of the app's version; a tag that disagrees
       # would publish an app that reports a different number than its release.
       - name: Assert the tag matches VERSION
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          tag="${{ inputs.tag || github.ref_name }}"
+          tag="${TAG}"
           version="$(tr -d '[:space:]' < VERSION)"
           if [ "$tag" != "$version" ]; then
             echo "::error::tag '$tag' does not match VERSION '$version'"
@@ -148,14 +149,13 @@ jobs:
           key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'Package.resolved') }}
           restore-keys: ${{ runner.os }}-spm-
 
-      - name: Build release
-        run: swift build --configuration release
-
-      - name: Bundle .app
+      # The same script macos-ci.yml runs on every pull request: the release
+      # build, the bench's smoke run, bundle.sh.
+      - name: Build release, bench smoke, bundle
         # The crash-reporting address rides the plist; absent, the build sends nothing.
         env:
           DISH_SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
-        run: ./bundle.sh release
+        run: scripts/build-app.sh
 
       # The artifact users download must launch where no build tree exists;
       # 1.0.2 to 1.2.0 shipped without this check and crashed at launch.
@@ -188,17 +188,12 @@ jobs:
           echo "keychain=${KEYCHAIN}" >> "$GITHUB_OUTPUT"
           echo "present=true" >> "$GITHUB_OUTPUT"
 
-      # The hardened runtime denies audio input unless the entitlement in
-      # packaging/Dish.entitlements rides the signature; a controller's own
-      # microphone is the one audio input Dish opens.
+      # The command pull requests run with an ad hoc identity.
       - name: Sign Dish.app
         if: steps.sign.outputs.present == 'true'
-        run: |
-          codesign --force --options runtime --timestamp \
-            --entitlements packaging/Dish.entitlements \
-            --sign "${{ steps.sign.outputs.identity }}" --deep Dish.app
-          codesign --verify --strict --deep --verbose=2 Dish.app
-          codesign --display --entitlements - Dish.app 2>&1 | grep -q "com.apple.security.device.audio-input"
+        env:
+          IDENTITY: ${{ steps.sign.outputs.identity }}
+        run: scripts/sign-app.sh "${IDENTITY}" Dish.app
 
       - name: Notarize
         if: steps.sign.outputs.present == 'true'
@@ -216,22 +211,19 @@ jobs:
           xcrun stapler staple Dish.app
           xcrun stapler validate Dish.app
 
+      # The final bundle, the one that is zipped: signed and stapled when the
+      # secrets exist, launched in place so its own signature is what runs.
+      - name: Launch the final bundle
+        env:
+          DISH_SMOKE_AS_SIGNED: "1"
+        run: scripts/launch-smoke.sh Dish.app
+
       - name: Stage artifact
         id: stage
-        run: |
-          mkdir -p dist
-          tag="${{ inputs.tag || github.ref_name }}"
-          suffix=""
-          if [ "${{ steps.sign.outputs.present }}" != "true" ]; then
-            suffix="-unsigned"
-          fi
-          # The versioned copy carries the honesty marker when there is no
-          # Developer ID. The stable name is a permanent download URL that
-          # latest.json and the website read by name, so it never changes
-          # shape, signed or not (the Windows client's dish-setup.exe rule).
-          ditto -c -k --sequesterRsrc --keepParent Dish.app "dist/dish-${tag}${suffix}.zip"
-          cp "dist/dish-${tag}${suffix}.zip" "dist/dish-mac.zip"
-          ls -l dist/
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+          SIGNED: ${{ steps.sign.outputs.present }}
+        run: scripts/stage-zip.sh "${TAG}" "${SIGNED}"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -261,6 +253,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
 
       - name: Write latest.json (stable tags only)
         id: emit
@@ -314,129 +307,21 @@ jobs:
           path: dist/latest.json
           if-no-files-found: error
 
+  # Scan, SBOMs, SHA256SUMS and one cosign bundle (<file>.sigstore.json) per
+  # file: the shared workflow pull requests exercise as a dry run. The run must
+  # be on the tag ref (a tag push, or `gh workflow run release.yml --ref X.Y.Z
+  # -f tag=X.Y.Z`), because the signing certificate names the ref.
   harden:
     name: Harden artifacts (scan, SBOM, sign)
     needs: [release, manifest]
-    runs-on: ubuntu-24.04
     permissions:
       contents: read
-      id-token: write
-      security-events: write
-    outputs:
-      hashes: ${{ steps.hashes.outputs.hashes }}
-    steps:
-      # The app bundle and the manifest land side by side so SHA256SUMS, the
-      # cosign signatures and the SLSA provenance cover latest.json too.
-      - name: Download release artifacts
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
-        with:
-          pattern: macos*
-          merge-multiple: true
-          path: release
-
-      - name: Vulnerability scan (Grype)
-        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
-        id: grype
-        with:
-          path: release/
-          severity-cutoff: high
-          fail-build: true
-          only-fixed: false
-          add-cpes-if-none: true
-          output-format: sarif
-
-      - name: Upload Grype SARIF to code scanning
-        if: ${{ always() && steps.grype.outputs.sarif != '' }}
-        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
-        with:
-          sarif_file: ${{ steps.grype.outputs.sarif }}
-          category: release-grype
-
-      - name: Generate SBOM (SPDX)
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-        with:
-          path: release/
-          format: spdx-json
-          output-file: release/dish-mac.sbom.spdx.json
-          upload-artifact: false
-          upload-release-assets: false
-
-      - name: Generate SBOM (CycloneDX)
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
-        with:
-          path: release/
-          format: cyclonedx-json
-          output-file: release/dish-mac.sbom.cdx.json
-          upload-artifact: false
-          upload-release-assets: false
-
-      - name: Install cosign (upstream binary)
-        shell: bash
-        env:
-          COSIGN_VERSION: "2.4.1"
-          # Pin upstream SHA-256 of cosign-linux-amd64. Verify with:
-          #   gh release view v${COSIGN_VERSION} -R sigstore/cosign --json assets
-          COSIGN_SHA256: "8b24b946dd5809c6bd93de08033bcf6bc0ed7d336b7785787c080f574b89249b" # cosign-linux-amd64 v2.4.1
-        run: |
-          set -euo pipefail
-          curl -fsSL -o /tmp/cosign \
-            "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64"
-          if [ "${COSIGN_SHA256}" != "TODO_REPLACE_WITH_UPSTREAM_SHA256" ]; then
-            echo "${COSIGN_SHA256}  /tmp/cosign" | sha256sum -c -
-          else
-            echo "::warning::COSIGN_SHA256 is unset — replace with the upstream SHA-256 to enforce binary integrity."
-          fi
-          chmod +x /tmp/cosign
-          sudo mv /tmp/cosign /usr/local/bin/cosign
-          cosign version
-
-      - name: Generate SHA256SUMS
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd release
-          find . -maxdepth 1 -type f ! -name 'SHA256SUMS*' -printf '%f\n' \
-            | LC_ALL=C sort \
-            | xargs -d '\n' sha256sum --binary > SHA256SUMS
-          cat SHA256SUMS
-
-      - name: Cosign-sign each artifact + SHA256SUMS (keyless)
-        shell: bash
-        env:
-          COSIGN_EXPERIMENTAL: "1"
-        run: |
-          set -euo pipefail
-          cd release
-          for f in *; do
-            case "$f" in
-              *.sig|*.crt|SHA256SUMS.sig|SHA256SUMS.crt) continue ;;
-            esac
-            cosign sign-blob --yes \
-              --output-signature "${f}.sig" \
-              --output-certificate "${f}.crt" \
-              "$f"
-          done
-          ls -l
-
-      - name: Compute base64 SHA256 hashes for SLSA provenance
-        id: hashes
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd release
-          h=$(find . -maxdepth 1 -type f ! -name '*.sig' ! -name '*.crt' \
-                  -printf '%f\n' \
-                | LC_ALL=C sort \
-                | xargs -d '\n' sha256sum \
-                | base64 -w0)
-          echo "hashes=${h}" >> "$GITHUB_OUTPUT"
-
-      - name: Upload hardened bundle
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: release-bundle
-          path: release/
-          retention-days: 14
+      id-token: write # cosign keyless: Fulcio certificate, Rekor entry
+      security-events: write # Grype SARIF to code scanning
+    uses: ./.github/workflows/_release_harden.yml
+    with:
+      artifact-pattern: macos*
+      product: dish-mac
 
   provenance:
     name: SLSA L3 provenance
@@ -469,12 +354,19 @@ jobs:
       upload_to_release: false
       tag: ${{ inputs.tag || github.ref_name }}
 
-  publish:
-    name: Publish to GitHub Releases
+  # The release is created as a DRAFT with everything on it (the app, the
+  # manifest, the signatures, the provenance, the measurements), and `publish`
+  # flips it only after all of that is there: releases/latest/download/latest.json
+  # never points at a half-published release.
+  draft:
+    name: Create the draft release
     needs: [required-secrets, harden, provenance, measurements]
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
     permissions:
       contents: write
+    outputs:
+      release-id: ${{ steps.release.outputs.id }}
     steps:
       - name: Download hardened bundle
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
@@ -511,10 +403,29 @@ jobs:
             printf '%s\n' "This build is not signed with an Apple Developer ID yet. macOS warns on the first launch: click Done, then open System Settings › Privacy & Security and choose Open Anyway (on macOS 13 and 14, Control-click Dish.app and choose Open). Verify the download against SHA256SUMS. Releases will be signed and notarized once the Developer ID exists." > note.md
           fi
           cat note.md
-      - name: Upload to GitHub Releases
+      - name: Upload to a draft release
+        id: release
         uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
           body_path: note.md
           generate_release_notes: true
+          draft: true
           files: release/**/*
+
+  publish:
+    name: Publish the release
+    needs: [draft]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Flip the draft to published
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_ID: ${{ needs.draft.outputs.release-id }}
+        run: |
+          set -euo pipefail
+          gh api --method PATCH "repos/${GH_REPO}/releases/${RELEASE_ID}" -F draft=false

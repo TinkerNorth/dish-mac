@@ -49,12 +49,13 @@ final class ReleaseManifestTests: XCTestCase {
 
     func testTheSigningGateIsAdvisoryAndTheStableNameNeverCarriesASuffix() throws {
         let workflow = try RepoFiles.read(Self.workflowPath)
+        let stage = try RepoFiles.read("scripts/stage-zip.sh")
         let gateIsAVariable = workflow.contains("ENFORCE: ${{ vars.ENFORCE_RELEASE_SIGNING }}")
         let laterJobsLearnTheOutcome = workflow.contains("signed: ${{ steps.check.outputs.signed }}")
-        let stableNameKept = workflow.contains("\"dist/dish-mac.zip\"")
-        let stableNameSuffixed = workflow.contains("dish-mac${suffix}.zip")
-        let gatesGrantWhatIsAsked = workflow.contains("pull-requests: read\n      security-events: write")
-        let dispatchNamesTheTag = workflow.contains("tag=\"${{ inputs.tag || github.ref_name }}\"")
+        let stableNameKept = stage.contains("\"dist/dish-mac.zip\"")
+        let stableNameSuffixed = stage.contains("dish-mac${suffix}.zip")
+        let gatesGrantWhatIsAsked = workflow.contains("pull-requests: read\n    uses: ./.github/workflows/_security.yml")
+        let dispatchNamesTheTag = workflow.contains("TAG: ${{ inputs.tag || github.ref_name }}")
         let generatorBuiltFromThePin = workflow.contains("compile-generator: true")
         XCTAssertTrue(gateIsAVariable, "the hard gate is a repository variable")
         XCTAssertTrue(laterJobsLearnTheOutcome, "later jobs learn whether the app is signed")
@@ -73,8 +74,8 @@ final class ReleaseManifestTests: XCTestCase {
     func testTheManifestShipsBesideTheAppInTheHardenedBundle() throws {
         let workflow = try RepoFiles.read(Self.workflowPath)
         XCTAssertTrue(workflow.contains("name: macos-manifest"), "the manifest job uploads its own artifact")
-        XCTAssertTrue(workflow.contains("pattern: macos*"), "harden merges the app and the manifest")
-        XCTAssertTrue(workflow.contains("merge-multiple: true"))
+        XCTAssertTrue(workflow.contains("artifact-pattern: macos*"), "harden takes the app and the manifest")
+        XCTAssertTrue(workflow.contains("uses: ./.github/workflows/_release_harden.yml"), "the shared workflow merges them")
         XCTAssertTrue(workflow.contains("needs: [release, manifest]"), "harden waits for both")
     }
 
@@ -110,8 +111,7 @@ final class ReleaseManifestTests: XCTestCase {
 
     /// Digits only, no leading zero unless the number is zero.
     private static func strictNumber(_ part: Substring) -> Int? {
-        guard !part.isEmpty, part.allSatisfy(\.isNumber) else { return nil }
-        guard part.count == 1 || part.first != "0" else { return nil }
+        guard !part.isEmpty, part.allSatisfy(\.isNumber), part.count == 1 || part.first != "0" else { return nil }
         return Int(part)
     }
 }

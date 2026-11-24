@@ -150,7 +150,9 @@ package final class LoopbackMoonlightHost: Sendable {
             )
             writer.u16BE(UInt16(truncatingIfNeeded: sealed.count))
             writer.append(sealed)
-            if sendDatagram(writer.data, fd: fd, to: peer) { delivered.increment() }
+            if sendDatagram(writer.data, fd: fd, to: peer) {
+                delivered.increment()
+            }
         }
     }
 
@@ -266,7 +268,9 @@ package final class LoopbackMoonlightHost: Sendable {
     }
 
     private func reply(_ datagram: Data, to peer: LoopbackPeer) {
-        if sendDatagram(datagram, fd: fd, to: peer) { delivered.increment() }
+        if sendDatagram(datagram, fd: fd, to: peer) {
+            delivered.increment()
+        }
     }
 
     private func acknowledgement(of command: EnetCommandHeader, sentTime: UInt16) -> Data {

@@ -227,7 +227,9 @@ final class GameControllerInput: ObservableObject {
     /// logged with no slot recorded.
     func recordSlot(id: String, controller: GCController, capabilities: ControllerCapabilities, family: PadFamily) {
         let name = controller.vendorName ?? controller.productCategory
-        if paths.showsInputSlot(id) { upsertSlot(Slot(id: id, name: name, capabilities: capabilities, family: family)) }
+        if paths.showsInputSlot(id) {
+            upsertSlot(Slot(id: id, name: name, capabilities: capabilities, family: family))
+        }
         let extended = controller.extendedGamepad == nil ? "no" : "yes"
         let profile = Self.profileCensus(controller.physicalInputProfile)
         Self.log.info("""
@@ -309,7 +311,9 @@ final class GameControllerInput: ObservableObject {
 
     /// The slot's handler queue, made on its first attach.
     func handlerQueue(for id: String) -> DispatchQueue {
-        if let queue = handlerQueues[id] { return queue }
+        if let queue = handlerQueues[id] {
+            return queue
+        }
         let queue = ThreadRole.input.queue(label: "com.tinkernorth.dish.input.\(id)", qos: .userInteractive)
         handlerQueues[id] = queue
         return queue

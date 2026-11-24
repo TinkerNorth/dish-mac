@@ -60,7 +60,9 @@ struct MoonlightHostsPage: View {
     }
 
     private func submit() {
-        if model.addByAddress(.moonlight, draft) { closeForm() }
+        if model.addByAddress(.moonlight, draft) {
+            closeForm()
+        }
     }
 }
 
@@ -90,7 +92,9 @@ private struct MoonlightList: View {
     }
 
     private func open(_ url: URL?) {
-        if let url { openURL(url) }
+        if let url {
+            openURL(url)
+        }
     }
 }
 

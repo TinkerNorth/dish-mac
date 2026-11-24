@@ -67,7 +67,9 @@ extension WifiConnectionManager {
             clientPin: clientPin,
             protocolVersion: conn.offeredProtocolVersion
         )
-        if Task.isCancelled { return }
+        if Task.isCancelled {
+            return
+        }
         guard await submissionNeedsPolling(submitted, conn: conn, server: server, clientPin: clientPin) else { return }
         await pollApproval(conn: conn, server: server)
     }
@@ -126,9 +128,13 @@ extension WifiConnectionManager {
             elapsedMs += approvalPolling.intervalMs
             let status = await pairing.pairStatus(ip: server.ip, port: server.httpPort, deviceId: deviceId)
             let superseded = Task.isCancelled || conn.state == .live
-            if superseded { return }
+            if superseded {
+                return
+            }
             let step = await applyApprovalReply(status, elapsedMs: elapsedMs, conn: conn, server: server)
-            if step == .finished { return }
+            if step == .finished {
+                return
+            }
         }
     }
 

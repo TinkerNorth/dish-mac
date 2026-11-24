@@ -108,8 +108,12 @@ public struct SwitchStreamWatch: Equatable, Sendable {
     }
 
     public func due(lastFullReportMs: Int64?, nowMs: Int64) -> SwitchStreamAction {
-        if let step = nextStep { return .send(step) }
-        if isStreaming(lastFullReportMs, nowMs) { return .streaming }
+        if let step = nextStep {
+            return .send(step)
+        }
+        if isStreaming(lastFullReportMs, nowMs) {
+            return .streaming
+        }
         return mayStart(lastFullReportMs, nowMs) ? .send(.handshake) : .wait
     }
 

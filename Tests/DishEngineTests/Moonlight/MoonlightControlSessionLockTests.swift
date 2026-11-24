@@ -52,7 +52,9 @@ final class MoonlightControlSessionLockTests: XCTestCase, PlaysMoonlightHost {
         let armed = AtomicBool(false)
         let aes = MoonlightControlCipher.aesGcm(rikey: rikey)
         let session = makeSession(MoonlightControlCipher(seal: { seq, plaintext in
-            if armed.get() { sealing.pass() }
+            if armed.get() {
+                sealing.pass()
+            }
             return aes.seal(seq, plaintext)
         }, open: aes.open))
         let connected = connect(session)

@@ -52,7 +52,9 @@ final class ScriptedMoonlightGateway: MoonlightHostGateway, @unchecked Sendable 
             lock.lock()
             let waiting = continuation
             continuation = nil
-            if waiting == nil { pending = reply }
+            if waiting == nil {
+                pending = reply
+            }
             lock.unlock()
             waiting?.resume(returning: reply)
         }
@@ -140,15 +142,21 @@ final class ScriptedMoonlightGateway: MoonlightHostGateway, @unchecked Sendable 
     func getPlain(_ request: MoonlightHttpRequest, timeout: TimeInterval) async -> MoonlightHttpReply {
         record(.plain, request, timeout: timeout)
         let found = scripted(.plain, path(request))
-        if let hold = found.hold { return await hold.wait() }
-        if let computed = onPlain?(request) { return computed }
+        if let hold = found.hold {
+            return await hold.wait()
+        }
+        if let computed = onPlain?(request) {
+            return computed
+        }
         return found.reply ?? .unreachable
     }
 
     func getSecure(_ request: MoonlightHttpRequest, hostId _: String) async -> MoonlightHttpReply {
         record(.secure, request)
         let found = scripted(.secure, path(request))
-        if let hold = found.hold { return await hold.wait() }
+        if let hold = found.hold {
+            return await hold.wait()
+        }
         return found.reply ?? .unreachable
     }
 
@@ -262,10 +270,10 @@ final class InMemoryMoonlightIdentity: MoonlightClientIdentity, MoonlightSignatu
 
     func verify(certificatePem: String, data: Data, signature: Data) -> Bool {
         guard let der = MoonlightCertificate.der(fromPem: certificatePem), let certificate = SecCertificateCreateWithData(
-            nil,
-            der as CFData
-        ),
-            let publicKey = SecCertificateCopyKey(certificate) else { return false }
+                  nil,
+                  der as CFData
+              ),
+              let publicKey = SecCertificateCopyKey(certificate) else { return false }
         return SecKeyVerifySignature(publicKey, .rsaSignatureMessagePKCS1v15SHA256, data as CFData, signature as CFData, nil)
     }
 }

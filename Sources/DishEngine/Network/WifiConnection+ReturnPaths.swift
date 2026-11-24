@@ -88,7 +88,9 @@ extension WifiConnection {
         returnPaths.lightbar = routes.lightbar
         returnPaths.triggerEffects = routes.triggerEffects
         returnPaths.playerLeds = routes.playerLeds
-        if let client { returnPaths.install(on: client) }
+        if let client {
+            returnPaths.install(on: client)
+        }
     }
 
     func setRumbleHandler(_ handler: @escaping (RumbleCommand) -> Void) {

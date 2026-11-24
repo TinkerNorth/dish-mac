@@ -283,14 +283,20 @@ final class HTTPClient {
     ) async -> RawReply {
         guard let url = URL(string: "https://\(ip):\(port)\(path)") else { return RawReply() }
         var req = URLRequest(url: url)
-        if let timeout { req.timeoutInterval = timeout }
+        if let timeout {
+            req.timeoutInterval = timeout
+        }
         req.httpMethod = method
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         // Every authenticated route carries the device id + a proof of the
         // pairing key (contract §hmacProof). Empty values are omitted — the
         // pairing bootstrap routes are the only unauthenticated ones.
-        if !deviceId.isEmpty { req.setValue(deviceId, forHTTPHeaderField: "X-Device-Id") }
-        if !hmacProof.isEmpty { req.setValue(hmacProof, forHTTPHeaderField: "X-Hmac-Proof") }
+        if !deviceId.isEmpty {
+            req.setValue(deviceId, forHTTPHeaderField: "X-Device-Id")
+        }
+        if !hmacProof.isEmpty {
+            req.setValue(hmacProof, forHTTPHeaderField: "X-Hmac-Proof")
+        }
         req.httpBody = body
         do {
             let (data, response) = try await session.data(for: req)

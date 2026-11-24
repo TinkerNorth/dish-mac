@@ -306,7 +306,9 @@ final class InputPaths: StateSource<[String: SlotInputPath]> {
         Self.log.info("\(line, privacy: .public)")
         records.send(InputPathRecord(subject: pad.name, note: .chosen(source, reason)))
         guard pad.arrival != nil else { return }
-        if source == .direct { claimIfOptIn(key) }
+        if source == .direct {
+            claimIfOptIn(key)
+        }
         refreshOutputs()
     }
 

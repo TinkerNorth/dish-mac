@@ -26,7 +26,9 @@ extension MoonlightConnectionManager {
                 _ = conn.releasePad(pad.slotId)
             }
             await run(conn.apply(.stopRequested), on: conn)
-            if live, let host { _ = await cancelHostApp(host) }
+            if live, let host {
+                _ = await cancelHostApp(host)
+            }
         }
         store.removeHost(id: id)
         for binding in store.bindings(forHost: id) {

@@ -188,7 +188,9 @@ package final class InputInspector: StateSource<InputInspection> {
         let wasRunning = bench.phase == .running
         bench.advance(nowMs: nowMs)
         let ended = wasRunning && bench.phase == .done
-        if ended { outcomes.ended(stickTest(bench.kind), slotId: slotId) }
+        if ended {
+            outcomes.ended(stickTest(bench.kind), slotId: slotId)
+        }
         let inspection = InputInspection(
             slotId: slotId,
             snapshot: inputSnapshot(input),

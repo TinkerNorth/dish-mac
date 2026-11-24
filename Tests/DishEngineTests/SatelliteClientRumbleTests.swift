@@ -24,9 +24,9 @@ final class SatelliteClientRumbleTests: XCTestCase {
         received = []
         client.onRumble = { [weak self] command in
             guard let self else { return }
-            self.receivedLock.lock()
-            self.received.append(command)
-            self.receivedLock.unlock()
+            receivedLock.lock()
+            received.append(command)
+            receivedLock.unlock()
         }
     }
 

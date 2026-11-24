@@ -41,10 +41,20 @@ public struct MotionIndicatorInputs: Equatable, Sendable {
 }
 
 public func motionIndicatorFor(_ inputs: MotionIndicatorInputs) -> MotionIndicatorState {
-    if !inputs.hasGyro { return .unavailable }
-    if !inputs.userEnabled { return .userDisabled }
-    if !inputs.carriesOnConnection { return .notForwarded }
-    if !inputs.hostHasSinkForType { return .noHostSink }
-    if !inputs.backendOk { return .backendBroken }
+    if !inputs.hasGyro {
+        return .unavailable
+    }
+    if !inputs.userEnabled {
+        return .userDisabled
+    }
+    if !inputs.carriesOnConnection {
+        return .notForwarded
+    }
+    if !inputs.hostHasSinkForType {
+        return .noHostSink
+    }
+    if !inputs.backendOk {
+        return .backendBroken
+    }
     return .forwarding
 }

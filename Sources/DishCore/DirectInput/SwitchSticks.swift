@@ -64,7 +64,9 @@ public func scaleSwitchStick(_ raw12: UInt16, reach: inout SwitchAxisReach) -> I
     let centered = Int32(raw12) - SwitchStickLimits.rawCenter
     let magnitude = abs(centered)
     let atRest = magnitude <= SwitchStickLimits.rawDeadzone
-    if atRest { return 0 }
+    if atRest {
+        return 0
+    }
     let deflection = magnitude - SwitchStickLimits.rawDeadzone
     let pushed = centered >= 0
     if pushed {

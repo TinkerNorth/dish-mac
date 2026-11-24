@@ -93,7 +93,9 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
         lock.lock()
         let drained = closing && graceElapsed && inFlight == 0
         lock.unlock()
-        if drained { connection.cancel() }
+        if drained {
+            connection.cancel()
+        }
     }
 
     private func stateChanged(_ state: NWConnection.State) {
@@ -121,7 +123,9 @@ final class UdpControlTransport: MoonlightControlTransport, @unchecked Sendable 
     private func receive() {
         connection.receiveMessage { [weak self] data, _, _, error in
             guard let self, error == nil else { return }
-            if let data, !data.isEmpty { onDatagram?(data) }
+            if let data, !data.isEmpty {
+                onDatagram?(data)
+            }
             receive()
         }
     }

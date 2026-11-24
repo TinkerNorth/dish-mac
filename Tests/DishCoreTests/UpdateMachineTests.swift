@@ -133,7 +133,13 @@ final class UpdateMachineTests: XCTestCase {
         var delays: [Int] = []
         for _ in 0 ..< 8 {
             let reduction = reduceUpdate(status, .checkFailed(.http))
-            delays.append(reduction.effects.compactMap { if case let .scheduleNextCheck(delay) = $0 { delay } else { nil } }.first ?? -1)
+            delays.append(reduction.effects.compactMap {
+                if case let .scheduleNextCheck(delay) = $0 {
+                    delay
+                } else {
+                    nil
+                }
+            }.first ?? -1)
             status = reduceUpdate(reduction.next, .checkRequested(.retry)).next
         }
         let minute = 60 * 1000

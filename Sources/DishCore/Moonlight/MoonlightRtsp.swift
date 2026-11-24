@@ -38,7 +38,9 @@ public struct MoonlightRtspRequest: Equatable, Sendable {
         var out = "\(command) \(target) RTSP/1.0\r\n"
         out += "CSeq: \(cseq)\r\n"
         out += "X-GS-ClientVersion: \(MoonlightRtsp.clientVersion)\r\n"
-        if !sessionId.isEmpty { out += "Session: \(sessionId)\r\n" }
+        if !sessionId.isEmpty {
+            out += "Session: \(sessionId)\r\n"
+        }
         for (name, value) in options {
             out += "\(name): \(value)\r\n"
         }

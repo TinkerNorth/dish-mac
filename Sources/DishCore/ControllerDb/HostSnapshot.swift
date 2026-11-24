@@ -75,7 +75,9 @@ private let httpNotFound = 404
 /// connection it does not know; any other answer that is not the document
 /// is a bad reply.
 public func hostSnapshotVerdict(_ reply: HostSnapshotReply) -> HostSnapshotVerdict {
-    if reply.timedOut { return .failed(.timeout) }
+    if reply.timedOut {
+        return .failed(.timeout)
+    }
     switch reply.status {
     case httpOk: return satelliteDocument(reply.body)
     case httpNotFound: return .failed(.unknownConnection)

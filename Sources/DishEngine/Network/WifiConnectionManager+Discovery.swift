@@ -72,7 +72,9 @@ extension WifiConnectionManager {
         /// can be reached; else that nothing answered; nil when something was
         /// heard on an open network.
         var failure: ConnectionFailure? {
-            if localNetworkDenied { return .localNetworkDenied }
+            if localNetworkDenied {
+                return .localNetworkDenied
+            }
             return merged.isEmpty ? .noServersFound : nil
         }
     }

@@ -74,7 +74,9 @@ package extension AppModel {
         case let .pairingPinReady(host, pin):
             moonlightPin = MoonlightPinPrompt(host: host, pin: pin)
         case let .paired(host), let .pairingFailed(host, _):
-            if moonlightPin?.host.id == host.id { moonlightPin = nil }
+            if moonlightPin?.host.id == host.id {
+                moonlightPin = nil
+            }
         case .hostReplaced, .appAlreadyRunning, .rejoinRefused, .launchRefused, .setupFailed, .hostFull, .endedByHost,
              .appCloseRequested, .noHostAnswered, .noAppsAvailable, .appRemoved:
             break
@@ -92,7 +94,9 @@ package extension AppModel {
 
     func cancelMoonlightPairing(_ hostId: String) {
         moonlight.cancelPairing(hostId: hostId)
-        if moonlightPin?.host.id == hostId { moonlightPin = nil }
+        if moonlightPin?.host.id == hostId {
+            moonlightPin = nil
+        }
     }
 
     /// False for an address that is blank once trimmed; anything else is

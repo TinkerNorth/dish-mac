@@ -236,7 +236,9 @@ func addressField(draft: String, placeholder: String, error: String?, words: L10
 func foundSection(_ inputs: ConnectionsInputs, known: [ConnectionSummary], words: L10n = .app) -> FoundSectionState {
     let found = foundServers(inputs.facts.discovered, known: known)
     guard found.isEmpty else { return .rows(found.map { foundRow($0, inputs, words: words) }) }
-    if let priming = primingCard(inputs.facts, words: words) { return .priming(priming) }
+    if let priming = primingCard(inputs.facts, words: words) {
+        return .priming(priming)
+    }
     guard !inputs.facts.scanning else {
         return .looking(EmptyStateModel(title: words.lookingForSatellites, message: words.scanningOverMdnsAndBroadcast))
     }

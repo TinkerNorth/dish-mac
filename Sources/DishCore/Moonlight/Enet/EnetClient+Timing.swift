@@ -15,7 +15,10 @@ extension EnetClient {
         for index in sentReliable.indices {
             guard time - sentReliable[index].sentAtMs >= sentReliable[index].roundTripTimeout else { continue }
             if earliestTimeoutMs == 0 || sentReliable[index]
-                .sentAtMs < earliestTimeoutMs { earliestTimeoutMs = sentReliable[index].sentAtMs }
+                .sentAtMs < earliestTimeoutMs
+            {
+                earliestTimeoutMs = sentReliable[index].sentAtMs
+            }
             if hasTimedOut(sentReliable[index], at: time) {
                 let command = sentReliable[index]
                 let place = "channel \(command.channel) seq \(command.reliableSequence)"
@@ -35,7 +38,9 @@ extension EnetClient {
     /// passed the limit.
     private func hasTimedOut(_ command: Outgoing, at time: Int64) -> Bool {
         let waited = time - earliestTimeoutMs
-        if waited >= EnetProtocol.timeoutMaximumMs { return true }
+        if waited >= EnetProtocol.timeoutMaximumMs {
+            return true
+        }
         let attemptWindow = 1 << min(max(command.sendAttempts - 1, 0), 30)
         return attemptWindow >= EnetProtocol.timeoutLimit && waited >= EnetProtocol.timeoutMinimumMs
     }

@@ -27,7 +27,9 @@ extension InputPaths {
             carrier.standing = standCarrier(carrier.standing, lanesOfModel: lanes, windowClosed: windowClosed)
             carriers[id] = carrier
             let needsStandIn = carrier.standing == .fellBack && lanes == 0 && pads[id] == nil
-            if needsStandIn { adoptFallenBack(id, carrier) }
+            if needsStandIn {
+                adoptFallenBack(id, carrier)
+            }
         }
     }
 

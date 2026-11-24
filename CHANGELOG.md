@@ -17,6 +17,76 @@ the repos share a version number.
 
 ---
 
+## [Unreleased]
+
+## [1.5.0] - 2026-11-23
+
+The app behaves as 1.4.0 did, apart from its Licenses page; this release
+brings the build, the checks and the documents to the fleet's standard.
+
+### Changed
+
+- **The README is written for someone setting Dish up.** It starts with the
+  download, the exact steps to open an app without a Developer ID on macOS
+  15 and later and on 13 and 14, the four steps from Satellite to playing,
+  what works with which controller and what is not yet confirmed on a real
+  pad, the permissions macOS asks for, and the three things that can leave
+  the Mac. The developer material it carried moved: the project layout to
+  `docs/ARCHITECTURE.md` (corrected to seven modules and seven test
+  targets), the rumble and light bar return paths to `docs/contract.md`,
+  the code signing policy to `SECURITY.md`. `DocumentFactsTests` checks that
+  every relative link in it resolves, that it names the version in
+  `VERSION`, and that it carries the family's shared text word for word.
+- **The release's bill of materials names what the app carries.** Syft does
+  not look inside `dish-mac.zip`, so the product SBOM named nothing but the
+  product itself. `scripts/write-sbom.sh`, called by `stage-zip.sh` on pull
+  requests and tags alike, writes `dish-mac-components.spdx.json` from the
+  tree the build used (sentry-cocoa from `Package.resolved`, the ENet commit
+  the Swift port follows, the bundled controller database), and the shared
+  `_release_harden.yml`, now the fleet's newer copy, folds it into the
+  product SBOM and has Grype scan that SBOM. A test fails when the document
+  misses a component `THIRD_PARTY.md` says reaches the user.
+- **Shared security and release hardening.** `_security.yml`,
+  `_release_harden.yml` and the three scripts they run are the fleet's
+  byte-identical copies. Pull requests run the release's scan, SBOMs,
+  checksums and signing as a dry run on the PR-built zip, and
+  `scripts/ci-local.sh` runs the pin lint, the allowlist gate, OSV-Scanner 2.7.1
+  (which now reads `Package.resolved`) and gitleaks with pinned binaries. cosign
+  3.1.4 signs a release as one `<file>.sigstore.json` per file, and the signing
+  identity becomes the shared workflow's, `_release_harden.yml@refs/tags/X.Y.Z`;
+  `SECURITY.md` has the recipe for both forms, run against 1.4.0. The app
+  checks no signature, so already-installed versions are not affected.
+- **Tools and CI at one pin, one path.** SwiftFormat 0.64.7 and SwiftLint
+  0.65.1 are pinned once, in `scripts/tools.sh`, which the local script and
+  the workflow share; `ci-local.sh` runs the same scripts as `macos-ci.yml`
+  (the bench's smoke run, coverage, the hardened-runtime signature and its
+  launch included; `--with-lock-stats` adds the lock-statistics lane). Every
+  workflow selects Xcode 26.6 by version, the end-to-end lane runs against
+  Satellite 2.3.0, CodeQL blocks and uploads, and the release is created as a
+  draft and published only after the measurements are on it.
+- **Dependency review runs on every pull request**, now that the repository's
+  dependency graph and Dependabot alerts are on, and `main` is protected:
+  CONTRIBUTING names the checks a pull request needs. The provenance recipe in
+  `SECURITY.md` drops cosign's deprecated `--new-bundle-format` flag, run
+  against 1.4.0 with cosign 3.1.4.
+- SwiftLint's `trailing_comma` and SwiftFormat's `redundantSelf` and
+  `unusedArguments` rules are on. Two rules stay off as fleet style choices
+  (`opening_brace`, `blankLinesAtStartOfScope`), each with its reason in the
+  config.
+
+### Fixed
+
+- **The Licenses page names what the app links.** `THIRD_PARTY.md`, in the
+  repository and in the app's Licenses page, names
+  sentry-cocoa 9.35.0 and says the app links one package; `SECURITY.md` names
+  protocol 4, the advisory signing gate and all six clients. A test now ties
+  each of those facts to the code.
+- `packaging/Dish.entitlements` held `--options` inside an XML comment, which
+  is not valid XML: a Developer ID signature would have failed with "Failed to
+  parse entitlements". The pull-request signing step found it.
+
+---
+
 ## [1.4.0] - 2026-11-23
 
 ### Added
@@ -1028,6 +1098,8 @@ Tagged, never published: its release workflow was refused before it started.
   off` while the client streamed touchpad frames, so the satellite dropped
   them; a pad with a touchpad now asks for the pad render.
 
+[Unreleased]: https://github.com/TinkerNorth/dish-mac/compare/1.5.0...HEAD
+[1.5.0]: https://github.com/TinkerNorth/dish-mac/compare/1.4.0...1.5.0
 [1.4.0]: https://github.com/TinkerNorth/dish-mac/compare/1.3.1...1.4.0
 [1.3.1]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.1
 [1.3.0]: https://github.com/TinkerNorth/dish-mac/releases/tag/1.3.0

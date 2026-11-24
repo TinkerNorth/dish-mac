@@ -119,7 +119,9 @@ final class FakeMoonlightControlHost: @unchecked Sendable {
     private func receive(_ connection: NWConnection) {
         connection.receiveMessage { [weak self] data, _, _, error in
             guard let self, error == nil else { return }
-            if let data { handle(data, from: connection) }
+            if let data {
+                handle(data, from: connection)
+            }
             receive(connection)
         }
     }
@@ -135,7 +137,9 @@ final class FakeMoonlightControlHost: @unchecked Sendable {
             guard let size = EnetProtocol.size(ofCommand: command.number),
                   let body = reader.take(size - EnetProtocol.commandHeaderLength) else { break }
             let payload = countedPayload(command.number, body: body, &reader)
-            if let reply = act(on: command, body: body, payload: payload, sentTime: sentTime) { replies.append(reply) }
+            if let reply = act(on: command, body: body, payload: payload, sentTime: sentTime) {
+                replies.append(reply)
+            }
         }
         for reply in replies {
             connection.send(content: reply, completion: .contentProcessed { _ in })

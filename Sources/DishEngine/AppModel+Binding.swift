@@ -57,8 +57,7 @@ package extension AppModel {
     }
 
     func applyBinding(_ draft: BindingDraft) {
-        guard canApply(draft), let connectionId = draft.current.connectionId else { return }
-        guard !applyInFlight(shellFacts.binding.progress) else { return }
+        guard canApply(draft), let connectionId = draft.current.connectionId, !applyInFlight(shellFacts.binding.progress) else { return }
         let attached = input.slots.contains { $0.id == draft.slotId }
         guard attached else { return advanceApply(.padGone) }
         let path = applyPath(connectionId)
@@ -232,10 +231,16 @@ package extension AppModel {
         let next = reduceApply(before, event)
         shellFacts.binding.progress = next
         let ended = applyInFlight(before) && !applyInFlight(next)
-        if ended { bindingWatch.end() }
+        if ended {
+            bindingWatch.end()
+        }
         let landed = next == .done && before != .done
-        if landed { markDraftApplied() }
-        if landed { markSetupApplied() }
+        if landed {
+            markDraftApplied()
+        }
+        if landed {
+            markSetupApplied()
+        }
     }
 
     private func markDraftApplied() {

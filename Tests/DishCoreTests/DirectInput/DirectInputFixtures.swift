@@ -412,8 +412,12 @@ struct CapturedSwitchPro {
         let command = Array(packet.prefix(2))
         let lastThree = Array(received.suffix(Self.handshakeAtThreeMegabit.count))
         let disablesTheTimeoutAtThreeMegabit = command == Self.timeoutDisable && lastThree == Self.handshakeAtThreeMegabit
-        if disablesTheTimeoutAtThreeMegabit { streams = true }
-        if Self.enablesTheImu(packet) { imuOn = true }
+        if disablesTheTimeoutAtThreeMegabit {
+            streams = true
+        }
+        if Self.enablesTheImu(packet) {
+            imuOn = true
+        }
         received.append(command)
     }
 

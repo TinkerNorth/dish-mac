@@ -195,7 +195,9 @@ final class SteamOutput: DirectOutput, @unchecked Sendable {
 
     /// The level again inside the safety stop, and the stop once its hold ends.
     private func rumbleTick() {
-        if let report = rumbleLevel.tick(nowMs: clockMs()) { sendRumble(report) }
+        if let report = rumbleLevel.tick(nowMs: clockMs()) {
+            sendRumble(report)
+        }
         guard !rumbleLevel.running else { return }
         rumbleTicker.stop()
     }

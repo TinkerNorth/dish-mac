@@ -73,12 +73,24 @@ public enum MoonlightPadRules {
 
     public static func sourceBits(_ source: MoonlightSourceCapabilities) -> UInt8 {
         var bits = MoonlightCapability.analogTriggers
-        if source.rumble { bits |= MoonlightCapability.rumble }
-        if source.triggerRumble { bits |= MoonlightCapability.triggerRumble }
-        if source.motion { bits |= MoonlightCapability.accelerometer | MoonlightCapability.gyro }
-        if source.touchpad { bits |= MoonlightCapability.touchpad }
-        if source.battery { bits |= MoonlightCapability.battery }
-        if source.lightbar { bits |= MoonlightCapability.rgbLed }
+        if source.rumble {
+            bits |= MoonlightCapability.rumble
+        }
+        if source.triggerRumble {
+            bits |= MoonlightCapability.triggerRumble
+        }
+        if source.motion {
+            bits |= MoonlightCapability.accelerometer | MoonlightCapability.gyro
+        }
+        if source.touchpad {
+            bits |= MoonlightCapability.touchpad
+        }
+        if source.battery {
+            bits |= MoonlightCapability.battery
+        }
+        if source.lightbar {
+            bits |= MoonlightCapability.rgbLed
+        }
         return bits
     }
 
@@ -119,8 +131,12 @@ public enum MoonlightPadRules {
 
     public static func placement(held: MoonlightAnnouncedPad?, wanted: MoonlightAnnouncedPad) -> MoonlightPadPlacement {
         guard let held else { return .acquire }
-        if held.type != wanted.type { return .reannounce }
-        if (held.capabilities ^ wanted.capabilities) & capsReadAtArrival != 0 { return .reannounce }
+        if held.type != wanted.type {
+            return .reannounce
+        }
+        if (held.capabilities ^ wanted.capabilities) & capsReadAtArrival != 0 {
+            return .reannounce
+        }
         return .keep
     }
 

@@ -630,6 +630,39 @@ Low Energy` are HID over GATT. A GameController pad takes the transport the
 devices matched to it by name agree on (`transport(forPadNamed:)`, the same
 carriers `hardwareId(forPadNamed:)` reads).
 
+## Project layout
+
+Seven modules and seven test targets, every one built with warnings as errors
+(`Package.swift`; only the test-support `LegacyFileKeychain` target is
+compiled with warnings suppressed, as its header explains):
+
+```
+Package.swift
+Sources/DishCore/          the pure core: ProtocolConstants, Wire/ (codecs, crypto), Reducers/,
+                           DirectInput/, Moonlight/, ControllerDb/, Measurement/, Update/,
+                           Resources/controllers-v1/ (the bundled controller database)
+Sources/DishKernel/        StateSource, Composer, Controller, Repository, AsyncState
+Sources/DishAtomics/       C atomics for the hot paths (macOS 13 has no Synchronization module)
+Sources/DishEngine/        AppModel, the composition root, and Network/, Input/, Audio/, Moonlight/,
+                           ControllerDb/, Diagnostics/, Measurement/, Update/, Models/, Util/
+Sources/DishCrashUpload/   the Sentry SDK behind the crash-reporting switch
+Sources/Dish/              the app: DishApp.swift (@main), L10n/, Navigation/, Notifications/,
+                           Services/, UI/ (Shell/, Pages/, Kit/, Mappers/), Resources/Localizable.xcstrings
+Sources/DishBench/         the frame-path bench (tools/bench/README.md)
+Tests/DishCoreTests/       interop vectors, reducers, decoders
+Tests/DishKernelTests/     every kernel primitive
+Tests/DishEngineTests/     unit and live suites; Support/FakeSatellite/
+Tests/DishTests/           the funnel, the mappers, the AppKit glue
+Tests/DishCrashUploadTests/ the crash uploader behind its switch
+Tests/DishBenchTests/      the bench's scenarios and reports
+Tests/ArchitectureTests/   the rules a compiler cannot read, and the documents' facts
+Tests/Support/             DishKernelProbes, LegacyFileKeychain
+Tests/PARITY.md            what the other clients have, and what is confirmed on hardware
+Resources/Dish.svg         the fleet's app mark; Dish.icns is rendered from it
+packaging/                 Dish.entitlements, update-policy.json
+scripts/                   one script per gate, called by CI and by ci-local.sh
+```
+
 ## How to add a feature
 
 1. **Name the state.** A request takes `AsyncState`; a lifecycle takes a

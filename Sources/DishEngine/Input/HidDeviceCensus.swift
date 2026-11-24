@@ -110,8 +110,12 @@ private func hidUsage(_ properties: [String: Any], pageKey: String, usageKey: St
 
 func hidTransport(_ word: String?) -> HidTransport {
     guard let word, !word.isEmpty else { return .unknown }
-    if word == kIOHIDTransportUSBValue { return .usb }
-    if word.hasPrefix(kIOHIDTransportBluetoothValue) { return .bluetooth(bluetoothLayers[word]) }
+    if word == kIOHIDTransportUSBValue {
+        return .usb
+    }
+    if word.hasPrefix(kIOHIDTransportBluetoothValue) {
+        return .bluetooth(bluetoothLayers[word])
+    }
     return .other(word)
 }
 
@@ -239,14 +243,18 @@ final class IOKitHidCensus: HidCensusReading {
     }
 
     private func hardware(of device: IOHIDDevice, id: UInt64, transport: HidTransport) -> HidDeviceHardware {
-        if let known = details[id] { return known }
+        if let known = details[id] {
+            return known
+        }
         let fresh = hidDeviceHardware(device, transport: transport)
         details[id] = fresh
         return fresh
     }
 
     private func claim(_ device: IOHIDDevice, id: UInt64) -> Bool {
-        if let known = claims[id] { return known }
+        if let known = claims[id] {
+            return known
+        }
         let fresh = GCController.supportsHIDDevice(device)
         claims[id] = fresh
         return fresh

@@ -223,8 +223,8 @@ package final class SlotPreferenceStore: StateSource<[String: SlotPreferences]> 
     /// skipped, so the on/off row beneath it still speaks.
     static func parseModes(_ json: String?) -> [(String, TouchpadPick)] {
         rows(json).compactMap { row in
-            guard let slotId = row["slotId"] as? String, !slotId.isEmpty, let mode = row["mode"] as? String else { return nil }
-            guard isValidTouchpadPickName(mode) else { return nil }
+            guard let slotId = row["slotId"] as? String, !slotId.isEmpty, let mode = row["mode"] as? String,
+                  isValidTouchpadPickName(mode) else { return nil }
             return (slotId, TouchpadPick(wireName: mode))
         }
     }

@@ -115,7 +115,11 @@ struct PathOptionState: Equatable, Identifiable {
 
 func padPathState(_ path: SlotInputPath?, words: L10n = .app) -> PadPathState? {
     guard let path else { return nil }
-    let asksForA = if case .running = path.check { true } else { false }
+    let asksForA = if case .running = path.check {
+        true
+    } else {
+        false
+    }
     return PadPathState(
         title: words.inputPath,
         path: inputSourceText(path.source, words: words),

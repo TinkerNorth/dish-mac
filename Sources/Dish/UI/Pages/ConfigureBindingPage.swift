@@ -79,7 +79,9 @@ struct ConfigureBindingPage: View {
     }
 
     private func dismissedQuestion(_ shown: Bool) {
-        if !shown, navigation.state.pendingLeaveGuard != nil { stay() }
+        if !shown, navigation.state.pendingLeaveGuard != nil {
+            stay()
+        }
     }
 
     private func armGuard(_ dirty: Bool) {
@@ -107,6 +109,8 @@ struct ConfigureBindingPage: View {
     private func closeOverlay() {
         let landed = state.popsOnClose
         model.dismissApply()
-        if landed { navigation.send(.pop) }
+        if landed {
+            navigation.send(.pop)
+        }
     }
 }

@@ -110,7 +110,9 @@ final class PadFeed {
     }
 
     private func currentRoute() -> Route? {
-        if let fresh = routeMail.take() { route = fresh.route }
+        if let fresh = routeMail.take() {
+            route = fresh.route
+        }
         return route
     }
 
@@ -123,7 +125,9 @@ final class PadFeed {
         }
         guard nowNs > previous else { return nil }
         let elapsedNs = nowNs - previous
-        if elapsedNs < GamepadInputProcessor.motionMinIntervalNs { return nil }
+        if elapsedNs < GamepadInputProcessor.motionMinIntervalNs {
+            return nil
+        }
         lastMotionNs = nowNs
         return UInt32(clamping: elapsedNs / 1000)
     }
@@ -243,7 +247,9 @@ final class PadRecord {
             if before & 1 == 0 {
                 let copy = loadFields()
                 atomicFenceAcquire()
-                if word(.sequence).loadRelaxed() == before { return copy }
+                if word(.sequence).loadRelaxed() == before {
+                    return copy
+                }
             }
             sched_yield()
         }

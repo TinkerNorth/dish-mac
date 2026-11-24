@@ -50,7 +50,9 @@ struct HidPadCandidate: Equatable {
 
     /// The model's name, else the device's own, else its USB identity.
     var name: String {
-        if let model { return model.name }
+        if let model {
+            return model.name
+        }
         return product.isEmpty ? usbPathKey(vendorId: vendorId, productId: productId) : product
     }
 
@@ -184,8 +186,8 @@ private func steamInterface(_ model: DirectModel?, _ properties: [String: Any]) 
 
 private func descriptorDecoder(vendorId: UInt16, order: HidButtonOrder, properties: [String: Any]) -> DirectLaneDecoder? {
     let nintendoLeftToMacOS = vendorId == DirectVendor.nintendo
-    guard !nintendoLeftToMacOS, declaresGameUsage(properties) else { return nil }
-    guard let descriptor = properties[kIOHIDReportDescriptorKey] as? Data else { return nil }
+    guard !nintendoLeftToMacOS, declaresGameUsage(properties),
+          let descriptor = properties[kIOHIDReportDescriptorKey] as? Data else { return nil }
     return HidGamepadLayout.parse(descriptor: [UInt8](descriptor), order: order).map(DirectLaneDecoder.hidGamepad)
 }
 
@@ -243,6 +245,8 @@ enum GameControllerSettle {
 
 /// The answer after the `attempt`th check (from 1) said `supported`.
 func settledSupport(supported: Bool, attempt: Int) -> GameControllerSupport {
-    if supported { return .shows }
+    if supported {
+        return .shows
+    }
     return attempt >= GameControllerSettle.checks ? .doesNotShow : .pending
 }

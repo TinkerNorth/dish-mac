@@ -57,7 +57,9 @@ final class UpdateCheckerTests: XCTestCase {
     private func settle(_ checker: UpdateChecker, timeout: TimeInterval = 4) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if checker.state.phase != .checking { return true }
+            if checker.state.phase != .checking {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         return checker.state.phase != .checking

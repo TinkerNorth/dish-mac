@@ -48,8 +48,12 @@ public func isValidVersion(_ text: String) -> Bool {
 /// site decides what an unparsable version means for it.
 public func compareVersions(_ lhs: String, _ rhs: String) -> Int? {
     guard let left = UpdateVersion.parse(lhs), let right = UpdateVersion.parse(rhs) else { return nil }
-    if left < right { return -1 }
-    if right < left { return 1 }
+    if left < right {
+        return -1
+    }
+    if right < left {
+        return 1
+    }
     return 0
 }
 

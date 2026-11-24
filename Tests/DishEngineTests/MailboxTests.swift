@@ -63,7 +63,9 @@ final class MailboxTests: XCTestCase {
         Thread {
             var local: [Int] = []
             while local.last != posts - 1 {
-                if let parcel = mailbox.take() { local.append(parcel.value) }
+                if let parcel = mailbox.take() {
+                    local.append(parcel.value)
+                }
             }
             seen.set(local)
             done.signal()

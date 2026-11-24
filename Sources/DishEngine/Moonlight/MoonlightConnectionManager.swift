@@ -251,7 +251,9 @@ package final class MoonlightConnectionManager: ObservableObject {
     /// The pool entry for a host, created on first use with its link events
     /// routed back here.
     func findOrCreate(_ host: MoonlightHost) -> MoonlightConnection {
-        if let existing = connections[host.id] { return existing }
+        if let existing = connections[host.id] {
+            return existing
+        }
         let fresh = MoonlightConnection(id: host.id, host: host)
         fresh.setEffectsRunner { [weak self, weak fresh] effects in
             guard let self, let fresh else { return }

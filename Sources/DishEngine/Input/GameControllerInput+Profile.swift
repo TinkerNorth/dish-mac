@@ -51,7 +51,9 @@ extension GameControllerInput {
         let feed = processor.feed(for: id)
         let firstSight = !slots.contains { $0.id == id }
         recordSlot(id: id, controller: controller, capabilities: Self.profileCapabilities(controller), family: Self.family(of: controller))
-        if firstSight { Self.logProfile(subject: id, choice: choice, resolved: resolved, adopted: true) }
+        if firstSight {
+            Self.logProfile(subject: id, choice: choice, resolved: resolved, adopted: true)
+        }
         controller.handlerQueue = handlerQueue(for: id)
         installProfileHandler(profile: profile, inputs: Self.profileInputs(resolved, profile: profile), gate: gate, feed: feed)
         installMotionHandler(controller: controller, gate: gate, feed: feed)

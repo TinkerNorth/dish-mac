@@ -60,16 +60,26 @@ public struct KeepAwakePreferences: Equatable, Sendable {
 /// non-positive timeout never expires, and a clock that steps backwards
 /// reads as activity rather than as an expired window.
 public func controllerActive(lastInputMs: Int64, nowMs: Int64, timeoutMs: Int64) -> Bool {
-    if timeoutMs <= 0 { return true }
-    if nowMs <= lastInputMs { return true }
+    if timeoutMs <= 0 {
+        return true
+    }
+    if nowMs <= lastInputMs {
+        return true
+    }
     return nowMs - lastInputMs < timeoutMs
 }
 
 /// The one rule the inhibitor is driven from.
 public func deriveKeepAwakeReach(_ prefs: KeepAwakePreferences, streamingSlotCount: Int, controllerActive: Bool) -> KeepAwakeReach {
-    if prefs.mode == .off { return .none }
-    if streamingSlotCount <= 0 { return .none }
-    if prefs.mode == .whileControllerActive, !controllerActive { return .none }
+    if prefs.mode == .off {
+        return .none
+    }
+    if streamingSlotCount <= 0 {
+        return .none
+    }
+    if prefs.mode == .whileControllerActive, !controllerActive {
+        return .none
+    }
     return prefs.keepDisplayAwake ? .systemAndDisplay : .system
 }
 

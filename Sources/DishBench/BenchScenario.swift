@@ -29,7 +29,9 @@ struct BenchScenario: Equatable {
 
     /// The pads it publishes through the input queue.
     var inputPads: Int {
-        if direct { return 0 }
+        if direct {
+            return 0
+        }
         return padB ? 2 : 1
     }
 }

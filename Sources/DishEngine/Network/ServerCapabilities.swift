@@ -47,20 +47,20 @@ struct ServerCapabilitiesDTO: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
+        protocolVersion = try container.decodeIfPresent(Int.self, forKey: .protocolVersion)
             ?? ProtocolConstants.protocolVersionWhenAbsent
-        self.serverVersion = try container.decodeIfPresent(String.self, forKey: .serverVersion) ?? ""
-        self.maxControllers = try container.decodeIfPresent(Int.self, forKey: .maxControllers)
+        serverVersion = try container.decodeIfPresent(String.self, forKey: .serverVersion) ?? ""
+        maxControllers = try container.decodeIfPresent(Int.self, forKey: .maxControllers)
             ?? ProtocolConstants.maxControllersPerConnection
-        self.backendAvailable = try container.decodeIfPresent(Availability.self, forKey: .backend)?.available ?? false
-        self.motionAvailable = try container.decodeIfPresent(Availability.self, forKey: .motion)?.available ?? false
-        self.host = try container.decodeIfPresent(ServerHostFeatures.self, forKey: .host) ?? ServerHostFeatures()
+        backendAvailable = try container.decodeIfPresent(Availability.self, forKey: .backend)?.available ?? false
+        motionAvailable = try container.decodeIfPresent(Availability.self, forKey: .motion)?.available ?? false
+        host = try container.decodeIfPresent(ServerHostFeatures.self, forKey: .host) ?? ServerHostFeatures()
         let audio = try container.decodeIfPresent(ServerControllerAudio.self, forKey: .controllerAudio)
-        self.controllerAudio = audio ?? ServerControllerAudio()
-        self.controllerAudioPresent = audio != nil
+        controllerAudio = audio ?? ServerControllerAudio()
+        controllerAudioPresent = audio != nil
         let backends = (try? container.decodeIfPresent([BackendRow].self, forKey: .backends)) ?? []
-        self.anyBackendAudio = backends.contains { ($0.available ?? false) && ($0.audio ?? false) }
-        self.backendRows = try? container.decodeIfPresent(JSONValue.self, forKey: .backends)
+        anyBackendAudio = backends.contains { ($0.available ?? false) && ($0.audio ?? false) }
+        backendRows = try? container.decodeIfPresent(JSONValue.self, forKey: .backends)
     }
 
     /// What the host will carry of the pad's audio, folded as the fleet
@@ -91,8 +91,8 @@ struct ServerHostFeature: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
-        self.available = try container.decodeIfPresent(Bool.self, forKey: .available) ?? false
+        supported = try container.decodeIfPresent(Bool.self, forKey: .supported) ?? false
+        available = try container.decodeIfPresent(Bool.self, forKey: .available) ?? false
     }
 }
 
@@ -111,11 +111,11 @@ struct ServerHostFeatures: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.catalog = try container.decodeIfPresent(ServerHostFeature.self, forKey: .catalog) ?? ServerHostFeature()
-        self.mouseControl = try container.decodeIfPresent(ServerHostFeature.self, forKey: .mouseControl) ?? ServerHostFeature()
-        self.keyboardControl = try container.decodeIfPresent(ServerHostFeature.self, forKey: .keyboardControl)
+        catalog = try container.decodeIfPresent(ServerHostFeature.self, forKey: .catalog) ?? ServerHostFeature()
+        mouseControl = try container.decodeIfPresent(ServerHostFeature.self, forKey: .mouseControl) ?? ServerHostFeature()
+        keyboardControl = try container.decodeIfPresent(ServerHostFeature.self, forKey: .keyboardControl)
             ?? ServerHostFeature()
-        self.rumble = try container.decodeIfPresent(ServerHostFeature.self, forKey: .rumble) ?? ServerHostFeature()
+        rumble = try container.decodeIfPresent(ServerHostFeature.self, forKey: .rumble) ?? ServerHostFeature()
     }
 }
 
@@ -133,10 +133,10 @@ struct ServerControllerAudio: Decodable, Equatable {
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        self.enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
-        self.mic = try container.decodeIfPresent(Bool.self, forKey: .mic) ?? false
-        self.speaker = try container.decodeIfPresent(Bool.self, forKey: .speaker) ?? false
-        self.hapticAudio = try container.decodeIfPresent(Bool.self, forKey: .hapticAudio) ?? false
+        enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? false
+        mic = try container.decodeIfPresent(Bool.self, forKey: .mic) ?? false
+        speaker = try container.decodeIfPresent(Bool.self, forKey: .speaker) ?? false
+        hapticAudio = try container.decodeIfPresent(Bool.self, forKey: .hapticAudio) ?? false
     }
 }
 

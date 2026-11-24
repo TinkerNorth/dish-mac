@@ -11,21 +11,28 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   ci:
     name: Build, test, lint, format
     # macOS 14 images are deprecated (unsupported from 2026-11-02) and their
-    # Xcode 15 SwiftPM cannot compile the String Catalog. Xcode 26 is the
-    # default on this image; bump together with CONTRIBUTING.md.
+    # Xcode 15 SwiftPM cannot compile the String Catalog. Xcode 26.6 is the
+    # macos-26 image's default today; it is selected by version below so an
+    # image update cannot change the toolchain silently. Bump together with
+    # CONTRIBUTING.md.
     runs-on: macos-26
     timeout-minutes: 45
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
       - name: Swift version
         run: swift --version
@@ -49,63 +56,40 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      # Release binaries at pinned versions, not `brew install`: Homebrew
-      # tracks its latest, and SwiftFormat 0.63.0 (a new wrapIfStatementBodies
-      # rule) turned this check red on 2026-09-04 without a Swift file
-      # changing. These are the versions the tree is formatted and linted
-      # with; a bump is a deliberate commit that reformats alongside it.
-      - name: Install SwiftFormat + SwiftLint (pinned)
-        env:
-          SWIFTFORMAT_VERSION: 0.61.1
-          SWIFTFORMAT_SHA256: b990400779aceb7d7020796eb9ba814d4480543f671d38fc0ff48cb72f04c584
-          SWIFTLINT_VERSION: 0.65.0
-          SWIFTLINT_SHA256: d6cb0aa7a2f5f1ef306fc9e37bcb54dc9a26facc8f7784ac0c3dd3eccf5c6ba6
-        run: |
-          set -euo pipefail
-          tools="$RUNNER_TEMP/swift-tools"
-          mkdir -p "$tools"
-          curl -fsSL --retry 3 -o "$tools/swiftformat.zip"             "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat.zip"
-          echo "${SWIFTFORMAT_SHA256}  $tools/swiftformat.zip" | shasum -a 256 -c -
-          unzip -q -o "$tools/swiftformat.zip" -d "$tools"
-          curl -fsSL --retry 3 -o "$tools/swiftlint.zip"             "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
-          echo "${SWIFTLINT_SHA256}  $tools/swiftlint.zip" | shasum -a 256 -c -
-          unzip -q -o "$tools/swiftlint.zip" -d "$tools"
-          chmod +x "$tools/swiftformat" "$tools/swiftlint"
-          echo "$tools" >> "$GITHUB_PATH"
-          "$tools/swiftformat" --version
-          "$tools/swiftlint" --version
+      # Release binaries at pinned versions (scripts/tools.sh), not `brew
+      # install`: Homebrew tracks its latest, and SwiftFormat 0.63.0 (a new
+      # wrapIfStatementBodies rule) turned this check red on 2026-09-04
+      # without a Swift file changing. A bump is a deliberate commit that
+      # reformats alongside it.
+      - name: SwiftFormat (check only) and SwiftLint
+        run: scripts/check-format.sh
 
-      - name: SwiftFormat (check only)
-        run: swiftformat --lint .
+      - name: Build (debug, with tests) and run the tests
+        run: scripts/build-and-test.sh
 
-      - name: SwiftLint
-        run: swiftlint lint --strict --reporter github-actions-logging
+      # Every scenario of the bench for 0.2 s against the release build, then
+      # the bundle: the same script ci-local.sh runs.
+      - name: Release build, bench smoke, bundle
+        run: scripts/build-app.sh
 
-      - name: Build (debug, with tests)
-        run: swift build --build-tests --enable-code-coverage
-
-      # This toolchain's SwiftPM copies the String Catalog verbatim, which
-      # nothing reads at run time; the tests read the compiled tables.
-      - name: Compile the String Catalog where SwiftPM copied it
-        run: find .build -type d -name 'Dish_Dish.bundle' -exec ./scripts/compile-catalog.sh {} \;
-
-      - name: Run tests
-        run: swift test --skip-build --parallel --enable-code-coverage
-
-      - name: Build release binary
-        run: swift build --configuration release
-
-      # Every scenario for 0.2 s against the release build; the exit status is
-      # the harness's own accounting (pacing, arrivals), never a latency.
-      - name: Bench smoke run
-        run: .build/release/DishBench --smoke
-
-      - name: Bundle .app
-        run: ./bundle.sh release
+      # The release signs with the hardened runtime; ad hoc here, so the
+      # signing command, the entitlement and the launch of the result are
+      # exercised on every pull request. Notarisation needs the Apple secrets
+      # and runs only in release.yml.
+      - name: Sign with the hardened runtime (ad hoc)
+        run: scripts/sign-app.sh - Dish.app
 
       # A user's Mac has no build tree to fall back on; the launch must not
-      # need one (1.0.2 to 1.2.0 crashed at launch everywhere but CI).
+      # need one (1.0.2 to 1.2.0 crashed at launch everywhere but CI). The
+      # script also checks the bundled controller database first.
       - name: Launch the bundled app with no build tree beside it
+        run: scripts/launch-smoke.sh Dish.app
+
+      # The hardened bundle itself, in place (a runner has no preferences to
+      # protect), as release.yml launches the final one.
+      - name: Launch the hardened bundle as signed
+        env:
+          DISH_SMOKE_AS_SIGNED: "1"
         run: scripts/launch-smoke.sh Dish.app
 
       - name: Upload .app artifact
@@ -114,6 +98,35 @@ jobs:
           name: Dish.app
           path: Dish.app
           retention-days: 14
+
+      # The release's own zip, named the way a tag names it (unsigned), for the
+      # hardening dry run below.
+      - name: Stage the release zip
+        run: scripts/stage-zip.sh "$(tr -d '[:space:]' < VERSION)" false
+
+      - name: Upload the zip for the hardening dry run
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos
+          path: dist/
+          retention-days: 1
+          if-no-files-found: error
+
+  # The release's scan, SBOMs, checksums and signing, on the PR-built zip: the
+  # shared workflow release.yml calls on a tag, with a throwaway key and nothing
+  # published. contents: read is all it needs, so it runs on a fork's pull
+  # request too.
+  release-dry-run:
+    name: Release hardening (dry run)
+    if: ${{ github.event_name == 'pull_request' }}
+    needs: [ci]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/_release_harden.yml
+    with:
+      artifact-pattern: macos*
+      product: dish-mac
+      dry-run: true
 
   # The LOCK_STATS build counts every tracked lock by thread role; its own
   # tests and the lock-law test run only there. A cache of its own, so
@@ -126,9 +139,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
+        run: sudo xcode-select -s /Applications/Xcode_26.6.app
 
       - name: Cache SwiftPM
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
@@ -143,11 +158,5 @@ jobs:
             ${{ runner.os }}-lockstats-spm-
             ${{ runner.os }}-spm-
 
-      - name: Build the tests with lock statistics
-        run: swift build --build-tests -Xswiftc -DLOCK_STATS
-
-      - name: Run the lock statistics tests
-        run: swift test --skip-build --filter 'TrackedLockStatsTests|LockLawTests'
-
-      - name: Bench smoke run with lock statistics
-        run: .build/debug/DishBench --smoke
+      - name: Lock statistics build, tests and bench smoke
+        run: scripts/lock-stats.sh

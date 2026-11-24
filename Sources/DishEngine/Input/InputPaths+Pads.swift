@@ -19,7 +19,9 @@ extension InputPaths {
         scheduler.after(ms: Self.devcapsDelayMs) { [weak self] in self?.logDevcaps(arrival) }
         let byModel = candidate.model?.rule == .byModel
         let fellBack = joinFallback(candidate)
-        if byModel { reduce(arrival.slotId, .connected(pathFacts(candidate, support: .pending, fellBack: fellBack))) }
+        if byModel {
+            reduce(arrival.slotId, .connected(pathFacts(candidate, support: .pending, fellBack: fellBack)))
+        }
         settle(arrival, attempt: 1)
     }
 
@@ -129,7 +131,9 @@ extension InputPaths {
     /// lists under a Direct-by-model category becomes a carrier; any other
     /// is a pad of its own, read through GameController.
     func gameControllerAttached(id: String, name: String, category: String, hasRumble: Bool) -> PadGate {
-        if let existing = pads[id]?.gate ?? carriers[id]?.gate { return existing }
+        if let existing = pads[id]?.gate ?? carriers[id]?.gate {
+            return existing
+        }
         let gate = makeGate(key: id)
         if let model = directModel(gameControllerCategory: category) {
             carriers[id] = PathCarrier(productId: model.productId, name: name, gate: gate, hasRumble: hasRumble)
@@ -155,7 +159,9 @@ extension InputPaths {
             let visible = carrier.gate.routed == .standard
             carrier.gate.route(nil)
             retireFallbackPad(id)
-            if visible { recordDrop(id, name: name) }
+            if visible {
+                recordDrop(id, name: name)
+            }
             refreshOutputs()
             publishFacts()
             return
@@ -190,7 +196,9 @@ extension InputPaths {
 
     /// The pad's machine: its own, or, for a carrier, its sole pad's.
     func machineKey(forSlot slotId: String) -> String? {
-        if pads[slotId] != nil { return slotId }
+        if pads[slotId] != nil {
+            return slotId
+        }
         return carriers[slotId] == nil ? nil : soleOwner(ofCarrier: slotId) ?? firstOwner(ofCarrier: slotId)
     }
 
@@ -270,7 +278,9 @@ extension InputPaths {
             guard let lane = pad.arrival?.lane else { continue }
             let count = lane.tally.snapshot().reports
             rawHz[key] = rawRates[key, default: InputRateTracker()].sample(count: count, nowUs: nowUs)
-            if let write = lane.writes.take() { lastWrites[key] = write }
+            if let write = lane.writes.take() {
+                lastWrites[key] = write
+            }
         }
         publishFacts()
     }

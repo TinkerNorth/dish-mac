@@ -33,6 +33,8 @@ extension InputPaths {
 
 /// A generic pad read through its descriptor, not a fixed decoder.
 func readsDeclaredLayout(_ candidate: HidPadCandidate) -> Bool {
-    if case .hidGamepad = candidate.decoder { return true }
+    if case .hidGamepad = candidate.decoder {
+        return true
+    }
     return false
 }

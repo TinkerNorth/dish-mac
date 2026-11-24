@@ -187,7 +187,9 @@ final class ControllerDbMappersTests: XCTestCase {
             ledger.started(asking.test)
             ledger.ended(asking.test, atMs: asking.atMs)
         }
-        if let running { ledger.started(running) }
+        if let running {
+            ledger.started(running)
+        }
         return ledger
     }
 

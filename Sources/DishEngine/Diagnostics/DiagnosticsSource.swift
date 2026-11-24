@@ -276,7 +276,9 @@ package final class DiagnosticsSource: StateSource<DiagnosticsSnapshot> {
     }
 
     private func rawDescriptors(_ registryId: UInt64) -> UsbRawDescriptors? {
-        if let known = readDescriptors[registryId] { return known.raw }
+        if let known = readDescriptors[registryId] {
+            return known.raw
+        }
         let read = descriptors.rawDescriptors(ofUsbDevice: registryId)
         readDescriptors[registryId] = ReadDescriptors(raw: read)
         return read

@@ -62,7 +62,9 @@ final class PairingKeyOffMainTests: XCTestCase {
     private func waitUntil(timeout: TimeInterval = 5, _ predicate: () -> Bool) async -> Bool {
         let deadline = Date().addingTimeInterval(timeout)
         while Date() < deadline {
-            if predicate() { return true }
+            if predicate() {
+                return true
+            }
             try? await Task.sleep(nanoseconds: 20_000_000)
         }
         return predicate()
@@ -142,7 +144,9 @@ private final class AskingKeyStore: KeyStore, @unchecked Sendable {
 
     func pairingKeyHex(for id: String) -> String? {
         readsBox.mutate { $0 += 1 }
-        if Thread.isMainThread { mainThreadReadsBox.mutate { $0 += 1 } }
+        if Thread.isMainThread {
+            mainThreadReadsBox.mutate { $0 += 1 }
+        }
         waitForTheAnswer()
         return keys.pairingKeyHex(for: id)
     }

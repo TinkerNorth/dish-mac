@@ -119,11 +119,11 @@ final class FakeSatelliteRest {
                 connection.cancel()
                 return
             }
-            self.connectionsLock.lock()
-            self.connections.append(connection)
-            self.connectionsLock.unlock()
-            connection.start(queue: self.queue)
-            self.receive(on: connection, buffered: Data())
+            connectionsLock.lock()
+            connections.append(connection)
+            connectionsLock.unlock()
+            connection.start(queue: queue)
+            receive(on: connection, buffered: Data())
         }
         let boundPort = try FakeSatelliteNet.startAndAwaitReady(listener, queue: queue)
         self.listener = listener
@@ -134,18 +134,20 @@ final class FakeSatelliteRest {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 256 * 1024) { [weak self] data, _, isComplete, error in
             guard let self else { return }
             var buffer = buffered
-            if let data { buffer.append(data) }
+            if let data {
+                buffer.append(data)
+            }
             while let (request, consumed) = FakeSatelliteHttp.parseRequest(buffer) {
                 buffer.removeFirst(consumed)
                 // nil = the response was parked by the hold knob.
-                guard let response = self.route(request, on: connection) else { continue }
+                guard let response = route(request, on: connection) else { continue }
                 connection.send(content: FakeSatelliteHttp.serialize(response), completion: .contentProcessed { _ in })
             }
             if error != nil || isComplete {
                 connection.cancel()
                 return
             }
-            self.receive(on: connection, buffered: buffer)
+            receive(on: connection, buffered: buffer)
         }
     }
 
@@ -162,8 +164,12 @@ final class FakeSatelliteRest {
             return FakeSatelliteHttp.json(200, raw: Self.capabilitiesJSON(controllerAudio: audio, serverVersion: version))
         case ("GET", "/api/catalog"): return catalog(request)
         default:
-            if request.method == "GET", request.plainPath.hasSuffix("/diagnostics") { return connectionDiagnostics(request) }
-            if request.plainPath.hasPrefix("/api/connections/") { return connectionSubroute(request) }
+            if request.method == "GET", request.plainPath.hasSuffix("/diagnostics") {
+                return connectionDiagnostics(request)
+            }
+            if request.plainPath.hasPrefix("/api/connections/") {
+                return connectionSubroute(request)
+            }
             return FakeSatelliteHttp.json(404, ["error": "unknown route"])
         }
     }
@@ -218,7 +224,9 @@ final class FakeSatelliteRest {
             {
                 return .unauthorized(code: "BAD_PROOF")
             }
-            if state.pairedDeviceId == nil { state.pairedDeviceId = deviceId }
+            if state.pairedDeviceId == nil {
+                state.pairedDeviceId = deviceId
+            }
             return .ok(deviceId: deviceId)
         }
     }
@@ -254,8 +262,12 @@ final class FakeSatelliteRest {
         if store.with({ $0.shuttingDown }) {
             return FakeSatelliteHttp.json(503, ["error": "shutting down"])
         }
-        if case let .unauthorized(code) = authenticate(request, body: body) { return unauthorized(code) }
-        if let rejection = versionRejection(body) { return rejection }
+        if case let .unauthorized(code) = authenticate(request, body: body) {
+            return unauthorized(code)
+        }
+        if let rejection = versionRejection(body) {
+            return rejection
+        }
         guard let keyHex = store.with({ $0.pairingKeyHex }),
               let pairingKey = FakeSatelliteCrypto.hexToData(keyHex) else
         {
@@ -264,7 +276,9 @@ final class FakeSatelliteRest {
         let minted = mintSession(body: body, pairingKey: pairingKey)
         // Contract: replacement close-notify goes to the OLD token,
         // best-effort (only when that session ever showed a reply path).
-        if let previous = minted.previous { udp.sendClose(.replaced, to: previous) }
+        if let previous = minted.previous {
+            udp.sendClose(.replaced, to: previous)
+        }
         return respondOrHold(FakeSatelliteHttp.json(200, minted.response), on: connection)
     }
 
@@ -280,7 +294,9 @@ final class FakeSatelliteRest {
             let previous = state.activeToken.flatMap { state.sessions.removeValue(forKey: $0) }
             let failure = state.controllerApplyFailure
             if failure == nil {
-                if !Self.sameTopology(state.controllers, controllers) { state.epoch &+= 1 }
+                if !Self.sameTopology(state.controllers, controllers) {
+                    state.epoch &+= 1
+                }
                 state.controllers = controllers
             }
             state.lastMouseGranted = wantsMouse

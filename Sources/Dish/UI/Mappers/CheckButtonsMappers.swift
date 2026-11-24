@@ -157,7 +157,9 @@ private func dpadFromHat(_ which: RemapButton, _ remap: JoystickRemap) -> Bool {
 
 /// A direction's own button wins over the hat, as the desktops' readout has it.
 func buttonSourceText(_ index: Int, dpadFromHat: Bool, words: L10n = .app) -> String {
-    if index >= 0 { return words.sourceButton(index) }
+    if index >= 0 {
+        return words.sourceButton(index)
+    }
     return dpadFromHat ? words.sourceHat(RemapDefaults.hat) : words.unassigned
 }
 

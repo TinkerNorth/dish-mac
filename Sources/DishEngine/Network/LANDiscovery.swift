@@ -12,6 +12,19 @@ enum LANDiscovery {
     static let defaultPort = 9879
     static let defaultTimeoutMs = 4000
 
+    private static func bindAnyAddress(_ sock: Int32, port: Int) -> Bool {
+        var addr = sockaddr_in()
+        addr.sin_family = sa_family_t(AF_INET)
+        addr.sin_port = in_port_t(UInt16(port)).bigEndian
+        addr.sin_addr.s_addr = INADDR_ANY.bigEndian
+        let bindRet = withUnsafePointer(to: &addr) { ptr -> Int32 in
+            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
+                Darwin.bind(sock, sa, socklen_t(MemoryLayout<sockaddr_in>.size))
+            }
+        }
+        return bindRet >= 0
+    }
+
     /// Blocking — call from a background queue. The loop exits when the
     /// deadline is reached; each recv has a 300ms timeout so a quiet network
     /// doesn't hang us past `timeoutMs`.
@@ -29,16 +42,7 @@ enum LANDiscovery {
         // harmless if we're the only one).
         _ = setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &reuse, socklen_t(MemoryLayout<Int32>.size))
 
-        var addr = sockaddr_in()
-        addr.sin_family = sa_family_t(AF_INET)
-        addr.sin_port = in_port_t(UInt16(port)).bigEndian
-        addr.sin_addr.s_addr = INADDR_ANY.bigEndian
-        let bindRet = withUnsafePointer(to: &addr) { ptr -> Int32 in
-            ptr.withMemoryRebound(to: sockaddr.self, capacity: 1) { sa in
-                Darwin.bind(sock, sa, socklen_t(MemoryLayout<sockaddr_in>.size))
-            }
-        }
-        if bindRet < 0 { return [] }
+        guard bindAnyAddress(sock, port: port) else { return [] }
 
         var rtv = timeval(tv_sec: 0, tv_usec: 300_000)
         _ = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &rtv, socklen_t(MemoryLayout<timeval>.size))
@@ -58,17 +62,23 @@ enum LANDiscovery {
                     }
                 }
             }
-            if bytesRead <= 0 { continue }
-            guard let str = String(bytes: buf[0 ..< bytesRead], encoding: .utf8) else { continue }
-            guard str.contains("\"service\":\"satellite\"") else { continue }
+            if bytesRead <= 0 {
+                continue
+            }
+            guard let str = String(bytes: buf[0 ..< bytesRead], encoding: .utf8),
+                  str.contains("\"service\":\"satellite\"") else { continue }
 
             var ipBytes = [CChar](repeating: 0, count: Int(INET_ADDRSTRLEN))
             _ = inet_ntop(AF_INET, &from.sin_addr, &ipBytes, socklen_t(INET_ADDRSTRLEN))
             let ip = String(cString: ipBytes)
-            if seen.contains(ip) { continue }
+            if seen.contains(ip) {
+                continue
+            }
             seen.insert(ip)
 
-            if let server = parseBeacon(json: str, ip: ip) { result.append(server) }
+            if let server = parseBeacon(json: str, ip: ip) {
+                result.append(server)
+            }
         }
         return result
     }
@@ -82,7 +92,9 @@ enum LANDiscovery {
         let dec = JSONDecoder()
         guard var server = try? dec.decode(DiscoveredServer.self, from: data) else { return nil }
         server.ip = ip
-        if server.name.isEmpty { return nil }
+        if server.name.isEmpty {
+            return nil
+        }
         return server
     }
 }

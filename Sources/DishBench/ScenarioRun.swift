@@ -31,7 +31,9 @@ struct RepStreams {
 
     mutating func add(_ stream: PacedStream, measuring pad: MeasuredStream? = nil) {
         paced.append(stream)
-        if let pad { measured.append(pad) }
+        if let pad {
+            measured.append(pad)
+        }
     }
 }
 
@@ -66,7 +68,9 @@ final class ScenarioRun {
         } else {
             direct = nil
         }
-        if !scenario.heartbeatAndMic { rig.stopHeartbeat() }
+        if !scenario.heartbeatAndMic {
+            rig.stopHeartbeat()
+        }
         self.scenario = scenario
         self.options = options
         self.timer = timer

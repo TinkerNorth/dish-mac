@@ -13,7 +13,9 @@ extension MoonlightConnectionManager {
     func probe(_ host: MoonlightHost) async -> MoonlightProbe {
         let epoch = epochOf(host.id)
         let plain = await plainServerInfo(host.endpoint)
-        if forgottenSince(host.id, epoch) { return .forgotten }
+        if forgottenSince(host.id, epoch) {
+            return .forgotten
+        }
         if let plain {
             noteFacts(host.id, plain)
             keepFirstUniqueId(host.id, plain)
@@ -23,7 +25,9 @@ extension MoonlightConnectionManager {
         let record = store.host(id: host.id).flatMap { $0.paired ? $0 : nil }
         guard let plain else { return MoonlightProbe(trust: record == nil ? .unreachable : .remembered) }
         let storedId = record?.uniqueId ?? ""
-        if !storedId.isEmpty, !plain.uniqueId.isEmpty, plain.uniqueId != storedId { return MoonlightProbe(trust: .replaced) }
+        if !storedId.isEmpty, !plain.uniqueId.isEmpty, plain.uniqueId != storedId {
+            return MoonlightProbe(trust: .replaced)
+        }
         return await probeOverMutualTls(host, holdsAPairing: record != nil, epoch: epoch)
     }
 
@@ -42,15 +46,21 @@ extension MoonlightConnectionManager {
             MoonlightUrls.serverInfo(host.endpoint, tls: true, uniqueId: uniqueId, nonce: nonce()),
             hostId: host.id
         )
-        if forgottenSince(host.id, epoch) { return .forgotten }
+        if forgottenSince(host.id, epoch) {
+            return .forgotten
+        }
         let untrusted: MoonlightTrustState = holdsAPairing ? .trustLost : .notPaired
         guard secure.ok, let info = MoonlightXml.serverInfo(secure.body) else { return MoonlightProbe(trust: untrusted) }
         noteFacts(host.id, info)
         guard info.paired else { return MoonlightProbe(trust: untrusted) }
         let apps = await fetchAppList(host)
-        if forgottenSince(host.id, epoch) { return .forgotten }
+        if forgottenSince(host.id, epoch) {
+            return .forgotten
+        }
         markVerified(host.id)
-        if let apps { hostApps[host.id] = apps }
+        if let apps {
+            hostApps[host.id] = apps
+        }
         return MoonlightProbe(
             trust: .paired,
             apps: apps ?? [],

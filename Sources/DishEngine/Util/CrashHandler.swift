@@ -69,11 +69,21 @@ package enum CrashHandler {
     /// The signal's name with the newline the record ends on, static so the
     /// handler allocates nothing.
     static func signalName(_ signal: Int32) -> StaticString {
-        if signal == SIGSEGV { return "SIGSEGV\n" }
-        if signal == SIGABRT { return "SIGABRT\n" }
-        if signal == SIGBUS { return "SIGBUS\n" }
-        if signal == SIGFPE { return "SIGFPE\n" }
-        if signal == SIGILL { return "SIGILL\n" }
+        if signal == SIGSEGV {
+            return "SIGSEGV\n"
+        }
+        if signal == SIGABRT {
+            return "SIGABRT\n"
+        }
+        if signal == SIGBUS {
+            return "SIGBUS\n"
+        }
+        if signal == SIGFPE {
+            return "SIGFPE\n"
+        }
+        if signal == SIGILL {
+            return "SIGILL\n"
+        }
         return "signal\n"
     }
 
@@ -96,7 +106,9 @@ package enum CrashHandler {
         var written = 0
         while written < count {
             let step = write(fd, text.utf8Start + written, count - written)
-            if step <= 0 { return }
+            if step <= 0 {
+                return
+            }
             written += Int(step)
         }
     }
@@ -110,7 +122,9 @@ package enum CrashHandler {
 /// The handler proper. A fault inside it would otherwise loop until the
 /// stack is gone, so a second entry exits at once with the signal's code.
 private func dishCrashHandler(_ signal: Int32) {
-    if crashHandlerStorage.inHandler.getAndSet(true) { _exit(128 + signal) }
+    if crashHandlerStorage.inHandler.getAndSet(true) {
+        _exit(128 + signal)
+    }
     let depth = CrashHandler.captureFrames()
     CrashHandler.writeAll(STDERR_FILENO, "dish crashed: ")
     CrashHandler.writeAll(STDERR_FILENO, CrashHandler.signalName(signal))

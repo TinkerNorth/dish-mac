@@ -54,7 +54,9 @@ struct ConnectionsPage: View {
     }
 
     private func submitAddress() {
-        if model.addByAddress(.satellite, draft) { draft = "" }
+        if model.addByAddress(.satellite, draft) {
+            draft = ""
+        }
     }
 }
 
@@ -102,7 +104,9 @@ struct NothingFoundCard: View {
     }
 
     private func open(_ url: URL?) {
-        if let url { openURL(url) }
+        if let url {
+            openURL(url)
+        }
     }
 }
 

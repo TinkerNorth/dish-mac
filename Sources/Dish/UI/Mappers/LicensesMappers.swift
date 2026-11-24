@@ -67,7 +67,9 @@ private struct LicenseParser {
 
     mutating func finish() -> [LicenseBlock] {
         flushParagraph()
-        if let code { blocks.append(.code(code.joined(separator: "\n"))) }
+        if let code {
+            blocks.append(.code(code.joined(separator: "\n")))
+        }
         return blocks
     }
 
@@ -114,11 +116,21 @@ enum LicenseLineKind: Equatable {
 
 /// What one trimmed line of the notice is.
 func licenseLineKind(_ line: String) -> LicenseLineKind {
-    if line.hasPrefix("```") { return .fence }
-    if line.isEmpty { return .blank }
-    if line == "---" { return .rule }
-    if line.hasPrefix("#") { return headingKind(line) }
-    if line.hasPrefix("|") { return tableKind(line) }
+    if line.hasPrefix("```") {
+        return .fence
+    }
+    if line.isEmpty {
+        return .blank
+    }
+    if line == "---" {
+        return .rule
+    }
+    if line.hasPrefix("#") {
+        return headingKind(line)
+    }
+    if line.hasPrefix("|") {
+        return tableKind(line)
+    }
     return .text
 }
 
@@ -132,7 +144,9 @@ private let tableSeparatorCharacters: Set<Character> = ["|", "-", ":", " "]
 
 private func tableKind(_ line: String) -> LicenseLineKind {
     let isSeparator = line.allSatisfy { tableSeparatorCharacters.contains($0) }
-    if isSeparator { return .tableSeparator }
+    if isSeparator {
+        return .tableSeparator
+    }
     let cells = line.split(separator: "|", omittingEmptySubsequences: false)
         .dropFirst()
         .dropLast()

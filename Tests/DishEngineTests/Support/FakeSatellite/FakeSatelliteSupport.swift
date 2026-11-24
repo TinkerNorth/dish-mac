@@ -66,6 +66,14 @@ struct FakeSatellitePointerFrame: Equatable {
     let scrollV: Int16
 }
 
+extension FakeSatelliteFrame.Detail {
+    /// The sequence number and Opus payload of a MIC_AUDIO frame; nil for any other.
+    var micPacket: (seq: UInt16, opus: Data)? {
+        guard case let .micAudio(_, seq, opus) = self else { return nil }
+        return (seq, opus)
+    }
+}
+
 /// One successfully decrypted uplink frame, typed where the opcode is known.
 struct FakeSatelliteFrame {
     enum Detail: Equatable {
@@ -257,7 +265,9 @@ final class FakeSatelliteStore {
         condition.lock()
         defer { condition.unlock() }
         while !predicate(state) {
-            if !condition.wait(until: deadline) { return predicate(state) }
+            if !condition.wait(until: deadline) {
+                return predicate(state)
+            }
         }
         return true
     }

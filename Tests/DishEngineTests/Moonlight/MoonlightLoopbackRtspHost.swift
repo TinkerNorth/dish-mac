@@ -86,8 +86,12 @@ final class MoonlightLoopbackRtspHost: @unchecked Sendable {
         connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, isComplete, error in
             guard let self else { return }
             var buffer = buffered
-            if let data { buffer.append(data) }
-            if error != nil || isComplete { return }
+            if let data {
+                buffer.append(data)
+            }
+            if error != nil || isComplete {
+                return
+            }
             guard let text = String(bytes: buffer, encoding: .utf8), let headEnd = text.range(of: "\r\n\r\n") else {
                 receive(connection, buffered: buffer)
                 return
@@ -183,7 +187,9 @@ final class MoonlightLoopbackUdp: @unchecked Sendable {
                 lock.lock()
                 received.append(data)
                 lock.unlock()
-                if echo { connection.send(content: data, completion: .contentProcessed { _ in }) }
+                if echo {
+                    connection.send(content: data, completion: .contentProcessed { _ in })
+                }
             }
             receive(connection)
         }

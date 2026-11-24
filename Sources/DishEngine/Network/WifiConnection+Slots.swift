@@ -67,7 +67,9 @@ extension WifiConnection {
         let index = editSlots { $0.attach(slotId, controllerType: controllerType, capabilities: capabilities, family: family) }
         guard let index else { return nil }
         let unchanged = before != nil && before == slotTable.descriptor(for: slotId)
-        if unchanged { convergeIndices([index]) }
+        if unchanged {
+            convergeIndices([index])
+        }
         return index
     }
 
